@@ -273,7 +273,7 @@ if USE_FIRESTORE and (firebase_admin is not None):
         service_account_info = json.loads(decoded_creds)
         cred = credentials.Certificate(service_account_info)
     else:
-        SERVICE_ACCOUNT_KEY_PATH = os.path.join(BASE_DIR, 'firebase-service-account.json')
+        SERVICE_ACCOUNT_KEY_PATH = os.path.join(BASE_DIR, 'secrets', 'firebase-service-account.json')
         if os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
             cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
         else:
