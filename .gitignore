@@ -164,6 +164,9 @@ tmp_import/
 *.sqlite3
 *.sqlite3-journal
 
+# Salida de 'manage.py collectstatic' (se regenera en cada deploy)
+staticfiles/
+
 # ============================================================
 # Backups / artefactos de pip
 # ============================================================
