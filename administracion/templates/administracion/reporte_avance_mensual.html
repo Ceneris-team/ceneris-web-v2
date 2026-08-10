@@ -1,0 +1,151 @@
+{% extends "administracion/base_administracion.html" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h3><i data-feather="bar-chart-2" class="me-2"></i>Reporte de Avance Mensual</h3>
+        </div>
+        <div class="card-body">
+            <style>
+                /* Enforce fixed table layout so columns keep uniform width */
+                .table-fixed { table-layout: fixed; width: 100%; }
+                .table-fixed thead th, .table-fixed tbody td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+                /* Column sizing: agente wide, meta narrow, months equal */
+                .col-agente { width: 30%; min-width: 160px; }
+                .col-meta { width: 10%; min-width: 80px; }
+                .col-month { width: 4%; min-width: 80px; }
+                /* Make the progress bars fit inside the cell without forcing column width */
+                .month-cell .progress { margin: 0 auto; max-width: 90%; min-width: 40px; }
+                .month-cell .progress-bar { white-space: nowrap; }
+            </style>
+            
+            <!-- === INICIO: NUEVO PANEL DE FILTROS INTELIGENTES === -->
+            <form method="get" class="p-3 mb-4 bg-light border rounded">
+                <div class="row g-3 align-items-end">
+                    <!-- Filtro de Búsqueda -->
+                    <div class="col-md-4">
+                        <label for="q" class="form-label">Buscar Agente/Producto</label>
+                        <select name="q" id="q" class="form-select">
+                            {% for value, label in agentes_choices %}
+                                <option value="{{ value }}" {% if value == current_filters.q %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <!-- Filtro por Tipo de Monitoreo -->
+                    <div class="col-md-3">
+                        <label for="tipo" class="form-label">Tipo de Monitoreo</label>
+                        <select name="tipo" id="tipo" class="form-select">
+                            <option value="">Todos</option>
+                            {% for value, text in tipos_monitoreo %}
+                                <option value="{{ value }}" {% if value == current_filters.tipo %}selected{% endif %}>{{ text }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <!-- Selector de Año -->
+                    <div class="col-md-3">
+                        <label for="year" class="form-label">Año de Reporte</label>
+                        <select name="year" id="year" class="form-select">
+                            {% for year in available_years %}
+                                <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <!-- Botón de Acción -->
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i data-feather="filter" class="me-1" style="width:16px; height:16px;"></i>Filtrar
+                        </button>
+                    </div>
+                </div>
+            </form>
+            <!-- === FIN: NUEVO PANEL DE FILTROS INTELIGENTES === -->
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-fixed" style="font-size: 0.9rem;">
+                    <colgroup>
+                        <col class="col-agente">
+                        <col class="col-meta">
+                        <col class="col-month">
+                        <col class="col-month">
+                        <col class="col-month">
+                        <col class="col-month">
+                        <col class="col-month">
+                        <col class="col-month">
+                        <col class="col-month">
+                        <col class="col-month">
+                        <col class="col-month">
+                        <col class="col-month">
+                        <col class="col-month">
+                        <col class="col-month">
+                    </colgroup>
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th class="align-middle" style="min-width: 200px;">Agente / Producto</th>
+                            <th class="align-middle">Meta Mensual</th>
+                            <!-- Bucle robusto para los nombres de los meses -->
+                            <th>Ene</th><th>Feb</th><th>Mar</th><th>Abr</th>
+                            <th>May</th><th>Jun</th><th>Jul</th><th>Ago</th>
+                            <th>Sep</th><th>Oct</th><th>Nov</th><th>Dic</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in report_data %}
+                        <tr>
+                            <td class="fw-bold align-middle">
+                                {{ data.requerimiento.agente }}
+                                <br>
+                                <small class="text-muted">{{ data.requerimiento.get_tipo_monitoreo_display }}</small>
+                            </td>
+                            <td class="text-center align-middle">{{ data.requerimiento.meta_mensual|floatformat:2 }}</td>
+                            
+                            {% for mes in data.meses %}
+                            <td class="text-center p-2 month-cell" title="{{ mes.consumido }} / {{ data.requerimiento.meta_mensual|floatformat:2 }} ({{mes.porcentaje}}%)">
+                                {% with porcentaje=mes.porcentaje %}
+                                    {% if porcentaje > 100 %}
+                                        {% with color='success' extra_porcentaje=porcentaje|add:"-100" %}
+                                        <div class="progress" style="height: 25px;">
+                                            <div class="progress-bar bg-{{ color }}" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">100%</div>
+                                            {% if extra_porcentaje > 0 %}
+                                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ extra_porcentaje }}%;" aria-valuenow="{{ extra_porcentaje }}" aria-valuemin="0" aria-valuemax="100">+{{ extra_porcentaje }}%</div>
+                                            {% endif %}
+                                        </div>
+                                        {% endwith %}
+                                    {% else %}
+                                        {% if porcentaje >= 91 %}
+                                            {% with color='success' %}{% endwith %}
+                                        {% elif porcentaje >= 61 %}
+                                            {% with color='green-light' %}{% endwith %}
+                                        {% elif porcentaje >= 31 %}
+                                            {% with color='orange' %}{% endwith %}
+                                        {% else %}
+                                            {% with color='danger' %}{% endwith %}
+                                        {% endif %}
+                                        <div class="progress" style="height: 25px;">
+                                            <div class="progress-bar bg-{{ color }}" role="progressbar" style="width: {{ porcentaje }}%;" aria-valuenow="{{ porcentaje }}" aria-valuemin="0" aria-valuemax="100">{{ porcentaje }}%</div>
+                                        </div>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="14" class="text-center p-5">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i data-feather="info" style="width:48px; height:48px;" class="text-muted mb-2"></i>
+                                    <h5 class="mt-3">No se encontraron resultados</h5>
+                                    <p class="text-muted">Intenta ajustar los filtros de búsqueda o seleccionar un año diferente.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

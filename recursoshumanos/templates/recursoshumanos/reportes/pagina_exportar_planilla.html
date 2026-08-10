@@ -1,0 +1,50 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Exportar Reporte para Planilla{% endblock %}
+
+{% block content %}
+<h1>Exportar Reporte para Planilla</h1>
+<p><a href="{% url 'recursoshumanos:gestion_reportes' %}">&larr; Volver</a></p>
+
+<div class="form-container">
+    <p>Seleccione el mes y los filtros opcionales para generar el reporte de tardanzas y faltas en formato Excel.</p>
+    <form method="get">
+
+        <div class="form-group">
+            <label for="mes">Mes:</label>
+            <input type="month" id="mes" name="mes" required>
+        </div>
+
+        <div class="form-group">
+            <label for="ubicacion_id">Ubicación (App Móvil):</label>
+            <select id="ubicacion_id" name="ubicacion_id">
+                <option value="">— Todas las ubicaciones —</option>
+                {% for ub in ubicaciones %}
+                <option value="{{ ub.id }}">{{ ub.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="proyecto_id">Proyecto:</label>
+            <select id="proyecto_id" name="proyecto_id">
+                <option value="">— Todos los proyectos —</option>
+                {% for proy in proyectos %}
+                <option value="{{ proy.id }}">{% if proy.codigo %}[{{ proy.codigo }}] {% endif %}{{ proy.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="trabajador_id">Personal:</label>
+            <select id="trabajador_id" name="trabajador_id">
+                <option value="">— Todo el personal —</option>
+                {% for t in trabajadores_lista %}
+                <option value="{{ t.id }}">{{ t.apellido_paterno }} {{ t.apellido_materno }}, {{ t.nombres }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="button--primary">Generar y Descargar Excel</button>
+    </form>
+</div>
+{% endblock %}

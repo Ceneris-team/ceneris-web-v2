@@ -1,0 +1,152 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="dashboard-container modern">
+    
+    <div class="dashboard-header-modern">
+        <h1>{{ titulo }}</h1>
+        <p>Estado general y detalles de los equipos fijos y sus sensores.</p>
+    </div>
+
+    <!-- Buscador -->
+    <div class="search-container-modern">
+        <form method="GET" class="search-form-modern">
+            <i class="bi bi-search search-icon"></i>
+            <input type="search" name="query" list="dispositivos-fijos-list" value="{{ query_busqueda }}" 
+                   placeholder="Escribe el N° de Serie del dispositivo fijo y presiona Enter..." class="search-input">
+            <datalist id="dispositivos-fijos-list">
+                {% for disp in todos_los_fijos_para_busqueda %}
+                    <option value="{{ disp.num_serie }}">{{ disp.nomDisp }}</option>
+                {% endfor %}
+            </datalist>
+        </form>
+    </div>
+
+    <!-- SECCIÓN ESPECÍFICA (SI HAY BÚSQUEDA) -->
+    {% if dispositivo_seleccionado %}
+        <div class="section-title modern">
+            <i class="bi bi-display"></i> Detalles para: <strong>{{ dispositivo_seleccionado }}</strong>
+        </div>
+
+        <!-- Grid de 2 columnas para sensores y certificados -->
+        <div class="details-grid-modern">
+
+            <!-- Columna 1: Lista de Sensores -->
+            <div class="info-card modern">
+                <h4><i class="bi bi-cpu"></i> Sensores Instalados</h4>
+                <ul class="history-list">
+                    {% for sensor in dispositivo_seleccionado.sensor_set.all %}
+                    <li>
+                        <strong>{{ sensor.nomComp }}</strong> ({{ sensor.tipGas }})
+                        <div class="meta-info">N/S: {{ sensor.nSerieActual|default:"N/A" }}</div>
+                    </li>
+                    {% empty %}
+                        <li class="no-data">Este dispositivo no tiene sensores registrados.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="info-card modern">
+                <h4><i class="bi bi-patch-check"></i> Últimos 5 Certificados</h4>
+                <div class="certificates-list">
+                    
+                    {# Usamos for...empty, la herramienta perfecta para esto #}
+                    {% for cert_info in lista_certificados_ordenada %}
+                        <div class="certificate-item">
+                            <div class="activity-header">
+                                {# Accedemos al sensor y al certificado desde el diccionario que creamos en la vista #}
+                                <strong>{{ cert_info.sensor.nomComp }}</strong>
+                                <span class="date">{{ cert_info.cert.fechCertificado|date:"d M, Y" }}</span>
+                            </div>
+                            <div class="activity-body">
+                                N° Certificado: <strong>{{ cert_info.cert.nro_certificado }}</strong>
+                            </div>
+                        </div>
+                    {% empty %}
+                        {# Este bloque se renderiza AUTOMÁTICAMENTE si la lista está vacía #}
+                        <p class="no-data">No hay certificados recientes registrados para los sensores de este dispositivo.</p>
+                    {% endfor %}
+
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- SECCIÓN GENERAL (ESTADÍSTICAS) -->
+    <div class="section-title modern"><i class="bi bi-bar-chart-line"></i> Estadísticas Generales</div>
+    <div class="general-stats-grid modern">
+        <!-- Tarjetas KPI -->
+        <div class="info-card modern stat-card">
+            <div class="card-header"><i class="bi bi-box-seam card-icon"></i><h3>Dispositivos Fijos</h3></div>
+            <p class="stat-number">{{ total_fijos }}</p>
+        </div>
+        <div class="info-card modern stat-card">
+            <div class="card-header"><i class="bi bi-cpu card-icon"></i><h3>Total Sensores</h3></div>
+            <p class="stat-number">{{ total_sensores_fijos }}</p>
+        </div>
+        <div class="info-card modern stat-card">
+            <div class="card-header"><i class="bi bi-patch-check-fill card-icon"></i><h3>Calibrados</h3></div>
+            <p class="stat-number">{{ total_calibrados }}</p>
+            <small>Con certificado vigente (últ. 6 meses)</small>
+        </div>
+        
+        <!-- Tarjeta de Últimos Sensores Calibrados -->
+        <div class="info-card modern list-card full-width-chart">
+            <div class="card-header"><i class="bi bi-clock-history card-icon"></i><h4>Últimos 5 Sensores Calibrados</h4></div>
+            <ul class="activity-list">
+                {% for cert in ultimos_certificados %}
+                    <li>
+                        <div class="activity-header">
+                            <strong>{{ cert.componente.sensor.nomComp }}</strong> en {{ cert.componente.sensor.dispositivo_instalado.nomDisp }}
+                            <span class="date">{{ cert.fechCertificado|date:"d M, Y" }}</span>
+                        </div>
+                    </li>
+                {% empty %}
+                    <li class="no-data">No hay calibraciones recientes.</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Tarjeta de Gráfico -->
+        <div class="info-card modern chart-card full-width-chart">
+            <h4>Dispositivos Fijos por Área</h4>
+            <div class="chart-wrapper">
+                <canvas id="areaChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const areaCtx = document.getElementById('areaChart');
+    if (areaCtx) {
+        const areaData = JSON.parse('{{ dispositivos_por_area_json|safe }}');
+        new Chart(areaCtx, {
+            type: 'bar',
+            data: {
+                labels: areaData.map(d => d.area),
+                datasets: [{
+                    label: 'N° de Dispositivos',
+                    data: areaData.map(d => d.total),
+                    backgroundColor: ['#3498db', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#34495e'],
+                    borderColor: '#fff',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y', // Hace el gráfico de barras horizontal, mejor para nombres largos
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

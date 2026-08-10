@@ -1,0 +1,527 @@
+/* ==========================================================================
+   Hoja de Estilos Principal - Válida para todo el sitio
+   ========================================================================== */
+
+/* --- 1. Paleta de Colores y Variables Globales --- */
+:root {
+    --bg_color: #ffffff;
+    --title_color: #d45b04;
+    --text_color: #333333;
+    --bg_light_gray: #f8f9fa;
+    --border_color: #dee2e6;
+    --shadow: 0 4px 15px rgba(0, 0, 0, 0.07);
+    --border-radius: 10px;
+}
+
+/* --- 2. Estilos Globales y Tipografía --- */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg_light_gray);
+    color: var(--text_color);
+    margin: 0;
+}
+
+h1 {
+    color: var(--title_color);
+    margin-bottom: 0.5rem; /* Espacio debajo de los títulos principales */
+}
+
+p {
+    color: #6c757d; /* Color de párrafo más suave */
+    line-height: 1.6;
+}
+
+
+/* --- header --- */
+
+.main-header {
+    background-color: var(--bg_color);
+    padding: 0.5rem 1.5rem;
+    display: flex; /* Mantenemos flex */
+    align-items: center; /* Centramos verticalmente */
+    justify-content: space-between; /* Mantenemos la distribución */
+    border-bottom: 1px solid var(--border_color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    min-height: 80px; /* Damos una altura mínima */
+}
+
+.header-left, .header-right {
+    flex: 1; /* Ocupan el espacio disponible */
+}
+
+.header-center {
+    flex: 2; /* Damos más espacio al centro */
+    text-align: center; /* Centramos el texto dentro de su contenedor */
+}
+
+.header-right {
+    display: flex; /* Alinea los elementos (texto y botón) en una línea */
+    justify-content: flex-end; /* Los empuja hacia la derecha */
+    align-items: center; /* Los centra verticalmente */
+    gap: 1rem; /* Espacio entre "Hola, usuario" y el botón */
+}
+
+.header-right span {
+    color: var(--text_color); /* Color de texto normal para el saludo */
+    font-weight: 500;
+}
+
+.header-right .logout-button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit; /* Hereda la fuente del texto circundante */
+    font-weight: 500; /* Lo hacemos un poco más grueso */
+    cursor: pointer;
+    
+    /* ¡La línea clave! Usa el color de tu marca */
+    color: var(--title_color) !important; 
+    
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+
+.header-right .logout-button:hover {
+    text-decoration: underline;
+    opacity: 0.7;
+}
+
+.main-header__title {
+    font-size: 2.2rem;
+    font-weight: bold;
+    color: var(--title_color);
+    margin: 0;
+}
+.main-header__title + p { /* Estilo para el subtítulo */
+    margin: 0;
+    color: #6c757d;
+}
+.wrapper {
+    display: flex;
+    width: 100%;
+    align-items: stretch;
+}
+
+/* ¡NUEVO! Contenedor del Contenido Principal */
+#content {
+    width: 100%;
+    padding: 0;
+    transition: all 0.3s;
+    /* ¡LA LÍNEA CLAVE DE LA SOLUCIÓN! */
+    /* Permite que el contenedor se encoja si el contenido interior (como un grid) es muy ancho */
+    min-width: 0; 
+}
+/* --- 3. Layout Principal (Header, Main Container) --- */
+
+.title-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.main-container {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* --- 4. Componentes Generales --- */
+
+/* Tarjetas del Dashboard */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2rem;
+}
+
+.card {
+    background-color: var(--bg_color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: 2rem;
+    text-decoration: none;
+    color: var(--text_color);
+    border-left: 5px solid var(--title_color);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+.card__icon { font-size: 2.5rem; margin-bottom: 1rem; color: var(--title_color); }
+.card__title { font-size: 1.5rem; font-weight: 600; margin: 0 0 0.5rem 0; }
+.card__description { color: #6c757d; margin-bottom: 1.5rem; }
+.card__footer { margin-top: auto; font-weight: 600; color: var(--title_color); }
+
+/* Formularios */
+.form-container {
+    background-color: var(--bg_color);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    max-width: 600px;
+    margin-top: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border_color);
+    border-radius: 5px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: var(--title_color);
+    box-shadow: 0 0 0 3px rgba(212, 91, 4, 0.15);
+}
+
+.form-field-error {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* Tablas */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 2rem;
+    background-color: var(--bg_color);
+    box-shadow: var(--shadow);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+th, td {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--border_color);
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    color: #6c757d;
+}
+
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+tbody tr:hover {
+    background-color: #e9ecef;
+}
+
+/* --- 5. Elementos Interactivos (Botones y Enlaces) --- */
+
+/* Enlaces genéricos */
+a {
+    color: var(--title_color);
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* Botones <button> y enlaces que se ven como botones primarios */
+button, .button--primary, .btn-add-new {
+    background-color: var(--title_color);
+    color: white !important;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+    transition: opacity 0.2s;
+}
+button:hover, .button--primary:hover, .btn-add-new:hover {
+    opacity: 0.85;
+    text-decoration: none;
+}
+
+/* Botón secundario (ej. para "Volver") */
+.btn-secondary {
+    background-color: #6c757d;
+    color: white !important;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+.btn-secondary:hover {
+    opacity: 0.85;
+    text-decoration: none;
+}
+
+/* Botón de Logout */
+.logout-button {
+    background: none;
+    border: none;
+    color: var(--title_color);
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+}
+.logout-button:hover {
+    text-decoration: underline;
+    opacity: 0.7;
+}
+
+/* Contenedor para la barra superior (título y botón de añadir) */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap; /* Para que se vea bien en móvil */
+    gap: 1rem;
+}
+/* Contenedor para la barra de filtros y búsqueda */
+.filter-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+/* El buscador con tu estilo */
+.search-container {
+    position: relative;
+    display: flex;
+    min-width: 300px; /* Ancho mínimo para el buscador */
+    flex-grow: 1; /* Permite que crezca si hay espacio */
+    max-width: 500px; /* Pero no demasiado */
+}
+.search-input {
+    width: 100%;
+    padding: 12px 15px 12px 45px; /* Más padding a la izquierda para el icono */
+    border: 1px solid #ccc; /* Borde más suave */
+    border-radius: 8px; /* Bordes más redondeados */
+    outline: none;
+    color: #222222;
+    font-size: 1rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23888'%3E%3Cpath d='M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 12px center;
+    background-size: 24px;
+    transition: all 0.2s ease-in-out;
+}
+.search-input:focus {
+    border-color: var(--title_color);
+    box-shadow: 0 0 0 3px rgba(212, 91, 4, 0.15);
+}
+.search-container button {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 8px 16px;
+    border-radius: 6px;
+}
+/* Enlaces de acción en tablas */
+
+.table-action-link {
+    color: var(--title_color) !important;
+    font-weight: 600;
+    text-decoration: none !important;
+    margin: 0 8px; /* Espacio entre los enlaces */
+    transition: opacity 0.2s;
+}
+.table-action-link:hover {
+    text-decoration: underline !important;
+    opacity: 0.8;
+}
+.table-action-link.secondary {
+    color: #6c757d !important; /* Color gris para acciones secundarias */
+}
+
+/* --- 8. ESTILOS PARA LA PÁGINA DE PERFIL DE TRABAJADOR --- */
+
+.profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.profile-card {
+    background-color: var(--bg_color, #fff);
+    border-radius: var(--border-radius, 10px);
+    box-shadow: var(--shadow, 0 4px 15px rgba(0, 0, 0, 0.07));
+    padding: 2.5rem;
+    display: grid;
+    /* Dos columnas: una para la foto/nombre, otra para los datos */
+    grid-template-columns: 200px 1fr; 
+    gap: 2.5rem;
+    align-items: center;
+}
+
+.profile-avatar {
+    text-align: center;
+}
+
+.profile-avatar img {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%; /* Círculo perfecto */
+    object-fit: cover; /* Asegura que la imagen no se deforme */
+    border: 5px solid var(--bg_light_gray, #f8f9fa);
+    margin-bottom: 1rem;
+}
+
+.profile-avatar h2 {
+    font-size: 1.8rem;
+    color: var(--text_color, #333);
+    margin: 0;
+}
+
+.profile-avatar .puesto {
+    font-size: 1rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.profile-details {
+    display: grid;
+    /* Dos columnas para los datos de contacto/empresa */
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.95rem;
+}
+
+.detail-item .icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(212, 91, 4, 0.08); /* Fondo con tu color de marca muy suave */
+    border-radius: 50%;
+    color: var(--title_color, #d45b04);
+}
+
+.detail-item .info span {
+    display: block;
+    font-weight: 600;
+    color: var(--text_color, #333);
+}
+
+.detail-item .info .label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    font-weight: 400;
+}
+
+.section-title {
+    margin-top: 3rem;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text_color, #333);
+    border-bottom: 2px solid var(--border_color, #dee2e6);
+    padding-bottom: 0.5rem;
+}
+
+/* Diseño responsivo para la tarjeta de perfil */
+@media (max-width: 992px) {
+    .profile-card {
+        grid-template-columns: 1fr; /* Una sola columna */
+        text-align: center;
+    }
+    .profile-details {
+        text-align: left;
+    }
+}
+/* Paginación */
+.pagination { /* ... (tus estilos de paginación) ... */ }
+
+
+/* --- 9. ESTILOS PARA LA TARJETA DE RESUMEN DE EMO --- */
+
+.summary-card-emo {
+    background-color: var(--bg_color, #fff);
+    border-radius: var(--border-radius, 10px);
+    box-shadow: var(--shadow, 0 4px 15px rgba(0, 0, 0, 0.07));
+    overflow: hidden; /* Para que el borde de color se vea bien */
+    display: flex;
+    flex-direction: column;
+}
+
+.summary-status {
+    display: flex;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: white;
+}
+.summary-status i {
+    margin-right: 1rem;
+    width: 32px;
+    height: 32px;
+}
+
+/* Colores para la cabecera de la tarjeta de resumen */
+.status-apto { background-color: #198754; }
+.status-apto-con-restriccion { background-color: #ffc107; color: #333; }
+.status-observado, .status-no-apto { background-color: #dc3545; }
+.status-pendiente { background-color: #6c757d; }
+
+.summary-details {
+    padding: 1.5rem 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    border-bottom: 1px solid var(--border_color, #dee2e6);
+}
+
+.detail-item-summary .label {
+    display: block;
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+.detail-item-summary span {
+    font-weight: 500;
+    color: var(--text_color, #333);
+}
+
+.summary-notes {
+    background-color: #f8f9fa;
+    padding: 1rem 2rem;
+    font-size: 0.9rem;
+    color: #495057;
+}

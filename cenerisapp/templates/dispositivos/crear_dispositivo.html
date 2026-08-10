@@ -1,0 +1,61 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="form-container">
+    <form method="post" class="form-card">
+        <h2>{{ titulo }}</h2>
+        {% csrf_token %}
+
+        <h3>Datos del Dispositivo</h3>
+        <!-- Renderizamos los campos del ModelForm -->
+        <div class="form-grid">
+            <div class="form-group">{{ form.nomDisp.label_tag }} {{ form.nomDisp }} {{ form.nomDisp.errors }}</div>
+            <div class="form-group">{{ form.num_serie.label_tag }} {{ form.num_serie }} {{ form.num_serie.errors }}</div>
+            <div class="form-group">{{ form.tag.label_tag }} {{ form.tag }} {{ form.tag.errors }}</div>
+            <div class="form-group">{{ form.tipoDisp.label_tag }} {{ form.tipoDisp }} {{ form.tipoDisp.errors }}</div>
+            <div class="form-group">{{ form.id_areaTrabajo_fijo.label_tag }} {{ form.id_areaTrabajo_fijo }} {{ form.id_areaTrabajo_fijo.errors }}</div>
+            <div class="form-group">{{ form.area_general.label_tag }} {{ form.area_general }} {{ form.area_general.errors }}</div>
+            <div class="form-group">{{ form.ns.label_tag }} {{ form.ns }} {{ form.ns.errors }}</div>
+            <div class="form-group">{{ form.marca.label_tag }} {{ form.marca }} {{ form.marca.errors }}</div>
+            <div class="form-group">{{ form.fabDisp.label_tag }} {{ form.fabDisp }} {{ form.fabDisp.errors }}</div>
+            <div class="form-group">{{ form.fecVencimientoGarantia.label_tag }} {{ form.fecVencimientoGarantia }} {{ form.fecVencimientoGarantia.errors }}</div>
+            <div class="form-group">{{ form.fecFabricacion.label_tag }} {{ form.fecFabricacion }} {{ form.fecFabricacion.errors }}</div>
+        </div>
+
+        <hr>
+
+        <div class="form-section">
+            <h3>Valores Automáticos</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Fecha de Ingreso:</span>
+                    <span class="info-value">(Se asignará la fecha de hoy)</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Estado Inicial:</span>
+                    <span class="info-value">Operativo</span>
+                </div>
+            </div>
+        </div>
+
+        <h3>Asignación de Sensores</h3>
+        <div class="form-group">
+            {{ form.cantidad_sensores.label_tag }}
+            
+            <!-- AÑADIMOS EL CONTENEDOR STEPPER -->
+            <div class="quantity-stepper">
+                <button type="button" class="stepper-btn stepper-btn--minus">-</button>
+                {{ form.cantidad_sensores }}
+                <button type="button" class="stepper-btn stepper-btn--plus">+</button>
+            </div>
+            
+            <p class="form-help-text">Indica cuántos sensores asignarás a este dispositivo. Puedes hacerlo más tarde si lo dejas en 0.</p>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Guardar y Asignar Sensores</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

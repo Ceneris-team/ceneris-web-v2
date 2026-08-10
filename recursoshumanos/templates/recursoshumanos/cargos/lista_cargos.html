@@ -1,0 +1,117 @@
+<!-- recursoshumanos/templates/recursoshumanos/cargos/lista_cargos.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Listado de Cargos{% endblock %}
+
+{% block extra_head %}
+    {# Estilos para la tabla #}
+    <link rel="stylesheet" href="{% static 'css/tabla_estados.css' %}">
+    {# Estilos de SweetAlert2 (SOLO para esta vista) #}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Listado de Cargos</h1>
+            <p style="margin: 0;">Consulta y gestiona los cargos disponibles en el sistema.</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'recursoshumanos:gestion_cargos' %}" class="btn-secondary">&larr; Volver a Tarjetas</a>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align: center; width: 50px;">N°</th>
+                <th>Código</th>
+                <th>Nombre del Cargo</th>
+                <th>Descripción</th>
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cargo in cargos %}
+            <tr>
+                <td style="text-align: center; font-weight: bold;">{{ forloop.counter }}</td>
+                <td>{{ cargo.codigo|default:"--" }}</td>
+                <td><strong>{{ cargo.nombre }}</strong></td>
+                <td>{{ cargo.descripcion|truncatewords:15|default:"--" }}</td>
+                <td style="text-align: center;">
+                    <div class="table-actions-container">
+                        <a href="{% url 'recursoshumanos:editar_cargo' cargo.pk %}" class="btn-icon-action secondary" title="Editar Cargo">
+                            <i data-feather="edit-2"></i>
+                        </a>
+                        
+                        <a href="#" class="btn-icon-action danger" title="Eliminar Cargo" onclick="confirmDelete(event, 'form-delete-{{ cargo.pk }}')">
+                            <i data-feather="trash-2"></i>
+                        </a>
+                        
+                        <form id="form-delete-{{ cargo.pk }}" action="{% url 'recursoshumanos:eliminar_cargo' cargo.pk %}" method="post" style="display: none;">
+                            {% csrf_token %}
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align: center;">No hay cargos registrados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        // --- 1. Lógica para el modal de confirmación de borrado ---
+        function confirmDelete(event, formId) {
+            event.preventDefault(); 
+            
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "¡Se eliminará este cargo! Asegúrate de que no haya trabajadores asignados a él antes de borrarlo.",
+                icon: 'warning', 
+                showCancelButton: true, 
+                confirmButtonColor: '#d33', 
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, ¡eliminar!',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(formId).submit();
+                }
+            });
+        }
+
+        // --- 2. Lógica para mostrar mensajes (Toasts) enviados desde la vista ---
+        document.addEventListener('DOMContentLoaded', function() {
+            {% if messages %}
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 5000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+
+                {% for message in messages %}
+                    Toast.fire({
+                        // Django usa 'error', SweetAlert usa 'error'. 
+                        // Django usa 'success', SweetAlert usa 'success'. Coinciden bien.
+                        icon: '{{ message.tags }}', 
+                        title: '{{ message }}'
+                    });
+                {% endfor %}
+            {% endif %}
+        });
+    </script>
+{% endblock %}

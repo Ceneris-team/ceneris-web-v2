@@ -1,0 +1,152 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+
+{% block title %}Gestión de Ubicaciones{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-5xl">
+
+    <!-- Encabezado -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Ubicaciones</h1>
+            <p class="text-sm text-gray-500 mt-1">Gestiona las ubicaciones donde se despliegan los equipos de medición.</p>
+        </div>
+        <a href="{% url 'proyecto_monitoreo_smcv:crear_ubicacion' %}"
+           class="inline-flex items-center bg-brand-600 hover:bg-brand-700 text-white font-bold py-2 px-4 rounded-lg shadow transition hover:-translate-y-0.5">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Nueva Ubicación
+        </a>
+    </div>
+
+    <!-- Buscador -->
+    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+        <form method="GET" class="flex gap-2">
+            <div class="relative flex-1">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+                    </svg>
+                </div>
+                <input type="text" name="q" placeholder="Buscar por nombre..." value="{{ q }}"
+                       class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm">
+            </div>
+            <button type="submit"
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md border border-gray-300 font-medium text-sm">
+                Buscar
+            </button>
+            {% if q %}
+            <a href="{% url 'proyecto_monitoreo_smcv:lista_ubicaciones' %}"
+               class="bg-white hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-md border border-gray-300 font-medium text-sm">
+                Limpiar
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Contador -->
+    <p class="text-sm text-gray-500 mb-3">
+        {% if q %}
+            Se encontraron <strong>{{ ubicaciones|length }}</strong> resultado(s) para "<em>{{ q }}</em>".
+        {% else %}
+            <strong>{{ ubicaciones|length }}</strong> ubicación(es) registrada(s).
+        {% endif %}
+    </p>
+
+    <!-- Tabla -->
+    <div class="bg-white shadow-md rounded-xl overflow-hidden border border-gray-200">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-8">#</th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nombre</th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Descripción</th>
+                    <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Equipos</th>
+                    <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-100">
+                {% for ubicacion in ubicaciones %}
+                <tr class="hover:bg-orange-50 transition-colors group">
+                    <td class="px-6 py-4 text-sm text-gray-400">{{ forloop.counter }}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">{{ ubicacion.nombre }}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                        {{ ubicacion.descripcion|default:"—" }}
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {{ ubicacion.dispositivos.count }} equipo(s)
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right text-sm font-medium">
+                        <div class="flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition">
+                            <a href="{% url 'proyecto_monitoreo_smcv:editar_ubicacion' ubicacion.pk %}"
+                               class="inline-flex items-center px-3 py-1.5 rounded-md bg-gray-100 hover:bg-brand-600 hover:text-white text-gray-700 text-xs font-bold transition">
+                                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                </svg>
+                                Editar
+                            </a>
+                            {% if ubicacion.dispositivos.count == 0 %}
+                            <form method="POST"
+                                  action="{% url 'proyecto_monitoreo_smcv:eliminar_ubicacion' ubicacion.pk %}"
+                                  onsubmit="return confirm('¿Eliminar la ubicación \'{{ ubicacion.nombre }}\'? Esta acción no se puede deshacer.');">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="inline-flex items-center px-3 py-1.5 rounded-md bg-red-50 hover:bg-red-600 hover:text-white text-red-600 text-xs font-bold transition">
+                                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                    Eliminar
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="inline-flex items-center px-3 py-1.5 rounded-md bg-gray-50 text-gray-400 text-xs cursor-not-allowed"
+                                  title="No se puede eliminar: tiene equipos asignados.">
+                                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                </svg>
+                                Protegida
+                            </span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-16 text-center">
+                        <div class="flex flex-col items-center justify-center text-gray-400">
+                            <svg class="w-14 h-14 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            </svg>
+                            <p class="text-lg font-semibold text-gray-500">No hay ubicaciones registradas.</p>
+                            <p class="text-sm mt-1">
+                                <a href="{% url 'proyecto_monitoreo_smcv:crear_ubicacion' %}"
+                                   class="text-brand-600 hover:underline font-medium">Crea la primera ubicación</a>.
+                            </p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}

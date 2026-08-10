@@ -1,0 +1,505 @@
+{% extends 'metricas_ceneris/base.html' %}
+
+{% block content %}
+<script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs" type="module"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+
+<style>
+    /* 1. Reset y Fuentes */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+
+    /* 2. Animaciones de Entrada (Fade-in-Up) */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-on-load { opacity: 0; animation: fadeInUp 0.6s ease-out forwards; }
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.4s; }
+    .delay-4 { animation-delay: 0.6s; }
+
+    /* 3. Estilos de Tarjetas Premium */
+    .card-premium {
+        background: white;
+        border-radius: 1.25rem;
+        border: 1px solid #eef2f6;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .card-premium:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+        border-color: #e2e8f0;
+    }
+
+    /* 4. Degradados de Texto y Fondos */
+    .text-gradient-indigo { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .text-gradient-emerald { background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    
+    /* Degradado animado para el Top Performer */
+    @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    .bg-animated-reward {
+        background: linear-gradient(-45deg, #eef2f6, #e0e7ff, #f0f9ff, #f0fdf4);
+        background-size: 400% 400%;
+        animation: gradientBG 10s ease infinite;
+        border: 1px solid #e0e7ff;
+    }
+
+    /* 5. Efecto de Pulso para Alertas */
+    @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+    .alert-pulse { animation: pulse-red 2s infinite; border-color: #fca5a5; }
+
+    /* 6. Tabla Estilizada */
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .ranking-table-row { transition: background-color 0.2s; }
+    .ranking-table-row:hover { background-color: #f1f5f9; }
+
+    /* Animación de carga de barras */
+    @keyframes growWidth { from { width: 0; } }
+    .animate-bar { animation: growWidth 1s ease-out forwards; animation-delay: 0.8s; }
+</style>
+
+<div class="max-w-[1450px] mx-auto px-6 py-10 min-h-screen">
+    
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 animate-on-load">
+        <div>
+            <div class="flex items-center gap-3">
+                <div class="w-2 h-8 bg-indigo-600 rounded-full"></div>
+                <h1 class="text-4xl font-extrabold text-slate-900 tracking-tighter">Panel Analítico</h1>
+            </div>
+            <p class="text-slate-500 font-medium mt-2 text-lg">{{ scope_label|default:'Área operativa' }}: <span class="font-bold text-slate-700">{{ area.nombre }}</span></p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+            <a href="{% url 'metricas_ceneris:dashboard_trabajador' %}" class="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-2xl font-bold text-sm transition-all shadow-md hover:shadow-lg">
+                <i class="ph ph-user"></i>
+                <span>Ver Mi Desempeño</span>
+            </a>
+
+            <form method="GET" class="flex items-center gap-2 bg-white p-2 rounded-2xl shadow-inner border border-slate-100">
+                {% if areas_asignadas|length > 1 %}
+                <select name="area_id" class="px-4 py-2.5 border-none bg-transparent text-slate-700 text-sm font-bold focus:ring-0 cursor-pointer rounded-xl hover:bg-slate-50 min-w-[220px]">
+                {% for area_item in areas_asignadas %}
+                <option value="{{ area_item.id }}" {% if area_activa_id == area_item.id %}selected{% endif %}>{{ area_item.nombre }}</option>
+                {% endfor %}
+                </select>
+                <div class="w-px h-6 bg-slate-200"></div>
+                {% else %}
+                <input type="hidden" name="area_id" value="{{ area.id }}">
+                {% endif %}
+
+                <select name="mes" class="px-4 py-2.5 border-none bg-transparent text-slate-700 text-sm font-bold focus:ring-0 cursor-pointer rounded-xl hover:bg-slate-50">
+                <option value="1" {% if mes_seleccionado == 1 %}selected{% endif %}>Enero</option>
+                <option value="2" {% if mes_seleccionado == 2 %}selected{% endif %}>Febrero</option>
+                <option value="3" {% if mes_seleccionado == 3 %}selected{% endif %}>Marzo</option>
+                <option value="4" {% if mes_seleccionado == 4 %}selected{% endif %}>Abril</option>
+                <option value="5" {% if mes_seleccionado == 5 %}selected{% endif %}>Mayo</option>
+                <option value="6" {% if mes_seleccionado == 6 %}selected{% endif %}>Junio</option>
+                <option value="7" {% if mes_seleccionado == 7 %}selected{% endif %}>Julio</option>
+                <option value="8" {% if mes_seleccionado == 8 %}selected{% endif %}>Agosto</option>
+                <option value="9" {% if mes_seleccionado == 9 %}selected{% endif %}>Septiembre</option>
+                <option value="10" {% if mes_seleccionado == 10 %}selected{% endif %}>Octubre</option>
+                <option value="11" {% if mes_seleccionado == 11 %}selected{% endif %}>Noviembre</option>
+                <option value="12" {% if mes_seleccionado == 12 %}selected{% endif %}>Diciembre</option>
+                </select>
+                <div class="w-px h-6 bg-slate-200"></div>
+                <select name="anio" class="px-4 py-2.5 border-none bg-transparent text-slate-700 text-sm font-bold focus:ring-0 cursor-pointer rounded-xl hover:bg-slate-50">
+                <option value="2025" {% if anio_seleccionado == 2025 %}selected{% endif %}>2025</option>
+                <option value="2026" {% if anio_seleccionado == 2026 %}selected{% endif %}>2026</option>
+                </select>
+                <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg">
+                    Actualizar Vista
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        
+        <div class="card-premium p-6 relative overflow-hidden animate-on-load delay-1">
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Score Promedio</p>
+                <i class="ph ph-chart-polar text-indigo-300 text-2xl bg-indigo-50 p-2 rounded-xl"></i>
+            </div>
+            <h3 class="text-5xl font-black text-gradient-indigo tracking-tighter">{{ promedio_area }}<span class="text-xl text-slate-300 font-bold"> /10</span></h3>
+            <p class="text-sm font-semibold text-slate-600 mt-2">Clasificación: <span class="
+                {% if promedio_area >= 9 %}text-emerald-600
+                {% elif promedio_area >= 7 %}text-indigo-600
+                {% elif promedio_area >= 5 %}text-amber-600
+                {% else %}text-rose-600{% endif %} font-bold">{{ clasificacion }}</span></p>
+        </div>
+
+        <div class="card-premium p-6 animate-on-load delay-1">
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Desempeño</p>
+                <i class="ph ph-trend-up text-blue-300 text-2xl bg-blue-50 p-2 rounded-xl"></i>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-4xl font-extrabold text-slate-900 tracking-tight">{{ promedio_desempeno }}</h3>
+                <span class="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">Peso 60%</span>
+            </div>
+            <p class="text-sm font-medium text-slate-500 mt-2">Nivel de desempeño técnico</p>
+        </div>
+
+        <div class="card-premium p-6 animate-on-load delay-1">
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Asistencia</p>
+                <i class="ph ph-calendar-check text-emerald-300 text-2xl bg-emerald-50 p-2 rounded-xl"></i>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-4xl font-extrabold text-slate-900 tracking-tight">{{ promedio_asistencia }}</h3>
+                <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">Peso 40%</span>
+            </div>
+            <p class="text-sm font-medium text-slate-500 mt-2">Puntualidad y presencia</p>
+        </div>
+
+        <div class="card-premium p-6 animate-on-load delay-1 {% if total_faltas_area > 0 %}alert-pulse{% endif %} min-h-[160px] flex flex-col justify-center">
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Ausentismo</p>
+                <i class="ph ph-warning-octagon text-rose-300 text-2xl bg-rose-50 p-2 rounded-xl"></i>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-4xl font-extrabold {% if total_faltas_area > 0 %}text-rose-600{% else %}text-slate-900{% endif %} tracking-tight">{{ total_faltas_area }}</h3>
+                <span class="text-sm font-bold text-slate-500">días perdidos</span>
+            </div>
+            <p class="text-sm font-medium text-slate-500 mt-2">Impacto total en el periodo</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        
+        <div class="card-premium p-7 lg:col-span-2 flex flex-col animate-on-load delay-2 overflow-hidden">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h3 class="font-bold text-slate-900 text-xl tracking-tight">Matriz Estratégica de Talento</h3>
+                    <p class="text-sm text-slate-500 mt-1">Correlación visual entre Desempeño Operativo y Constancia.</p>
+                </div>
+                <div class="flex gap-2">
+                    <span class="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Eje X: Asistencia</span>
+                    <span class="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Eje Y: Desempeño</span>
+                </div>
+            </div>
+            <div class="flex-1 w-full relative min-h-[380px]">
+                <canvas id="scatterTalent"></canvas>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-8 animate-on-load delay-3">
+            <div class="card-premium p-7 bg-animated-reward flex flex-col justify-center items-center text-center relative overflow-hidden border-2 border-indigo-100">
+                <div class="absolute top-3 right-3">
+                    <i class="ph-fill ph-medal text-amber-400 text-3xl opacity-70"></i>
+                </div>
+                
+                <div class="w-20 h-20 rounded-full bg-white shadow-xl flex items-center justify-center border-4 border-white ring-4 ring-indigo-50 mb-5 relative">
+                    {% if promedio_area >= 7 %}
+                        <dotlottie-player src="https://lottie.host/7f839ee0-1ca4-4781-9828-af0bfcedb65e/Tm1K9KFmyw.lottie" background="transparent" speed="1" style="width: 70px; height: 70px" loop autoplay></dotlottie-player>
+                    {% else %}
+                        <i class="ph-fill ph-user text-indigo-200 text-4xl"></i>
+                    {% endif %}
+                </div>
+                
+                <p class="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-1">Reconocimiento del Mes</p>
+                {% if mejor_trabajador %}
+                    <h4 class="font-black text-slate-900 text-2xl tracking-tighter leading-tight">{{ mejor_trabajador.trabajador.nombres }}<br>{{ mejor_trabajador.trabajador.apellido_paterno }}</h4>
+                    <div class="mt-4 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-full border border-white shadow-sm">
+                        <p class="text-sm font-bold text-indigo-700">Score Global: <span class="text-xl font-black ml-1">{{ mejor_trabajador.score }}</span></p>
+                    </div>
+                {% else %}
+                    <h4 class="font-black text-slate-900 text-2xl tracking-tighter leading-tight">Sin objetivo destacado</h4>
+                    <div class="mt-4 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-full border border-white shadow-sm">
+                        <p class="text-sm font-bold text-indigo-700">Score Global: <span class="text-xl font-black ml-1">-</span></p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="card-premium p-6 flex-1">
+                <h3 class="font-bold text-slate-800 text-base mb-5 tracking-tight flex items-center gap-2">
+                    <i class="ph ph-chart-pie-slice text-slate-400"></i>
+                    {{ composicion_title|default:'Composición del Equipo' }}
+                </h3>
+                <div class="relative h-[180px]">
+                    <canvas id="doughnutScores"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-premium overflow-hidden animate-on-load delay-4 shadow-xl">
+        <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white relativez-10">
+            <div>
+                <h3 class="font-bold text-slate-900 text-xl tracking-tight">{{ clasificacion_title|default:'Clasificación Detallada de Trabajadores' }}</h3>
+                <p class="text-sm text-slate-500 mt-1">Métricas individuales ordenadas por Score Final.</p>
+            </div>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div class="flex items-center gap-3 flex-wrap text-xs font-bold">
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span><span class="text-emerald-700">AD: 9-10</span></span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block"></span><span class="text-indigo-700">A: 7-8.9</span></span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span><span class="text-amber-700">B: 5-6.9</span></span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span><span class="text-rose-700">C: &lt;5</span></span>
+                </div>
+                <div class="text-sm font-medium text-slate-500 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                    Total evaluados: <span class="font-bold text-slate-800">{{ datos_equipo|length }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse whitespace-nowrap">
+                <thead>
+                    <tr class="bg-slate-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                        <th class="py-5 px-6 w-20 text-center">Posición</th>
+                        <th class="py-5 px-6">{{ objetivo_label_singular|default:'Trabajador' }}</th>
+                        <th class="py-5 px-6 w-1/4">Desempeño (60%)</th>
+                        <th class="py-5 px-6 w-1/4">Asistencia (40%)</th>
+                        <th class="py-5 px-6 text-center">Score Final</th>
+                        <th class="py-5 px-6">Clasificación</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm text-slate-700 divide-y divide-slate-100/50">
+                    {% for d in datos_equipo %}
+                    <tr class="ranking-table-row">
+                        <td class="py-4 px-6 text-center">
+                            {% if forloop.counter == 1 %}
+                                <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-400 text-white font-black shadow-md mx-auto">1</span>
+                            {% elif forloop.counter == 2 %}
+                                <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-300 text-slate-700 font-black mx-auto">2</span>
+                            {% elif forloop.counter == 3 %}
+                                <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-300 text-orange-800 font-black mx-auto">3</span>
+                            {% else %}
+                                <span class="font-bold text-slate-400">{{ forloop.counter }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-6 font-semibold text-slate-900 text-base">
+                            {{ d.trabajador.nombres }} {{ d.trabajador.apellido_paterno }}
+                        </td>
+                        
+                        <td class="py-4 px-6">
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex items-baseline gap-1 font-bold shrink-0 {% if d.desempeno >= 9 %}text-emerald-600{% elif d.desempeno >= 7 %}text-indigo-600{% elif d.desempeno >= 5 %}text-amber-600{% else %}text-rose-600{% endif %}">
+                                    <span class="text-xs font-black">{% if d.desempeno >= 9 %}AD{% elif d.desempeno >= 7 %}A{% elif d.desempeno >= 5 %}B{% else %}C{% endif %}</span>
+                                    <span class="text-base">{{ d.desempeno }}</span>
+                                </span>
+                                <div class="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden relative border border-slate-200 shadow-inner">
+                                    <div class="h-full rounded-full animate-bar shadow
+                                        {% if d.desempeno >= 8 %}bg-gradient-to-r from-blue-400 to-blue-600
+                                        {% elif d.desempeno >= 5 %}bg-gradient-to-r from-amber-300 to-amber-500
+                                        {% else %}bg-gradient-to-r from-rose-400 to-rose-600{% endif %}"
+                                        style="width: calc({{ d.desempeno|stringformat:'f' }} * 10%); transition: width 1s ease-in-out;">
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="py-4 px-6">
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex items-baseline gap-1 font-bold shrink-0 {% if d.asistencia >= 9 %}text-emerald-600{% elif d.asistencia >= 7 %}text-indigo-600{% elif d.asistencia >= 5 %}text-amber-600{% else %}text-rose-600{% endif %}">
+                                    <span class="text-xs font-black">{% if d.asistencia >= 9 %}AD{% elif d.asistencia >= 7 %}A{% elif d.asistencia >= 5 %}B{% else %}C{% endif %}</span>
+                                    <span class="text-base">{{ d.asistencia }}</span>
+                                </span>
+                                <div class="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden relative border border-slate-200 shadow-inner">
+                                    <div class="h-full rounded-full animate-bar shadow
+                                        {% if d.asistencia >= 8 %}bg-gradient-to-r from-emerald-400 to-emerald-600
+                                        {% elif d.asistencia >= 5 %}bg-gradient-to-r from-amber-300 to-amber-500
+                                        {% else %}bg-gradient-to-r from-rose-400 to-rose-600{% endif %}"
+                                        style="width: calc({{ d.asistencia|stringformat:'f' }} * 10%); transition: width 1s ease-in-out;">
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="py-4 px-6 text-center overflow-hidden">
+                            <span class="inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl font-black text-sm shadow-sm border
+                                {% if d.score >= 9 %}bg-emerald-50 text-emerald-700 border-emerald-100
+                                {% elif d.score >= 7 %}bg-indigo-50 text-indigo-700 border-indigo-100
+                                {% elif d.score >= 5 %}bg-amber-50 text-amber-700 border-amber-100
+                                {% else %}bg-rose-50 text-rose-700 border-rose-100{% endif %}">
+                                <span class="text-xs font-black">{% if d.score >= 9 %}AD{% elif d.score >= 7 %}A{% elif d.score >= 5 %}B{% else %}C{% endif %}</span>
+                                {{ d.score }}
+                            </span>
+                        </td>
+                        <td class="py-4 px-6">
+                            <span class="text-xs font-semibold {% if d.score >= 9 %}text-emerald-700{% elif d.score >= 7 %}text-indigo-700{% elif d.score >= 5 %}text-amber-700{% else %}text-rose-700{% endif %}">
+                                {% if d.score >= 9 %}Alto Desempeño{% elif d.score >= 7 %}Desempeño Esperado{% elif d.score >= 5 %}En Proceso de Mejora{% else %}Desempeño Deficiente{% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Exportar ranking del área -->
+    <div class="card-premium p-5 mt-6 animate-on-load delay-4">
+        <div class="flex flex-col gap-4">
+            <div>
+                <h3 class="font-bold text-slate-900 text-base">Exportar Ranking de mi Área</h3>
+                <p class="text-sm text-slate-500 mt-0.5">Descarga un Excel con el ranking del mes <span class="font-semibold text-slate-700">{{ mes_seleccionado }}/{{ anio_seleccionado }}</span>.</p>
+            </div>
+            <form method="GET" action="{% url 'metricas_ceneris:exportar_ranking_excel_area' %}" class="flex flex-col sm:flex-row items-end gap-3">
+                <input type="hidden" name="mes_inicio" value="{{ mes_seleccionado }}">
+                <input type="hidden" name="mes_fin" value="{{ mes_seleccionado }}">
+                <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                <div class="flex flex-col gap-1 flex-1 min-w-0">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Área a exportar</span>
+                    <select name="area_export" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 text-sm font-bold focus:ring-2 focus:ring-indigo-200">
+                        <option value="todas">Todas mis áreas</option>
+                        {% for a in areas_asignadas %}
+                        <option value="{{ a.id }}" {% if a.id == area_activa_id %}selected{% endif %}>{{ a.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-md transition-all hover:shadow-lg whitespace-nowrap">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Descargar Excel
+                </button>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Configuración general de ChartJS para un look más limpio
+    Chart.defaults.font.family = "'Inter', 'sans-serif'";
+    Chart.defaults.color = '#718096'; // slate-500
+    Chart.defaults.scale.grid.color = '#edf2f7'; // slate-100
+
+    // Transformación de datos desde Django
+    const rawNombres = {{ nombres_chart|safe }};
+    const rawDesempeno = {{ desempeno_chart|safe }};
+    const rawAsistencia = {{ asistencia_chart|safe }};
+    const rawScores = [];
+
+    // 1. Preparar datos para el Scatter Plot (Cuadrante) con colores dinámicos por punto
+    const scatterData = rawNombres.map((nombre, i) => {
+        const score = (parseFloat(rawDesempeno[i]) * 0.6) + (parseFloat(rawAsistencia[i]) * 0.4);
+        rawScores.push(score);
+        
+        // Asignar color según el score final del punto
+        let pointColor = '#818cf8'; // Indigo default (Bueno)
+        if (score >= 9) pointColor = '#34d399'; // Emerald (Óptimo)
+        else if (score < 5) pointColor = '#fb7185'; // Rose (Crítico)
+        else if (score < 7) pointColor = '#fbbf24'; // Amber (Regular)
+
+        return {
+            x: parseFloat(rawAsistencia[i]), 
+            y: parseFloat(rawDesempeno[i]),  
+            nombre: nombre,
+            color: pointColor
+        };
+    });
+
+    // Inicializar Matriz de Talento (Scatter)
+    const ctxScatter = document.getElementById('scatterTalent').getContext('2d');
+    new Chart(ctxScatter, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: '{{ objetivo_label_plural|default:"Trabajadores" }}',
+                data: scatterData,
+                backgroundColor: scatterData.map(d => d.color), // Usar colores calculados
+                borderColor: '#fff',
+                borderWidth: 2,
+                pointRadius: 8,
+                pointHoverRadius: 12,
+                pointHoverBorderColor: '#fff',
+                pointHoverBorderWidth: 3,
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)' // Simulación sutil
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 10, right: 10 } },
+            animation: { duration: 1500, easing: 'easeOutQuart' },
+            scales: {
+                x: {
+                    title: { display: true, text: 'Constancia (Asistencia)', font: {weight: '700', size: 12} },
+                    min: 0, max: 10.5,
+                    ticks: { stepSize: 1 }
+                },
+                y: {
+                    title: { display: true, text: 'Eficiencia (Desempeño)', font: {weight: '700', size: 12} },
+                    min: 0, max: 10.5,
+                    ticks: { stepSize: 1 }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1a202c', // slate-900
+                    padding: 15,
+                    cornerRadius: 12,
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 13 },
+                    callbacks: {
+                        label: function(context) {
+                            const dataObj = context.raw;
+                            return ` ${dataObj.nombre} (D: ${dataObj.y} , A: ${dataObj.x})`;
+                        }
+                    }
+                },
+                // Líneas de cuadrante (Crosshair) para definir zonas
+                annotation: {
+                    annotations: {
+                        lineY: { type: 'line', yMin: 7, yMax: 7, borderColor: 'rgba(113, 128, 150, 0.2)', borderWidth: 2, borderDash: [6, 6] },
+                        lineX: { type: 'line', xMin: 7, xMax: 7, borderColor: 'rgba(113, 128, 150, 0.2)', borderWidth: 2, borderDash: [6, 6] },
+                        labelTopRight: { type: 'label', xValue: 9, yValue: 10, content: 'ESTRELLAS', font: {size: 10, weight: 'bold'}, color: 'rgba(16, 185, 129, 0.5)'},
+                        labelBottomLeft: { type: 'label', xValue: 1, yValue: 1, content: 'CRÍTICOS', font: {size: 10, weight: 'bold'}, color: 'rgba(239, 68, 68, 0.5)'}
+                    }
+                }
+            }
+        }
+    });
+
+    // 2. Preparar datos para el Doughnut (Distribución con colores combinados)
+    let countOptimo = 0, countBueno = 0, countRegular = 0, countCritico = 0;
+    rawScores.forEach(score => {
+        if (score >= 9) countOptimo++;
+        else if (score >= 7) countBueno++;
+        else if (score >= 5) countRegular++;
+        else countCritico++;
+    });
+
+    const ctxDoughnut = document.getElementById('doughnutScores').getContext('2d');
+    new Chart(ctxDoughnut, {
+        type: 'doughnut',
+        data: {
+            labels: ['AD: 9-10', 'A: 7-8.9', 'B: 5-6.9', 'C: <5'],
+            datasets: [{
+                data: [countOptimo, countBueno, countRegular, countCritico],
+                backgroundColor: [
+                    '#10b981', // Emerald-500
+                    '#6366f1', // Indigo-500
+                    '#f59e0b', // Amber-500
+                    '#ef4444'  // Red-500
+                ],
+                hoverBorderColor: '#fff',
+                hoverBorderWidth: 4,
+                borderWidth: 0,
+                cutout: '75%',
+                borderRadius: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { animateScale: true, animateRotate: true, duration: 2000 },
+            plugins: {
+                legend: { 
+                    position: 'right', 
+                    labels: { usePointStyle: true, boxWidth: 8, padding: 15, font: {size: 12, weight: '500'} } 
+                },
+                tooltip: { backgroundColor: '#1a202c', padding: 12, cornerRadius: 8 }
+            }
+        }
+    });
+</script>
+{% endblock %}

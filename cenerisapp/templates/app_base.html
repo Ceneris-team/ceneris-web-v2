@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+    <header class="mobile-header">
+        <button class="menu-toggle">☰</button>
+        <h1 class="mobile-header__title">Device Monitor</h1>
+    </header>
+
+    {% include 'navbar.html' %}
+    
+    <main class="main-content">
+        {% if messages %}
+            <div class="messages-container">
+                {% for message in messages %}
+                    <div class="message {{ message.tags }}">
+                        {{ message }}
+                        <span class="message-close">&times;</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% block main_content %}
+        <!-- El contenido específico de la página (ej. el dashboard) irá aquí -->
+        {% endblock %}
+    </main>
+{% endblock %}

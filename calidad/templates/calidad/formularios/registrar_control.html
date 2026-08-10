@@ -1,0 +1,162 @@
+<!-- calidad/templates/calidad/formularios/registrar_control.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Registrar Control Realizado{% endblock %}
+{% block body_class %}form-background{% endblock %}
+
+{% block extra_head %}
+    {# 1. CARGAMOS SOLO EL CSS NECESARIO. ELIMINAMOS file-upload.css #}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        /* Contenedor del botón volver completamente a la izquierda */
+        .back-button-container {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            z-index: 100;
+        }
+
+        /* Forzamos color corporativo en esta vista */
+        #msform {
+            --title_color: #d45b04;
+            margin-top: 80px; /* Espacio para el botón volver */
+        }
+
+        /* Título principal en naranja - FORZADO */
+        #msform fieldset h2.fs-title {
+            color: #d45b04 !important;
+        }
+
+        /* Botón principal consistente (evita el width: 100px del multistep en textos largos) */
+        #msform .action-button.action-button--full {
+            width: 100%;
+            max-width: 520px;
+            padding: 14px 22px;
+            margin: 18px auto 0;
+            font-size: 15px;
+            line-height: 1.2;
+            background: #d45b04 !important;
+        }
+
+        /* Estilos para el botón de subida personalizado */
+        .file-upload-group {
+            border: 2px dashed var(--title_color, #d45b04);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #fdf5f0;
+        }
+        .file-upload-group:hover {
+            background-color: #fbeadb;
+            border-color: #b04a03;
+        }
+        .file-upload-group .upload-icon {
+            font-size: 2.5rem;
+            color: var(--title_color, #d45b04);
+            margin-bottom: 1rem;
+        }
+        .file-upload-group .upload-text { font-weight: 500; color: #333; }
+        .file-upload-group .file-name { margin-top: 1rem; font-weight: 600; color: #198754; }
+        #id_archivo_adjunto { display: none; }
+        .field-error { color: #dc3545; font-size: 0.8rem; font-weight: 600; margin-top: 10px; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="back-button-container">
+        <a href="{% url 'calidad:lista_controles' %}" class="btn-secondary">&larr; Volver a Controles</a>
+    </div>
+
+    <form id="msform" method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        <fieldset>
+            <h2 class="fs-title">Registrar Control Realizado</h2>
+            <h3 class="fs-subtitle">
+                Para: <strong>{{ control.emo.trabajador }}</strong>
+            </h3>
+            <div style="font-size: 0.9rem; color: #6c757d; text-align: center; margin-bottom: 2rem;">
+                <p style="margin: 5px 0;"><strong>Control:</strong> {{ control.descripcion }}</p>
+                <p style="margin: 5px 0;"><strong>Programado para:</strong> {{ control.fecha_programada|date:"d/m/Y" }}</p>
+            </div>
+            <hr>
+            <div class="form-group">
+                <label for="id_archivo_adjunto" class="file-upload-group">
+                    <div class="upload-icon">
+                        <i data-feather="upload-cloud"></i>
+                    </div>
+                    <div class="upload-text">
+                        Arrastra el PDF o haz clic para seleccionar
+                    </div>
+                    <div class="file-name" id="file-name-display" style="display: none;"></div>
+                </label>
+                {{ form.archivo_adjunto }}
+                {% if form.archivo_adjunto.errors %}
+                    <div class="field-error">{{ form.archivo_adjunto.errors }}</div>
+                {% endif %}
+            </div>
+            <input type="submit" name="submit" class="submit action-button action-button--full" value="Marcar como Realizado y Guardar"/>
+        </fieldset>
+    </form>
+{% endblock %}
+
+{% block extra_scripts %}
+    {# 3. ESTE ES EL ÚNICO JAVASCRIPT QUE NECESITAS PARA ESTA PÁGINA #}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.feather) {
+            window.feather.replace();
+        }
+
+        // Seleccionamos los elementos correctos de ESTE formulario
+        const fileInput = document.getElementById('id_archivo_adjunto');
+        const fileUploadGroup = document.querySelector('.file-upload-group');
+        const fileNameDisplay = document.getElementById('file-name-display');
+        const uploadText = document.querySelector('.upload-text');
+
+        // Verificamos que los elementos existan
+        if (fileInput && fileUploadGroup && fileNameDisplay) {
+            
+            function handleFileSelect(files) {
+                if (files.length > 0) {
+                    const fileName = files[0].name;
+                    fileNameDisplay.textContent = 'Archivo seleccionado: ' + fileName;
+                    fileNameDisplay.style.display = 'block';
+                    if (uploadText) {
+                        uploadText.style.display = 'none';
+                    }
+                }
+            }
+
+            // Cuando el input real cambia, actualizamos la UI
+            fileInput.addEventListener('change', (e) => {
+                handleFileSelect(e.target.files);
+            });
+
+            // Lógica para arrastrar y soltar
+            fileUploadGroup.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileUploadGroup.style.backgroundColor = '#fbeadb';
+                fileUploadGroup.style.borderColor = '#b04a03';
+            });
+
+            fileUploadGroup.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                fileUploadGroup.style.backgroundColor = '#fdf5f0';
+                fileUploadGroup.style.borderColor = '#d45b04';
+            });
+
+            fileUploadGroup.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileUploadGroup.style.backgroundColor = '#fdf5f0';
+                fileUploadGroup.style.borderColor = '#d45b04';
+                const files = e.dataTransfer.files;
+                fileInput.files = files; // Asignamos los archivos al input
+                handleFileSelect(files);
+            });
+        }
+    });
+    </script>
+{% endblock %}

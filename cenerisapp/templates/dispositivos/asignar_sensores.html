@@ -1,0 +1,32 @@
+{% extends 'app_base.html' %}
+{% block title %}Asignar {{ cantidad }} Sensores{% endblock %}
+
+{% block main_content %}
+<div class="form-container">
+    <form method="post" class="form-card">
+        <h2>Asignar {{ cantidad }} Sensores a <em>{{ dispositivo.nomDisp }}</em></h2>
+        {% csrf_token %}
+        
+        {{ formset.management_form }}
+
+        {% for form in formset %}
+        <div class="component-form-group">
+            <h4>Sensor #{{ forloop.counter }}</h4>
+            <div class="form-grid">
+                {% for field in form %}
+                    <div class="form-group">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {{ field.errors }}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Finalizar Asignación</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

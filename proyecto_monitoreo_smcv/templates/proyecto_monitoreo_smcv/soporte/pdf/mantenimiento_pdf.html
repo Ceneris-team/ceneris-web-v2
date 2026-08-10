@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page { size: A4; margin: 1cm; }
+        body { font-family: Arial, sans-serif; font-size: 10pt; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        th, td { border: 1px solid #000; padding: 4px; vertical-align: top; }
+        .bg-gray { background-color: #D9D9D9; font-weight: bold; }
+        .header-title { text-align: center; font-weight: bold; font-size: 12pt; }
+        .no-border { border: none; }
+        .font-bold { font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <table>
+        <tr>
+            <td width="20%" style="text-align: center;">
+                <img src="{{ logo_url }}" style="width: 120px;">
+            </td>
+            <td width="50%" class="header-title">
+                REPORTE DE MANTENIMIENTO<br>
+                <span style="font-size: 10pt; font-weight: normal;">Código: GG-ST-PR-01-F-02</span>
+            </td>
+            <td width="30%">
+                <table class="no-border" style="margin:0;">
+                    <tr><td class="font-bold no-border">Versión: 02</td></tr>
+                    <tr><td class="font-bold no-border">Fecha: 20/05/2024</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- INFO MANTENIMIENTO -->
+    <table>
+        <tr>
+            <td class="bg-gray" width="15%">Reporte N°:</td>
+            <td width="35%">{{ mantenimiento.id|stringformat:"03d" }}</td>
+            <td class="bg-gray" width="20%">Fecha Elaboración:</td>
+            <td width="30%">{{ mantenimiento.created_at|date:"d/m/Y" }}</td>
+        </tr>
+    </table>
+
+    <!-- CLIENTE -->
+    <table>
+        <tr><td colspan="4" class="bg-gray">Datos del Cliente</td></tr>
+        <tr>
+            <td width="20%" class="font-bold">Razón Social:</td>
+            <td colspan="3">{{ cliente.razon_social }}</td>
+        </tr>
+        <tr>
+            <td class="font-bold">Dirección:</td>
+            <td colspan="3">{{ cliente.direccion }}</td>
+        </tr>
+        <tr>
+            <td class="font-bold">Contacto:</td>
+            <td>{{ cliente.contacto }}</td>
+            <td class="font-bold">Correo:</td>
+            <td>{{ cliente.correo }}</td>
+        </tr>
+    </table>
+
+    <!-- PROVEEDOR -->
+    <table>
+        <tr><td colspan="4" class="bg-gray">Datos del Proveedor</td></tr>
+        <tr>
+            <td width="20%" class="font-bold">Responsable:</td>
+            <td>{{ proveedor.trabajador }}</td>
+            <td width="15%" class="font-bold">Teléfono:</td>
+            <td>{{ proveedor.telefono }}</td>
+        </tr>
+        <tr>
+            <td class="font-bold">Contacto:</td>
+            <td>{{ proveedor.contacto }}</td>
+            <td class="font-bold">Correo:</td>
+            <td>{{ proveedor.correo }}</td>
+        </tr>
+    </table>
+
+    <!-- DATOS GENERALES -->
+    <table>
+        <tr><td colspan="2" class="bg-gray">Datos Generales</td></tr>
+        <tr>
+            <td width="50%">
+                <b>Equipo:</b> {{ dispositivo.nombre }}<br>
+                <b>Marca:</b> {{ dispositivo.marca }}<br>
+                <b>Modelo:</b> {{ dispositivo.modelo }}<br>
+                <b>Serie:</b> {{ dispositivo.serie }}<br>
+                <b>Uso:</b> {{ dispositivo.uso }}
+            </td>
+            <td width="50%">
+                <b>Accesorios:</b><br>
+                <ul>
+                {% for acc in dispositivo.accesorios.all %}
+                    <li>{{ acc.nombre }}</li>
+                {% empty %}
+                    <li>Sin accesorios</li>
+                {% endfor %}
+                </ul>
+            </td>
+        </tr>
+    </table>
+
+    <!-- EQUIPO CONTRASTE -->
+    <table>
+        <tr><td class="bg-gray">Equipo de Contraste</td></tr>
+        <tr><td>{{ mantenimiento.equipo_contraste }}</td></tr>
+    </table>
+
+    <!-- TRABAJO REALIZADO -->
+    <table>
+        <tr><td class="bg-gray">Trabajo Realizado</td></tr>
+        <tr style="height: 150px;">
+            <td>{{ mantenimiento.trabajo|linebreaksbr }}</td>
+        </tr>
+    </table>
+
+    <!-- ESTADO FINAL -->
+    <table>
+        <tr><td class="bg-gray">Estado Final</td></tr>
+        <tr><td>{{ mantenimiento.estado_final }}</td></tr>
+    </table>
+
+    <!-- FIRMAS -->
+    <br><br><br>
+    <table style="border: none;">
+        <tr style="border: none;">
+            <td style="border: none; width: 50%; text-align: center;">
+                <img src="{{ firmaT_url }}" style="width: 120px;"><br>
+                __________________________<br>
+                <b>Realizado por</b><br>
+                Yerson Mollo Escalante<br>
+                Asistente de Soporte Técnico
+            </td>
+            <td style="border: none; width: 50%; text-align: center;">
+                <img src="{{ firmaG_url }}" style="width: 157px;"><br>
+                __________________________<br>
+                <b>Revisado por</b><br>
+                Guillermo Cervetto<br>
+                Gerente General
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

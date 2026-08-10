@@ -1,0 +1,126 @@
+{% extends 'layouts/base.html' %}
+
+{% block content %}
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<div class="min-h-[85vh] bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
+    
+    <!-- Encabezado -->
+    <div class="max-w-4xl w-full text-center mb-10 animate-fade-in-down">
+        <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight sm:text-4xl mb-2">
+            Panel de Administración
+        </h2>
+        <p class="text-lg text-gray-500">
+            Bienvenido, <span class="text-indigo-600 font-semibold">{{ user.first_name|default:user.username }}</span>. Selecciona un módulo:
+        </p>
+    </div>
+
+    <!-- Contenedor de Tarjetas (Grid de 2 columnas) -->
+    <div class="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 px-4">
+
+        <!-- 1. TARJETA: EVALUACIONES (MÉTRICAS) -->
+        <!-- URL: panel_jefe (Para ver indicadores) -->
+        {% if "Administrador" in user_groups and "Metricas" in user_groups and tiene_trabajador %}
+        <a href="{% url 'metricas_ceneris:panel_jefe' %}" class="group relative block h-full">
+            <div class="absolute inset-0 bg-blue-600 rounded-2xl transform translate-y-2 translate-x-2 transition duration-300 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:opacity-100 opacity-0"></div>
+            <div class="relative h-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transform transition duration-300 group-hover:-translate-y-1 group-hover:-translate-x-1 group-hover:shadow-xl flex flex-col">
+                <div class="h-1.5 w-full bg-blue-500"></div>
+                <div class="p-6 flex-1 flex flex-col items-center text-center">
+                    <div class="h-16 w-16 rounded-full bg-blue-50 flex items-center justify-center mb-4 text-blue-600 group-hover:scale-110 transition duration-300">
+                        <!-- Icono Gráfico -->
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 012 2h2a2 2 0 012-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 group-hover:text-blue-700">Métricas y Desempeño</h3>
+                    <p class="mt-2 text-gray-500 text-sm">Evaluación de indicadores KPI y seguimiento de objetivos del personal.</p>
+                </div>
+            </div>
+        </a>
+        {% endif %}
+
+        <!-- 2. TARJETA: RECURSOS HUMANOS -->
+        <!-- URL: dashboard RRHH -->
+        {% if "Administrador" in user_groups and "Recursos Humanos" in user_groups %}
+        <a href="{% url 'recursoshumanos:dashboard' %}" class="group relative block h-full">
+            <div class="absolute inset-0 bg-green-600 rounded-2xl transform translate-y-2 translate-x-2 transition duration-300 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:opacity-100 opacity-0"></div>
+            <div class="relative h-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transform transition duration-300 group-hover:-translate-y-1 group-hover:-translate-x-1 group-hover:shadow-xl flex flex-col">
+                <div class="h-1.5 w-full bg-green-500"></div>
+                <div class="p-6 flex-1 flex flex-col items-center text-center">
+                    <div class="h-16 w-16 rounded-full bg-green-50 flex items-center justify-center mb-4 text-green-600 group-hover:scale-110 transition duration-300">
+                        <!-- Icono Personas -->
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 group-hover:text-green-700">Recursos Humanos</h3>
+                    <p class="mt-2 text-gray-500 text-sm">Control de asistencia, tareos, contratos, boletas y legajos.</p>
+                </div>
+            </div>
+        </a>
+        {% endif %}
+
+        <!-- 3. TARJETA: CALIDAD -->
+        <!-- URL: estadisticas_calidad (Requiere grupo "Calidad" y "Administrador") -->
+        {% if "Administrador" in user_groups and "Calidad" in user_groups %}
+        <a href="{% url 'calidad:estadisticas_calidad' %}" class="group relative block h-full">
+            <div class="absolute inset-0 bg-purple-600 rounded-2xl transform translate-y-2 translate-x-2 transition duration-300 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:opacity-100 opacity-0"></div>
+            <div class="relative h-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transform transition duration-300 group-hover:-translate-y-1 group-hover:-translate-x-1 group-hover:shadow-xl flex flex-col">
+                <div class="h-1.5 w-full bg-purple-500"></div>
+                <div class="p-6 flex-1 flex flex-col items-center text-center">
+                    <div class="h-16 w-16 rounded-full bg-purple-50 flex items-center justify-center mb-4 text-purple-600 group-hover:scale-110 transition duration-300">
+                        <!-- Icono Calidad/Escudo -->
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 group-hover:text-purple-700">Gestión de Calidad</h3>
+                    <p class="mt-2 text-gray-500 text-sm">Auditorías, control de documentos y estadísticas de cumplimiento.</p>
+                </div>
+            </div>
+        </a>
+        {% endif %}
+
+        <!-- 4. TARJETA: GESTIÓN DE USUARIOS (CREDENCIALES) -->
+        <!-- URL: gestion_usuarios (Requiere "Administrador" y "Metricas" o un grupo "Sistemas") -->
+        <!-- Nota: Asumo que quien ve métricas también administra claves, si no, cambia "Metricas" por otro grupo -->
+        {% if "Administrador" in user_groups %}
+        <a href="{% url 'accesos:lista_usuarios' %}" class="group relative block h-full">
+            <div class="absolute inset-0 bg-orange-500 rounded-2xl transform translate-y-2 translate-x-2 transition duration-300 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:opacity-100 opacity-0"></div>
+            <div class="relative h-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transform transition duration-300 group-hover:-translate-y-1 group-hover:-translate-x-1 group-hover:shadow-xl flex flex-col">
+                <div class="h-1.5 w-full bg-orange-500"></div>
+                <div class="p-6 flex-1 flex flex-col items-center text-center">
+                    <div class="h-16 w-16 rounded-full bg-orange-50 flex items-center justify-center mb-4 text-orange-600 group-hover:scale-110 transition duration-300">
+                        <!-- Icono Llave/Config -->
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 group-hover:text-orange-700">Gestión de Usuarios</h3>
+                    <p class="mt-2 text-gray-500 text-sm">Creación de cuentas, reseteo de contraseñas y accesos al sistema.</p>
+                </div>
+            </div>
+        </a>
+        {% endif %}
+
+    </div>
+
+    <!-- Aviso si no tiene permisos -->
+    {% if "Administrador" not in user_groups %}
+        <div class="mt-10 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200 shadow-sm">
+            <p class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                No se detectaron permisos de Administrador para mostrar los módulos.
+            </p>
+        </div>
+    {% endif %}
+
+    <div class="mt-12 text-center">
+        <p class="text-sm text-gray-400">© 2025 Ceneris - Panel Central</p>
+    </div>
+</div>
+
+<style>
+    @keyframes fadeInDown {
+        0% { opacity: 0; transform: translateY(-20px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in-down {
+        animation: fadeInDown 0.6s ease-out;
+    }
+</style>
+
+{% endblock %}

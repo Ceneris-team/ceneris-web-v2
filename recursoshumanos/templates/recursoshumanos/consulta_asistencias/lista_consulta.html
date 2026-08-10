@@ -1,0 +1,338 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Consulta de Asistencias{% endblock %}
+
+{% block extra_head %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <style>
+        /* Hace que los selects buscables (Select2) midan igual que los demás campos del filtro */
+        .select2-container { width: 100% !important; }
+        .select2-container .select2-selection--single {
+            height: 38px;
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+        }
+        .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: 36px;
+            padding-left: 0.5rem;
+        }
+        .select2-container .select2-selection--single .select2-selection__arrow {
+            height: 36px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Consulta Histórica de Asistencias</h1>
+            <p style="margin: 0;">Filtra y revisa los registros de asistencia y faltas de los trabajadores.</p>
+        </div>
+    </div>
+
+    <div style="background-color: #f8fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid #e2e8f0;">
+        <form method="GET" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+
+            <div style="flex: 1; min-width: 180px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Empresa (EMO)</label>
+                <select name="empresa" id="filtro-empresa" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="">-- Todas las empresas --</option>
+                    {% for e in empresas %}
+                        <option value="{{ e.id }}" {% if current_empresa == e.id|stringformat:"s" %}selected{% endif %}>
+                            {{ e.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 180px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Proyecto</label>
+                <select name="proyecto" id="filtro-proyecto" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="">-- Todos los proyectos --</option>
+                    {% for p in proyectos %}
+                        <option value="{{ p.id }}"
+                                data-empresa="{{ p.empresa_id|default:'' }}"
+                                {% if current_proyecto == p.id %}selected{% endif %}>
+                            {{ p.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 180px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Subproyecto</label>
+                <select name="subproyecto" id="filtro-subproyecto" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="">-- Todos los subproyectos --</option>
+                    {% for sp in subproyectos %}
+                        <option value="{{ sp.id }}"
+                                data-proyecto="{{ sp.parent_id|default:'' }}"
+                                data-empresa="{{ sp.empresa_id|default:'' }}"
+                                {% if current_subproyecto == sp.id %}selected{% endif %}>
+                            {{ sp.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 180px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Área</label>
+                <select name="area" id="filtro-area" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="">-- Todas las áreas --</option>
+                    {% for a in areas %}
+                        <option value="{{ a.id }}" {% if current_area == a.id|stringformat:"s" %}selected{% endif %}>
+                            {{ a.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Trabajador</label>
+                <select name="trabajador" id="filtro-trabajador" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="">-- Todos los trabajadores --</option>
+                    {% for t in trabajadores %}
+                        <option value="{{ t.id }}"
+                                data-empresa="{{ t.empresa_id|default:'' }}"
+                                data-area="{{ t.area_id|default:'' }}"
+                                data-proyectos="{% for p in t.proyectos.all %}{{ p.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                                {% if current_trabajador == t.id %}selected{% endif %}>
+                            {{ t.apellido_paterno }} {{ t.nombres }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 150px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Desde</label>
+                <input type="date" name="inicio" value="{{ current_inicio }}" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+            </div>
+
+            <div style="flex: 1; min-width: 150px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Hasta</label>
+                <input type="date" name="fin" value="{{ current_fin }}" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+            </div>
+
+            <div>
+                <button type="submit" style="background-color: #2563eb; color: white; padding: 0.6rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    Buscar
+                </button>
+                <a href="{% url 'recursoshumanos:consulta_asistencias' %}" style="margin-left: 0.5rem; color: #64748b; text-decoration: none; font-size: 0.9rem;">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    {% if not busqueda_realizada %}
+        <div style="text-align: center; padding: 4rem 2rem; color: #64748b; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+            <h3 style="margin: 0 0 0.5rem;">Aplica un filtro para comenzar</h3>
+            <p style="margin: 0;">Selecciona empresa, proyecto, área o rango de fechas y presiona <strong>Buscar</strong>.</p>
+        </div>
+    {% else %}
+        <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <thead style="background-color: #f1f5f9; text-align: left; border-bottom: 2px solid #e2e8f0;">
+                <tr>
+                    <th style="padding: 1rem;">Fecha</th>
+                    <th style="padding: 1rem;">Trabajador</th>
+                    <th style="padding: 1rem;">Área</th>
+                    <th style="padding: 1rem; text-align: center;">Estado</th>
+                    <th style="padding: 1rem;">Entrada</th>
+                    <th style="padding: 1rem;">Salida</th>
+                    <th style="padding: 1rem;">Medio</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in page_obj %}
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 1rem;"><strong>{{ r.fecha|date:"d/m/Y" }}</strong></td>
+                    <td style="padding: 1rem;">
+                        <a href="{% url 'recursoshumanos:trabajador_detail' dni=r.trabajador.dni %}" style="text-decoration: none; color: #2563eb; font-weight: bold;">
+                            {{ r.trabajador.apellido_paterno }} {{ r.trabajador.nombres }}
+                        </a>
+                    </td>
+                    <td style="padding: 1rem; color: #64748b; font-size: 0.9rem;">{{ r.trabajador.area.nombre|default:"-" }}</td>
+
+                    <td style="text-align: center; padding: 1rem;">
+                        {% if r.resultado_efectivo == 'A' %}
+                            <span style="background-color: #d1fae5; color: #047857; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">ASISTIÓ</span>
+                        {% elif r.resultado_efectivo == 'F' %}
+                            <span style="background-color: #fee2e2; color: #b91c1c; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">FALTA</span>
+                        {% else %}
+                            <span style="background-color: #e2e8f0; color: #475569; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">{{ r.resultado_efectivo }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 1rem;">{{ r.hora_entrada_real_calculada|default:"--:--" }}</td>
+                    <td style="padding: 1rem;">{{ r.hora_salida_real_calculada|default:"--:--" }}</td>
+
+                    <td style="padding: 1rem;">
+                        {% if r.origen %}
+                            <span style="font-size: 0.8rem; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; padding: 2px 6px; border-radius: 4px;">
+                                {% if r.origen == 'APP' %}📱{% else %}⏱️{% endif %} {{ r.origen }}
+                            </span>
+                        {% else %}
+                            <span style="color: #94a3b8;">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 4rem 2rem; color: #64748b;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                        <h3>Sin resultados</h3>
+                        <p>No hay registros para los filtros seleccionados.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if page_obj and page_obj.paginator.num_pages > 1 %}
+        <div style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap;">
+
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}"
+                   style="padding: 0.4rem 0.9rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #2563eb; background: white;">
+                    &laquo; Anterior
+                </a>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <span style="padding: 0.4rem 0.9rem; border: 1px solid #2563eb; border-radius: 4px; background: #2563eb; color: white; font-weight: bold;">
+                        {{ num }}
+                    </span>
+                {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+                    <a href="?page={{ num }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}"
+                       style="padding: 0.4rem 0.9rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #2563eb; background: white;">
+                        {{ num }}
+                    </a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}"
+                   style="padding: 0.4rem 0.9rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #2563eb; background: white;">
+                    Siguiente &raquo;
+                </a>
+            {% endif %}
+
+            <span style="color: #64748b; font-size: 0.9rem; margin-left: 0.5rem;">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                &nbsp;·&nbsp; {{ page_obj.paginator.count }} registro{{ page_obj.paginator.count|pluralize }}
+            </span>
+        </div>
+        {% endif %}
+    {% endif %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const selEmpresa     = document.querySelector('select[name="empresa"]');
+            const selProyecto    = document.querySelector('select[name="proyecto"]');
+            const selSubproyecto = document.querySelector('select[name="subproyecto"]');
+            const selArea        = document.querySelector('select[name="area"]');
+            const selTrabajador  = document.querySelector('select[name="trabajador"]');
+
+            if (!selEmpresa || !selProyecto || !selSubproyecto || !selArea || !selTrabajador) return;
+
+            // Convierte los 5 selects en campos buscables (se puede escribir para filtrar opciones)
+            const select2Config = {
+                width: '100%',
+                language: {
+                    noResults: function() { return 'Sin resultados'; },
+                    searching: function() { return 'Buscando...'; }
+                }
+            };
+            $(selEmpresa).select2(select2Config);
+            $(selProyecto).select2(select2Config);
+            $(selSubproyecto).select2(select2Config);
+            $(selArea).select2(select2Config);
+            $(selTrabajador).select2(select2Config);
+
+            const optsProyecto    = Array.from(selProyecto.options);
+            const optsSubproyecto = Array.from(selSubproyecto.options);
+            const optsTrabajador  = Array.from(selTrabajador.options);
+
+            function filtrarProyectos() {
+                const empresaId = selEmpresa.value;
+                const prevProy  = selProyecto.value;
+
+                selProyecto.innerHTML = '';
+                selProyecto.appendChild(optsProyecto[0].cloneNode(true));
+
+                let valido = false;
+                for (let i = 1; i < optsProyecto.length; i++) {
+                    const opt = optsProyecto[i];
+                    if (!empresaId || opt.getAttribute('data-empresa') === empresaId) {
+                        selProyecto.appendChild(opt);
+                        if (opt.value === prevProy) valido = true;
+                    }
+                }
+                selProyecto.value = valido ? prevProy : '';
+                // Dispara 'change' para que Select2 actualice lo que muestra y para
+                // encadenar el filtrado de subproyectos/trabajadores (ver listener abajo).
+                $(selProyecto).trigger('change');
+            }
+
+            function filtrarSubproyectos() {
+                const proyectoId = selProyecto.value;
+                const prevSub    = selSubproyecto.value;
+
+                selSubproyecto.innerHTML = '';
+                selSubproyecto.appendChild(optsSubproyecto[0].cloneNode(true));
+
+                let valido = false;
+                for (let i = 1; i < optsSubproyecto.length; i++) {
+                    const opt = optsSubproyecto[i];
+                    if (!proyectoId || opt.getAttribute('data-proyecto') === proyectoId) {
+                        selSubproyecto.appendChild(opt);
+                        if (opt.value === prevSub) valido = true;
+                    }
+                }
+                selSubproyecto.value = valido ? prevSub : '';
+                $(selSubproyecto).trigger('change');
+            }
+
+            function filtrarTrabajadores() {
+                const empresaId  = selEmpresa.value;
+                const proyectoId = selProyecto.value;
+                const subpId     = selSubproyecto.value;
+                const areaId     = selArea.value;
+                const prevTrab   = selTrabajador.value;
+
+                selTrabajador.innerHTML = '';
+                selTrabajador.appendChild(optsTrabajador[0].cloneNode(true));
+
+                let valido = false;
+                for (let i = 1; i < optsTrabajador.length; i++) {
+                    const opt         = optsTrabajador[i];
+                    const optEmpresa  = opt.getAttribute('data-empresa') || '';
+                    const optArea     = opt.getAttribute('data-area') || '';
+                    const optProys    = (opt.getAttribute('data-proyectos') || '').split(',').filter(x => x);
+
+                    let visible = true;
+                    if (empresaId  && optEmpresa !== empresaId)           visible = false;
+                    if (areaId     && optArea    !== areaId)               visible = false;
+                    if (proyectoId && !optProys.includes(proyectoId))     visible = false;
+                    if (subpId     && !optProys.includes(subpId))         visible = false;
+
+                    if (visible) {
+                        selTrabajador.appendChild(opt);
+                        if (opt.value === prevTrab) valido = true;
+                    }
+                }
+                selTrabajador.value = valido ? prevTrab : '';
+                $(selTrabajador).trigger('change');
+            }
+
+            // Se registran con jQuery porque Select2 emite 'change' solo a través
+            // de jQuery y los listeners nativos (addEventListener) no lo reciben.
+            $(selEmpresa).on('change', filtrarProyectos);
+            $(selProyecto).on('change', filtrarSubproyectos);
+            $(selSubproyecto).on('change', filtrarTrabajadores);
+            $(selArea).on('change', filtrarTrabajadores);
+
+            filtrarProyectos();
+        });
+    </script>
+{% endblock %}

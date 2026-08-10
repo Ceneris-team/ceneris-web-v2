@@ -1,0 +1,111 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="header-container" style="margin: 10px 40px;">
+    <h1>Lista de todos los proyectos</h1>
+    <a href="{% url 'proyectos:crear_proyecto' %}" class="btn-create">Crear un proyecto</a>
+</div>
+<div class="filters-container">
+        <form method="get" class="advanced-filter-form">
+            <!-- Buscador por Nombre -->
+            <div class="filter-group text-search">
+                <i class="fa fa-search"></i>
+                <input type="text" name="q" placeholder="Buscar por nombre de proyecto..." value="{{ query }}">
+            </div>
+
+            <!-- Filtro por Estado -->
+            <div class="filter-group">
+                <select name="status">
+                    <option value="">Cualquier Estado</option>
+                    <option value="activo" {% if status_filter == 'activo' %}selected{% endif %}>Activos</option>
+                    <option value="completado" {% if status_filter == 'completado' %}selected{% endif %}>Completados</option>
+                </select>
+            </div>
+            
+            <!-- Filtro por Rango de Fechas -->
+            <div class="filter-group">
+                <select name="date_range">
+                    <option value="">Cualquier Fecha</option>
+                    <option value="end_this_month" {% if date_range_filter == 'end_this_month' %}selected{% endif %}>Terminan este mes</option>
+                    <option value="start_next_month" {% if date_range_filter == 'start_next_month' %}selected{% endif %}>Empiezan el próximo mes</option>
+                </select>
+            </div>
+
+            <!-- Filtro de Ordenamiento -->
+            <div class="filter-group">
+                 <label for="sort-by">Ordenar por:</label>
+                <select name="sort_by" id="sort-by">
+                    <option value="-id" {% if sort_by == '-id' %}selected{% endif %}>Más Recientes</option>
+                    <option value="mas_completadas" {% if sort_by == 'mas_completadas' %}selected{% endif %}>Más Tareas Completadas</option>
+                    <option value="menos_completadas" {% if sort_by == 'menos_completadas' %}selected{% endif %}>Menos Tareas Completadas</option>
+                    <option value="mas_personal" {% if sort_by == 'mas_personal' %}selected{% endif %}>Más Personal Asignado</option>
+                </select>
+            </div>
+            
+            <!-- Botones de Acción -->
+            <div class="filter-actions">
+                <button type="submit" class="btn-create">Aplicar Filtros</button>
+                <a href="{% url 'proyectos:lista_proyectos' %}" class="btn-clear-filters">Limpiar</a>
+            </div>
+        </form>
+    </div>
+<div class="project-grid">
+    {% for proyecto in proyectos %}
+        <!-- El <div> de la tarjeta ahora es el contenedor principal, NO un enlace -->
+        <div class="card {% if proyecto.completada %}is-completed{% endif %} animate__animated animate__fadeInUp" style="animation-delay: {{ delay }}s;" id="project-card-{{ proyecto.pk }}">
+            
+            <div class="card-body"> 
+                <!-- HACEMOS QUE EL TÍTULO SEA EL ENLACE AL DETALLE -->
+                <div>
+                    <a href="{% url 'proyectos:detalle_proyecto' proyecto.id %}" class="card-title-link">
+                        <h2 class="card-title">{{ proyecto.nombre }}</h2>
+                    </a>
+                    <div class="project-status-badge">
+                        {% if proyecto.completada %}
+                            <span class="badge completed">Completado</span>
+                        {% else %}
+                            <span class="badge active">Activo</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <p class="card-description">{{ proyecto.descripcion }}</p>
+            </div>
+            <div class="card-footer">
+                <span class="date-label">Inicio: {{ proyecto.fecha_inicio_calculada|date:"d M Y" }}</span>
+                <span class="date-label">Fin: {{ proyecto.fecha_fin_calculada|date:"d M Y" }}</span>
+                <div class="card-actions-group">
+                
+                
+                    <!-- ¡BOTÓN DE ELIMINAR CORREGIDO! -->
+                    <!-- Ahora usa 'proyecto' en todas partes -->
+                    <button type="button" class="btn-card-action btn-delete-project" title="Eliminar Proyecto"
+                            data-id="{{ proyecto.pk }}"
+                            data-nombre="{{ proyecto.nombre }}"
+                            data-url="{% url 'proyectos:api_delete_proyecto' pk=proyecto.pk %}">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                    
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <p style="margin: 10px 40px; text-align: center;">No hay proyectos para mostrar.</p>
+    {% endfor %}
+</div>
+<!-- MODAL DE CONFIRMACIÓN PARA ELIMINAR PROYECTO -->
+<div id="delete-project-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content animate__animated animate__fadeInDown">
+        <h2>Confirmar Eliminación</h2>
+        <p id="delete-project-text">¿Estás seguro de que quieres eliminar este proyecto? Esta acción es irreversible y borrará todas sus tareas, subtareas y asignaciones asociadas.</p>
+        <div class="modal-actions" style="margin-top: 15px;">
+            <button id="cancel-delete-project-btn" class="btn-secondary">Cancelar</button>
+            <button id="confirm-delete-project-btn" class="btn-danger">Sí, Eliminar Proyecto</button>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'js/delete_project_handler.js' %}"></script>
+{% endblock %}

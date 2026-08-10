@@ -1,0 +1,48 @@
+<!-- en templates/tu_app/certificados_por_programa.html -->
+{% extends 'app_base.html' %} {# O tu plantilla base #}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="container-general">
+    <div class="header-container">
+        <h1>{{ titulo }}</h1>
+        <a href="{% url 'cenerisapp:lista_programas' %}" class="btn btn-secondary">Volver a Programas</a>
+    </div>
+
+    <div class="table-container">
+        {% if certificados %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Dispositivo</th>
+                        <th>N° Serie</th>
+                        <th>N° Certificado</th>
+                        <th>Fecha de Certificación</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cert in certificados %}
+                        <tr>
+                            <td data-label="Dispositivo">{{ cert.dispositivo.nomDisp }}</td>
+                            <td data-label="N° Serie">{{ cert.dispositivo.num_serie }}</td>
+                            <td data-label="N° Certificado">{{ cert.nro_certificado }}</td>
+                            <td data-label="Fecha">{{ cert.fechCertificado|date:"d/m/Y" }}</td>
+                            <td data-label="Acciones" class="text-center">
+                                <div class="action-buttons">
+                                    <!-- Asumo que tienes una URL para descargar el PDF del certificado -->
+                                    <a href="{% url 'cenerisapp:descargar_certificado' cert.pk %}" class="btn btn-primary" target="_blank">
+                                        Ver PDF
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="no-data">No se han registrado certificados para este programa todavía.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

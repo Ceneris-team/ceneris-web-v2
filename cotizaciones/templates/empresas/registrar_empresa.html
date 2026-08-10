@@ -1,0 +1,64 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block body_class %}form-background{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        /* Estilos específicos para este formulario */
+        #progressbar.one-step li { width: 100%; } /* Simplificado a 1 paso visual */
+        .back-button-container {
+            max-width: 800px;
+            width: 90%;
+            margin: 30px auto 10px auto;
+            text-align: left;
+        }
+        .field-error { 
+            color: #dc3545; font-size: 0.8rem; font-weight: 600; 
+            text-align: left; margin-top: -10px; margin-bottom: 10px; 
+        }
+        .field-error ul { list-style: none; padding: 0; margin: 0; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="back-button-container">
+        <a href="{% url 'cotizaciones:centro_gestion_empresas' %}" class="btn btn-outline-secondary">
+            &larr; Volver a gestion
+        </a>
+    </div>
+
+    <form id="msform" method="post" novalidate>
+        {% csrf_token %}
+
+        <!-- Aunque es un solo paso lógico, mantenemos la estructura por consistencia visual -->
+        <ul id="progressbar" class="one-step">
+            <li class="active">Información de la Empresa</li>
+        </ul>
+        
+        <fieldset>
+            <h2 class="fs-title">{{ form_title }}</h2>
+            <h3 class="fs-subtitle">Completa los datos para añadir la empresa a la base de datos central</h3>
+            
+            <input type="text" name="{{ form.nombre.html_name }}" placeholder="Nombre de la Empresa *" value="{{ form.nombre.value|default_if_none:'' }}" required>
+            {% if form.nombre.errors %}<div class="field-error">{{ form.nombre.errors }}</div>{% endif %}
+
+            <input type="text" name="{{ form.ruc.html_name }}" placeholder="RUC *" value="{{ form.ruc.value|default_if_none:'' }}" required>
+            {% if form.ruc.errors %}<div class="field-error">{{ form.ruc.errors }}</div>{% endif %}
+
+            <input type="text" name="{{ form.ubicacion.html_name }}" placeholder="Ubicación" value="{{ form.ubicacion.value|default_if_none:'' }}">
+            {% if form.ubicacion.errors %}<div class="field-error">{{ form.ubicacion.errors }}</div>{% endif %}
+
+            <input type="submit" name="submit" class="submit action-button" value="Guardar Empresa"/>
+        </fieldset>
+    </form>
+{% endblock %}
+
+{% block extra_scripts %}
+    <!-- No necesitamos JS de multi-paso aquí porque no hay botones "next/previous" -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
+{% endblock %}

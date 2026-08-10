@@ -1,0 +1,758 @@
+{% load pdf_helpers %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Certificado NRO: {{ certificado.nro_certificado }}</title>
+    <style>
+        @page {
+            size: a4 portrait;
+            margin: 0cm;
+            margin-bottom: 2cm;
+
+            @top-center {
+                content: element(header_content);
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 2cm; 
+            }
+    
+
+            @bottom-left {
+                content: "CENERIS E.I.R.L. - Av. Tomás Marsano N°1368 Urb. La Aurora Miraflores/Lima/Perú\A Telf.: 01-4800065 \A Contacto: soporte@ceneris.com \A www.ceneris.com";
+                font-style: Arial;
+                font-size: 9pt;
+                color: #c00;
+                font-weight: bold;
+                font-style: oblique;
+                white-space: pre-wrap;
+                margin-bottom: 0.5cm;
+                margin-left: 0.2cm;
+            }
+
+            @bottom-right {
+                content: "Página " counter(page) " de " counter(pages) "\A"
+                        "Código: CEN-ST-PR-01-I-32-F-01" "\A"
+                        "Versión: {{ version_pdf }}" "\A"
+                        "Fecha: {{ fecha_generacion|date:"d/m/Y" }}";
+                font-size: 7pt;
+                color: #000;
+                text-align: right;
+                margin-bottom: 0.5cm;
+                white-space: pre-wrap;
+                margin-right: 0.2cm;
+            }
+        }
+
+        body {
+            font-family: Arial;
+            font-size: 10pt;
+            color: #000;
+            padding: 0;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 80% auto;
+            margin-bottom: 3cm;
+        }
+
+        #content {
+            margin-left: 2cm;
+        }
+
+        .firmas-container {
+            position: absolute;
+            bottom: 6cm; /* Ajusta esta distancia desde el borde inferior de la página */
+            left: 2cm;   /* Coincide con el margen izquierdo de tu #content */
+            right: 2cm;  /* Coincide con el margen derecho (implícito) */
+            height: 120px; /* Dale una altura fija para controlar el espacio */
+        }
+
+        .header-table {
+            width: 100%;
+            border: none;
+            margin-bottom: 10px;
+        }
+        .header-table td {
+            border: none;
+            vertical-align: middle;
+        }
+        .logo {
+            align-self: left;
+            padding-left: 20px;
+            height: 90px;
+        }
+        .logoG {
+            left: 380px;
+            top: 250px;
+            position: absolute;
+            z-index: -10;
+        }
+        .logoC {
+            left: 610px;
+            top: 690px; 
+            position: absolute;
+            z-index: -10;
+        }
+
+        .logoGG {
+            left: 485px;
+            top: -100px;
+            position: absolute;
+            z-index: -10;
+        }
+        .logoCC {
+            left: 550px;
+            top: -55px; 
+            position: absolute;
+            z-index: -10;
+        } 
+
+        .Firma1 {
+            left: 120px;
+            top: 760px; 
+            position: absolute;
+            z-index: -10;
+            height:7%;
+        }
+        .Firma2 {
+            left: 500px;
+            top: 775px; 
+            position: absolute;
+            z-index: -10;
+            height:5%;
+        }
+        .Firma11 {
+            left: 120px;
+            top: 50px; 
+            position: absolute;
+            z-index: -10;
+            height:67%;
+        }
+        .Firma22 {
+            left: 460px;
+            top: 55px; 
+            position: absolute;
+            height:65%;
+        }
+
+        .titulo {
+            font-size: 16pt;
+            font-weight: bold;
+            text-align: center;
+            text-decoration: underline;
+            margin-top: 35px;
+            margin-bottom: 50px;
+        }
+
+        .info-table {
+            width: auto;
+            margin-bottom: 30px;
+            margin-left: 40px;
+            /* Aseguramos que no haya espacio entre las celdas a nivel de tabla */
+            border-spacing: 0; 
+            border-collapse: collapse; /* Esto también ayuda a controlar el espaciado */
+            text-align: left;
+        }
+        .info-table td {
+            padding: 10px 0;
+            border: none;
+            vertical-align: top;
+            /* IMPORTANTE: Alinea el contenido a la izquierda dentro de la celda */
+            text-align: left; 
+        }
+        .info-table .label {
+            font-weight: bold;
+            width: auto; /* Permite que el ancho se ajuste al contenido */
+            padding-right: 0; /* Elimina cualquier padding a la derecha del label */
+            white-space: nowrap; /* Evita que el label se rompa en varias líneas si es largo */
+        }
+
+        .info-table .dato {
+            padding-left: 0; /* Aquí ajustas el espacio DESPUÉS del dos puntos. Un valor pequeño como 5px o 8px suele verse bien. */
+            /* Puedes probar con 0px si quieres que sea pegado, pero estéticamente un poco de espacio es mejor */
+            vertical-align: top; /* Asegura alineación consistente */
+        }
+
+        .firmas-table {
+            width: 100%;
+            margin-top: 80px;
+            border: none;
+            height: 90px;
+            margin-bottom: 200px;
+        }
+        .firmas-table td {
+            width: 20%;
+            text-align: center;
+            border: none;
+            vertical-align: bottom;
+            padding: 0 30px;
+        }
+        .firma-linea {
+            margin-left: 30px;
+            margin-top: 40px;
+            border-top: 1px solid #000;
+            height: 40px;
+            width: 250px;
+            margin-bottom: 129px;
+        }
+
+        #footer-content {
+            display: none;
+        }
+        .footer-table {
+            width: 100%;
+            border-top: 2px solid #c00;
+            font-size: 9pt;
+        }
+        .footer-table td {
+            padding-top: 5px;
+            border: none;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+        
+        .roman-title {
+            font-weight: bold;
+            font-size: 10pt;
+            margin-top: 30px;
+            text-decoration: underline;
+        }
+        .content-text {
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+        
+        .results-table {
+            width: 80%;
+            margin-bottom: 20px; 
+            font-size: 11pt;
+            text-align: center;
+            border-collapse: collapse; 
+        }
+
+        .results-table th {
+            border: 1px solid #000;
+            padding: 5px;
+            background-color: #e0e0e0;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .results-table.condiciones{
+            text-align: left;
+        }
+
+        .results-table.condiciones th {
+            text-align: left;
+            background-color: white;
+        }
+
+        .results-table td {
+            border: 1px solid #000;
+            padding: 5px;
+            text-align: center;
+        }
+
+        .patrones-table {
+            width: 100%;
+            margin-bottom: 20px;
+            font-size: 11pt;
+            text-align: center;
+            border-collapse: collapse;
+        }
+
+        .patrones-table th {
+            border: 1px solid #000;
+            padding: 5px;
+            background-color: #e0e0e0;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .patrones-table td {
+            border: 1px solid #000;
+            padding: 5px;
+            text-align: center;
+        }
+
+        .patrones-table .no-border-cell,
+        .results-table .no-border-cell {
+            border: none !important; 
+            background: none !important;
+            padding: 0;
+        }
+        .anexo-title-page {
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Ocupa toda la altura de la página */
+        }
+        .anexo-main-title {
+            font-size: 48pt;
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* Página de imagen de anexo */
+        .anexo-image-page {
+            height: 100vh;
+        }
+        .anexo-image-container {
+            width: 100%;
+            height: calc(100% - 4cm); /* Altura de la página menos cabecera y pie */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1cm;
+            box-sizing: border-box;
+        }
+        .anexo-image-container img {
+            max-width: 70%;
+            max-height: 70%;
+            object-fit: contain; /* Asegura que la imagen se vea completa sin distorsionarse */
+        }
+        .galeria-anexos {
+            width: 100%;
+            /* display: flex; y flex-wrap: wrap; son ideales pero pueden dar problemas en WeasyPrint.
+            Empezaremos con un enfoque más simple. */
+        }
+
+        .anexo-item {
+            margin-bottom: 20px; /* Espacio entre cada imagen */
+            text-align: center; /* Centra la imagen si es más pequeña que el contenedor */
+            
+            /* Evita que una imagen grande se "corte" entre páginas */
+            page-break-inside: avoid; 
+        }
+
+        .anexo-item img {
+            max-width: 90%; /* La imagen ocupará como máximo el 90% del ancho de la página */
+            max-height: 20cm; /* Límite de altura para evitar que una imagen ocupe toda la página */
+            height: auto;
+            object-fit: contain;
+            border: 1px solid #ccc; /* Un borde sutil para enmarcar la imagen */
+            padding: 5px;
+        }
+
+        .anexo-caption {
+            font-size: 9pt;
+            font-style: italic;
+            color: #555;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    
+    <div id="header_content" style="position: relative;">
+        <table class="header-table">
+            <tr>
+                <td style="width: 45%;"><img src="{% static_file 'img/logoCC.png' %}" class="logo" /></td>
+                <td style="width: 55%; font-size: 13pt; font-weight: bold;">
+                    <div style="margin-left: 95px;">CERTIFICADO NRO: {{ certificado.nro_certificado }}</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <hr style="height: 3px; width: 100%; background-color: #c00; border: none; position: absolute; top: 2.4cm; left: 0;">
+
+    <div class="titulo">CERTIFICADO DE CALIBRACIÓN</div>
+
+    <div id="content">
+        <table class="info-table">
+            <tr><td class="label">Cliente:</td><td class="dato">Sociedad Minera Cerro Verde S.A.A.</td></tr>
+            <tr><td class="label">RUC:</td><td class="dato">{{ certificado.id_empresa.ruc }}</td></tr>
+            <tr><td class="label">Dirección:</td><td class="dato">{{ certificado.id_empresa.direccion }}</td></tr>
+            <tr><td class="label">Equipo:</td><td class="dato">{{ nombre_equipo }}</td></tr>
+            {% if es_portatil %}    
+                <tr><td class="label">Marca:</td><td class="dato">{{ nombre_fabricante }}</td></tr>
+                <tr><td class="label">Modelo:</td><td class="dato">{{ nombre_modelo }}</td></tr>
+                <tr><td class="label">Número de Serie:</td><td class="dato">{{ ns_dispositivo }}</td></tr>
+                {% if sensores_texto != 'N/A' %}
+                    <tr><td class="label">Sensores:</td><td class="dato">{{ sensores_texto }}</td></tr>
+                {% endif %}
+                <tr><td class="label">Número de Serie sensor:</td><td class="dato">{{ ns_sensores_texto }}</td></tr>
+
+            {% else %}
+                <tr><td class="label">Código SMCV:</td><td class="dato">{{ tag_dispositivo }}</td></tr>
+                <tr><td class="label">Área:</td><td class="dato">{{ nombre_area }}</td></tr>
+                <tr><td class="label">Modelo:</td><td class="dato">{{ nombre_modelo }}</td></tr>
+                {% if sensores_texto != 'N/A' %}
+                    <tr><td class="label">Tipo sensor:</td><td class="dato">{{ sensores_texto }}</td></tr>
+                {% endif %}
+                <tr><td class="label">N/S:</td><td class="dato">{{ ns_sensores_texto }}</td></tr>
+            {% endif %}
+
+
+            <tr><td class="label">Fabricado por:</td><td class="dato">{{ nombre_fabricante }}</td></tr>
+            <tr><td class="label">Estado Inicial:</td><td class="dato">{{ estado_inicial_texto }}</td></tr>
+            <tr><td class="label">Estado Final:</td><td class="dato">{{ certificado.estadoFinal }}</td></tr>
+            <tr><td class="label">Fecha de calibración:</td><td class="dato">{{ certificado.fechCertificado|date:"d/m/Y" }}</td></tr>
+            <tr><td class="label">Próxima calibración:</td><td class="dato">{{ certificado.proxFecha|date:"d/m/Y" }}</td></tr>
+        </table>
+        <img src="{% static_file 'img/Imagen1.png' %}" class="logoG" />  
+        <img src="{% static_file 'img/Imagen2.png' %}" class="logoC" />    
+        <img src="{% static_file 'img/Imagen3.png' %}" class="Firma1" />  
+        <img src="{% static_file 'img/Imagen4.png' %}" class="Firma2" />
+    </div>
+
+    {% if es_portatil %}
+        <table class="firmas-table">
+            <tr>
+                <td>
+                    <div class="firma-linea">
+                        <div style="padding-top: 15px;"><strong>Realizado: Dennis Huamanvilca  Supervisor Operativo</strong></div>
+                    </div>
+                    
+                </td>
+                <td>
+                    <div class="firma-linea">
+                        <div style="padding-top: 15px;"><strong>Revisado: Ing. Guillermo Cervetto Gerente General</strong></div>
+                    </div>
+                    
+                </td>
+            </tr>
+        </table>
+    {% else %}
+        <img src="{% static_file 'img/Imagen5.png' %}" class="Firma1" /> 
+        <table class="firmas-table">
+            <tr>
+                <td>
+                    <div class="firma-linea">
+                        <div style="padding-top: 15px;"><strong>Realizado: Marjorie Costa Zambrano  Supervisor Operativo</strong></div>
+                    </div>
+                    
+                </td>
+                <td>
+                    <div class="firma-linea">
+                        <div style="padding-top: 15px;"><strong>Revisado: Ing. Guillermo Cervetto Gerente General</strong></div>
+                    </div>
+                    
+                </td>
+            </tr>
+        </table>
+    {% endif %}
+
+    <hr style="height: 3px; width: 100%; background-color: #c00; border: none; position: absolute; bottom: 0.1cm; left: 0;">
+
+    <div id="footer-content" style="display: none;">
+        <table class="footer-table">
+            <tr>
+                <td style="width: 70%; text-align: left;">
+                    <strong>CENERIS E.I.R.L.</strong> - Av. Tomás Marsano N°1368 Urb. La Aurora Miraflores/Lima/Perú<br>
+                    Telf.: 01-4800065 <br> Contacto: soporte@ceneris.com <br> www.ceneris.com
+                </td>
+                <td style="width: 30%; text-align: left;">
+                    <div style="font-size: 13px;font-weight: bold;margin-top: 2px; color: #c00;">
+                        Página 1 de {{ num_paginas_pdf }} 
+                    </div>
+                    <div style="color: #000;">
+                        Código:  CEN-ST-PR-01-I-32-F-01<br>
+                        Versión:{{ version_pdf }}<br>
+                        Fecha: {{ fecha_generacion|date:"d/m/Y" }} 
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    <!-- === INICIO PÁGINA 2 === -->
+    <div class="page-break"></div>
+
+    <div id="header_content">
+        <table class="header-table">
+            <tr>
+                <td style="width: 45%;"><img src="{% static_file 'img/logoCC.png' %}" class="logo" /></td>
+                <td style="width: 55%; font-size: 13pt; font-weight: bold;">
+                    <div style="margin-left: 95px;">CERTIFICADO NRO: {{ certificado.nro_certificado }}</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <hr style="height: 3px; width: 100%; background-color: #c00; border: none; position: absolute; top: 2.4cm; left: 0;">
+
+    <div id="content" class="content">
+
+    
+            <div style="margin-left: 2.3cm;">
+                <h3 class="roman-title">I. Lugar de calibración:</h3>
+                <p class="content-text">Sociedad Minera Cerro Verde.</p>
+            </div>
+
+            <div style="margin-left: 2.3cm;">
+                <h3 class="roman-title">II. Condiciones ambientales:</h3>
+                
+                    <table class="results-table condiciones" style="background-color: white;">
+                        <tr>
+                            <th style="width: 45%;">Temperatura</th>
+                            <td>{{ certificado.temp }}</td>
+                        </tr>
+                        <tr>
+                            <th style="width: 45%;">Presión</th>
+                            <td>{{ certificado.presion }}</td>
+                        </tr>
+                        <tr>
+                            <th style="width: 45%;">Humedad Relativa</th>
+                            <td>{{ certificado.humedadRelativa }}</td>
+                        </tr>
+                    </table>
+                
+            </div>
+            
+            {% if es_portatil %}
+                
+                <div style="margin-left: 2.3cm;">
+                    <h3 class="roman-title">III. Patrones utilizados durante la calibración:</h3>
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Patrón Utilizado</th>
+                                <th>N/P</th>
+                                <th>Lote N°</th>
+                                <th>N° Certificado</th>
+                                <th>Expiración</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for patron in patrones %}
+                            <tr>
+                                <td style="text-align: center;">{{ patron.patronUtil }}</td>
+                                <td style="text-align: center;">{{ patron.n_p }}</td>
+                                <td style="text-align: center;">{{ patron.n_lote }}</td>
+                                <td style="text-align: center;">{{ patron.n_certificado }}</td>
+                                <td style="text-align: center;">{{ patron.fechaExpiracion|date:"d/m/Y" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5">No se registraron patrones.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+
+                
+                
+
+                <div class="ultima-table" style="margin-left: 2.3cm;">
+                    <h3 class="roman-title">IV. Resultados de medición:</h3>
+                    <div class="results-ultima">
+                        <table class="results-table">
+                            <thead>
+                                <tr>
+                                    <th rowspan="2">Gas</th>
+                                    <th rowspan="2">Dosis del Gas</th>
+                                    <th>Equipos a Calibrar</th>
+                                    <th rowspan="2">% Error</th>
+                                </tr>
+                                <tr>
+                                    <th>Lectura</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for resultado in resultados %}
+                                <tr>
+                                    <td style="text-align: center;">{{ resultado.gas }}</td>
+                                    <td style="text-align: center;">{{ resultado.lecturaPatron }}</td>
+                                    <td style="text-align: center;">{{ resultado.lecturaEquipo }}</td>
+                                    <td style="text-align: center;">{{ resultado.prob_error }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4">No se registraron resultados.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                </div>
+            {% else %}  
+
+                <div style="margin-left: 2.3cm;">
+                    <h3 class="roman-title">III. Gases y Rango de Medición:</h3>
+                    <p class="content-text">{{ certificado.rango_medicion }}</p>
+                </div> 
+
+                <div style="margin-left: 2.3cm;">
+                    <h3 class="roman-title">IV. Patrones utilizados durante la calibración:</h3>
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Patrón Utilizado</th>
+                                <th>N/P</th>
+                                <th>Lote N°</th>
+                                <th>N° Certificado</th>
+                                <th>Expiración</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for patron in patrones %}
+                            <tr>
+                                <td style="text-align: center;">{{ patron.patronUtil }}</td>
+                                <td style="text-align: center;">{{ patron.n_p }}</td>
+                                <td style="text-align: center;">{{ patron.n_lote }}</td>
+                                <td style="text-align: center;">{{ patron.n_certificado }}</td>
+                                <td style="text-align: center;">{{ patron.fechaExpiracion|date:"d/m/Y" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5">No se registraron patrones.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="ultima-table" style="margin-left: 2.3cm; position: relative;">
+                    <h3 class="roman-title">V. Resultados de medición:</h3>
+                    <div class="results-ultima">
+                        <table class="results-table">
+                            <thead>
+                                <tr>
+                                    <th rowspan="2">Gas</th>
+                                    <th rowspan="2">Dosis del Gas</th>
+                                    <th>Equipos a Calibrar</th>
+                                    <th rowspan="2">% Error</th>
+                                </tr>
+                                <tr>
+                                    <th>Lectura</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for resultado in resultados %}
+                                <tr>
+                                    <td style="text-align: center;">{{ resultado.gas }}</td>
+                                    <td style="text-align: center;">{{ resultado.lecturaPatron }}</td>
+                                    <td style="text-align: center;">{{ resultado.lecturaEquipo }}</td>
+                                    <td style="text-align: center;">{{ resultado.prob_error }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4">No se registraron resultados.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                </div>
+            {% endif %}
+    </div>
+    <div class="firmas-container">
+        {% if es_portatil %}
+            <img src="{% static_file 'img/Imagen3.png' %}" class="Firma11" />  
+            <img src="{% static_file 'img/Imagen4.png' %}" class="Firma22" />
+            <img src="{% static_file 'img/Imagen6.png' %}" class="logoGG" />
+            <img src="{% static_file 'img/Imagen7.png' %}" class="logoCC" />
+            <table class="firmas-table">
+                <tr>
+                    <td>
+                        <div class="firma-linea">
+                            <div style="padding-top: 15px;"><strong>Realizado: Dennis Huamanvilca  Supervisor Operativo</strong></div>
+                        </div>
+                        
+                    </td>
+                    <td>
+                        <div class="firma-linea">
+                            <div style="padding-top: 15px;"><strong>Revisado: Ing. Guillermo Cervetto Gerente General</strong></div>
+                        </div>
+                        
+                    </td>
+                </tr>
+            </table>
+        {% endif %}
+    </div>
+        
+    <hr style="height: 3px; width: 100%; background-color: #c00; border: none; position: absolute; bottom: 0.1cm; left: 0;">
+    <div id="footer-content" style="display: none;">
+        <table class="footer-table">
+            <tr>
+                <td style="width: 70%; text-align: left;">
+                    <strong>CENERIS E.I.R.L.</strong> - Av. Tomás Marsano N°1368 Urb. La Aurora Miraflores/Lima/Perú<br>
+                    Telf.: 01-4800065 <br> Contacto: soporte@ceneris.com <br> www.ceneris.com
+                </td>
+                <td style="width: 30%; text-align: left;">
+                    <div style="font-size: 13px;font-weight: bold;margin-top: 2px;">
+                        Página 1 de {{ num_paginas_pdf }} 
+                    </div>
+                    <div style="color: #000;">
+                        Código:  CEN-ST-PR-01-I-32-F-01<br>
+                        Versión:{{ version_pdf }}<br>
+                        Fecha: {{ fecha_generacion|date:"d/m/Y" }} 
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    {% with anexos=certificado.anexos.all %}
+        {% if anexos %}
+            <!-- Página de Título para los Anexos -->
+            <div class="page-break"></div>
+            <div id="header_content">
+                <table class="header-table">
+                    <tr>
+                        <td style="width: 45%;"><img src="{% static_file 'img/logoCC.png' %}" class="logo" /></td>
+                        <td style="width: 55%; font-size: 13pt; font-weight: bold;">
+                            <div style="margin-left: 95px;">CERTIFICADO NRO: {{ certificado.nro_certificado }}</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <hr style="height: 3px; width: 100%; background-color: #c00; border: none; position: absolute; top: 2.4cm; left: 0;">
+            <div id="content" class="content">
+                <div style="margin-left: 2.3cm;">
+                    {% if es_portatil %}
+                        <h3 class="roman-title">V. Anexos:</h3>
+                        <div class="galeria-anexos">
+                            {% for anexo in anexos %}
+                                <div class="anexo-item">
+                                    <img src="{{ anexo.imagen.url }}">
+                                        
+                                    <!-- Opcional: si tuvieras un campo 'descripcion' en el modelo -->
+                                    <!-- <p class="anexo-caption">{{ anexo.descripcion }}</p> -->
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <h3 class="roman-title">VI. Anexos:</h3>
+                        <div class="galeria-anexos">
+                            {% for anexo in anexos %}
+                                <div class="anexo-item">
+                                    <img src="{{ anexo.imagen.url }}">
+                                        
+                                    <!-- Opcional: si tuvieras un campo 'descripcion' en el modelo -->
+                                    <!-- <p class="anexo-caption">{{ anexo.descripcion }}</p> -->
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+                
+
+            <hr style="height: 3px; width: 100%; background-color: #c00; border: none; position: absolute; bottom: 0.1cm; left: 0;">
+            <div id="footer-content" style="display: none;">
+                <table class="footer-table">
+                    <tr>
+                        <td style="width: 70%; text-align: left;">
+                            <strong>CENERIS E.I.R.L.</strong> - Av. Tomás Marsano N°1368 Urb. La Aurora Miraflores/Lima/Perú<br>
+                            Telf.: 01-4800065 <br> Contacto: soporte@ceneris.com <br> www.ceneris.com
+                        </td>
+                        <td style="width: 30%; text-align: left;">
+                            <div style="font-size: 13px;font-weight: bold;margin-top: 2px;">
+                                Página 1 de {{ num_paginas_pdf }} 
+                            </div>
+                            <div style="color: #000;">
+                                Código:  CEN-ST-PR-01-I-32-F-01<br>
+                                Versión:{{ version_pdf }}<br>
+                                Fecha: {{ fecha_generacion|date:"d/m/Y" }} 
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>  
+        {% endif %}
+    {% endwith %}
+
+</body>
+</html>

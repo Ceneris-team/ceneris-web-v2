@@ -1,0 +1,68 @@
+<!-- calidad/templates/calidad/lista_trabajadores.html -->
+{% extends "dashboard/base_rrhh.html" %}
+
+{% block title %}Listado de Trabajadores{% endblock %}
+
+{% block content %}
+
+    <div class="page-header">
+        <div>
+            <h1>Listado de Trabajadores</h1>
+            <p style="margin: 0;">Consulta y gestiona la lista de todos los trabajadores registrados.</p>
+        </div>
+        <div>
+             <a href="{% url 'calidad:gestion_calidad' %}?view=gestion_trabajadores" class="btn-secondary">&larr; Volver</a>
+        </div>
+    </div>
+
+    <div class="filter-bar">
+        <!-- Formulario de Búsqueda -->
+        <form method="get" action="{% url 'calidad:test_lista_trabajadores' %}" class="search-container">
+            <input type="text" name="dni" class="search-input" value="{{ dni_buscado }}" placeholder="Buscar por DNI...">
+        </form>
+        
+        <!-- Botón de Añadir Nuevo -->
+        
+    </div>
+
+
+    <table>
+        <thead>
+            <tr>
+                <th>DNI</th>
+                <th>Nombre Completo</th>
+                <th>Empresa</th>
+                <th>Área</th>
+                <th>Email</th>
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for trabajador in trabajadores %}
+            <tr>
+                <td>{{ trabajador.dni }}</td>
+                <td>{{ trabajador }}</td>
+                <td>{{ trabajador.empresa }}</td>
+                <td>{{ trabajador.area }}</td>
+                <td>{{ trabajador.email }}</td>
+                <td style="text-align: center;">
+                    <!-- ¡ENLACES DE TEXTO! -->
+                    <a href="{% url 'calidad:buscar_trabajador_info' %}?dni={{ trabajador.dni }}" class="table-action-link">Ver Info</a>
+                    <a href="{% url 'editar_trabajador' trabajador.dni %}" class="table-action-link secondary">Editar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center;">
+                    {% if dni_buscado %}
+                        No se encontraron trabajadores con el DNI "{{ dni_buscado }}".
+                    {% else %}
+                        No hay trabajadores registrados.
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+{% endblock %}

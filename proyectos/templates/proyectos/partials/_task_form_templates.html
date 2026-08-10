@@ -1,0 +1,56 @@
+<!-- =================================================================
+     PLANTILLAS CORREGIDAS Y COMPLETAS
+     ================================================================= -->
+
+<template id="main-task-template">
+    <div class="main-task-card animate__animated animate__fadeInUp">
+        <!-- ¡INPUT OCULTO AÑADIDO! -->
+        <input type="hidden" name="main_task_id__{index}" value="">
+        
+        <div class="main-task-header">
+            <input type="text" name="main_task_titulo__{index}" placeholder="Nombre de la Tarea Principal (ej: Diseño UI)" required>
+            <button type="button" class="btn-remove-main">Eliminar</button>
+        </div>
+        <div class="subtasks-container">
+            <!-- Las subtareas se añadirán aquí -->
+        </div>
+        <button type="button" class="btn-add-subtask">Añadir Subtarea</button>
+    </div>
+</template>
+
+<template id="subtask-template">
+    <div class="subtask-block">
+        <!-- El input oculto para el ID de la Subtarea ya estaba bien -->
+        <input type="hidden" name="subtask_id__{main_index}__{sub_index}" value="">
+        
+        <div class="subtask-row">
+            <input type="text" name="subtask_titulo__{main_index}__{sub_index}" placeholder="Nombre de la Subtarea" required>
+            <input type="date" name="subtask_inicio__{main_index}__{sub_index}" required>
+            <input type="date" name="subtask_fin__{main_index}__{sub_index}" required>
+            <button type="button" class="btn-remove-sub">×</button>
+        </div>
+        
+        <div class="insumos-list"></div>
+        <button type="button" class="btn-add-insumo">Añadir Insumo</button>
+
+        <div class="personal-assignment-container">
+            <label>Asignar Personal:</label>
+            <select class="personal-search" name="personal_asignado__{main_index}__{sub_index}" multiple="multiple"></select>
+        </div>
+    </div>
+</template>
+
+<template id="insumo-row-template">
+    <div class="insumo-row">
+        <!-- ¡INPUT OCULTO AÑADIDO! Para el ID de la Asignación -->
+        <input type="hidden" name="insumo_asignacion_id__{main_index}__{sub_index}__{insumo_index}" value="">
+
+        <select class="insumo-search" name="insumo_id__{main_index}__{sub_index}__{insumo_index}"></select>
+        <input type="number" name="insumo_cantidad__{main_index}__{sub_index}__{insumo_index}" placeholder="Cantidad" min="1" required class="styled-number-input">
+        <button type="button" class="btn-remove-insumo">×</button>
+    </div>
+</template>
+
+<!-- ¡Y NO OLVIDES ESTE CAMPO PARA LAS ELIMINACIONES! -->
+<!-- Ponlo directamente dentro de tu <form>, no en un template -->
+<input type="hidden" name="items_to_delete" id="items-to-delete-input" value="">

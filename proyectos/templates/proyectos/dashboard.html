@@ -1,0 +1,67 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="page-title">Dashboard General</div>
+    
+    <!-- Sección de KPIs -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <h4>Proyectos Activos</h4>
+            <span class="kpi-value">{{ proyectos_activos }}</span>
+        </div>
+        <div class="kpi-card">
+            <h4>Tareas Pendientes</h4>
+            <span class="kpi-value">{{ tareas_pendientes }}</span>
+        </div>
+        <div class="kpi-card">
+            <h4>Progreso General</h4>
+            <!-- Lógica para el progreso total -->
+            <span class="kpi-value">{{ progreso_general|floatformat:0 }}%</span> 
+        </div>
+        <div class="kpi-card">
+            <h4>Costo Total Estimado</h4>
+            <span class="kpi-value">${{ costo_total_estimado|floatformat:2 }}</span>
+        </div>
+    </div>
+    
+    <!-- Sección de Gráficos -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h5>Estado de Proyectos</h5>
+            <!-- ¡EL CAMBIO! El canvas está dentro de un div contenedor -->
+            <div class="chart-container">
+                <canvas id="projectStatusChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h5>Carga de Trabajo (Top 10)</h5>
+            <div class="chart-container">
+                <canvas id="workloadChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card large">
+            <h5>Tendencia de Tareas Completadas (Últimos 6 meses)</h5>
+            <div class="chart-container" style="height: 400px;"> <!-- Altura específica para gráficos más grandes -->
+                <canvas id="completionTrendChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card large">
+            <h5>Progreso por Proyecto Activo</h5>
+            <div class="chart-container" style="height: 400px;">
+                <canvas id="progressChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pasamos los datos de Django a JavaScript -->
+<script id="project-status-data" type="application/json">{{ project_status_data|safe }}</script>
+<script id="workload-data" type="application/json">{{ workload_data|safe }}</script>
+<script id="completion-trend-data" type="application/json">{{ completion_trend_data|safe }}</script>
+<script id="progress-data" type="application/json">{{ progress_data|safe }}</script>
+
+<!-- Script para dibujar los gráficos -->
+<script src="{% static 'js/dashboard_charts.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,152 @@
+<!-- calidad/templates/calidad/clinicas/clinica_form_multistep.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block body_class %}form-background{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        /* Estilo para la barra de progreso de 2 pasos */
+        #progressbar.two-steps li {
+            width: 50%;
+        }
+        .back-button-container {
+            max-width: 800px;
+            width: 90%;
+            margin: 30px auto 10px auto;
+            text-align: left;
+        }
+        .field-error { color: #dc3545; font-size: 0.8rem; font-weight: 600; text-align: left; margin-top: -5px; margin-bottom: 10px; }
+        .field-error ul { list-style: none; padding: 0; margin: 0; }
+        body.form-background {
+            background-image: url("{% static 'img/clinic_background.jpg' %}");
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="back-button-container">
+        <a href="{% url 'calidad:gestion_clinicas' %}" class="btn-secondary">
+            &larr; Volver
+        </a>
+    </div>
+
+    <form id="msform" method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+
+        <ul id="progressbar" class="two-steps">
+            <li class="active">Información Principal</li>
+            <li>Detalles de Contacto</li>
+        </ul>
+        
+        <!-- Fieldset 1: Información Principal -->
+        <fieldset>
+            <h2 class="fs-title">{{ form_title }}</h2>
+            <h3 class="fs-subtitle">Datos de identificación de la clínica</h3>
+            
+            <input type="text" name="{{ form.nombre.html_name }}" placeholder="Nombre de la Clínica *" value="{{ form.nombre.value|default_if_none:'' }}" required>
+            {% if form.nombre.errors %}<div class="field-error">{{ form.nombre.errors }}</div>{% endif %}
+
+            <input type="text" name="{{ form.direccion.html_name }}" placeholder="Dirección (Opcional)" value="{{ form.direccion.value|default_if_none:'' }}">
+            {% if form.direccion.errors %}<div class="field-error">{{ form.direccion.errors }}</div>{% endif %}
+
+            <div style="text-align:left; margin-bottom: 10px;">
+                <label style="display:block; font-weight:600; color:#444; margin-bottom:5px; font-size:14px;">Imagen de fachada (Opcional)</label>
+                <input type="file" name="{{ form.imagen_fachada.html_name }}" accept="image/*">
+                {% if form.imagen_fachada.errors %}<div class="field-error">{{ form.imagen_fachada.errors }}</div>{% endif %}
+
+                {% if form.instance and form.instance.imagen_fachada %}
+                    <div style="margin-top:10px;">
+                        <a href="{{ form.instance.imagen_fachada.url }}" target="_blank" style="text-decoration:none;">
+                            <img src="{{ form.instance.imagen_fachada.url }}" alt="Fachada" style="max-width: 100%; height: 140px; object-fit: cover; border: 1px solid #ddd; border-radius: 6px;">
+                        </a>
+                        <div style="font-size:12px; color:#666; margin-top:4px;">Vista previa (click para abrir)</div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <input type="button" name="next" class="next action-button" value="Siguiente"/>
+        </fieldset>
+
+        <!-- Fieldset 2: Detalles de Contacto (Ahora con contenido) -->
+        <fieldset>
+            <h2 class="fs-title">Detalles de Contacto</h2>
+            <h3 class="fs-subtitle">Información de contacto de la clínica.</h3>
+
+            <input type="text" name="{{ form.telefono.html_name }}" placeholder="Teléfono de Contacto" value="{{ form.telefono.value|default_if_none:'' }}">
+            {% if form.telefono.errors %}<div class="field-error">{{ form.telefono.errors }}</div>{% endif %}
+
+            <input type="email" name="{{ form.email_contacto.html_name }}" placeholder="Email de Contacto" value="{{ form.email_contacto.value|default_if_none:'' }}">
+            {% if form.email_contacto.errors %}<div class="field-error">{{ form.email_contacto.errors }}</div>{% endif %}
+            
+            <input type="text" name="{{ form.persona_contacto.html_name }}" placeholder="Persona de Contacto" value="{{ form.persona_contacto.value|default_if_none:'' }}">
+            {% if form.persona_contacto.errors %}<div class="field-error">{{ form.persona_contacto.errors }}</div>{% endif %}
+
+            <input type="url" name="{{ form.google_maps_url.html_name }}" placeholder="https://maps.google.com/maps?..." value="{{ form.google_maps_url.value|default_if_none:'' }}">
+            {% if form.google_maps_url.errors %}<div class="field-error">{{ form.google_maps_url.errors }}</div>{% endif %}
+
+            <!-- Sección de Archivos (Speech/PDFs) -->
+            {% if clinica %}
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+                <h3 style="color: #333; font-size: 16px; font-weight: 600; margin-bottom: 15px;">📄 Documentos de la Clínica (Speech, PDFs, etc.)</h3>
+                
+                {% if archivos %}
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #555; font-size: 14px; margin-bottom: 10px;">Archivos actuales:</h4>
+                    <ul style="list-style: none; padding: 0;">
+                    {% for archivo in archivos %}
+                        <li style="padding: 10px; background: #f9f9f9; border-left: 3px solid #ff6b6b; margin-bottom: 8px; border-radius: 4px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>{{ archivo.descripcion }}</strong><br>
+                                    <small style="color: #666;">Subido: {{ archivo.fecha_carga|date:"d/m/Y H:i" }} | Estado: {% if archivo.activo %}<span style="color: green;">✓ Activo</span>{% else %}<span style="color: red;">✗ Inactivo</span>{% endif %}</small>
+                                </div>
+                                <a href="{{ archivo.archivo_pdf.url }}" download style="color: #007bff; text-decoration: none; margin-left: 10px;">Descargar</a>
+                            </div>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <div style="background: #f0f8ff; padding: 15px; border-radius: 6px; border-left: 4px solid #0066cc;">
+                    <h4 style="margin-top: 0; color: #0066cc;">Agregar nuevo documento</h4>
+                    <input type="hidden" name="agregar_archivo" value="1">
+                    
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; font-weight: 600; color: #333; margin-bottom: 5px; font-size: 14px;">Descripción del documento *</label>
+                        <input type="text" name="{{ archivo_form.descripcion.html_name }}" placeholder="Ej: Speech para procedimiento de medición" value="{{ archivo_form.descripcion.value|default_if_none:'' }}" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        {% if archivo_form.descripcion.errors %}<div class="field-error">{{ archivo_form.descripcion.errors }}</div>{% endif %}
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; font-weight: 600; color: #333; margin-bottom: 5px; font-size: 14px;">Cargar archivo (PDF, DOC, TXT) *</label>
+                        <input type="file" name="{{ archivo_form.archivo_pdf.html_name }}" accept=".pdf,.doc,.docx,.txt" required style="display: block; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        {% if archivo_form.archivo_pdf.errors %}<div class="field-error">{{ archivo_form.archivo_pdf.errors }}</div>{% endif %}
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: flex; align-items: center; font-size: 14px; color: #333;">
+                            <input type="checkbox" name="{{ archivo_form.activo.html_name }}" style="margin-right: 8px;">
+                            Documento activo
+                        </label>
+                        {% if archivo_form.activo.errors %}<div class="field-error">{{ archivo_form.activo.errors }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <input type="button" name="previous" class="previous action-button-previous" value="Anterior"/>
+            <input type="submit" name="submit" class="submit action-button" value="Guardar Clínica"/>
+        </fieldset>
+    </form>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.3/jquery.easing.min.js"></script>
+    <script src="{% static 'js/multistep-form.js' %}"></script>
+{% endblock %}

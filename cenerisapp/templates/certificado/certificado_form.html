@@ -1,0 +1,286 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+
+<div class="form-container">
+    <form method="post" action="{% if modo_configuracion_lote %}{% url 'cenerisapp:configurar_lote_certificacion' %}{% else %}{% if componente %}{% url 'cenerisapp:crear_certificado_componente' componente.id_componente %}{% else %}{% url 'cenerisapp:crear_certificado_dispositivo' dispositivo.id_dispositivo %}{% endif %}{% endif %}" class="form-card">   
+        {% csrf_token %}
+
+        {% if modo_configuracion_lote %}
+            <h2>{{ titulo }}</h2>
+            <p>Los datos ingresados aquí se usarán como plantilla para todos los certificados que crees en esta sesión.</p>
+        {% else %}
+            <h2>{{ titulo }} para: <strong>{{ dispositivo }}</strong></h2>
+        {% endif %}
+
+        <!-- SECCIÓN 1: DATOS DEL CERTIFICADO (Principal) -->
+        <div class="form-section">
+            <h3>Datos Generales</h3>
+            
+            {% if not modo_configuracion_lote %}
+                <div class="form-group">
+                    <label><strong>Empresa Asociada:</strong></label>
+                    <p style="margin-top: 5px;">
+                        {% if empresa %}
+                            {{ empresa.nombreE }}
+                        {% else %}
+                            <em>No asignada a un dispositivo con empresa.</em>
+                        {% endif %}
+                    </p>
+                    
+                </div>
+            
+                <div class="form-group">
+                    <label><strong>Estado Inicial:</strong></label>
+                    <p class="form-control-static">{{ estado_inicial_para_mostrar }}</p>
+                    <p class="form-help-text">Este valor se calcula automáticamente a partir del último certificado.</p>
+                </div>
+                    
+                    <!-- Renderizamos el campo del formulario OCULTO para que su valor se envíe -->
+                {{ form.estado_inicial }}
+            {% endif %}
+            <div class="form-grid">
+                
+                {% for field in form %}
+                    {% if field.name not in "estado_inicial,id_empresa,fechCertificado,num_paginas_pdf,codigo_pdf,version_pdf" %}
+                        
+                        {% if not modo_configuracion_lote %}
+                            {% if field.name == 'estadoFinal' or field.name == 'nro_certificado' or field.name == 'id_programa' %}
+                                <div class="form-group">
+                                    {{ field.label_tag }} 
+                                    {{ field }} 
+                                    {{ field.errors }}
+                                </div>
+                            {% endif %}
+                        
+                        {# Condición 2: Si SÍ estamos en modo lote, mostramos los campos comunes. #}
+                        {% elif modo_configuracion_lote %}
+                            {# Aquí listamos explícitamente los campos que SÍ queremos ver en modo lote. #}
+                            {% if field.name in "temp,presion,humedadRelativa,proxFecha,rango_medicion" %}
+                                <div class="form-group">
+                                    {{ field.label_tag }} 
+                                    {{ field }} 
+                                    {{ field.errors }}
+                                </div>
+                            {% endif %}
+                        {% endif %}
+
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% if modo_configuracion_lote %}
+            <div class="form-section">
+                <h3>Patrones Utilizados</h3>
+                
+                <!-- El management_form es OBLIGATORIO. Le dice a Django cuántos formularios hay. -->
+                {{ patrones_formset.management_form }}
+                
+                <!-- Contenedor para mostrar errores generales del formset -->
+                {% for error in patrones_formset.non_form_errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                <div id="patrones-form-list">
+                    <!-- Bucle para mostrar los formularios existentes y los 'extra' -->
+                    {% for patron_form in patrones_formset %}
+                        <div class="inline-form-group dynamic-row">
+                            
+                            <!-- Ocultamos el campo 'id' si existe -->
+                            {% if patron_form.instance.pk %}{{ patron_form.id }}{% endif %}
+
+                            <!-- Renderizamos cada campo visible del formulario -->
+                            {% for field in patron_form.visible_fields %}
+                                <div class="form-group">
+                                    {{ field.label_tag }}
+                                    {{ field }}
+                                    {{ field.errors }}
+                                </div>
+                            {% endfor %}
+
+                            <!-- Mostramos el checkbox de 'Eliminar' solo para formularios existentes -->
+                            {% if patron_form.instance.pk and patrones_formset.can_delete %}
+                                <div class="form-group checkbox-group">
+                                    {{ patron_form.DELETE.label_tag }}
+                                    {{ patron_form.DELETE }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Botón para añadir nuevas filas con JavaScript -->
+                <button type="button" id="add-patrones-form" class="btn btn-secondary btn-sm">Añadir Patrón</button>
+            </div>
+
+
+            <!-- ============================================= -->
+            <!--          SECCIÓN 3: RESULTADOS              -->
+            <!-- ============================================= -->
+            <div class="form-section">
+                <h3>Resultados de Medición</h3>
+
+                {{ resultados_formset.management_form }}
+                {% for error in resultados_formset.non_form_errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                <div id="resultados-form-list">
+                    {% for resultado_form in resultados_formset %}
+                        <div class="inline-form-group dynamic-row">
+                            {% if resultado_form.instance.pk %}{{ resultado_form.id }}{% endif %}
+                            
+                            {% for field in resultado_form.visible_fields %}
+                                <div class="form-group">
+                                    {{ field.label_tag }}
+                                    {{ field }}
+                                    {{ field.errors }}
+                                </div>
+                            {% endfor %}
+                            
+                            {% if resultado_form.instance.pk and resultados_formset.can_delete %}
+                                <div class="form-group checkbox-group">
+                                    {{ resultado_form.DELETE.label_tag }}
+                                    {{ resultado_form.DELETE }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <button type="button" id="add-resultados-form" class="btn btn-secondary btn-sm">Añadir Resultado</button>
+            </div>
+        {% endif %}
+
+        <!-- ============================================= -->
+        <!-- PLANTILLAS VACÍAS PARA EL JAVASCRIPT ( crucial) -->
+        <!-- ============================================= -->
+        <div id="patrones-empty-form" style="display:none;">
+            <div class="inline-form-group dynamic-row">
+                {% for field in patrones_formset.empty_form.visible_fields %}
+                    <div class="form-group">
+                        {{ field.label_tag }}
+                        {{ field }}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div id="resultados-empty-form" style="display:none;">
+            <div class="inline-form-group dynamic-row">
+                {% for field in resultados_formset.empty_form.visible_fields %}
+                    <div class="form-group">
+                        {{ field.label_tag }}
+                        {{ field }}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        {% if not modo_configuracion_lote %}
+            <div class="form-section">
+                <h4>Datos para el Pie de Página del PDF</h4>
+                <div class="form-grid">
+                    <div class="form-group">{{ form.version_pdf.label_tag }} {{ form.version_pdf }}</div>
+                </div>
+            </div>
+            <div class="form-actions" style="justify-content: flex-start; border-top: none; padding-top: 20px;">
+                <!-- ¡CORRECCIÓN CLAVE AQUÍ! Este enlace solo se muestra si NO estamos en modo lote -->
+                <a href="{% url 'cenerisapp:lista_certificados_dispositivo' dispositivo.id_dispositivo %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Guardar y Generar PDF</button>
+            </div>
+        {% else %}
+            <!-- Mostramos botones diferentes para el modo lote -->
+            <div class="form-actions">
+                <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar Datos del Lote</button>
+            </div>
+        {% endif %}
+        
+        
+    </form>
+</div>
+<!-- JavaScript completo -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    function setupInlineFormset(prefix) {
+        const addBtn = document.getElementById(`add-${prefix}-form`);
+        if (!addBtn) return;
+
+        const formList = document.getElementById(`${prefix}-form-list`);
+        const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+        const emptyFormTemplateEl = document.getElementById(`${prefix}-empty-form`);
+
+        if (!formList || !totalFormsInput || !emptyFormTemplateEl) return;
+        
+        const emptyFormTemplate = emptyFormTemplateEl.innerHTML;
+
+        addBtn.addEventListener('click', () => {
+            const formIndex = parseInt(totalFormsInput.value);
+            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, formIndex);
+            formList.insertAdjacentHTML('beforeend', newFormHtml);
+            totalFormsInput.value = formIndex + 1;
+        });
+    }
+    setupInlineFormset('patrones');
+    setupInlineFormset('resultados');
+
+    const generarBtn = document.getElementById('generar-pdf-btn');
+    
+    if (generarBtn) {
+        generarBtn.addEventListener('click', () => {
+            console.log("--- INICIO DEPURACIÓN PDF ---");
+            console.log("Botón 'Generar PDF' presionado.");
+
+            // 1. Buscamos los elementos por su ID generado por Django
+            const numPaginasInput = document.getElementById('id_num_paginas_pdf');
+            const codigoInput = document.getElementById('id_codigo_pdf');
+            const versionInput = document.getElementById('id_version_pdf');
+
+            console.log("Elemento input 'num_paginas_pdf':", numPaginasInput);
+            console.log("Elemento input 'codigo_pdf':", codigoInput);
+            console.log("Elemento input 'version_pdf':", versionInput);
+
+            // 2. Verificamos si los encontró
+            if (!numPaginasInput || !codigoInput || !versionInput) {
+                alert("Error de depuración: No se encontraron uno o más campos del PDF. Revisa los IDs en el HTML y la consola.");
+                return;
+            }
+
+            // 3. Leemos los valores
+            const numPaginas = numPaginasInput.value;
+            const codigoP = codigoInput.value;
+            const versionC = versionInput.value;
+            
+            console.log("Valores leídos de los campos:", { numPaginas, codigoP, versionC });
+
+            // 4. Obtenemos el ID del certificado
+            const certificadoId = "{{ form.instance.pk|default:'' }}"; 
+            console.log("ID del Certificado (desde la plantilla):", certificadoId);
+
+            if (!certificadoId) {
+                alert("Error: Primero debes GUARDAR el certificado para poder generar el PDF (no se encontró un ID).");
+                return;
+            }
+
+            // 5. Construimos la URL
+            let url = `/certificados/${certificadoId}/pdf/`;
+            url += `?num_paginas=${encodeURIComponent(numPaginas)}`;
+            url += `&codigo=${encodeURIComponent(codigoP)}`;
+            url += `&version=${encodeURIComponent(versionC)}`;
+            
+            console.log("URL final generada:", url);
+            console.log("--- FIN DEPURACIÓN PDF ---");
+
+            // 6. Redirigimos
+            window.open(url, '_blank');
+        });
+    }
+
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,847 @@
+:root {
+    --bg_color: #ffffff;
+    --title_color: #d45b04;
+    --text_color: #222222;
+    --dark_color: #864415;
+    --second_color: #f5f5f5;  
+}
+
+html {
+    scrollbar-width: none;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.content-area{
+  background-color: #f6f6fc;
+  transition: all 0.3s;
+  width: 100%; 
+  min-height: calc(100vh - 40px);
+  border-radius: 0px 12px 12px 0px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.content-bar{
+  width: calc(100% - 40px);
+  margin-left:20px;
+  margin-top:10px;
+  background:#fff;
+  box-shadow: 0px 2px 10px 0px rgba(0,0,0,0.06);
+  border-radius:12px;
+  display:grid;
+  justify-content: center;
+  align-items: center;
+  grid-template-columns: 50px 3fr 1.5fr 1.5fr 100px;
+  gap: 15px;
+}
+.content-bar .header {
+    background-color: transparent;
+    box-shadow: none;
+    border-bottom: 2px solid #e0e0e0;
+    border-radius: 0;
+    font-weight: bold;
+    color: #555;
+}
+.page-title{
+  font-weight:bold;
+  font-size:26px;
+  padding-left:20px;
+  padding-top:20px;
+}
+.page-desc{
+  padding-left:20px;
+  font-weight:300;
+  color:#525252;
+}
+
+.inventory-list-container {
+    padding: 20px;
+}
+
+.itemnum{
+  padding: 15px;
+  color:gray;
+  font-weight:300;
+}
+.itemname {
+  padding: 15px;
+  color: black;
+  font-weight: 500; /* Un poco más de peso para el nombre */
+}
+.itemprice {
+  padding: 15px;
+  color: #319959;
+}
+.itemstock {
+  padding: 15px;
+  color: black;
+  font-weight: 300;
+}
+.btncontainer {
+  /* Usamos Flexbox para alinear los botones, es más moderno */
+  display: flex;
+  justify-content: flex-end; /* Alinea los botones a la derecha */
+  gap: 10px; /* Espacio entre botones */
+  padding-right: 15px;
+}
+.cbbtn {
+  /* Ahora es una etiqueta <a>, la estilizamos como botón */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 35px;
+  height: 35px;
+  border-radius: 12px;
+  background-color: #f0f0f0;
+  color: #555;
+  text-decoration: none;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.cbbtn:hover {
+    background-color: var(--title_color);
+    color: #fff;
+}
+
+@media only screen and (max-width: 1160px) {
+  body{
+    padding:0;
+    margin:0;
+    font-size:14px;
+  }
+  .sidenav{
+    height:100%;
+    border-radius:0px;
+  }
+    .content-area{
+    height:100%;
+      width:calc(100% - 250px);
+      border-radius:0px;
+  }
+}
+@media only screen and (max-width: 780px) {
+  body{
+    padding:0;
+    margin:0;
+    font-size:13px;
+  }
+  .sidenav{
+    height:100%;
+    border-radius:0px;
+    left:-251px;
+  }
+    .content-area{
+    height:100%;
+      width:calc(100%);
+      border-radius:0px;
+      margin-left:0px;
+  }
+  .mobilebar{
+  background:#fff;
+  box-shadow: 0px 2px 10px 0px rgba(0,0,0,0.06);
+  display:block;
+}
+  .content-bar{
+    grid-template-columns: 0fr 1fr 0fr;
+  }
+  .itemprice{
+    display:none;
+  }
+  .itemstock{
+    display:none;
+  }
+  .cbbtn{
+  margin-top:5px;
+    margin-right:5px;
+}
+}
+
+/* --- ESTILOS PARA EL MODAL DE EDICIÓN --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #fff;
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 450px;
+    position: relative;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: #aaa;
+    cursor: pointer;
+    line-height: 1;
+}
+
+#modal-title {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: #2c3e50;
+}
+
+/* --- ESTILOS PARA EL MENÚ DE OPCIONES DESPLEGABLE --- */
+.options-container {
+    position: static; /* Cambiamos a estático para que no sea el contexto de posicionamiento */
+}
+
+.options-menu {
+    display: none; /* Oculto por defecto */
+    position: absolute;
+    top: 100%; /* Justo debajo del botón */
+    right: 0;
+    z-index: 100; /* Asegura que esté por encima de otras filas */
+    width: 240px; /* Ancho del menú */
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    padding: 5px 0; /* Espaciado vertical interno */
+}
+.options-container > .options-menu.show {
+    display: block !important;
+}
+/* Esto le dice al contenedor de scroll que no oculte su contenido */
+.table-container-full {
+    overflow: visible;
+    overflow-x: auto; /* Mantenemos el scroll horizontal */
+}
+.scrollable-table {
+    overflow: visible;
+}
+/* Estilos para los enlaces dentro del menú */
+.options-menu a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 15px;
+    color: #333;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease;
+}
+
+
+.options-menu a:hover {
+    background-color: #f5f5f5;
+}
+
+.options-menu a .fa,
+.options-menu a .fas {
+    width: 20px;
+    text-align: center;
+    color: #888;
+}
+
+/* Estilo para la opción de eliminar */
+.options-menu a.delete-option {
+    color: #e74c3c;
+}
+.options-menu a.delete-option:hover {
+    background-color: #fbecec;
+}
+.options-menu a.delete-option:hover .fa,
+.options-menu a.delete-option:hover .fas {
+    color: #e74c3c;
+}
+
+/* --- ESTILOS PARA EL MODAL DE CONFIRMACIÓN --- */
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.modal-actions button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-secondary {
+    background-color: #ecf0f1;
+    color: #34495e;
+}
+.btn-secondary:hover {
+    background-color: #bdc3c7;
+}
+
+.btn-danger {
+    background-color: #e74c3c;
+    color: white;
+}
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+/* Clase para la animación de desaparición */
+.fade-out {
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+    opacity: 0;
+    transform: translateX(-30px);
+}
+
+/* --- ESTILOS PARA EL REPORTE DE COSTOS POR PROYECTO --- */
+.project-cost-report-container {
+    padding: 0 20px 20px 20px;
+}
+
+.project-summary-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.07);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 5px solid #3498db; /* Acento de color */
+}
+
+.project-summary-card h2 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: #333;
+}
+
+.total-cost {
+    text-align: right;
+}
+.total-cost span {
+    display: block;
+    font-size: 0.9rem;
+    color: #666;
+}
+.total-cost strong {
+    font-size: 2rem;
+    color: #2ecc71; /* Verde para el costo total */
+}
+
+.tasks-list {
+    display: grid;
+    gap: 15px;
+}
+
+.task-cost-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    display: flex;
+    gap: 20px;
+}
+
+.task-info {
+    flex: 1; /* Ocupa la mitad del espacio */
+    border-right: 1px solid #eee;
+    padding-right: 20px;
+}
+
+.task-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 0;
+}
+.task-total-cost {
+    margin-top: 10px;
+    text-align: left;
+}
+.task-total-cost span {
+    font-size: 0.8rem;
+    color: #888;
+    display: block;
+}
+.task-total-cost strong {
+    font-size: 1.5rem;
+    color: #e67e22; /* Naranja para costos de tareas */
+}
+
+.task-insumos-list {
+    flex: 1; /* Ocupa la otra mitad */
+}
+
+.task-insumos-list h5 {
+    font-size: 0.9rem;
+    color: #777;
+    margin-top: 0;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.task-insumos-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.task-insumos-list li {
+    font-size: 0.9rem;
+    padding: 5px 0;
+    border-bottom: 1px solid #f5f5f5;
+}
+.task-insumos-list li:last-child {
+    border-bottom: none;
+}
+.task-insumos-list li small {
+    color: #999;
+    margin-left: 5px;
+}
+
+/* --- ESTILOS PARA EL BUSCADOR DE PROYECTOS --- */
+
+.project-finder-container {
+    background: #ffffff;
+    padding: 20px;
+    margin: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.project-finder-container h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.project-filter-form {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.project-filter-form .select2-container {
+    flex-grow: 1; /* Hace que el buscador ocupe el espacio disponible */
+}
+
+/* Estilo para el botón de generar reporte */
+.btn-generate-report {
+    padding: 10px 20px;
+    border: none;
+    background-color: #854442; /* Tu color marrón */
+    color: white;
+    font-size: 0.9rem;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-generate-report:hover {
+    background-color: #6d3836; /* Un marrón más oscuro */
+    transform: translateY(-1px);
+}
+
+.insumo-asignado-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.btn-devolver-insumo {
+    background: none;
+    border: none;
+    color: #95a5a6;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 5px;
+    transition: color 0.2s, background-color 0.2s;
+}
+.btn-devolver-insumo:hover {
+    color: #fff;
+    background-color: #e67e22; /* Color naranja para devolución */
+}
+
+/* --- ESTILOS UNIFICADOS PARA TABLAS DE INVENTARIO --- */
+
+.inventory-list-container {
+    padding: 20px;
+}
+
+/* El contenedor principal de cada fila */
+.content-bar {
+    width: 100%;
+    margin-bottom: 10px;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    border-radius: 12px;
+    display: grid;
+    align-items: center;
+    gap: 15px;
+    padding: 10px 15px;
+    transition: all 0.2s ease-in-out;
+}
+.content-bar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+/* El encabezado de la tabla */
+.content-bar.header {
+    background-color: transparent;
+    box-shadow: none;
+    border-bottom: 2px solid #e0e0e0;
+    border-radius: 0;
+    font-weight: bold;
+    color: #555;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+/* Clases para las celdas (reutilizables) */
+.col-id { padding: 5px; color: gray; font-weight: 300; text-align: center; }
+.col-main { font-weight: 500; }
+.col-secondary { color: #555; }
+.col-highlight { color: #319959; }
+.col-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+/* Botones dentro de la columna de acciones */
+.col-actions .cbbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 35px;
+    height: 35px;
+    border-radius: 12px;
+    background-color: #f0f0f0;
+    color: #555;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.col-actions .cbbtn:hover {
+    background-color: #34495e;
+    color: #fff;
+}
+
+.form-actions-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* --- ESTILOS DEFINITIVOS PARA LA TABLA DE ITEMS DETALLADA Y RESPONSIVA --- */
+
+/* 1. Contenedor exterior que permite el scroll horizontal */
+.table-container-full {
+    width: 100%;
+    overflow-x: auto;
+    padding: 0 20px 20px 20px;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    background-color: #ffffff;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+}
+
+.header-container .page-title{
+    display: flex; /* Opcional: para centrar el texto dentro de cada elemento */
+    justify-content: center;
+    align-items: center;
+    font-size: 2.5rem;
+}
+/* 3. Encabezado de la tabla (Ahora es STICKY) */
+.item-list-header-full {
+    display: grid;
+    /* Define el tamaño de cada una de las 12 columnas */
+    grid-template-columns: 120px 150px 120px 120px 150px 180px 120px 150px 150px 120px;
+    gap: 15px;
+    padding: 15px 20px;
+    color: #6c757d;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    text-align: left;
+    
+    /* ¡LA MAGIA DEL ENCABEZADO PEGAJOSO! */
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    background-color: #ffffff; /* Fondo sólido para que no se vea el contenido debajo */
+    z-index: 10;
+}
+
+/* 4. Fila de un item individual */
+.item-row-full {
+    display: grid;
+    
+    /* Mismas columnas que el header para una alineación perfecta */
+    grid-template-columns: 120px 150px 120px 120px 150px 180px 120px 150px 150px 120px;
+    gap: 15px;
+    align-items: center;
+    padding: 15px 20px;
+    font-size: 0.9rem;
+    border-top: 2px solid #e9ecef;
+    border-bottom: 1px solid #f5f5f5; /* Separador de fila sutil */
+    transition: background-color 0.2s ease;
+    position: relative;
+}
+.item-row-full:last-child {
+    border-bottom: none; /* No hay borde en la última fila */
+}
+.item-row-full:hover {
+    background-color: #f8f9fa; /* Efecto hover para resaltar la fila */
+}
+
+/* Asegura que el contenido de las celdas no se desborde */
+.item-row-full > div {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.col-acciones {
+    /* ¡LA CLAVE! Permite que el menú se salga de los límites de la celda */
+    position: static;
+    align-self: center; /* Centra el ítem verticalmente */
+    justify-self: center;
+}
+.item-row-empty {
+    text-align: center;
+    padding: 30px;
+    color: #6c757d;
+}
+
+/* --- ESTILOS PARA EL CENTRO DE NOTIFICACIONES DE CALIBRACIÓN --- */
+
+/* Grilla principal para las 3 columnas */
+.notifications-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); /* Columnas responsivas */
+    gap: 20px;
+    padding: 20px;
+    /* ¡LA CLAVE! Le damos una altura que dependa de la ventana, menos el espacio del header/footer */
+    height: calc(100vh - 150px); /* Ajusta 200px a la altura de tu navbar + header de página */
+    
+}
+
+/* Columna individual */
+.notification-column {
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    
+    /* ¡LA MAGIA DE FLEXBOX! */
+    display: flex;
+    flex-direction: column; /* Apila el header y la lista verticalmente */
+    scrollbar-width: none;
+    /* Evita que el contenido se desborde de la columna */
+    overflow: hidden; 
+}
+
+/* El encabezado de la columna (se mantendrá fijo) */
+.column-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    color: white;
+    /* Le quitamos el border-radius inferior para que se una bien con la lista */
+    border-radius: 12px 12px 0 0;
+    scrollbar-width: none;
+    /* Le decimos que no se encoja */
+    flex-shrink: 0; 
+}
+.column-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+.column-header h3 small {
+    font-weight: 400;
+    opacity: 0.8;
+}
+
+/* Colores para cada nivel de urgencia */
+.column-header.warning { background-color: #3498db; } /* Azul para "cerca" */
+.column-header.urgent { background-color: #f39c12; } /* Naranja para "muy cerca" */
+.column-header.expired { background-color: #e74c3c; } /* Rojo para "vencido" */
+
+
+/* Lista de tarjetas de notificación */
+.notification-list {
+    padding: 15px;
+    overflow-y: auto;
+    flex-grow: 1; /* Permite que la lista ocupe el espacio y tenga scroll */
+    scrollbar-width: thin;
+}
+
+/* Tarjeta individual de notificación */
+.notification-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    transition: all 0.2s ease-in-out;
+    text-decoration: none;
+    color: inherit;
+    flex-direction: column;
+}
+.notification-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.item-info .item-code {
+    font-size: 0.8rem;
+    color: #6c757d;
+    display: block;
+}
+.item-info .item-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.item-date {
+    text-align: right;
+}
+.item-date span {
+    font-size: 0.8rem;
+    color: #6c757d;
+    display: block;
+}
+.item-date strong {
+    font-weight: 600;
+}
+
+.no-notifications {
+    text-align: center;
+    padding: 20px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Responsive para pantallas pequeñas */
+@media (max-width: 992px) {
+    .notifications-grid {
+        grid-template-columns: 1fr; /* Apila las columnas */
+    }
+}
+
+.content-bar.header.accesorios {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.content-bar.accesorios {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.content-bar.accesorios.col-actions {
+    align-content: center;
+    justify-content: center;
+}
+
+.filters-container {
+    padding: 15px 20px;
+    margin:20px auto;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.advanced-filter-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+    align-items: end;
+}
+
+.filter-group.text-search {
+    grid-column: span 3;
+    position: relative;
+}
+
+.filter-group.text-search .fa,
+.filter-group.text-search .fas {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #aaa;
+}
+
+.filter-group input[type="text"] {
+    padding-left: 40px;
+}
+.filter-group input, .filter-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.95rem; /* Ajustado para consistencia */
+}
+.filter-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.filter-actions {
+    display: flex;
+    
+}
+
+.filters-container.detalle{
+    width: 95%;
+}
+
+.notification-card .card-actions {
+    margin-bottom: 5px;
+    display: flex;
+    gap: 290px;
+    
+}
+
+.btn-calibrado, .btn-details {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s;
+}
+
+.btn-calibrado { background-color: #d4edda; color: #155724; border-color: #c3e6cb;}
+.btn-calibrado:hover { background-color: #2ecc71; color: white; }
+
+.btn-details { background-color: #f0f0f0; color: #555; }
+.btn-details:hover { background-color: #3498db; color: white; }
+
+.card-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}

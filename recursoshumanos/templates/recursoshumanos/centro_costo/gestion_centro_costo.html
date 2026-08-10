@@ -1,0 +1,34 @@
+<!-- calidad/templates/calidad/centro_costo/gestion_centro_costo.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Gestión de Centros de Costo{% endblock %}
+
+{% block content %}
+    <h1>Gestión de Centros de Costo</h1>
+    <p>Administra los centros de costo para la asignación de personal y proyectos.</p>
+    
+    <div class="dashboard-grid">
+        <!-- Tarjeta para Crear Nuevo Centro de Costo -->
+        <a href="{% url 'recursoshumanos:crear_centro_costo' %}" class="card">
+            <div class="card__icon">💰</div>
+            <h2 class="card__title">Registrar Centro de Costo</h2>
+            <p class="card__description">Añade un nuevo centro de costo al sistema con su código y nombre.</p>
+            <div class="card__footer">Registrar Nuevo &rarr;</div>
+        </a>
+        
+        <!-- Tarjeta para Ver el Listado -->
+        <a href="{% url 'recursoshumanos:lista_centro_costo' %}" class="card">
+            <div class="card__icon">📋</div>
+            <h2 class="card__title">Listado de Centros de Costo</h2>
+            <p class="card__description">Consulta, edita y gestiona la lista de todos los centros de costo existentes.</p>
+            <div class="card__footer">Ver Listado &rarr;</div>
+        </a>
+        <!-- ¡NUEVA TARJETA DE ASIGNACIÓN! -->
+        <a href="{% url 'recursoshumanos:asignacion_masiva_centro_costo' %}" class="card">
+            <div class="card__icon">↔️</div> {# Ícono de flechas de intercambio #}
+            <h2 class="card__title">Asignar Trabajadores</h2>
+            <p class="card__description">Asigna trabajadores a diferentes centros de costo de forma masiva y visual.</p>
+            <div class="card__footer">Ir a Asignación &rarr;</div>
+        </a>
+    </div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Gestión de Empresas{% endblock %}
+{% block content %}
+    <h1>Gestión de Empresas</h1>
+    <p>Administra las empresas disponibles en el sistema.</p>
+    <div class="dashboard-grid">
+        <a href="{% url 'recursoshumanos:crear_empresa' %}" class="card">
+            <div class="card__icon">🏢</div>
+            <h2 class="card__title">Registrar Empresa</h2>
+            <p class="card__description">Añade una nueva empresa al sistema.</p>
+            <div class="card__footer">Registrar &rarr;</div>
+        </a>
+        <a href="{% url 'recursoshumanos:lista_empresas' %}" class="card">
+            <div class="card__icon">📋</div>
+            <h2 class="card__title">Ver Empresas</h2>
+            <p class="card__description">Consulta, edita y gestiona las empresas existentes.</p>
+            <div class="card__footer">Ver Listado &rarr;</div>
+        </a>
+        <a href="{% url 'recursoshumanos:asignacion_masiva_empresas' %}" class="card">
+            <div class="card__icon">↔️</div>
+            <h2 class="card__title">Asignar Trabajadores</h2>
+            <p class="card__description">Gestiona qué trabajadores pertenecen a cada empresa de forma masiva y visual.</p>
+            <div class="card__footer">Asignar &rarr;</div>
+        </a>
+    </div>
+{% endblock %}

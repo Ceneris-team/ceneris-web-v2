@@ -1,0 +1,215 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block meta %}
+    {{ block.super }}    
+    <link rel="stylesheet" href="{% static 'inventario/css/style.css' %}">
+{% endblock %}
+
+
+{% block content %}
+<div class="content-area">
+    <div class="header-container">
+        <h1 class="page-title">Inventario</h1>
+        <div>
+            <a href="{% url 'inventario:crear_insumo' %}" class="btn-create" style="margin-right: 20px;">Crear un insumo</a>
+            <a href="{% url 'inventario:notificaciones_calibracion' %}" class="btn-secondary">Notificaciones de Calibración</a>
+        </div>
+      
+    </div>
+    <div class="page-desc">Visualiza y gestiona tu stock.</div>
+
+    <div class="filters-container">
+        <form method="get" class="advanced-filter-form">
+            <!-- Buscador por Nombre -->
+            <div class="filter-group text-search">
+                <i class="fa fa-search"></i>
+                <input type="text" name="q" placeholder="Buscar por nombre de insumo..." value="{{ filtros_aplicados.query|default_if_none:'' }}">
+            </div>
+            
+            <!-- Ordenamiento por Stock -->
+            <div class="filter-group">
+                <label for="sort-by">Ordenar por:</label>
+                <select name="sort_by" onchange="this.form.submit()">
+                    <option value="nombre" {% if filtros_aplicados.sort_by == 'nombre' %}selected{% endif %}>Nombre (A-Z)</option>
+                    <option value="stock_desc" {% if filtros_aplicados.sort_by == 'stock_desc' %}selected{% endif %}>Mayor Stock</option>
+                    <option value="stock_asc" {% if filtros_aplicados.sort_by == 'stock_asc' %}selected{% endif %}>Menor Stock</option>
+                </select>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="filter-actions">
+                <button type="submit" class="btn-create">Buscar</button>
+                <a href="{% url 'inventario:lista_insumos' %}" class="btn-clear-filters">Limpiar</a>
+            </div>
+        </form>
+    </div>
+    
+    <div class="inventory-list-container">
+        <div class="scrollable-table">
+                <div class="content-bar header">
+                    <div class="itemnum">ID</div>
+                    <div class="itemname">Nombre del Insumo</div>
+                    <div class="itemprice">Stock Disponible</div>
+                    <div class="itemstock">Descripción</div>
+                    <div class="btncontainer">Acciones</div>
+                </div>
+
+                <!-- LISTA DE INSUMOS -->
+                {% for insumo in insumos %}
+                    <div class="content-bar">
+                        <div class="itemnum">{{ insumo.id }}</div>
+                        <div class="itemname">{{ insumo.nombre }}</div>
+                        <!-- Datos corregidos y con formato -->
+                        <div class="itemprice">{{ insumo.stock_disponible_calculado }} {{ insumo.unidad_medida }}</div>
+                        <div class="itemstock">{{ insumo.descripcion }}</div>
+                        <div class="btncontainer">
+                            <button type="button" class="cbbtn btn-edit" title="Editar Insumo"
+                                    data-id="{{ insumo.id }}"
+                                    data-nombre="{{ insumo.nombre }}"
+                                    data-stock="{{ insumo.stock_disponible }}"
+                                    data-costo="{{ insumo.costo_unitario_actual|stringformat:'f' }}"
+                                    data-url="{% url 'inventario:update_insumo' insumo.id %}">
+                                    <i class="fa fa-pencil"></i>
+                            </button>
+                            <a href="{% url 'inventario:detalle_insumo' insumo.id %}" class="cbbtn btn-details" title="Ver Detalles">
+                                <i class="fa fa-eye"></i>
+                            </a>
+                            
+                        
+                        </div>
+                    </div>
+            {% empty %}
+                <p style="text-align: center; padding: 20px;">Aún no has creado ningún insumo.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<hr style="margin: 2rem 20px;">
+
+    <div class="project-cost-report-container">
+        <div class="page-title" style="padding-left: 20px;">Reporte de Insumos por Proyecto</div>
+        
+        <div class="project-finder-container" style="margin-bottom: 20px;">
+            <!-- ¡LA CLAVE! El data-attribute pasa la URL de Django al JS -->
+            <form method="get" class="project-filter-form" data-search-url="{% url 'proyectos:api_search_proyectos' %}">
+                <select name="proyecto_id" id="project-search-select" style="width: 100%;"></select>
+                <button type="submit" class="btn-generate-report">Generar Reporte</button>
+                {% if proyecto_seleccionado %}
+                    <a href="{% url 'inventario:lista_insumos' %}" class="btn-clear-filters">Limpiar</a>
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- El Reporte (solo se muestra si se ha seleccionado un proyecto) -->
+        {% if proyecto_seleccionado %}
+            <div class="report-results animate__animated animate__fadeIn">
+                
+                <!-- Resumen del Proyecto -->
+                <div class="project-summary-card">
+                    <h2>{{ proyecto_seleccionado.nombre }}</h2>
+                    <div class="total-cost">
+                        <span>Costo Total de Insumos</span>
+                        <strong>${{ costo_total_proyecto|floatformat:2 }}</strong>
+                    </div>
+                </div>
+
+                <!-- Lista de Tareas Principales -->
+                <div class="tasks-list">
+                    {% for tarea in tareas_con_costos %}
+                        <div class="task-cost-card">
+                            <div class="task-info">
+                                <h4 class="task-title">{{ tarea.titulo }}</h4>
+                                <div class="task-total-cost">
+                                    <span>Costo Tarea</span>
+                                    <strong>${{ tarea.costo_total|default:"0.00"|floatformat:2 }}</strong>
+                                </div>
+                            </div>
+                            <div class="task-insumos-list">
+                                <h5>Insumos Asignados:</h5>
+                                <ul>
+                                    {% for subtarea in tarea.subtareas.all %}
+                                        {% for asignacion in subtarea.insumos_asignados.all %}
+                                            <li class="insumo-asignado-item" id="asignacion-{{ asignacion.id }}">
+                                                <div class="info">
+                                                    <span>{{ asignacion.insumo.nombre }}</span>
+                                                    <small>({{ asignacion.cantidad_asignada|floatformat:0 }} {{ asignacion.insumo.unidad_medida }})</small>
+                                                </div>
+                                                <!-- ¡NUEVO BOTÓN DE DEVOLUCIÓN! -->
+                                                <button class="btn-devolver-insumo"
+                                                        data-id="{{ asignacion.id }}"
+                                                        data-url-get="{% url 'inventario:api_get_asignacion_data' asignacion.id %}"
+                                                        data-url-devolver="{% url 'inventario:api_devolver_insumo' asignacion.id %}">
+                                                    <i class="fa fa-undo"></i>
+                                                </button>
+                                            </li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p>Este proyecto aún no tiene tareas con insumos asignados.</p>
+                    {% endfor %}
+                </div>
+
+            </div>
+        {% endif %}
+    </div>
+
+<div id="edit-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content animate__animated animate__fadeInDown">
+        <button id="close-modal-btn" class="modal-close-btn">&times;</button>
+        <h2 id="modal-title">Editar Insumo</h2>
+        <form id="edit-insumo-form">
+            <!-- No necesitamos CSRF token aquí porque lo enviaremos en la cabecera con JS -->
+            {% csrf_token %}
+            <div class="form-group">
+                <!-- La etiqueta 'for' apunta al 'id' del input -->
+                <label for="modal-stock-input">Stock Disponible</label>
+                <!-- El 'id' es para el label, el 'name' es para Django -->
+                <input type="number" id="modal-stock-input" name="stock_disponible" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="modal-costo-input">Costo Unitario ($)</label>
+                <input type="number" step="0.01" id="modal-costo-input" name="costo_unitario_actual" required>
+            </div>
+            
+            <div id="modal-errors" class="error-list" style="display: none;"></div>
+
+            <div class="form-group">
+                <button type="submit" class="btn-submit">Guardar Cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- Pega esto al final de tu plantilla, junto a los otros modales -->
+<div id="devolver-insumo-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <button class="modal-close-btn">&times;</button>
+        <h2>Devolver Insumo</h2>
+        <p>Insumo: <strong id="devolver-insumo-nombre"></strong></p>
+        <p>Asignado a: <strong id="devolver-subtarea-nombre"></strong></p>
+        <p>Cantidad asignada actualmente: <strong id="devolver-cantidad-actual"></strong></p>
+        
+        <form id="devolver-insumo-form">
+            <div class="form-group">
+                <label for="cantidad_a_devolver">Cantidad a Devolver:</label>
+                <input type="number" id="cantidad_a_devolver" name="cantidad_a_devolver" min="1" required>
+            </div>
+            <div id="devolver-error-list" class="error-list" style="display: none;"></div>
+            <div class="form-group">
+                <button type="submit" class="btn-submit" style="background-color: #e67e22;">Confirmar Devolución</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="{% static 'personal/js/project_finder.js' %}"></script>
+<script src="{% static 'inventario/js/inventario_modal.js' %}"></script>
+<script src="{% static 'inventario/js/insumo_devolucion.js' %}"></script>
+{% endblock %}

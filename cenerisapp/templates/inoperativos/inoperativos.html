@@ -1,0 +1,169 @@
+{% extends 'app_base.html' %}
+{% load static query_filters %}
+{% load static %} <!-- Asegúrate de tener esto si tu CSS está en archivos estáticos -->
+
+
+
+{% block main_content %}
+<div class="container-general"> <!-- Puedes usar un contenedor general si lo tienes definido -->
+    <div class="dashboard-header-modern">
+        <h1 style="padding-bottom: 10px;">Dashboard de Ítems Inoperativos</h1>
+        <p style="padding-bottom: 30px;">Una vista centralizada de todos los componentes que requieren atención.</p>
+    </div>
+
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message-box {{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    <div class="general-stats-grid modern" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="info-card modern stat-card kpi-vencida">
+            <div class="card-header"><i class="bi bi-display-fill card-icon"></i><h3>Dispositivos Inop.</h3></div>
+            <p class="stat-number">{{ total_dispositivos_inop }}</p>
+        </div>
+        <div class="info-card modern stat-card kpi-vencida">
+            <div class="card-header"><i class="bi bi-cpu-fill card-icon"></i><h3>Sensores Inop.</h3></div>
+            <p class="stat-number">{{ total_sensores_inop }}</p>
+        </div>
+        <div class="info-card modern stat-card kpi-vencida">
+            <div class="card-header"><i class="bi bi-hdd-stack-fill card-icon"></i><h3>Otros Componentes</h3></div>
+            <p class="stat-number">{{ total_otros_inop }}</p>
+        </div>
+    </div>
+
+    <!-- ================================== -->
+    <!--      SECCIÓN DE DISPOSITIVOS       -->
+    <!-- ================================== -->
+    <div id="seccion-dispositivos" class="section-title modern" style="margin-top: 2.5rem;">
+        <i class="bi bi-display"></i> Dispositivos Inoperativos o Extraviados
+    </div>
+    <div class="info-card modern">
+        <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>N° Serie</th>
+                            <th>Estado Actual</th>
+                            <th style="text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in disp_page_obj %}
+                        <tr>
+                            <!-- CAMBIO: Añadimos data-label a cada celda -->
+                            <td data-label="ID">{{ item.id_dispositivo }}</td>
+                            <td data-label="Nombre">{{ item.nomDisp }}</td>
+                            <td data-label="N° Serie">{{ item.num_serie }}</td>
+                            <td data-label="Estado Actual">{{ item.estadoD }}</td>
+                            <td data-label="Acción" style="text-align: center;">
+                                <form action="{% url 'cenerisapp:marcar_operativo' tipo_item='dispositivo' item_id=item.id_dispositivo %}" method="post">
+                                    {% csrf_token %}
+                                    <!-- CAMBIO: Usamos las clases de tu CSS -->
+                                    <button type="submit" class="btn btn-primary" style="background-color: #d45b04;">Marcar Operativo</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+        </div>
+        {% if not disp_page_obj %}
+            <p class="no-data">¡Excelente! No hay dispositivos inoperativos.</p>
+        {% endif %}
+        <!-- Paginación para Dispositivos -->
+        {% include 'partials/pagination.html' with page_obj=disp_page_obj page_param_name='page_disp' anchor='#seccion-dispositivos' %}
+    </div>
+
+
+    <!-- ================================== -->
+    <!--         SECCIÓN DE SENSORES        -->
+    <!-- ================================== -->
+     <div id="seccion-sensores" class="section-title modern" style="margin-top: 2.5rem;">
+        <i class="bi bi-cpu"></i> Sensores Inoperativos
+    </div>
+    <div class="info-card modern">
+        <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>N° Serie</th>
+                            <th>Estado Actual</th>
+                            <th style="text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in sensor_page_obj %}
+                        <tr>
+                            <td data-label="ID">{{ item.id_componente }}</td>
+                            <td data-label="Nombre">{{ item.nomComp }}</td>
+                            <td data-label="N° Serie">{{ item.nSerieActual }}</td>
+                            <td data-label="Estado Actual">{{ item.estComp }}</td>
+                            <td data-label="Acción" style="text-align: center;">
+                                <form action="{% url 'cenerisapp:marcar_operativo' tipo_item='sensor' item_id=item.id_componente %}" method="post">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-primary" style="background-color: #d45b04;">Marcar Operativo</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+        </div>
+        {% if not sensor_page_obj %}
+            <p class="no-data">¡Excelente! No hay sensores inoperativos.</p>
+        {% endif %}
+        <!-- Paginación para Sensores -->
+        {% include 'partials/pagination.html' with page_obj=sensor_page_obj page_param_name='page_sensor' anchor='#seccion-sensores' %}
+    </div>
+
+    <!-- ================================== -->
+    <!--    SECCIÓN DE OTROS COMPONENTES    -->
+    <!-- ================================== -->
+     <div id="seccion-otros" class="section-title modern" style="margin-top: 2.5rem;">
+        <i class="bi bi-hdd-stack"></i> Otros Componentes Inoperativos
+    </div>
+    <div class="info-card modern">
+        <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>N° Serie</th>
+                            <th>Estado Actual</th>
+                            <th style="text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in otro_page_obj %}
+                        <tr>
+                            <td data-label="ID">{{ item.id_componente }}</td>
+                            <td data-label="Nombre">{{ item.nomComp }}</td>
+                            <td data-label="N° Serie">{{ item.nSerieActual }}</td>
+                            <td data-label="Estado Actual">{{ item.estComp }}</td>
+                            <td data-label="Acción" style="text-align: center;">
+                                <form action="{% url 'cenerisapp:marcar_operativo' tipo_item='otrocomponente' item_id=item.id_componente %}" method="post">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-primary" style="background-color: #d45b04;">Marcar Operativo</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+        </div>
+        {% if not otro_page_obj %}
+            <p class="no-data">¡Excelente! No hay otros componentes inoperativos.</p>
+        {% endif %}
+        <!-- Paginación para Otros Componentes -->
+        {% include 'partials/pagination.html' with page_obj=otro_page_obj page_param_name='page_otro' anchor='#seccion-otros' %}
+    </div>
+</div>
+{% endblock %}

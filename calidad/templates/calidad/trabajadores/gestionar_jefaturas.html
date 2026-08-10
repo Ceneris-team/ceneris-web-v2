@@ -1,0 +1,758 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Gestionar Organigrama{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/filtros_maestros.css' %}">
+<style>
+    :root {
+        --ceneris-orange: #d45b04;
+        --ceneris-orange-dark: #b04a03;
+        --ceneris-orange-soft: #fdf1e9;
+        --ceneris-gray: #6c757d;
+        --ceneris-gray-dark: #545b62;
+    }
+
+    .main-container {
+        max-width: 100% !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+    }
+    
+    /* --- ESTILOS DE BADGES (Niveles Jerárquicos) --- */
+    .badge-rol {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 95px;
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        border: 1px solid transparent;
+        letter-spacing: 0.2px;
+    }
+    .badge-rol-colaborador {
+        color: #4b5563;
+        background: #f3f4f6;
+        border-color: #e5e7eb;
+    }
+    .badge-rol-supervisor {
+        color: #5b21b6;
+        background: #ede9fe;
+        border-color: #ddd6fe;
+    }
+    .badge-rol-responsable {
+        color: #166534;
+        background: #dcfce7;
+        border-color: #bbf7d0;
+    }
+    .badge-rol-gerente {
+        color: #1e3a8a;
+        background: #dbeafe;
+        border-color: #bfdbfe;
+    }
+    
+    .btn-accion {
+        border: 0;
+        border-radius: 7px;
+        padding: 0.45rem 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .form-filtros {
+        display: grid;
+        grid-template-columns: minmax(260px, 1.8fr) minmax(220px, 1.1fr) auto auto auto;
+        gap: 1rem;
+        align-items: end;
+    }
+
+    .master-filter-bar {
+        margin-top: 1.25rem;
+        padding: 1.1rem 1.25rem;
+        border: 1px solid #e8ecf2;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+        box-shadow: 0 6px 20px rgba(20, 34, 56, 0.07);
+    }
+
+    .filtro-item { min-width: 0; }
+    .filtro-item label {
+        display: block;
+        margin-bottom: 0.38rem;
+        font-weight: 700;
+        color: #3d4a5d;
+        letter-spacing: 0.2px;
+    }
+    .filtro-item input[type="text"],
+    .filtro-item select {
+        width: 100%;
+        height: 42px;
+        border: 1px solid #cfd8e3;
+        border-radius: 10px;
+        padding: 0 0.8rem;
+        background: #fff;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .filtro-item input[type="text"]:focus,
+    .filtro-item select:focus {
+        border-color: var(--ceneris-orange);
+        box-shadow: 0 0 0 0.2rem rgba(212, 91, 4, 0.16);
+        outline: 0;
+    }
+
+    .filtro-check {
+        align-self: end;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0 0.85rem;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #3d4a5d;
+        font-weight: 600;
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+    .filtro-check input {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        accent-color: var(--ceneris-orange);
+        cursor: pointer;
+    }
+
+    .filtro-actions {
+        display: inline-flex;
+        gap: 0.55rem;
+        align-self: end;
+    }
+
+    .btn-filtro {
+        border: 0;
+        height: 44px;
+        min-width: 100px;
+        padding: 0 1rem;
+        border-radius: 10px;
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.15s ease, filter 0.2s ease;
+    }
+    .btn-filtro:hover {
+        filter: brightness(0.95);
+        transform: translateY(-1px);
+    }
+    .btn-filtro-aplicar {
+        background: linear-gradient(135deg, var(--ceneris-orange), #ef7c1a);
+        box-shadow: 0 8px 18px rgba(212, 91, 4, 0.28);
+    }
+    .btn-filtro-limpiar {
+        background: linear-gradient(135deg, var(--ceneris-gray), var(--ceneris-gray-dark));
+    }
+    .filtros-ayuda {
+        margin-top: 0.8rem;
+        background: var(--ceneris-orange-soft);
+        border: 1px solid #f4d7c4;
+        color: #8a3f05;
+        border-radius: 10px;
+        padding: 0.55rem 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .tabla-jefaturas {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin-top: 1.5rem;
+        background: #fff;
+        border: 1px solid #e5eaf2;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .tabla-jefaturas thead th {
+        background: #f8fafc;
+        color: #607089;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.25px;
+        font-weight: 800;
+        padding: 0.78rem 0.85rem;
+        border-bottom: 1px solid #e8edf5;
+    }
+    .tabla-jefaturas tbody td {
+        padding: 0.75rem 0.85rem;
+        border-bottom: 1px solid #eef2f7;
+        color: #243447;
+        vertical-align: middle;
+    }
+    .tabla-jefaturas tbody tr:nth-child(even) td { background: #fcfdff; }
+    .tabla-jefaturas tbody tr:hover td { background: #f4f8ff; }
+    .tabla-jefaturas tbody tr:last-child td { border-bottom: 0; }
+
+    .badge-area {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 7px;
+        border-radius: 999px;
+        font-size: 0.74rem;
+        font-weight: 700;
+        background: #eef3ff;
+        color: #3c4d72;
+        border: 1px solid #dbe4ff;
+        margin: 2px 4px 2px 0;
+    }
+
+    .btn-accion-secundario {
+        background: #2563eb;
+        color: #fff;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(17, 24, 39, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1200;
+        padding: 1rem;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-card {
+        width: min(900px, 96vw);
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+    }
+    .modal-head {
+        padding: 0.95rem 1rem;
+        border-bottom: 1px solid #eef2f7;
+        display: flex;
+        justify-content: space-between;
+        gap: 0.6rem;
+        align-items: start;
+    }
+    .modal-body { padding: 1rem; }
+    .areas-transfer {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.9rem;
+    }
+    .rol-selector { margin-bottom: 0.85rem; }
+    .rol-selector-title {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        color: #334155;
+        margin-bottom: 0.42rem;
+        font-weight: 900;
+        letter-spacing: 0.2px;
+    }
+    .rol-segmented {
+        display: inline-flex;
+        background: #eef2f7;
+        border: 1px solid #cfd8e3;
+        border-radius: 11px;
+        padding: 4px;
+        gap: 4px;
+    }
+
+    /* --- ESTILOS DE LOS BOTONES DEL MODAL --- */
+    .rol-choice {
+        border: 1px solid transparent;
+        background: #eef2f7;
+        border-radius: 8px;
+        padding: 0.48rem 0.95rem;
+        min-width: 112px;
+        font-size: 0.84rem;
+        font-weight: 900;
+        color: #334155 !important;
+        -webkit-text-fill-color: currentColor;
+        opacity: 1 !important;
+        text-shadow: none;
+        cursor: pointer;
+        transition: all 0.18s ease;
+    }
+    .rol-choice:hover {
+        background: #dbe7ff;
+        color: #1e3a8a !important;
+    }
+    .rol-choice.active {
+        background: #ffffff;
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.14);
+    }
+    .rol-choice.active-colaborador {
+        color: #1f2937 !important;
+        border: 1px solid #cbd5e1;
+    }
+    .rol-choice.active-supervisor {
+        color: #5b21b6 !important;
+        border: 1px solid #c4b5fd;
+        background: #f5f3ff;
+    }
+    .rol-choice.active-responsable {
+        color: #14532d !important;
+        border: 1px solid #86efac;
+        background: #ecfdf3;
+    }
+    .rol-choice.active-gerente {
+        color: #1e3a8a !important;
+        border: 1px solid #93c5fd;
+        background: #eff6ff;
+    }
+
+    .roles-ayuda {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-bottom: 0.75rem;
+    }
+    .areas-panel {
+        border: 1px solid #e5eaf2;
+        border-radius: 12px;
+        background: #fbfcff;
+        min-height: 320px;
+        display: flex;
+        flex-direction: column;
+    }
+    .areas-panel-header {
+        padding: 0.65rem 0.75rem;
+        border-bottom: 1px solid #e8edf5;
+        font-size: 0.83rem;
+        font-weight: 700;
+        color: #41536f;
+        text-transform: uppercase;
+        letter-spacing: 0.2px;
+    }
+    .areas-dropzone {
+        flex: 1;
+        padding: 0.7rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-content: flex-start;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+    .areas-dropzone.is-over { background: #edf4ff; }
+    .area-move-card {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #dbe4ff;
+        background: #eef3ff;
+        color: #2f4365;
+        border-radius: 999px;
+        padding: 0.35rem 0.72rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: grab;
+        user-select: none;
+    }
+    .area-move-card.dragging { opacity: 0.55; }
+    .areas-hint {
+        font-size: 0.82rem;
+        color: #607089;
+        margin-bottom: 0.75rem;
+    }
+    .areas-search {
+        width: 100%;
+        height: 40px;
+        border: 1px solid #cfd8e3;
+        border-radius: 10px;
+        padding: 0 0.75rem;
+        margin-bottom: 0.7rem;
+    }
+    .areas-search:focus {
+        border-color: var(--ceneris-orange);
+        box-shadow: 0 0 0 0.2rem rgba(212, 91, 4, 0.16);
+        outline: 0;
+    }
+    .areas-transfer.disabled { opacity: 0.55; }
+    .areas-transfer.disabled .area-move-card {
+        pointer-events: none;
+        cursor: not-allowed;
+    }
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin-top: 0.9rem;
+    }
+    .btn-modal {
+        border: 0;
+        border-radius: 8px;
+        padding: 0.5rem 0.9rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .btn-modal-cancel {
+        background: #e5e7eb;
+        color: #374151;
+    }
+    .btn-modal-save {
+        background: linear-gradient(135deg, var(--ceneris-orange), #ef7c1a);
+        color: #fff;
+    }
+
+    @media (max-width: 1200px) {
+        .form-filtros { grid-template-columns: 1fr 1fr; }
+        .filtro-actions { grid-column: 1 / -1; }
+    }
+    @media (max-width: 700px) {
+        .form-filtros { grid-template-columns: 1fr; }
+        .rol-segmented { width: 100%; flex-wrap: wrap; }
+        .rol-choice, .areas-search, .areas-transfer { width: 100%; }
+        .areas-transfer { grid-template-columns: 1fr; }
+        .filtro-check, .filtro-actions, .btn-filtro { width: 100%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Gestionar Organigrama</h1>
+        <p style="margin: 0;">Configura los niveles jerárquicos y las áreas supervisadas desde una sola ventana.</p>
+    </div>
+    <div>
+        <a href="{% url 'calidad:gestion_empleados' %}" class="btn-secondary">&larr; Volver a panel</a>
+    </div>
+</div>
+
+<div class="master-filter-bar">
+    <form method="get" class="form-filtros" action="">
+        <div class="filtro-item">
+            <label for="search">Buscar trabajador</label>
+            <input id="search" name="search" type="text" value="{{ filtro_busqueda }}" placeholder="Nombre, apellido o DNI...">
+        </div>
+
+        <div class="filtro-item">
+            <label for="area">Área</label>
+            <select id="area" name="area">
+                <option value="">Todas</option>
+                {% for area in opciones_areas %}
+                    <option value="{{ area.pk }}" {% if filtro_activo_area == area.pk %}selected{% endif %}>{{ area.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <label class="filtro-check" for="solo_jefes">
+                <input id="solo_jefes" type="checkbox" name="solo_jefes" {% if solo_jefes %}checked{% endif %}>
+                Solo Liderazgo
+        </label>
+
+        <label class="filtro-check" for="ver_inactivos">
+                <input id="ver_inactivos" type="checkbox" name="ver_inactivos" {% if ver_inactivos %}checked{% endif %}>
+                Mostrar inactivos
+        </label>
+
+        <div class="filtro-actions">
+            <button type="submit" class="btn-filtro btn-filtro-aplicar">Aplicar</button>
+            <a href="{{ request.path }}" class="btn-filtro btn-filtro-limpiar" style="display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">Limpiar</a>
+        </div>
+    </form>
+    <div class="filtros-ayuda">Tip: Filtra por Área + "Solo Liderazgo" para revisar a los mandos medios activos.</div>
+</div>
+
+<table class="tabla-jefaturas">
+    <thead>
+        <tr>
+            <th style="width: 50px; text-align: center;">N°</th>
+            <th>DNI</th>
+            <th>Trabajador</th>
+            <th>Área Base</th>
+            <th>Áreas supervisadas</th>
+            <th>Estado</th>
+            <th>Nivel Jerárquico</th>
+            <th style="text-align: center; width: 160px;">Acción</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for trabajador in trabajadores %}
+        <tr>
+            <td style="text-align: center; font-weight: 700;">{{ forloop.counter }}</td>
+            <td>{{ trabajador.dni }}</td>
+            <td>{{ trabajador }}</td>
+            <td>{{ trabajador.area.nombre|default:'--' }}</td>
+            <td>
+                {% if trabajador.areas_gestion %}
+                    {% for area_gestion in trabajador.areas_gestion %}
+                        <span class="badge-area">{{ area_gestion.nombre }}</span>
+                    {% endfor %}
+                {% else %}
+                    --
+                {% endif %}
+            </td>
+            <td>{{ trabajador.activo|yesno:'Activo,Inactivo' }}</td>
+            <td>
+                {% if trabajador.rol_display == 'gerente' %}
+                    <span class="badge-rol badge-rol-gerente">Gerente Gral.</span>
+                {% elif trabajador.rol_display == 'responsable' %}
+                    <span class="badge-rol badge-rol-responsable">Responsable</span>
+                {% elif trabajador.rol_display == 'supervisor' %}
+                    <span class="badge-rol badge-rol-supervisor">Supervisor</span>
+                {% else %}
+                    <span class="badge-rol badge-rol-colaborador">Colaborador</span>
+                {% endif %}
+            </td>
+            <td style="text-align: center;">
+                <button type="button"
+                        class="btn-accion btn-accion-secundario"
+                        data-trabajador-id="{{ trabajador.id }}"
+                        data-trabajador-nombre="{{ trabajador|escapejs }}"
+                        data-rol="{{ trabajador.rol_display }}"
+                        data-area-principal-id="{{ trabajador.area_id|default:'' }}"
+                        data-areas-ids="{% for area_gestion in trabajador.areas_gestion %}{{ area_gestion.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                        onclick="abrirModalConfig(this)">
+                    Configurar
+                </button>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="8" style="text-align: center; padding: 1.6rem;">No se encontraron trabajadores en el organigrama.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div id="modalAreasJefe" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalAreasTitulo">
+    <div class="modal-card">
+        <div class="modal-head">
+            <div>
+                <h3 id="modalAreasTitulo" style="margin: 0; font-size: 1.05rem;">Configurar roles y áreas</h3>
+                <p id="modalAreasNombre" style="margin: 0.25rem 0 0; color: #64748b; font-size: 0.9rem;"></p>
+            </div>
+            <button type="button" class="btn-modal btn-modal-cancel" onclick="cerrarModalAreas()">Cerrar</button>
+        </div>
+
+        <form method="post" action="" class="modal-body">
+            {% csrf_token %}
+            <input type="hidden" name="trabajador_id" id="modalTrabajadorId">
+            <input type="hidden" name="accion" value="guardar_config_jefatura">
+            <input type="hidden" name="rol_tipo" id="inputRolTipo" value="colaborador">
+            <input type="hidden" name="querystring" value="{{ querystring_actual }}">
+
+            <div class="rol-selector">
+                <div class="rol-selector-title">Nivel Jerárquico</div>
+                <div class="rol-segmented">
+                    <button type="button" class="rol-choice" data-rol-tipo="colaborador" onclick="setRolTipo('colaborador')">Colaborador</button>
+                    <button type="button" class="rol-choice" data-rol-tipo="supervisor" onclick="setRolTipo('supervisor')">Supervisor</button>
+                    <button type="button" class="rol-choice" data-rol-tipo="responsable" onclick="setRolTipo('responsable')">Responsable</button>
+                    <button type="button" class="rol-choice" data-rol-tipo="gerente" onclick="setRolTipo('gerente')">Gerente Gral.</button>
+                </div>
+            </div>
+
+            <p class="roles-ayuda">Supervisor y Responsable pueden tener áreas asignadas manualmente. Gerente mantiene alcance global por cascada.</p>
+            <p class="areas-hint">Arrastra las tarjetas entre columnas o haz doble clic para moverlas.</p>
+            <input id="areaSearchInput" type="text" class="areas-search" placeholder="Buscar área por nombre..." oninput="filtrarTarjetasArea(this.value)">
+
+            <div id="areasTransfer" class="areas-transfer">
+                <div class="areas-panel">
+                    <div class="areas-panel-header">Áreas disponibles</div>
+                    <div id="dropDisponibles" class="areas-dropzone"></div>
+                </div>
+                <div class="areas-panel">
+                    <div class="areas-panel-header">Áreas asignadas al líder</div>
+                    <div id="dropAsignadas" class="areas-dropzone"></div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-modal btn-modal-cancel" onclick="cerrarModalAreas()">Cancelar</button>
+                <button type="submit" class="btn-modal btn-modal-save">Guardar configuración</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{ opciones_areas_json|json_script:"areas-catalogo-json" }}
+
+<script>
+const AREAS_CATALOGO = JSON.parse(document.getElementById('areas-catalogo-json').textContent);
+
+let tarjetaArrastrada = null;
+let estadoRolTipo = 'colaborador';
+
+function crearTarjetaArea(area) {
+    const card = document.createElement('div');
+    card.className = 'area-move-card';
+    card.draggable = true;
+    card.dataset.areaId = String(area.id);
+    card.textContent = area.nombre;
+
+    card.addEventListener('dragstart', function () {
+        tarjetaArrastrada = card;
+        card.classList.add('dragging');
+    });
+
+    card.addEventListener('dragend', function () {
+        card.classList.remove('dragging');
+        tarjetaArrastrada = null;
+    });
+
+    card.addEventListener('dblclick', function () {
+        const dropDisponibles = document.getElementById('dropDisponibles');
+        const dropAsignadas = document.getElementById('dropAsignadas');
+        if (card.parentElement === dropDisponibles) {
+            dropAsignadas.appendChild(card);
+        } else {
+            dropDisponibles.appendChild(card);
+        }
+    });
+
+    return card;
+}
+
+function actualizarBotonesRol() {
+    document.querySelectorAll('[data-rol-tipo]').forEach((btn) => {
+        // Removemos las clases de todos los roles
+        btn.classList.remove('active', 'active-colaborador', 'active-supervisor', 'active-responsable', 'active-gerente');
+        
+        // Activamos solo el seleccionado
+        if (btn.dataset.rolTipo === estadoRolTipo) {
+            btn.classList.add('active', `active-${estadoRolTipo}`);
+        }
+    });
+
+    document.getElementById('inputRolTipo').value = estadoRolTipo;
+}
+
+function actualizarEstadoAreas() {
+    const transfer = document.getElementById('areasTransfer');
+    // Supervisor y Responsable usan asignacion manual de areas.
+    const habilitado = (estadoRolTipo === 'supervisor' || estadoRolTipo === 'responsable');
+    transfer.classList.toggle('disabled', !habilitado);
+}
+
+function setRolTipo(rolTipo) {
+    estadoRolTipo = rolTipo;
+    actualizarBotonesRol();
+    actualizarEstadoAreas();
+}
+
+function prepararZonasDrop() {
+    document.querySelectorAll('.areas-dropzone').forEach((zona) => {
+        zona.addEventListener('dragover', function (event) {
+            event.preventDefault();
+            zona.classList.add('is-over');
+        });
+
+        zona.addEventListener('dragleave', function () {
+            zona.classList.remove('is-over');
+        });
+
+        zona.addEventListener('drop', function (event) {
+            event.preventDefault();
+            zona.classList.remove('is-over');
+            if (tarjetaArrastrada) {
+                zona.appendChild(tarjetaArrastrada);
+            }
+        });
+    });
+}
+
+function filtrarTarjetasArea(texto) {
+    const termino = (texto || '').trim().toLowerCase();
+    document.querySelectorAll('.area-move-card').forEach((card) => {
+        const coincide = card.textContent.toLowerCase().includes(termino);
+        card.style.display = coincide ? 'inline-flex' : 'none';
+    });
+}
+
+function abrirModalConfig(boton) {
+    const modal = document.getElementById('modalAreasJefe');
+    const inputTrabajadorId = document.getElementById('modalTrabajadorId');
+    const nombre = document.getElementById('modalAreasNombre');
+    const dropDisponibles = document.getElementById('dropDisponibles');
+    const dropAsignadas = document.getElementById('dropAsignadas');
+    const buscador = document.getElementById('areaSearchInput');
+
+    const trabajadorId = boton.dataset.trabajadorId || '';
+    const trabajadorNombre = boton.dataset.trabajadorNombre || '';
+    const rolActual = boton.dataset.rol || 'colaborador';
+    const areaPrincipalId = (boton.dataset.areaPrincipalId || '').trim();
+    const areasCsv = boton.dataset.areasIds || '';
+
+    inputTrabajadorId.value = trabajadorId;
+    nombre.textContent = trabajadorNombre;
+
+    // Seteamos el estado visual
+    estadoRolTipo = ['colaborador', 'supervisor', 'responsable', 'gerente'].includes(rolActual) ? rolActual : 'colaborador';
+    actualizarBotonesRol();
+    actualizarEstadoAreas();
+
+    const seleccionadas = new Set((areasCsv || '').split(',').map((v) => v.trim()).filter(Boolean));
+    
+    if (!['supervisor', 'responsable'].includes(estadoRolTipo)) {
+        seleccionadas.clear();
+    }
+
+    // Si es supervisor o responsable y aun no tiene areas manuales, pre-llenar su area principal
+    if (['supervisor', 'responsable'].includes(estadoRolTipo) && seleccionadas.size === 0 && areaPrincipalId) {
+        seleccionadas.add(areaPrincipalId);
+    }
+
+    dropDisponibles.innerHTML = '';
+    dropAsignadas.innerHTML = '';
+    buscador.value = '';
+
+    AREAS_CATALOGO.forEach((area) => {
+        const tarjeta = crearTarjetaArea(area);
+        if (seleccionadas.has(String(area.id))) {
+            dropAsignadas.appendChild(tarjeta);
+        } else {
+            dropDisponibles.appendChild(tarjeta);
+        }
+    });
+
+    modal.classList.add('show');
+}
+
+function cerrarModalAreas() {
+    const modal = document.getElementById('modalAreasJefe');
+    modal.classList.remove('show');
+}
+
+document.addEventListener('click', function (event) {
+    const modal = document.getElementById('modalAreasJefe');
+    if (event.target === modal) {
+        cerrarModalAreas();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    prepararZonasDrop();
+
+    const formModal = document.querySelector('#modalAreasJefe form');
+    formModal.addEventListener('submit', function (event) {
+        // Limpiamos inputs viejos para evitar duplicados
+        formModal.querySelectorAll('input[name="areas_supervisadas"]').forEach((nodo) => nodo.remove());
+
+        // Supervisor y Responsable guardan areas manuales.
+        const rolSeleccionado = document.getElementById('inputRolTipo').value;
+        if (['supervisor', 'responsable'].includes(rolSeleccionado)) {
+            const asignadas = document.querySelectorAll('#dropAsignadas .area-move-card');
+
+            if (rolSeleccionado === 'responsable' && asignadas.length === 0) {
+                alert('Para asignar el rol Responsable debes seleccionar al menos un área.');
+                event.preventDefault();
+                return;
+            }
+
+            asignadas.forEach((card) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'areas_supervisadas';
+                input.value = card.dataset.areaId;
+                formModal.appendChild(input);
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

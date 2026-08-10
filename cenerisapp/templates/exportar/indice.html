@@ -1,0 +1,338 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="header-container">
+        <h1>{{ titulo }}</h1>
+    </div>
+
+    <div class="card-deck">
+            
+            <div class="card">
+                <div class="card-icon">📈</div>
+                <h3 class="card-title text-primary">Exportar Seguimiento de Operatividad</h3>
+                <p class="card-description">Selecciona un mes, año y área para generar el reporte de seguimiento de equipos.</p>
+
+                <!-- FORMULARIO DE FILTROS -->
+                <div class="filter-form">
+                    <div class="form-group">
+                        <label for="select-ano-seguimiento">Año:</label>
+                        <select id="select-ano-seguimiento" class="form-select">
+                            <!-- Asume que 'años_disponibles' viene de la vista -->
+                            {% for ano in años_disponibles %} 
+                            <option value="{{ ano }}">{{ ano }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="select-mes-seguimiento">Mes:</label>
+                        <select id="select-mes-seguimiento" class="form-select">
+                            <!-- Asume que 'meses_disponibles' viene de la vista -->
+                            {% for num, nombre in meses_disponibles %}
+                            <option value="{{ num }}">{{ nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="select-area-seguimiento">Área General:</label>
+                        <select id="select-area-seguimiento" class="form-select">
+                            <!-- Asume que 'areas_generales_disponibles' viene de la vista -->
+                            {% for area in areas_generales_portatiles %}
+                                <option value="{{ area }}">{{ area }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card-action">
+                    <button id="btn-exportar-seguimiento" class="btn btn-primary">Descargar Excel</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-icon">📋</div>
+                <h3 class="card-title text-primary">Exportar Registro de Prestamos Diarios</h3>
+                <p class="card-description">Selecciona una fecha, área y turno para generar el reporte de flujo de equipos.</p>
+                <div class="filter-form">
+                    <div class="form-group">
+                        <label for="select-fecha-registro">Fecha:</label>
+                        <input type="date" id="select-fecha-registro" class="form-control" value="{{ today|date:'Y-m-d' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="select-area-general-registro">Área General:</label>
+                        <select id="select-area-general-registro" class="form-select">
+                            <!-- Bucle para llenar las opciones con los datos de la vista -->
+                            {% for area in areas_generales_portatiles %}
+                                <option value="{{ area }}">{{ area }}</option>
+                            {% endfor %}
+                        </select>   
+                    </div>
+                    <div class="form-group">
+                        <label for="select-operador-registro">Operador (Encargado):</label>
+                        <select id="select-operador-registro" class="form-select">
+                            {% for operador in operadores %}
+                            <option value="{{ operador.id }}">{{ operador.nomEmpleado }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="select-turno-registro">Turno:</label>
+                        <select id="select-turno-registro" class="form-select">
+                            {% for turno in turnos_disponibles %}<option value="{{ turno }}">{{ turno }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="card-action">
+                    <button id="btn-exportar-registros" class="btn btn-primary">Descargar Excel</button>
+                </div>
+            </div>
+
+            <div class="card"> {# Quitamos la etiqueta <a> de aquí #}
+                <div class="card-icon">📅</div>
+                <h3 class="card-title text-primary">Exportar Programa Anual de Certificacion</h3>
+                <p class="card-description">Selecciona el año y el tipo de dispositivo para generar el reporte del programa de calibración.</p>
+
+                <!-- FORMULARIO DE FILTROS -->
+                <div class="filter-form">
+                    <div class="form-group">
+                        <label for="select-ano">Año:</label>
+                        <select id="select-ano" class="form-select">
+                            {% for ano in años_disponibles %}
+                            <option value="{{ ano }}">{{ ano }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="select-tipo">Tipo de Dispositivo:</label>
+                        <select id="select-tipo" class="form-select">
+                            {% for tipo in tipos_disponibles %}
+                            <option value="{{ tipo }}">{{ tipo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="card-action">
+                    <!-- El botón ahora llamará a una función JS -->
+                    <button id="btn-exportar-programa" class="btn btn-primary">Descargar Excel</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-icon">🏢</div>
+                <h3 class="card-title text-info">Exportar Fijos por Área</h3>
+                <p class="card-description">Selecciona un tipo de área para generar el reporte visual de sus dispositivos fijos.</p>
+
+                <!-- Usamos las clases que ya tenemos para los filtros -->
+                <div class="filter-form">
+                    <div class="form-group">
+                        <label for="select-area-general">Área General:</label>
+                        <select id="select-area-general" class="form-select">
+                            <option value="">-- Selecciona un área --</option>
+                            {% for area in areas_generales_fijos %}
+                            <option value="{{ area }}">{{ area }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card-action">
+                    <button id="btn-exportar-fijos-area" class="btn btn-primary">Descargar Excel</button>
+                </div>
+            </div>
+    </div>
+    <div class="card-deck">
+        <a href="{% url 'cenerisapp:exportar_mantenimiento_indice' %}" class="card-link">
+                <div class="card">
+                    <div class="card-icon">🔧</div>
+                    <h3 class="card-title text-warning">Exportar Reporte de Mantenimiento de Portatiles</h3>
+                    <p class="card-description">Selecciona un modelo de dispositivo para generar el reporte consolidado de sus mantenimientos.</p>
+                    <div class="card-action">
+                        <button class="btn btn-primary">Descargar Excel</button>
+                    </div>    
+                </div>
+                
+            </a>
+
+            <a href="{% url 'cenerisapp:exportar_fijos_excel' %}" class="card-link">
+                <div class="card">
+                    <div class="card-icon">📊</div>
+                    <h3 class="card-title">Exportar Base de Datos de Dispositivos Fijos</h3>
+                    <p class="card-description">Descarga el reporte detallado con formato especial para todos los dispositivos fijos.</p>
+                    <div class="card-action">
+                        <button class="btn btn-primary">Descargar Excel</button>
+                    </div> 
+                </div>
+            </a>
+
+            <!-- Tarjeta para Exportar Dispositivos Portátiles -->
+            <a href="{% url 'cenerisapp:exportar_portatiles_excel' %}" class="card-link">
+                <div class="card">
+                    <div class="card-icon">📄</div>
+                    <h3 class="card-title text-success">Exportar Base de Datos de Dispositivos Portátiles</h3>
+                    <p class="card-description">Descarga un archivo Excel con el listado completo de todos los dispositivos de tipo "Portátil".</p>
+                    <div class="card-action">
+                        <button class="btn btn-primary">Descargar Excel</button>
+                    </div> 
+                </div>
+            </a>
+
+            
+            <a href="{% url 'cenerisapp:exportar_fijos_excel_complejo' %}" class="card-link">
+                <div class="card">
+                    <div class="card-icon">📊</div>
+                    <h3 class="card-title">Exportar Reporte de Certificados (Fijos)</h3>
+                    <p class="card-description">Descarga el reporte detallado con formato especial para todos los certificados de dispositivos fijos.</p>
+                    <div class="card-action">
+                        <button class="btn btn-primary">Descargar Excel</button>
+                    </div> 
+                </div>
+            </a>
+    </div>
+
+    <div class="card-deck">
+        <div class="card">
+                <div class="card-icon">⚠️</div>
+                <h3 class="card-title text-danger">Exportar Historial de Daños/Perdidas</h3>
+                <p class="card-description">Selecciona un año para descargar el listado de todos los reportes de daños y pérdidas registrados.</p>
+
+                <!-- FORMULARIO DE FILTRO -->
+                <div class="filter-form">
+                    <div class="form-group">
+                        <label for="select-ano-reporte">Año del Reporte:</label>
+                        <select id="select-ano-reporte" class="form-select">
+                            {% for ano in años_reportes %}
+                            <option value="{{ ano }}">{{ ano }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card-action">
+                    <button id="btn-exportar-reportes" class="btn btn-danger">Descargar Excel</button>
+                </div>
+            </div>
+    </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const exportBtn = document.getElementById('btn-exportar-programa');
+    const selectAno = document.getElementById('select-ano');
+    const selectTipo = document.getElementById('select-tipo');
+
+    // --- DEPURACIÓN: Verificamos si los elementos se encontraron ---
+    
+
+    // Comprobación de seguridad: si falta algún elemento, el script se detiene.
+    if (exportBtn && selectAno && selectTipo) {
+        
+    
+
+        exportBtn.addEventListener('click', () => {
+            
+
+            // Leemos los valores seleccionados EN EL MOMENTO DEL CLIC
+            const ano = selectAno.value;
+            const tipo = selectTipo.value;
+            console.log(`Valores seleccionados -> Año: ${ano}, Tipo: ${tipo}`); // MENSAJE 7
+            
+            // Verificamos si los valores son válidos
+            
+
+            // Construimos la URL
+            const baseUrl = "{% url 'cenerisapp:exportar_programas_excel' %}";
+            const finalUrl = `${baseUrl}?ano=${ano}&tipo=${tipo}`;
+
+
+            window.location.href = finalUrl;
+        });
+
+    } else {
+        console.error("ERROR CRÍTICO: No se encontraron todos los elementos necesarios para la exportación. Revisa los IDs ('btn-exportar-programa', 'select-ano', 'select-tipo') en tu plantilla HTML.");
+    }
+    
+    // --- SCRIPT PARA EXPORTAR REPORTES POR AÑO ---
+    const exportReportesBtn = document.getElementById('btn-exportar-reportes');
+    const selectAnoReporte = document.getElementById('select-ano-reporte');
+
+    if (exportReportesBtn && selectAnoReporte) {
+        exportReportesBtn.addEventListener('click', () => {
+            const ano = selectAnoReporte.value;
+            
+            if (!ano) {
+                alert("Por favor, selecciona un año para exportar los reportes.");
+                return;
+            }
+            
+            // Construimos la URL con el parámetro 'ano'
+            const url = `{% url 'cenerisapp:exportar_reportes_excel' %}?ano=${ano}`;
+            
+            window.location.href = url;
+        });
+    }
+    const exportRegistrosBtn = document.getElementById('btn-exportar-registros');
+    if (exportRegistrosBtn) {
+        exportRegistrosBtn.addEventListener('click', () => {
+            const fecha = document.getElementById('select-fecha-registro').value;
+            const areaGeneral = document.getElementById('select-area-general-registro').value;
+            const turno = document.getElementById('select-turno-registro').value;
+            const operadorId = document.getElementById('select-operador-registro').value; 
+
+            if (!fecha || !areaGeneral || !turno || !operadorId) { // <-- Añadimos la validación
+                alert("Por favor, completa todos los filtros, incluyendo el operador.");
+                return;
+            }
+            
+            // Construimos la URL con el nuevo parámetro 'operador_id'
+            let url = `{% url 'cenerisapp:exportar_registros_excel' %}?fecha=${fecha}`;
+            url += `&area_general=${encodeURIComponent(areaGeneral)}`;
+            url += `&turno=${turno}`;
+            url += `&operador_id=${operadorId}`; // <-- Añadimos el nuevo parámetro
+            
+            window.location.href = url;
+        });
+    }
+    // --- SCRIPT PARA EXPORTAR FIJOS POR ÁREA GENERAL ---
+    const exportFijosBtn = document.getElementById('btn-exportar-fijos-area');
+    const selectArea = document.getElementById('select-area-general');
+
+    if (exportFijosBtn && selectArea) {
+        exportFijosBtn.addEventListener('click', () => {
+            const areaGeneral = selectArea.value;
+            
+            if (!areaGeneral) {
+                alert("Por favor, selecciona un área general para exportar.");
+                return;
+            }
+            
+            // Construimos la URL usando un placeholder
+            let url = "{% url 'cenerisapp:exportar_fijos_por_area' 'AREA_PLACEHOLDER' %}";
+            url = url.replace('AREA_PLACEHOLDER', encodeURIComponent(areaGeneral));
+            
+            window.location.href = url;
+        });
+    }
+    const exportSeguimientoBtn = document.getElementById('btn-exportar-seguimiento');
+    if (exportSeguimientoBtn) {
+        exportSeguimientoBtn.addEventListener('click', () => {
+            const ano = document.getElementById('select-ano-seguimiento').value;
+            const mes = document.getElementById('select-mes-seguimiento').value;
+            const areaGeneral = document.getElementById('select-area-seguimiento').value;
+
+            if (!ano || !mes || !areaGeneral) {
+                alert("Por favor, completa todos los filtros para el reporte de seguimiento.");
+                return;
+            }
+            
+            let url = `{% url 'cenerisapp:exportar_seguimiento_excel' %}?ano=${ano}&mes=${mes}&area_general=${encodeURIComponent(areaGeneral)}`;
+            
+            window.location.href = url;
+        });
+    }
+});
+
+</script>
+{% endblock %}

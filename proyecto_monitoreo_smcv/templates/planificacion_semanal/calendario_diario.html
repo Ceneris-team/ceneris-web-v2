@@ -1,0 +1,67 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+
+{% block title %}Calendario Operativo{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Programación Semanal</h1>
+        
+        <!-- Navegación de Meses -->
+        <div class="flex items-center bg-white rounded-lg shadow border border-gray-200">
+            <a href="?mes={{ prev_mes }}&anio={{ prev_anio }}" class="px-3 py-2 hover:bg-gray-100 border-r border-gray-200">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            <span class="px-4 py-2 font-bold text-gray-700 w-40 text-center">
+                {{ nombre_mes }} {{ anio }}
+            </span>
+            <a href="?mes={{ next_mes }}&anio={{ next_anio }}" class="px-3 py-2 hover:bg-gray-100 border-l border-gray-200">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- CALENDARIO -->
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+        <!-- Cabecera Días -->
+        <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-200 text-center py-2 text-xs font-bold text-gray-500 uppercase">
+            <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+        </div>
+
+        <!-- Días -->
+        <div class="grid grid-cols-7 auto-rows-fr bg-gray-200 gap-px border-b border-gray-200">
+            {% for semana in calendario %}
+                {% for dia in semana %}
+                    <a href="{% url 'proyecto_monitoreo_smcv:crear_prog_diaria' dia.fecha|date:'Y-m-d' %}" 
+                       class="relative bg-white h-32 p-2 hover:bg-blue-50 transition group flex flex-col justify-between
+                              {% if not dia.es_este_mes %}bg-gray-50 text-gray-400{% endif %}
+                              {% if dia.es_hoy %}ring-2 ring-inset ring-brand-500 z-10{% endif %}">
+                        
+                        <!-- Número del día -->
+                        <div class="flex justify-between items-start">
+                            <span class="font-bold text-sm {% if dia.es_hoy %}text-brand-600{% endif %}">{{ dia.dia }}</span>
+                            {% if dia.estado == "Programado" %}
+                                <i class="fas fa-check-circle text-green-500"></i>
+                            {% endif %}
+                        </div>
+
+                        <!-- Estado / Botón (Aparece al hover) -->
+                        <div class="mt-2">
+                            {% if dia.estado == "Programado" %}
+                                <span class="block w-full text-center text-xs bg-green-100 text-green-800 rounded py-1 font-medium">
+                                    Ver Programa
+                                </span>
+                            {% else %}
+                                <span class="block w-full text-center text-xs bg-gray-100 text-gray-500 rounded py-1 group-hover:bg-brand-100 group-hover:text-brand-700 transition">
+                                    Sin Asignar
+                                </span>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

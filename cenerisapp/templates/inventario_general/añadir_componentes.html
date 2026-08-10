@@ -1,0 +1,105 @@
+{% extends 'app_base.html' %}
+{% block title %}Añadir Componentes al Lote #{{ lote.id_inventario }}{% endblock %}
+
+{% block main_content %}
+
+
+<div class="form-container">
+    <div class="form-card">
+        <h2>Añadir {{ lote.cantIngreso }} Componentes</h2>
+        <p class="form-description">Nombre común: <strong>{{ lote.descripInv }}</strong></p>
+        
+        <div class="form-group">
+            <label for="tipo-componente-select">Selecciona el tipo de componente:</label>
+            <select id="tipo-componente-select">
+                <option value="sensor" {% if componente_tipo_seleccionado == 'sensor' %}selected{% endif %}>Sensor</option>
+                <option value="otro" {% if componente_tipo_seleccionado == 'otro' %}selected{% endif %}>Otro Componente</option>
+            </select>
+        </div>
+
+        <!-- FORMULARIO DE SENSORES -->
+        {% if componente_tipo_seleccionado == 'sensor' %}
+        <form method="post">
+            <h3>Formulario para Sensores</h3>
+            {% csrf_token %}
+            {{ formset_sensores.management_form }}
+            
+            <!-- ¡IMPORTANTE! Mostramos errores generales del formset -->
+            {% for error in formset_sensores.non_form_errors %}
+                <p class="form-error">{{ error }}</p>
+            {% endfor %}
+
+            {% for form in formset_sensores %}
+            <div class="component-form-group">
+                <h4>Sensor #{{ forloop.counter }}</h4>
+                <!-- Mostramos errores específicos de este formulario -->
+                {% for error in form.non_field_errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+                
+                <div class="form-grid">
+                    <!-- Renderizamos todos los campos del SensorForm -->
+                    {% for field in form %}
+                        <div class="form-group">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {{ field.errors }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            <div class="form-actions"><button type="submit" name="guardar_sensores" class="btn btn-primary">Guardar Sensores</button></div>
+        </form>
+        {% endif %}
+
+        <!-- FORMULARIO DE OTROS COMPONENTES -->
+        {% if componente_tipo_seleccionado == 'otro' %}
+        <form method="post">
+             <h3>Formulario para Otros Componentes</h3>
+            {% csrf_token %}
+            {{ formset_otros.management_form }}
+            
+            {% for error in formset_otros.non_form_errors %}
+                <p class="form-error">{{ error }}</p>
+            {% endfor %}
+
+            {% for form in formset_otros %}
+            <div class="component-form-group">
+                <h4>Otro Componente #{{ forloop.counter }}</h4>
+                {% for error in form.non_field_errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+                
+                <div class="form-grid">
+                    <!-- Renderizamos todos los campos del OtroComponenteForm -->
+                    {% for field in form %}
+                        <div class="form-group">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {{ field.errors }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            <div class="form-actions"><button type="submit" name="guardar_otros" class="btn btn-primary">Guardar Componentes</button></div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- SCRIPT para manejar el cambio de selección (se queda igual) -->
+<script>
+    document.getElementById('tipo-componente-select').addEventListener('change', function() {
+        window.location.href = `?tipo=${this.value}`;
+    });
+</script>
+
+<!-- Añade este CSS para los errores -->
+<style>
+    .form-error { color: #d93025; font-size: 0.9em; margin-top: 5px; }
+    .form-group .errorlist { list-style: none; padding: 0; color: #d93025; font-size: 0.9em; }
+</style>
+
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block title %}Historial de Inspecciones{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-4">
+        <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="inline-flex items-center text-gray-600 hover:text-blue-600 font-semibold transition-colors">
+            <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-2 shadow-sm group-hover:bg-blue-100">
+                <i class="fas fa-arrow-left text-sm"></i>
+            </div>
+            Volver al Panel
+        </a>
+    </div>
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Historial de Inspecciones</h1>
+            <p class="text-gray-500 text-sm">Registro de inspecciones específicas realizadas.</p>
+        </div>
+        
+        <!-- Buscador -->
+        <form method="get" class="w-full md:w-96 relative">
+            <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar por equipo, serie o responsable..." 
+                   class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-hidden flex flex-col h-[70vh]">
+        <div class="overflow-auto custom-scrollbar flex-grow">
+            <table class="min-w-full">
+                <thead class="bg-red-50 sticky top-0 z-10 border-b border-red-100">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-red-800 uppercase">Fecha</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-red-800 uppercase">Equipo Inspeccionado</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-red-800 uppercase">Serie</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-red-800 uppercase">Responsable</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-red-800 uppercase">Reporte</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for insp in registros %}
+                        <!-- Obtenemos el primer detalle (ya que es específica 1 a 1) -->
+                        {% with detalle=insp.detalles.first %}
+                        <tr class="hover:bg-red-50 transition-colors group">
+                            <!-- Fecha -->
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">
+                                {{ insp.fecha_inspeccion|date:"d/m/Y" }}
+                            </td>
+                            
+                            <!-- Equipo -->
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">
+                                {{ detalle.dispositivo.nombre|default:"Sin equipo" }}
+                            </td>
+                            
+                            <!-- Serie -->
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                                {{ detalle.dispositivo.serie|default:"-" }}
+                            </td>
+                            
+                            <!-- Responsable -->
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                <div class="flex items-center">
+                                    <div class="h-6 w-6 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-xs font-bold mr-2">
+                                        {{ insp.responsable.nombre|slice:":1" }}
+                                    </div>
+                                    {{ insp.responsable.nombre }}
+                                </div>
+                            </td>
+
+                            <!-- Botón PDF -->
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <a href="{% url 'proyecto_monitoreo_smcv:pdf_inspeccion_especifica' insp.id %}" target="_blank" class="text-red-500 hover:text-red-700 font-bold transition transform hover:scale-110 inline-block" title="Ver PDF">
+                                    <i class="fas fa-file-pdf fa-lg"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                    {% empty %}
+                        <tr><td colspan="5" class="text-center py-10 text-gray-400 italic">No se encontraron inspecciones registradas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación -->
+        {% if is_paginated %}
+        <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center text-xs text-gray-500">
+            <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            <div class="flex gap-1">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}" class="px-2 py-1 bg-white border rounded hover:bg-gray-100">&laquo; Ant</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}" class="px-2 py-1 bg-white border rounded hover:bg-gray-100">Sig &raquo;</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

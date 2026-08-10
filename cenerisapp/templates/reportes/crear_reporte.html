@@ -1,0 +1,76 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="form-container">
+        <form method="post" class="form-card">
+            <h2>{{ titulo }}</h2>
+            {% csrf_token %}
+            
+            {{ form.non_field_errors }}
+
+            <!-- Campo de selección inicial -->
+            <div class="form-group">
+                {{ form.tipo_reporte.label_tag }}
+                {{ form.tipo_reporte }}
+            </div>
+
+            <!-- Campo para Dispositivos (oculto por defecto) -->
+            <div id="dispositivo-section" class="form-group" style="display: none;">
+                {{ form.id_dispositivo.label_tag }}
+                {{ form.id_dispositivo }}
+                {{ form.id_dispositivo.errors }}
+            </div>
+
+            <!-- Campo para Componentes (oculto por defecto) -->
+            <div id="componente-section" class="form-group" style="display: none;">
+                {{ form.id_otro_componente.label_tag }}
+                {{ form.id_otro_componente }}
+                {{ form.id_otro_componente.errors }}
+            </div>
+            
+            <hr>
+            <div class="form-group">
+                {{ form.id_trabajador.label_tag }}
+                {{ form.id_trabajador }}
+                {{ form.id_trabajador.errors }}
+            </div>
+
+            <div class="form-group">{{ form.razRetiro.label_tag }} {{ form.razRetiro }}</div>
+            <div class="form-group">{{ form.especRetiro.label_tag }} {{ form.especRetiro }}</div>
+            <hr>
+            <div class="form-group">
+                {{ form.nuevo_estado.label_tag }}
+                {{ form.nuevo_estado }}
+                {{ form.nuevo_estado.errors }}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-danger">Guardar Reporte</button>
+            </div>
+        </form>
+    </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const tipoSelect = document.getElementById('id_tipo_reporte');
+    const dispositivoSection = document.getElementById('dispositivo-section');
+    const componenteSection = document.getElementById('componente-section');
+
+    function toggleSections() {
+        const selectedType = tipoSelect.value;
+        dispositivoSection.style.display = (selectedType === 'dispositivo') ? 'block' : 'none';
+        componenteSection.style.display = (selectedType === 'componente') ? 'block' : 'none';
+    }
+
+    if (tipoSelect) {
+        tipoSelect.addEventListener('change', toggleSections);
+        // Ejecutamos al cargar la página por si hay datos de un POST fallido
+        toggleSections();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Detalle de {{ trabajador.nombre_completo }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .profile-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .profile-header h1 { font-size: 1.5rem; margin: 0; }
+    .btn-volver {
+        display: inline-block; padding: 0.5rem 1rem; border-radius: 6px;
+        background: #e2e8f0; color: #1e293b; text-decoration: none; font-weight: 600;
+    }
+    .btn-volver:hover { background: #cbd5e1; }
+    .profile-card {
+        display: flex; gap: 2rem; flex-wrap: wrap; align-items: flex-start;
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+        padding: 1.5rem; margin-bottom: 2rem;
+    }
+    .profile-avatar { text-align: center; }
+    .profile-avatar img { border-radius: 50%; }
+    .profile-avatar h2 { font-size: 1.1rem; margin: 0.75rem 0 0.25rem; }
+    .profile-avatar .puesto { color: #64748b; font-size: 0.9rem; }
+    .profile-details {
+        flex: 1; min-width: 280px; display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem;
+    }
+    .detail-item { background: #f8fafc; border-radius: 8px; padding: 0.75rem 1rem; }
+    .detail-item .valor { display: block; font-weight: 600; color: #1e293b; }
+    .detail-item .label { display: block; font-size: 0.78rem; color: #64748b; text-transform: uppercase; margin-top: 2px; }
+    .section-title { font-size: 1.15rem; margin: 1.5rem 0 0.75rem; }
+    .tabla-detalle { width: 100%; border-collapse: collapse; background: #fff; }
+    .tabla-detalle th, .tabla-detalle td { padding: 0.6rem 0.9rem; border-bottom: 1px solid #e2e8f0; text-align: left; font-size: 0.9rem; }
+    .tabla-detalle thead th { background: #f1f5f9; color: #334155; }
+    .badge-estado { padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+    .badge-activo { background: #dcfce7; color: #166534; }
+    .badge-inactivo { background: #fee2e2; color: #991b1b; }
+    .fila-fraude td { background: #fff5f5; }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="profile-header">
+        <h1>Ficha del Trabajador</h1>
+        <a href="{% url 'recursoshumanos:lista_trabajadores' %}" class="btn-volver">&larr; Volver al Listado</a>
+    </div>
+
+    <!-- Tarjeta de Perfil del Trabajador -->
+    <div class="profile-card">
+        <div class="profile-avatar">
+            <img src="https://ui-avatars.com/api/?name={{ trabajador.nombres|first }}{{ trabajador.apellido_paterno|first }}&background=d45b04&color=fff&size=120&font-size=0.33" alt="Avatar">
+            <h2>{{ trabajador.nombre_completo }}</h2>
+            <span class="puesto">{{ trabajador.cargo|default:"Sin Cargo Asignado" }}</span>
+        </div>
+        <div class="profile-details">
+            <div class="detail-item">
+                <span class="valor">{{ trabajador.dni }}</span>
+                <span class="label">DNI</span>
+            </div>
+            <div class="detail-item">
+                <span class="valor">
+                    {% if trabajador.activo %}
+                        <span class="badge-estado badge-activo">Activo</span>
+                    {% else %}
+                        <span class="badge-estado badge-inactivo">Inactivo</span>
+                    {% endif %}
+                </span>
+                <span class="label">Estado</span>
+            </div>
+            <div class="detail-item">
+                <span class="valor">{{ trabajador.empresa.nombre|default:"Sin Empresa" }}</span>
+                <span class="label">Empresa</span>
+            </div>
+            <div class="detail-item">
+                <span class="valor">{{ trabajador.area.nombre|default:"Sin Área" }}</span>
+                <span class="label">Área</span>
+            </div>
+            <div class="detail-item">
+                <span class="valor">{{ trabajador.email|default:"No registrado" }}</span>
+                <span class="label">Correo Electrónico</span>
+            </div>
+            <div class="detail-item">
+                <span class="valor">{{ trabajador.telefono|default:"No registrado" }}</span>
+                <span class="label">Teléfono</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historial de Asistencias Válidas -->
+    <h2 class="section-title">Historial de Asistencias (últimas 100 marcaciones)</h2>
+    <table class="tabla-detalle">
+        <thead>
+            <tr>
+                <th>Fecha y Hora</th>
+                <th>Tipo Marcación</th>
+                <th>Ubicación</th>
+                <th>Origen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for asistencia in asistencias %}
+            <tr>
+                <td>{{ asistencia.timestamp|date:"d/m/Y H:i" }}</td>
+                <td>{{ asistencia.tipo_marcacion }}</td>
+                <td>{{ asistencia.nombre_ubicacion|default:"-" }}</td>
+                <td>{{ asistencia.origen|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" style="text-align: center;">No tiene asistencias válidas registradas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Historial de Intentos de Fraude -->
+    <h2 class="section-title">Historial de Intentos de Fraude</h2>
+    <table class="tabla-detalle">
+        <thead>
+            <tr>
+                <th>Fecha y Hora</th>
+                <th>Motivo Detectado</th>
+                <th>Coordenadas Reportadas</th>
+                <th>Revisado por RRHH</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fraude in fraudes %}
+            <tr class="fila-fraude">
+                <td>{{ fraude.fecha_hora|date:"d/m/Y H:i" }}</td>
+                <td>{{ fraude.motivo_detectado }}</td>
+                <td>{{ fraude.latitud_reportada|default_if_none:"-" }}, {{ fraude.longitud_reportada|default_if_none:"-" }}</td>
+                <td>{% if fraude.revisado %}Sí{% else %}No{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" style="text-align: center;">No tiene registros de fraude.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

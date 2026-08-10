@@ -1,0 +1,125 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block content %}
+<div class="content-area">
+    
+    <!-- ENCABEZADO DE LA PÁGINA -->
+    <div class="page-header" style="margin-left: 70px;">
+        <div class="header-text">
+            <h1 class="page-title">Seguimiento de Actividad</h1>
+            <div class="page-desc">Historial de cambios y acciones en el sistema.</div>
+        </div>
+    </div>
+
+    <!-- GRÁFICO DE ACTIVIDAD -->
+    <div class="chart-card-full">
+        <h5>Actividad en los Últimos 7 Días</h5>
+        <div class="chart-container" style="height: 250px; width: 100%;">
+            <canvas id="activityChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="table-container-full-segui">
+        <div class="scrollable-table">
+            
+            <div class="item-list-header-full">
+                <div>Usuario</div>
+                <div>Acción</div>
+                <div>Objeto</div>
+                <div>Descripción del Cambio</div>
+                <div>Fecha y Hora</div>
+            </div>
+
+            {% for registro in page_obj %}
+                <div class="item-row-full">
+                    <div>{{ registro.usuario.username|default:"Sistema" }}</div>
+                    
+                    <div><span class="status-badge accion-{{ registro.accion|lower }}">{{ registro.get_accion_display }}</span></div>
+                    
+                    <div>
+                        <span class="object-type">{{ registro.content_type.model|title }}</span>: 
+                        <strong>{{ registro.content_object|truncatechars:50 }}</strong>
+                    </div>
+                    
+                    <div class="description-cell">{{ registro.descripcion|default_if_none:"-" }}</div>
+                    
+                    <div>{{ registro.timestamp|date:"d M Y, H:i" }}</div>
+                </div>
+            {% empty %}
+                <div class="item-row-empty"><p>No hay actividad registrada todavía.</p></div>
+            {% endfor %}
+            
+        </div>
+    </div>
+
+    <!-- PAGINACIÓN -->
+    {% if page_obj.has_previous or page_obj.has_next %}
+    <div class="pagination">
+        <span class="step-links">
+            {% if page_obj.has_previous %}
+                <a href="?page=1">&laquo; primera</a>
+                <a href="?page={{ page_obj.previous_page_number }}">anterior</a>
+            {% endif %}
+
+            <span class="current">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}.
+            </span>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">siguiente</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}">última &raquo;</a>
+            {% endif %}
+        </span>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- Scripts necesarios para esta página -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script id="activity-chart-data" type="application/json">{{ chart_data|safe }}</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const activityDataEl = document.getElementById('activity-chart-data');
+    const activityCtxEl = document.getElementById('activityChart');
+
+    if (activityDataEl && activityCtxEl) {
+        try {
+            const activityData = JSON.parse(activityDataEl.textContent);
+            const activityCtx = activityCtxEl.getContext('2d');
+            
+            new Chart(activityCtx, {
+                type: 'line',
+                data: {
+                    labels: activityData.labels,
+                    datasets: [{
+                        label: 'Acciones por Día',
+                        data: activityData.data,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                // Asegura que los ticks del eje Y sean números enteros
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        } catch(e) {
+            console.error("Error al renderizar el gráfico:", e);
+        }
+    }
+});
+</script>
+{% endblock %}

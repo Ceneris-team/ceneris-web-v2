@@ -1,0 +1,192 @@
+<!-- dashboard/templates/dashboard/main_dashboard.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load custom_filters %}
+
+{% block title %}Dashboard Principal{% endblock %}
+
+{% block content %}
+    <div class="dashboard-grid">
+
+        {% if current_view == 'reportes' %}
+            
+            {% if request.user|has_group:"Recursos Humanos" or request.user|has_group:"Supervisores" %}
+            <!-- Tarjeta para Exportar Reporte Diario -->
+            <a href="{% url 'recursoshumanos:exportar_formato_planilla' %}" class="card">
+                <div class="card__icon">📥</div>
+                <h2 class="card__title">Exportar Formato Planilla</h2>
+                <p class="card__description">
+                    Descarga un listado simple con todas las marcaciones de entrada y salida
+                    de un día específico en formato Excel.
+                </p>
+                <div class="card__footer">
+                    Ir a Exportación &rarr;
+                </div>
+            </a>
+            {% endif %}   
+
+            {% if request.user|has_group:"Recursos Humanos" or request.user|has_group:"Supervisores" %}
+            <!-- Tarjeta para Exportar Reporte Diario -->
+            <a href="{% url 'recursoshumanos:exportar_reporte_diario' %}" class="card">
+                <div class="card__icon">📥</div>
+                <h2 class="card__title">Exportar Marcas del Día</h2>
+                <p class="card__description">
+                    Descarga un listado simple con todas las marcaciones de entrada y salida
+                    de un día específico en formato Excel.
+                </p>
+                <div class="card__footer">
+                    Ir a Exportación &rarr;
+                </div>
+            </a>
+            {% endif %} 
+
+            {% if request.user|has_group:"Recursos Humanos" or request.user|has_group:"Supervisores" %}
+            <!-- Tarjeta para Exportar Reporte Maestro -->
+            <a href="{% url 'recursoshumanos:exportar_reporte_maestro' %}" class="card">
+                <div class="card__icon">📄</div>
+                <h2 class="card__title">Exportar Reporte Maestro</h2>
+                <p class="card__description">
+                    Genera el informe mensual consolidado en formato Excel, idéntico al sistema
+                    de tareo, con todas las asistencias, faltas y justificaciones.
+                </p>
+                <div class="card__footer">
+                    Ir a Exportación &rarr;
+                </div>
+            </a>    
+            {% endif %}  
+
+        {% endif %}
+
+        {% if current_view == 'gestion_marcas' %}
+
+            {% if request.user|has_group:"Recursos Humanos" %}
+            <!-- Tarjeta 2: Gestionar Trabajadores -->
+            <a href="{% url 'recursoshumanos:gestion_empleados' %}" class="card">
+                <div class="card__icon">👥</div>
+                <h2 class="card__title">Gestión de Trabajadores</h2>
+                <p class="card__description">
+                    Añade nuevos empleados, edita su información y gestiona
+                    los dispositivos vinculados a cada uno.
+                </p>
+                <div class="card__footer">
+                    Gestionar &rarr;
+                </div>  
+            </a>
+            {% endif %} 
+
+            {% if request.user|has_group:"Recursos Humanos" %}
+            <!-- Tarjeta para Gestionar Ubicaciones -->
+            <a href="{% url 'recursoshumanos:gestion_ubicaciones' %}" class="card">
+                <div class="card__icon">📍</div>
+                <h2 class="card__title">Gestión de Ubicaciones</h2>
+                <p class="card__description">
+                    Añade, edita o elimina las áreas permitidas para el registro
+                    de asistencia, incluyendo sus coordenadas y horarios.
+                </p>
+                <div class="card__footer">
+                    Gestionar Ubicaciones &rarr;
+                </div>
+            </a>
+            {% endif %} 
+
+            {% if request.user|has_group:"Recursos Humanos" %}
+            <!-- Tarjeta para Seguimiento de trabajadores -->
+            <a href="{% url 'recursoshumanos:gestion_ubicaciones' %}" class="card">
+                <div class="card__icon">📍</div>
+                <h2 class="card__title">Seguimiento de trabajadores</h2>
+                <p class="card__description">
+                    Resumen de mejora de asistencia por trabajador.
+                </p>
+                <div class="card__footer">
+                    Seguimiento de trabajadores &rarr;
+                </div>
+            </a>
+            {% endif %} 
+
+            {% if request.user|has_group:"Recursos Humanos" %}
+            <!-- Tarjeta 3: Ver Reportes de Fraude (Próximamente) -->
+            <a href="{% url 'recursoshumanos:reportes_fraude' %}" class="card">
+                <div class="card__icon">🛡️</div>
+                <h2 class="card__title">Reportes de Fraude</h2>
+                <p class="card__description">
+                    Revisa los intentos de asistencia con ubicaciones falsas o
+                    desde dispositivos no autorizados.
+                </p>
+                <div class="card__footer">
+                    Ver Reportes &rarr;
+                </div>
+            </a>
+            {% endif %}  
+
+        {% endif %}
+
+        {% if current_view == 'gestion_horarios' %}
+
+            {% if request.user|has_group:"Recursos Humanos" or request.user|has_group:"Supervisores" %}
+            <!-- Tarjeta para Gestión de Tareo -->
+            <a href="{% url 'recursoshumanos:gestion_tareo' %}" class="card">
+                <div class="card__icon">🗓️</div>
+                <h2 class="card__title">Seleccion de Horarios </h2>
+                <p class="card__description">
+                    Asigna el horario, estado y ubicación de trabajo para cada
+                    empleado, día por día, para todo el mes.
+                </p>
+                <div class="card__footer">
+                    Ir a Tareo &rarr;
+                </div> 
+            </a>
+            {% endif %} 
+
+            
+            {% if request.user|has_group:"Recursos Humanos" %}
+            <!-- Tarjeta para el Reporte Mensual -->
+            <a href="{% url 'recursoshumanos:reporte_mensual' %}" class="card">
+                <div class="card__icon">📅</div>
+                <h2 class="card__title">Reporte Mensual por trabajador</h2>
+                <p class="card__description">
+                    Genera un calendario visual de asistencias y faltas
+                    para un trabajador y mes específicos
+                </p>
+                <div class="card__footer">
+                    Generar Reporte &rarr;
+                </div> 
+            </a>
+            {% endif %} 
+
+        {% endif %}
+
+        {% if current_view == 'solicitudes' %}  
+
+            {% if request.user|has_group:"Recursos Humanos" %}
+            <!-- Tarjeta para justificacion -->
+            <a href="{% url 'recursoshumanos:gestion_justificaciones' %}" class="card">
+                <div class="card__icon">�</div>
+                <h2 class="card__title">Justificaciones</h2>
+                <p class="card__description">
+                    Se ingresara justificaciones de faltas o tardanzas
+                    para un trabajador y mes específicos. Ideal para auditorías.
+                </p>
+                <div class="card__footer">
+                    Ver justificaciones &rarr;
+                </div>
+            </a>
+            {% endif %}  
+            
+            {% if request.user|has_group:"Recursos Humanos" %}
+            <!-- Tarjeta para solicitudes -->
+            <a href="{% url 'recursoshumanos:gestion_solicitudes' %}" class="card">
+                <div class="card__icon">�</div>
+                <h2 class="card__title">Solicitudes</h2>
+                <p class="card__description">
+                    Se realizara comprobacion de solicitudes de permisos
+                    para un trabajador y mes específicos. Ideal para auditorías.
+                </p>
+                <div class="card__footer">
+                    Ver justificaciones &rarr;
+                </div>
+            </a>
+            {% endif %}  
+        
+        {% endif %} 
+           
+    </div>
+{% endblock %}

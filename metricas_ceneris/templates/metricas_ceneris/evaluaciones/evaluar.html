@@ -1,0 +1,632 @@
+{% extends 'metricas_ceneris/base.html' %}
+{% load metricas_custom_filters %}
+
+{% block content %}
+<style>
+    /* ================= FONDO ANIMADO OPTIMIZADO ================= */
+    .animated-background {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        will-change: transform; /* Optimización GPU */
+    }
+    .orb { 
+        position: absolute; border-radius: 50%; 
+        filter: blur(80px); /* Reducido de 100px */
+        opacity: 0.4; 
+        animation: float-orb 25s infinite ease-in-out alternate;
+        will-change: transform; /* Optimización GPU */
+    }
+    .orb-1 { top: -15%; left: -15%; width: 50vw; height: 50vw; background: rgba(249, 115, 22, 0.3); }
+    .orb-2 { bottom: -20%; right: -20%; width: 60vw; height: 60vw; background: rgba(139, 92, 246, 0.3); animation-delay: -7s; }
+    .orb-3 { top: 40%; left: 30%; width: 45vw; height: 45vw; background: rgba(59, 130, 246, 0.25); animation-delay: -14s; }
+    @keyframes float-orb { 
+        0% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); } 
+        100% { transform: translate3d(10%, 15%, 0) scale(1.1) rotate(15deg); } 
+    }
+
+    /* ================= CONTENEDOR GLASSMORPHISM OPTIMIZADO ================= */
+    .glass-container {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); /* Reducido de 30px */
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), inset 0 0 30px rgba(255, 255, 255, 0.7);
+        contain: layout style; /* Aislamiento de renderizado */
+    }
+
+    /* ================= ESTILO 1: OPERACIONAL (SVG DIALS OPTIMIZADOS) ================= */
+    .dial-wrapper {
+        position: relative; width: 160px; height: 80px;
+        cursor: pointer;
+        contain: layout; /* Optimización */
+    }
+    .dial-svg { 
+        width: 100%; height: 100%; 
+        filter: drop-shadow(0 4px 6px rgba(249, 115, 22, 0.2));
+    }
+    .dial-track { fill: none; stroke: #e2e8f0; stroke-width: 14; stroke-linecap: round; }
+    .dial-fill {
+        fill: none; stroke: url(#orangeGradient);
+        stroke-width: 14; stroke-linecap: round;
+        stroke-dasharray: 207;
+        stroke-dashoffset: 207;
+        transition: stroke-dashoffset 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        will-change: stroke-dashoffset; /* Optimización GPU */
+    }
+    .dial-value-display {
+        position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+        font-size: 2.5rem; font-weight: 900; color: #334155; line-height: 0.8;
+    }
+
+    /* ================= ESTILO 2: ADMINISTRATIVO (SLIDERS OPTIMIZADOS) ================= */
+    .custom-slider-container { 
+        position: relative; height: 36px; display: flex; align-items: center; 
+        --track-color: #e2e8f0; --thumb-color: #94a3b8;
+        contain: layout; /* Optimización */
+    }
+    .slider-deficient { --track-color: #ef4444; --thumb-color: #ef4444; }
+    .slider-average { --track-color: #f59e0b; --thumb-color: #f59e0b; }
+    .slider-exceeds { --track-color: #10B981; --thumb-color: #10B981; }
+    .slider-track-bg { position: absolute; width: 100%; height: 14px; background: #e2e8f0; border-radius: 7px; }
+    .slider-track-fill { 
+        position: absolute; height: 14px; background: var(--track-color); border-radius: 7px; 
+        width: var(--width, 0%); 
+        transition: width 0.1s linear, background 0.3s ease; 
+        box-shadow: 0 0 10px var(--track-color); /* Reducido de 15px */
+        will-change: width; /* Optimización GPU */
+    }
+    .slider-thumb-glow { 
+        position: absolute; left: var(--width, 0%); width: 32px; height: 32px; 
+        background: #fff; border: 4px solid var(--thumb-color); border-radius: 50%; 
+        transform: translate(-50%, 0); 
+        box-shadow: 0 0 15px var(--thumb-color); /* Reducido de 20px */
+        cursor: grab; 
+        transition: left 0.1s linear, border-color 0.3s ease, box-shadow 0.3s ease; 
+        z-index: 2;
+        will-change: left, transform; /* Optimización GPU */
+    }
+    .slider-thumb-glow:active { cursor: grabbing; transform: translate(-50%, 0) scale(1.15); }
+    input[type=range].hidden-slider { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 3; }
+
+    /* ================= ESTILO 3: HABILIDADES BLANDAS (ESTRELLAS OPTIMIZADAS) ================= */
+    .star-rating-10 {
+        display: flex; gap: 8px;
+        justify-content: center; padding: 12px;
+        background: rgba(255,255,255,0.7); 
+        border-radius: 1rem; 
+        border: 2px solid rgba(203, 213, 225, 0.5);
+        contain: layout; /* Optimización */
+    }
+    .star-btn {
+        font-size: 2.2rem; 
+        color: #94a3b8;
+        cursor: pointer; 
+        transition: all 0.25s ease;
+        position: relative;
+        will-change: transform, color; /* Optimización GPU */
+    }
+    .star-btn.active {
+        color: #a855f7;
+        filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.6)); /* Reducido de 10px */
+        transform: scale(1.2);
+    }
+    .star-rating-10:hover .star-btn:hover {
+        color: #c084fc;
+        transform: scale(1.15);
+    }
+    .star-feedback {
+        text-align: center; 
+        font-weight: 700; 
+        color: #7c3aed; 
+        font-size: 0.95rem;
+        min-height: 28px; 
+        margin-top: 10px;
+        opacity: 0; 
+        transition: opacity 0.3s ease;
+        will-change: opacity; /* Optimización GPU */
+    }
+
+    select.django-field-hidden { display: none !important; }
+
+    /* ================= TOOLTIPS ================= */
+    .tooltip-wrapper {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .tooltip-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #e0e7ff;
+        color: #6366f1;
+        font-size: 12px;
+        font-weight: bold;
+        cursor: help;
+        transition: all 0.2s ease;
+    }
+    .tooltip-icon:hover {
+        background: #6366f1;
+        color: white;
+        transform: scale(1.1);
+    }
+    .tooltip-text {
+        display: none;
+        position: fixed;
+        background: #1e293b;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        max-width: 220px;
+        min-width: 120px;
+        white-space: normal;
+        word-break: break-word;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        text-align: left;
+        pointer-events: none;
+        transition: opacity 0.2s;
+    }
+    .tooltip-text.active {
+        display: block;
+        opacity: 1;
+    }
+    .tooltip-text::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 20px;
+        border: 6px solid transparent;
+        border-top-color: #1e293b;
+    }
+    @media (max-width: 700px) {
+        .tooltip-text {
+            left: 0;
+            transform: none;
+        }
+    }
+</style>
+
+<svg width="0" height="0" style="position: absolute;">
+  <defs>
+    <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#fb923c;stop-opacity:1" /> <stop offset="100%" style="stop-color:#ea580c;stop-opacity:1" /> </linearGradient>
+  </defs>
+</svg>
+
+<div class="animated-background">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+</div>
+
+<div class="max-w-5xl mx-auto relative z-10 pb-20 pt-10">
+    <div class="glass-container rounded-[2rem] p-8 mb-10 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-6">
+            <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 text-white flex items-center justify-center text-3xl font-bold shadow-lg border-2 border-white/30">
+                <i class="ph ph-user"></i>
+            </div>
+            <div>
+                <p class="text-sm text-slate-500 font-bold uppercase tracking-widest mb-1">Evaluando a:</p>
+                <h1 class="text-3xl md:text-4xl font-extrabold text-slate-800 leading-tight">{{ trabajador.nombre_completo }}</h1>
+                <div class="flex flex-wrap items-center gap-4 mt-3 text-slate-600 font-medium">
+                    <span class="flex items-center gap-1 bg-white/60 px-4 py-1.5 rounded-full text-sm border border-white/70 shadow-sm">
+                        <i class="ph ph-briefcase text-ceneris"></i> {{ trabajador.area.nombre }}
+                    </span>
+                    <span class="flex items-center gap-1 bg-white/60 px-4 py-1.5 rounded-full text-sm border border-white/70 shadow-sm">
+                        <i class="ph ph-calendar-blank text-indigo-500"></i> {{ mes_objetivo_nombre }} {{ anio_objetivo }}
+                    </span>
+                    <span class="flex items-center gap-1 bg-white/60 px-4 py-1.5 rounded-full text-sm border border-white/70 shadow-sm uppercase tracking-wide">
+                        <i class="ph ph-tag text-purple-500"></i> {{ tipo_evaluacion }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% if request.user.trabajador.cargo_jerarquico == 'gerente' %}
+            <a href="{% url 'metricas_ceneris:panel_evaluacion_gerente' %}" class="group flex items-center gap-2 px-6 py-3 bg-white/80 border border-white/60 rounded-xl hover:bg-white hover:text-indigo-600 hover:border-indigo-300 transition-all shadow-sm backdrop-blur-md">
+                <i class="ph ph-arrow-left font-bold group-hover:-translate-x-1 transition-transform"></i>
+                <span class="font-bold text-sm text-slate-600 group-hover:text-indigo-600">Volver a Supervisión</span>
+            </a>
+        {% elif request.user.trabajador.cargo_jerarquico == 'responsable' %}
+            <a href="{% url 'metricas_ceneris:panel_responsable' %}" class="group flex items-center gap-2 px-6 py-3 bg-white/80 border border-white/60 rounded-xl hover:bg-white hover:text-ceneris hover:border-ceneris/50 transition-all shadow-sm backdrop-blur-md">
+                <i class="ph ph-arrow-left font-bold group-hover:-translate-x-1 transition-transform"></i>
+                <span class="font-bold text-sm text-slate-600 group-hover:text-ceneris">Volver al Panel</span>
+            </a>
+        {% else %}
+            <a href="{% url 'metricas_ceneris:panel_jefe' %}" class="group flex items-center gap-2 px-6 py-3 bg-white/80 border border-white/60 rounded-xl hover:bg-white hover:text-ceneris hover:border-ceneris/50 transition-all shadow-sm backdrop-blur-md">
+                <i class="ph ph-arrow-left font-bold group-hover:-translate-x-1 transition-transform"></i>
+                <span class="font-bold text-sm text-slate-600 group-hover:text-ceneris">Volver al Panel</span>
+            </a>
+        {% endif %}     
+    </div>
+
+    <div class="glass-container rounded-[2.5rem] p-10 md:p-12 relative overflow-hidden">
+        <form method="POST" id="evaluationForm" class="space-y-16">
+            {% csrf_token %}
+
+            {% if modo_correccion %}
+            <section class="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+                <p class="text-sm font-bold text-indigo-800">
+                    Corrigiendo evaluación registrada en {{ evaluacion_objetivo.fecha_evaluacion|date:"F Y" }}.
+                </p>
+                <p class="mt-1 text-xs text-indigo-700">
+                    Usa esta opción para corregir una evaluación con errores sin crear un registro duplicado.
+                </p>
+            </section>
+            {% endif %}
+
+            {% if tipo_evaluacion == 'MENSUAL' and not modo_correccion %}
+            <section class="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm backdrop-blur-md">
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-end">
+                    <div>
+                        <label class="mb-2 block text-sm font-bold text-slate-700">Mes a evaluar ({{ anio_objetivo }})</label>
+                        <select name="mes_objetivo" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                            {% for item in meses_disponibles_evaluacion %}
+                            <option value="{{ item.numero }}" {% if item.numero == mes_objetivo %}selected{% endif %} {% if item.ya_evaluado %}disabled{% endif %}>
+                                {{ item.nombre }}{% if item.ya_evaluado %} (ya evaluado){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <input type="hidden" name="anio_objetivo" value="{{ anio_objetivo }}">
+                    </div>
+                    <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Regla activa</p>
+                        <p class="mt-1 text-sm font-semibold text-slate-700">Puedes registrar evaluación mensual para meses pasados del año en curso.</p>
+                    </div>
+                </div>
+            </section>
+            {% endif %}
+
+            <section>
+                <div class="flex items-center gap-4 mb-10">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center shadow-lg shadow-orange-500/30">
+                        <i class="ph ph-gear-six text-3xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-3xl font-extrabold text-slate-800">2.1 Operacional</h2>
+                        <p class="text-slate-500 text-lg">Ajuste el nivel técnico (Precisión 1-10).</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+                    {% for clave, nombre, desc in estructura.OPERACIONAL %}
+                    {% with "ind_"|add:clave as field_name %}
+                    <div class="flex flex-col items-center text-center operational-svg-dial" data-target="{{ field_name }}">
+                        <div class="hidden">{{ form|get_item:field_name }}</div>
+                        <div class="tooltip-wrapper mb-4 h-14 flex items-center justify-center">
+                            <label class="text-lg font-bold text-slate-700">{{ nombre }}</label>
+                            {% if desc %}
+                            <span class="tooltip-icon">
+                                <i class="ph ph-info"></i>
+                                <span class="tooltip-text">{{ desc }}</span>
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="dial-wrapper mb-4">
+                            <svg class="dial-svg" viewBox="0 0 160 80">
+                                <path class="dial-track" d="M 10,80 A 70,70 0 0,1 150,80" />
+                                <path class="dial-fill" d="M 10,80 A 70,70 0 0,1 150,80" />
+                            </svg>
+                            <div class="dial-value-display">0</div>
+                        </div>
+                        <div class="flex justify-between w-full text-xs font-bold text-slate-400 px-6 uppercase tracking-widest">
+                            <span>Mejorable</span><span>Excelente</span>
+                        </div>
+                    </div>
+                    {% endwith %}
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="pt-12 border-t border-slate-200/50">
+                <div class="flex items-center gap-4 mb-10">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                        <i class="ph ph-files text-3xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-3xl font-extrabold text-slate-800">2.2 Administrativo</h2>
+                        <p class="text-slate-500 text-lg">Deslice para indicar cumplimiento. El color indica el estado.</p>
+                    </div>
+                </div>
+                <div class="space-y-10">
+                    {% for clave, nombre, desc in estructura.ADMINISTRATIVO %}
+                    {% with "ind_"|add:clave as field_name %}
+                    <div class="admin-slider-item" data-target="{{ field_name }}">
+                        <div class="flex justify-between items-end mb-4 px-2">
+                            <div class="tooltip-wrapper">
+                                <label class="text-lg font-bold text-slate-700">{{ nombre }}</label>
+                                {% if desc %}
+                                <span class="tooltip-icon">
+                                    <i class="ph ph-info"></i>
+                                    <span class="tooltip-text">{{ desc }}</span>
+                                </span>
+                                {% endif %}
+                            </div>
+                            <span class="text-4xl font-black slider-value-display leading-none" style="color: #94a3b8;">0</span>
+                        </div>
+                        <div class="hidden">{{ form|get_item:field_name }}</div>
+                        <div class="custom-slider-container">
+                            <div class="slider-track-bg"></div>
+                            <div class="slider-track-fill" style="--width: 0%;"></div>
+                            <div class="slider-thumb-glow" style="--width: 0%;"></div>
+                            <input type="range" min="0" max="10" value="0" step="1" class="hidden-slider">
+                        </div>
+                        <div class="flex justify-between text-xs font-bold text-slate-400 mt-3 px-2 uppercase tracking-widest">
+                            <span class="text-red-400">Deficiente</span>
+                            <span class="text-amber-500">Regular</span>
+                            <span class="text-emerald-500">Excelente</span>
+                        </div>
+                    </div>
+                    {% endwith %}
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="pt-12 border-t border-slate-200/50">
+                <div class="flex items-center gap-4 mb-10">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-400 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-purple-500/30">
+                        <i class="ph ph-sparkle text-3xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-3xl font-extrabold text-slate-800">2.3 Habilidades Blandas</h2>
+                        <p class="text-slate-500 text-lg">Valore con precisión del 1 al 10 usando las estrellas.</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-12">
+                    {% for clave, nombre, desc in estructura.HABILIDADES %}
+                    {% with "ind_"|add:clave as field_name %}
+                    <div class="soft-skills-star-item" data-target="{{ field_name }}">
+                        <label class="text-lg font-bold text-slate-700 mb-4 block px-2">{{ nombre }}</label>
+                        <div class="hidden">{{ form|get_item:field_name }}</div>
+                        
+                        <div class="star-rating-10">
+                            {% for i in "1234567890"|make_list %}
+                                <span class="star-btn" data-val="{{ forloop.counter }}">★</span>
+                            {% endfor %}
+                        </div>
+                        <div class="star-feedback"></div>
+                    </div>
+                    {% endwith %}
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="pt-12 border-t border-slate-200/50">
+                 <div class="bg-white/80 rounded-3xl p-8 border border-white/60 shadow-sm backdrop-blur-md relative overflow-hidden">
+                    <label class="flex items-center gap-3 text-xl font-bold text-slate-800 mb-6">
+                        <i class="ph ph-chat-teardrop-text text-indigo-500 text-2xl"></i>
+                        Comentarios Generales / Observaciones
+                    </label>
+                    <div class="relative z-10">
+                        {{ form.comentario_general }}
+                    </div>
+                </div>
+            </section>
+
+            <div class="flex justify-center pt-8">
+                <button type="submit" class="group relative overflow-hidden bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold text-xl py-5 px-16 rounded-full shadow-2xl shadow-indigo-500/40 transform transition-all duration-300 hover:scale-105 hover:shadow-indigo-500/60 active:scale-95">
+                    <span class="relative z-10 flex items-center gap-3"><i class="ph ph-floppy-disk-back text-2xl"></i> Guardar Evaluación Completa</span>
+                    <div class="absolute inset-0 h-full w-full scale-0 rounded-full transition-all duration-300 group-hover:scale-100 group-hover:bg-white/20"></div>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const djangoSelects = document.querySelectorAll('select[name^="ind_"]');
+    djangoSelects.forEach(s => s.classList.add('django-field-hidden'));
+
+    // TOOLTIP GLOBAL (position: fixed)
+    let tooltipDiv = document.createElement('div');
+    tooltipDiv.className = 'tooltip-text';
+    document.body.appendChild(tooltipDiv);
+
+    function showTooltip(e, text) {
+        tooltipDiv.textContent = text;
+        tooltipDiv.classList.add('active');
+        // Medir tamaño
+        tooltipDiv.style.left = '0px';
+        tooltipDiv.style.top = '0px';
+        tooltipDiv.style.display = 'block';
+        const padding = 12;
+        let x = e.clientX + 16;
+        let y = e.clientY - tooltipDiv.offsetHeight - 12;
+        // Si se sale por la derecha
+        if (x + tooltipDiv.offsetWidth + padding > window.innerWidth) {
+            x = window.innerWidth - tooltipDiv.offsetWidth - padding;
+        }
+        // Si se sale por arriba
+        if (y < 0) {
+            y = e.clientY + 24;
+        }
+        tooltipDiv.style.left = x + 'px';
+        tooltipDiv.style.top = y + 'px';
+    }
+    function hideTooltip() {
+        tooltipDiv.classList.remove('active');
+        tooltipDiv.style.display = 'none';
+    }
+    // Delegación para todos los tooltips
+    document.querySelectorAll('.tooltip-icon').forEach(function(icon) {
+        const text = icon.querySelector('.tooltip-text')?.textContent || icon.getAttribute('data-tooltip') || '';
+        icon.addEventListener('mouseenter', function(e) {
+            showTooltip(e, text);
+        });
+        icon.addEventListener('mousemove', function(e) {
+            showTooltip(e, text);
+        });
+        icon.addEventListener('mouseleave', hideTooltip);
+        icon.addEventListener('touchstart', function(e) {
+            showTooltip(e.touches[0], text);
+        });
+        icon.addEventListener('touchend', hideTooltip);
+    });
+
+    // Throttle function para optimizar eventos de mousemove
+    function throttle(func, delay) {
+        let lastCall = 0;
+        return function(...args) {
+            const now = Date.now();
+            if (now - lastCall >= delay) {
+                lastCall = now;
+                return func.apply(this, args);
+            }
+        };
+    }
+
+    // ================= LÓGICA 1: OPERACIONAL (SVG DIALS OPTIMIZADOS) =================
+    const dialItems = document.querySelectorAll('.operational-svg-dial');
+    dialItems.forEach(item => {
+        const wrapper = item.querySelector('.dial-wrapper');
+        const fillPath = item.querySelector('.dial-fill');
+        const display = item.querySelector('.dial-value-display');
+        const hiddenInput = item.querySelector('select');
+        const arcLength = 207; 
+
+        const updateDial = (val) => {
+            val = parseInt(val); 
+            if(isNaN(val) || val < 0) val = 0; 
+            if(val > 10) val = 10;
+            const offset = arcLength - (val / 10) * arcLength;
+            fillPath.style.strokeDashoffset = offset;
+            display.textContent = val > 0 ? val : '0';
+            if(hiddenInput) hiddenInput.value = val;
+        };
+
+        const handleInteraction = (e) => {
+            const rect = wrapper.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            let x = clientX - rect.left; 
+            
+            if (x < 0) x = 0; 
+            if (x > rect.width) x = rect.width;
+            
+            let exactVal = (x / rect.width) * 10;
+            let newVal = Math.round(exactVal);
+            
+            if (newVal < 1) newVal = 1;
+            if (newVal > 10) newVal = 10;
+            
+            updateDial(newVal);
+        };
+
+        // Throttle para mousemove con 16ms (60fps)
+        const throttledInteraction = throttle(handleInteraction, 16);
+
+        wrapper.addEventListener('mousedown', (e) => { 
+            handleInteraction(e); 
+            const moveHandler = (e) => throttledInteraction(e);
+            document.addEventListener('mousemove', moveHandler); 
+            document.addEventListener('mouseup', () => { 
+                document.removeEventListener('mousemove', moveHandler); 
+            }, { once: true }); 
+        });
+        
+        wrapper.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            handleInteraction(e); 
+            const touchMoveHandler = (e) => throttledInteraction(e);
+            document.addEventListener('touchmove', touchMoveHandler, { passive: false }); 
+            document.addEventListener('touchend', () => { 
+                document.removeEventListener('touchmove', touchMoveHandler); 
+            }, { once: true }); 
+        });
+
+        if(hiddenInput && hiddenInput.value) updateDial(hiddenInput.value);
+    });
+
+    // ================= LÓGICA 2: ADMINISTRATIVO (SLIDERS OPTIMIZADOS) =================
+    const adminItems = document.querySelectorAll('.admin-slider-item');
+    adminItems.forEach(item => {
+        const sliderInput = item.querySelector('.hidden-slider');
+        const trackFill = item.querySelector('.slider-track-fill');
+        const thumbGlow = item.querySelector('.slider-thumb-glow');
+        const valueDisplay = item.querySelector('.slider-value-display');
+        const sliderContainer = item.querySelector('.custom-slider-container');
+        const hiddenInput = item.querySelector('select');
+
+        const updateSliderVisuals = () => {
+            const val = parseInt(sliderInput.value);
+            const percentage = (val / sliderInput.max) * 100;
+            
+            // Usar requestAnimationFrame para transiciones suaves
+            requestAnimationFrame(() => {
+                trackFill.style.setProperty('--width', `${percentage}%`);
+                thumbGlow.style.setProperty('--width', `${percentage}%`);
+                valueDisplay.textContent = val > 0 ? val : '0';
+            });
+            
+            if(hiddenInput) hiddenInput.value = val;
+
+            sliderContainer.classList.remove('slider-deficient', 'slider-average', 'slider-exceeds');
+            if (val <= 4) { sliderContainer.classList.add('slider-deficient'); valueDisplay.style.color = '#ef4444'; } 
+            else if (val <= 7) { sliderContainer.classList.add('slider-average'); valueDisplay.style.color = '#f59e0b'; } 
+            else { sliderContainer.classList.add('slider-exceeds'); valueDisplay.style.color = '#10B981'; }
+        };
+        
+        sliderInput.addEventListener('input', updateSliderVisuals);
+        if(hiddenInput && hiddenInput.value) { sliderInput.value = hiddenInput.value; updateSliderVisuals(); }
+    });
+
+    // ================= LÓGICA 3: HABILIDADES BLANDAS (ESTRELLAS OPTIMIZADAS) =================
+    const softItems = document.querySelectorAll('.soft-skills-star-item');
+    softItems.forEach(item => {
+        const container = item.querySelector('.star-rating-10');
+        const stars = item.querySelectorAll('.star-btn');
+        const feedback = item.querySelector('.star-feedback');
+        const hiddenInput = item.querySelector('select');
+        let currentRating = 0;
+
+        const getFeedbackText = (val) => {
+            if (val <= 2) return "Muy bajo desempeño";
+            if (val <= 4) return "Necesita mejora";
+            if (val <= 6) return "Cumplimiento promedio";
+            if (val <= 8) return "Buen desempeño";
+            if (val == 9) return "Muy destacado";
+            if (val == 10) return "¡Excelente / Modelo a seguir!";
+            return "";
+        }
+
+        const highlightStars = (val) => {
+            // Batch DOM updates
+            requestAnimationFrame(() => {
+                stars.forEach(star => {
+                    const starVal = parseInt(star.dataset.val);
+                    star.classList.toggle('active', starVal <= val);
+                });
+                const text = getFeedbackText(val);
+                feedback.textContent = text;
+                feedback.style.opacity = text ? '1' : '0';
+            });
+        };
+
+        container.addEventListener('mouseover', (e) => {
+            const star = e.target.closest('.star-btn');
+            if (star) highlightStars(star.dataset.val);
+        });
+        container.addEventListener('mouseleave', () => highlightStars(currentRating));
+        container.addEventListener('click', (e) => {
+            const star = e.target.closest('.star-btn');
+            if (star) {
+                currentRating = parseInt(star.dataset.val);
+                highlightStars(currentRating);
+                if(hiddenInput) hiddenInput.value = currentRating;
+            }
+        });
+
+        if(hiddenInput && hiddenInput.value) { currentRating = parseInt(hiddenInput.value); highlightStars(currentRating); }
+    });
+
+    // Textarea styling optimizado
+    const textarea = document.querySelector('textarea');
+    if(textarea && !textarea.classList.contains('bg-white/80')) {
+         textarea.classList.add('w-full', 'bg-white/90', 'border', 'border-slate-300', 'rounded-2xl', 'p-5', 'text-slate-700', 'text-lg', 'focus:ring-2', 'focus:ring-indigo-500', 'focus:border-transparent', 'resize-none', 'shadow-inner', 'h-40', 'transition-all');
+    }
+});
+</script>
+{% endblock %}

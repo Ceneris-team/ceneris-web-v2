@@ -1,0 +1,220 @@
+<div class="overflow-x-auto relative z-0">
+    <table class="w-full table-floating-rows text-left border-separate" style="border-spacing: 0 10px;">
+        <thead class="text-xs font-extrabold text-slate-600 uppercase tracking-wider">
+            <tr>
+                <th class="px-4 pb-2">Trabajador</th>
+                <th class="px-4 pb-2">Tasa Asistencia</th>
+                <th class="px-4 pb-2 text-center">Asistencias</th>
+                <th class="px-4 pb-2 text-center">Faltas</th>
+                <th class="px-4 pb-2 text-center">Dias Tarde</th>
+                <th class="px-4 pb-2 text-center">% Impuntualidad</th>
+                <th class="px-4 pb-2 text-center">Total Horas Tarde</th>
+                <th class="px-4 pb-2 text-center">Nota Asistencia</th>
+                <th class="px-4 pb-2 text-right">Justificaciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in page_obj.object_list %}
+            <tr class="floating-row rounded-2xl group cursor-default bg-white shadow-sm hover:shadow-md transition-shadow">
+                <td class="px-4 py-3 rounded-l-2xl border-l border-y border-white/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-600 font-bold text-sm shadow-inner group-hover:from-indigo-500 group-hover:to-purple-600 group-hover:text-white transition-all flex-shrink-0">
+                            {{ item.trabajador.nombres|slice:":1" }}{{ item.trabajador.apellido_paterno|slice:":1" }}
+                        </div>
+                        <div class="min-w-0">
+                            <p class="font-extrabold text-slate-900 group-hover:text-indigo-700 transition-colors text-sm truncate">
+                                {{ item.trabajador.nombres }} {{ item.trabajador.apellido_paterno }}
+                            </p>
+                            <p class="text-[10px] text-slate-500 font-bold truncate">
+                                {{ item.trabajador.apellido_materno|default:"" }}
+                            </p>
+                        </div>
+                    </div>
+                </td>
+
+                <td class="px-4 py-3 border-y border-white/50">
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                <div class="h-full rounded-full transition-all duration-1000 ease-out
+                                    {% if item.porc_asistencia >= 95 %}bg-gradient-to-r from-emerald-400 to-emerald-500
+                                    {% elif item.porc_asistencia >= 85 %}bg-gradient-to-r from-amber-400 to-amber-500
+                                    {% else %}bg-gradient-to-r from-rose-400 to-rose-500{% endif %}"
+                                    style="width: {{ item.porc_asistencia }}%">
+                                </div>
+                            </div>
+                        </div>
+                        <span class="text-xs font-extrabold flex-shrink-0
+                            {% if item.porc_asistencia >= 95 %}text-emerald-700
+                            {% elif item.porc_asistencia >= 85 %}text-amber-700
+                            {% else %}text-rose-700{% endif %}">
+                            {{ item.porc_asistencia|floatformat:0 }}%
+                        </span>
+                    </div>
+                </td>
+
+                <td class="px-4 py-3 text-center border-y border-white/50">
+                    <span class="inline-flex items-center justify-center w-9 h-8 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-sm font-extrabold">
+                        {{ item.asistencias }}
+                    </span>
+                </td>
+
+                <td class="px-4 py-3 text-center border-y border-white/50">
+                    {% if item.faltas > 0 %}
+                        <span class="inline-flex items-center justify-center w-8 h-8 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-sm font-extrabold">
+                            {{ item.faltas }}
+                        </span>
+                    {% else %}
+                        <div class="flex items-center justify-center">
+                            <i class="ph-fill ph-check-circle text-3xl text-emerald-500"></i>
+                        </div>
+                    {% endif %}
+                </td>
+
+                <td class="px-4 py-3 text-center border-y border-white/50">
+                    <span class="text-slate-900 font-extrabold text-sm">{{ item.dias_tarde }}</span>
+                </td>
+
+                <td class="px-4 py-3 text-center border-y border-white/50">
+                    <span class="font-extrabold text-sm
+                        {% if item.porc_tardanza > 0 %}text-amber-700
+                        {% else %}text-emerald-600{% endif %}">
+                        {{ item.porc_tardanza|floatformat:0 }}%
+                    </span>
+                </td>
+
+                <td class="px-4 py-3 text-center rounded-r-2xl border-r border-y border-white/50">
+                    <span class="font-mono font-extrabold text-slate-900 text-sm">
+                        {{ item.horas_tardanza|floatformat:2 }} h
+                    </span>
+                </td>
+
+                <td class="px-4 py-3 text-center border-y border-white/50">
+                    <span class="font-extrabold text-sm text-cyan-700">
+                        {{ item.nota_asistencia|floatformat:1 }}/10
+                    </span>
+                </td>
+
+                <td class="px-4 py-3 text-right rounded-r-2xl border-r border-y border-white/50">
+                    <button onclick="abrirModal('modal-{{ item.trabajador.id }}')" 
+                            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all
+                            {% if item.cant_justificadas > 0 %}
+                                bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200
+                            {% else %}
+                                bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed
+                            {% endif %}"
+                            {% if item.cant_justificadas == 0 %}disabled{% endif %}>
+                        {% if item.cant_justificadas > 0 %}
+                            <span class="w-5 h-5 flex items-center justify-center bg-indigo-600 text-white rounded-full text-[10px]">
+                                {{ item.cant_justificadas }}
+                            </span>
+                            Ver Detalle
+                        {% else %}
+                            0 Justif.
+                        {% endif %}
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" class="px-6 py-12 text-center">
+                    <div class="flex flex-col items-center justify-center text-slate-400">
+                        <i class="ph ph-calendar-x text-4xl mb-2 opacity-50"></i>
+                        <p>No se encontraron registros de asistencia para este periodo.</p>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="mt-6 flex items-center justify-between gap-3 text-sm">
+    <p class="text-slate-600 font-semibold">
+        Mostrando {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ page_obj.paginator.count }} trabajadores
+    </p>
+
+    <div class="flex items-center gap-2">
+        {% if page_obj.has_previous %}
+        <a class="js-detalle-page px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:border-indigo-500 hover:text-indigo-700 font-bold" href="?{{ filtros_query }}&page={{ page_obj.previous_page_number }}">Anterior</a>
+        {% endif %}
+
+        <span class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 font-bold">
+            Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </span>
+
+        {% if page_obj.has_next %}
+        <a class="js-detalle-page px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:border-indigo-500 hover:text-indigo-700 font-bold" href="?{{ filtros_query }}&page={{ page_obj.next_page_number }}">Siguiente</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% for item in page_obj.object_list %}
+{% if item.cant_justificadas > 0 %}
+<div id="modal-{{ item.trabajador.id }}" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop" onclick="cerrarModal('modal-{{ item.trabajador.id }}')"></div>
+
+    <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg modal-panel opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+                <div class="bg-amber-600 px-4 py-4 sm:px-6 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-base font-bold leading-6 text-white" id="modal-title">Justificaciones Registradas</h3>
+                        <p class="text-indigo-100 text-xs mt-1">
+                            Trabajador: {{ item.trabajador.nombres }} {{ item.trabajador.apellido_paterno }}
+                        </p>
+                    </div>
+                    <button type="button" onclick="cerrarModal('modal-{{ item.trabajador.id }}')" class="text-indigo-200 hover:text-white">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="px-4 py-5 sm:p-6 bg-slate-50 max-h-[60vh] overflow-y-auto">
+                    <div class="space-y-3">
+                        {% for just in item.lista_justificaciones %}
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">
+                                        {{ just.tareo.fecha|date:"d M, Y" }}
+                                    </span>
+                                    {% if just.estado_solicitud == 'APROBADO' %}
+                                        <span class="text-[10px] uppercase font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Aprobado</span>
+                                    {% elif just.estado_solicitud == 'RECHAZADO' %}
+                                        <span class="text-[10px] uppercase font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100">Rechazado</span>
+                                    {% else %}
+                                        <span class="text-[10px] uppercase font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">Pendiente</span>
+                                    {% endif %}
+                                </div>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ just.get_motivo_display }}</span>
+                            </div>
+
+                            <p class="text-sm text-slate-700 mb-3 bg-slate-50 p-2 rounded-lg border border-slate-100 italic">
+                                "{{ just.descripcion }}"
+                            </p>
+
+                            {% if just.archivo_evidencia %}
+                            <a href="{{ just.archivo_evidencia.url }}" target="_blank" class="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline">
+                                <i class="ph ph-paperclip"></i> Ver Evidencia Adjunta
+                            </a>
+                            {% else %}
+                                <span class="text-xs text-slate-400 flex items-center gap-1"><i class="ph ph-prohibit"></i> Sin evidencia</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-slate-100">
+                    <button type="button" onclick="cerrarModal('modal-{{ item.trabajador.id }}')" class="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}

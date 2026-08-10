@@ -1,0 +1,59 @@
+
+{% extends 'index.html' %}
+{% load static %}
+
+{% block content %}
+<div class="task-assignment-container">
+    
+    <!-- El formulario ahora contiene los data-attributes para las URLs de búsqueda -->
+    <form method="post" id="task-form" 
+          data-insumo-search-url="{% url 'inventario:search_insumos' %}"
+          data-personal-search-url="{% url 'personal:api_search_personal' %}">
+        
+        {% csrf_token %}
+       
+        <!-- Contenedor para mostrar mensajes de error de Django (ej: duplicados) -->
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="header-container">
+            <!-- El título puede cambiar dependiendo de si estás añadiendo o gestionando -->
+            <h1>Añadir Tareas a "{{ proyecto.nombre }}"</h1>
+        </div>
+
+        <!-- Contenedor principal donde el JavaScript construirá el formulario dinámico -->
+        <div id="main-tasks-wrapper">
+            <!-- Las tareas principales se añadirán aquí dinámicamente -->
+        </div>
+
+        <!-- Botón para añadir una nueva Tarea Principal -->
+        <button type="button" id="add-main-task-btn" class="btn-add">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+            Añadir Tarea Principal
+        </button>
+
+        <!-- Campo oculto para que el JavaScript registre los IDs de los items a eliminar -->
+        <input type="hidden" name="items_to_delete" id="items-to-delete-input" value="">
+
+        <!-- Contenedor para el botón de envío principal -->
+        <div class="form-actions-footer" style="margin-top: 10px;">
+            <button type="submit" class="btn-submit">Guardar Tareas</button>
+        </div>
+    </form>
+</div>
+
+{% include 'proyectos/partials/_task_form_templates.html' %}
+
+{% if form_data %}
+    <script id="submitted-form-data" type="application/json">
+        {{ form_data|safe }}
+    </script>
+{% endif %}
+<script src="{% static 'js/task_assignment.js' %}"></script>
+
+{% endblock %}

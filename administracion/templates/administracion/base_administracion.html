@@ -1,0 +1,133 @@
+<!-- administracion/templates/administracion/base_administracion.html -->
+
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+{% load format_filters %}
+
+{% block extra_head %}
+    {{ block.super }} {# Esto asegura que cualquier estilo de la base original se mantenga #}
+    
+    <!-- =================================================================== -->
+    <!--     NUESTROS ESTILOS PERSONALIZADOS PARA GESTIÓN DE CONSUMO         -->
+    <!-- =================================================================== -->
+
+    <link rel="stylesheet" href="https://bootswatch.com/5/litera/bootstrap.min.css">
+
+    <style>
+        /* Estilos Generales y de Interfaz */
+        body { background-color: #f8f9fa; }
+        .card { transition: all 0.3s ease-in-out; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15) !important; }
+
+        /* Estilos Aislados para la Barra de Progreso 3D */
+        #progress-3d-container .chart { font-size: 1em; perspective: 1000px; perspective-origin: 50% 50%; -webkit-backface-visibility: visible; backface-visibility: visible; }
+        #progress-3d-container .bar { font-size: 1em; position: relative; height: 10em; transition: all 0.3s ease-in-out; transform: rotateX(60deg) rotateY(0deg); transform-style: preserve-3d; }
+        #progress-3d-container .bar .face { font-size: 2em; position: relative; width: 100%; height: 2em; background-color: rgba(220, 220, 220, 0.5); }
+        #progress-3d-container .bar .face.side-a, #progress-3d-container .bar .face.side-b { width: 2em; }
+        #progress-3d-container .bar .side-a { transform: rotateX(90deg) rotateY(-90deg) translateX(2em) translateY(1em) translateZ(1em); }
+        #progress-3d-container .bar .side-b { transform: rotateX(90deg) rotateY(-90deg) translateX(4em) translateY(1em) translateZ(-1em); position: absolute; right: 0; }
+        #progress-3d-container .bar .side-0 { transform: rotateX(90deg) rotateY(0) translateX(0) translateY(1em) translateZ(-1em); }
+        #progress-3d-container .bar .side-1 { transform: rotateX(90deg) rotateY(0) translateX(0) translateY(1em) translateZ(3em); }
+        #progress-3d-container .bar .top { transform: rotateX(0deg) rotateY(0) translateX(0em) translateY(4em) translateZ(2em); }
+        #progress-3d-container .bar .floor { box-shadow: 0 0.1em 0.6em rgba(0, 0, 0, 0.3), 0.6em -0.5em 3em rgba(0, 0, 0, 0.3), 1em -1em 8em #fefefe; }
+    #progress-3d-container .growing-bar { transition: all 0.5s ease-in-out; background-color: rgba(200,200,200,0.6); width: 0; height: 2em; }
+        
+    /* Colores para la barra 3D */
+    /* Rojo (0-30) */
+    #progress-3d-container .bar.red .side-a, #progress-3d-container .bar.red .growing-bar { background-color: #dc3545; }
+    #progress-3d-container .bar.red .side-0 .growing-bar { box-shadow: -0.5em -1.5em 4em #dc3545; }
+    #progress-3d-container .bar.red .floor .growing-bar { box-shadow: 0em 0em 2em #dc3545; }
+    /* Naranja (31-60) */
+    #progress-3d-container .bar.orange .side-a, #progress-3d-container .bar.orange .growing-bar { background-color: #f39c12; }
+    #progress-3d-container .bar.orange .side-0 .growing-bar { box-shadow: -0.5em -1.5em 4em #f39c12; }
+    #progress-3d-container .bar.orange .floor .growing-bar { box-shadow: 0em 0em 2em #f39c12; }
+    /* Verde claro (61-90) */
+    #progress-3d-container .bar.green-light .side-a, #progress-3d-container .bar.green-light .growing-bar { background-color: #8BC34A; }
+    #progress-3d-container .bar.green-light .side-0 .growing-bar { box-shadow: -0.5em -1.5em 4em #8BC34A; }
+    #progress-3d-container .bar.green-light .floor .growing-bar { box-shadow: 0em 0em 2em #8BC34A; }
+    /* Verde oscuro (91-100) */
+    #progress-3d-container .bar.green .side-a, #progress-3d-container .bar.green .growing-bar { background-color: #28a745; }
+    #progress-3d-container .bar.green .side-0 .growing-bar { box-shadow: -0.5em -1.5em 4em #28a745; }
+    #progress-3d-container .bar.green .floor .growing-bar { box-shadow: 0em 0em 2em #28a745; }
+
+    /* Clases utilitarias para barras 'bootstrap-like' */
+    .bg-orange { background-color: #f39c12 !important; }
+    .bg-green-light { background-color: #8BC34A !important; }
+
+        /* NOTA: Las clases de porcentaje (.bar-xx) han sido movidas al template 'registrar_avance.html' */
+    </style>
+{% endblock %}
+
+```python
+# administracion/views.py
+
+def registrar_avance(request, requerimiento_id):
+    # ... (toda la lógica de la vista se mantiene igual) ...
+
+    context = {
+        'form': form,
+        'requerimiento': requerimiento,
+        'historial': historial,
+        'progreso_mes_actual': progreso_mes_actual,
+        'titulo': f'Registrar Avance para "{requerimiento.agente}"',
+        'range_101': range(101)
+    }
+    return render(request, 'administracion/registrar_avance.html', context)```
+
+---
+
+<!-- En registrar_avance.html -->
+
+<!-- === INICIO: PANEL DE PROGRESO 3D CORREGIDO Y AISLADO === -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header">
+        <h5><i data-feather="trending-up" class="me-2"></i>Progreso para {{ progreso_mes_actual.nombre_mes }} {{ progreso_mes_actual.año }}</h5>
+    </div>
+    <!-- AÑADIMOS EL CONTENEDOR CON EL ID ÚNICO -->
+    <div id="progress-3d-container">
+        <div class="card-body text-center">
+            
+            <div class="d-flex justify-content-between align-items-center mb-3 px-md-5">
+                <span class="text-muted">Consumido: <strong>{{ progreso_mes_actual.consumido|euro }}</strong></span>
+                <h4 class="mb-0">{{ progreso_mes_actual.porcentaje }}%</h4>
+                <span class="text-muted">Meta: <strong>{{ progreso_mes_actual.meta|floatformat:0 }}</strong></span>
+            </div>
+
+            {% with p=progreso_mes_actual.porcentaje %}
+                {% if p > 100 %}
+                    {% with p_class=100 %}{% endwith %}
+                {% else %}
+                    {% with p_class=p %}{% endwith %}
+                {% endif %}
+
+                {% if p >= 90 %}
+                    {% with color='lime' %}{% endwith %}
+                {% elif p >= 50 %}
+                    {% with color='orange' %}{% endwith %}
+                {% else %}
+                    {% with color='red' %}{% endwith %}
+                {% endif %}
+                
+                <div class="chart mx-auto" style="width: 80%;">
+                    <div class="bar {{ color }}">
+                        <div class="face top">
+                            <div class="growing-bar bar-{{ p_class }}"></div>
+                        </div>
+                        <div class="face side-0">
+                            <div class="growing-bar bar-{{ p_class }}"></div>
+                        </div>
+                        <div class="face floor">
+                            <div class="growing-bar bar-{{ p_class }}"></div>
+                        </div>
+                        <div class="face side-a"></div>
+                        <div class="face side-b"></div>
+                        <div class="face side-1">
+                            <div class="growing-bar bar-{{ p_class }}"></div>
+                        </div>
+                    </div>
+                </div>
+            {% endwith %}
+        </div>
+    </div>
+</div>
+<!-- === FIN: PANEL DE PROGRESO 3D === -->

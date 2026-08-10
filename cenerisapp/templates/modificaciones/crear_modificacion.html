@@ -1,0 +1,243 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="form-container">
+    <form method="post" class="form-card">
+        <h2>{{ titulo }}</h2>
+        <p class="form-description">Registra un nuevo servicio de mantenimiento o reparación para un dispositivo.</p>
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <!-- SECCIÓN 1: DATOS PRINCIPALES -->
+        <div class="form-section">
+            <h3>Información General</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    {{ form.id_dispositivo.label_tag }}
+                    {{ form.id_dispositivo }}
+                    {{ form.id_dispositivo.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.item_saliente.label_tag }}
+                    {{ form.item_saliente }}
+                    {{ form.item_saliente.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.id_trabajador.label_tag }}
+                    {{ form.id_trabajador }}
+                    {{ form.id_trabajador.errors }}
+                </div>
+                
+            </div>
+        </div>
+
+        <!-- SECCIÓN 2: DETALLES DEL SERVICIO -->
+        <div class="form-section">
+            <h3>Detalles del Servicio</h3>
+            <div class="form-group">
+                {{ form.tipoServicio.label_tag }}
+                {{ form.tipoServicio }}
+                {{ form.tipoServicio.errors }}
+            </div>
+
+            <!-- ¡NUEVA SECCIÓN DE REEMPLAZO! Oculta por defecto -->
+            <div id="reemplazo-section" style="display: none;">
+                <h4>Seleccionar Componente de Reemplazo del Stock</h4>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="select-tipo-reemplazo">Tipo de Componente:</label>
+                        <select id="select-tipo-reemplazo" class="form-select">
+                            <option value="">-- Selecciona un tipo --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <!-- CAMBIO: El label ahora es más genérico -->
+                        <label for="select-item-reemplazo">Item Disponible (por ID):</label>
+                        <select id="select-item-reemplazo" class="form-select" disabled>
+                            <option value="">-- Selecciona un tipo primero --</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- CAMPO OCULTO para guardar el ID del reemplazo -->
+                <input type="hidden" name="reemplazo_id" id="id_reemplazo_id">
+                
+                <!-- ¡NUEVO CAMPO! para el número de serie -->
+                <div id="n-serie-reemplazo-container" class="form-group mt-3" style="display: none;">
+                    {{ form.n_serie_reemplazo.label_tag }}
+                    {{ form.n_serie_reemplazo }}
+                    {{ form.n_serie_reemplazo.errors }}
+                    <small class="form-text text-muted">{{ form.n_serie_reemplazo.help_text }}</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                {{ form.MotivoCambio.label_tag }}
+                {{ form.MotivoCambio }}
+                {{ form.MotivoCambio.errors }}
+            </div>
+            <div class="form-group">
+                {{ form.descrTrabajo.label_tag }}
+                {{ form.descrTrabajo }}
+                {{ form.descrTrabajo.errors }}
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Guardar Registro</button>
+            <a href="{% url 'cenerisapp:lista_modificaciones' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // --- 1. REFERENCIAS A LOS ELEMENTOS ---
+    const dispositivoSelectMod = document.getElementById('id_id_dispositivo');
+    const itemSalienteSelect = document.getElementById('id_item_saliente');
+
+    // --- 2. LÓGICA PARA CARGAR PARTES Y SENSORES ---
+    if (dispositivoSelectMod && itemSalienteSelect) {
+        
+        dispositivoSelectMod.addEventListener('change', async () => {
+            const dispositivoId = dispositivoSelectMod.value;
+            
+            // Debug: Ver en consola qué ID se capturó
+            console.log("Dispositivo seleccionado ID:", dispositivoId);
+
+            // Reseteamos el select visualmente
+            itemSalienteSelect.disabled = true;
+            itemSalienteSelect.innerHTML = '<option value="">Cargando datos...</option>';
+
+            if (!dispositivoId) {
+                itemSalienteSelect.innerHTML = '<option value="">Selecciona un dispositivo primero</option>';
+                return; 
+            }
+
+            try {
+                // GENERAMOS LA URL DINÁMICA AQUÍ DENTRO
+                // Asegúrate que 'cenerisapp:api_get_partes_y_sensores' sea el nombre en tu urls.py
+                const baseUrl = "{% url 'cenerisapp:api_get_partes_y_sensores' %}"; 
+                const finalUrl = `${baseUrl}?dispositivo_id=${dispositivoId}`;
+
+                console.log("Consultando API:", finalUrl); // Debug
+
+                const response = await fetch(finalUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+
+                const opciones = await response.json();
+                console.log("Datos recibidos:", opciones); // Debug
+
+                // Limpiamos y llenamos
+                itemSalienteSelect.innerHTML = '<option value="">-- Selecciona --</option>';
+                
+                if (opciones.length === 0) {
+                     itemSalienteSelect.innerHTML += '<option value="" disabled>No hay partes/sensores registrados para este equipo</option>';
+                } else {
+                    opciones.forEach(opcion => {
+                        // Creamos el elemento option
+                        const opt = document.createElement('option');
+                        opt.value = opcion.id; // ej: "parte_5" o "sensor_10"
+                        opt.textContent = opcion.nombre;
+                        itemSalienteSelect.appendChild(opt);
+                    });
+                }
+                
+                itemSalienteSelect.disabled = false;
+
+            } catch (error) {
+                console.error('Error al cargar items:', error);
+                itemSalienteSelect.innerHTML = '<option value="">Error al cargar datos</option>';
+            }
+        });
+    }
+
+    // --- 3. LÓGICA DE MOSTRAR/OCULTAR REEMPLAZO (Sin cambios, solo ordenado) ---
+    const tipoServicioSelect = document.getElementById('id_tipoServicio');
+    const reemplazoSection = document.getElementById('reemplazo-section');
+    
+    if(tipoServicioSelect && reemplazoSection) {
+        const toggleReemplazoSection = () => {
+            reemplazoSection.style.display = (tipoServicioSelect.value === 'Reparacion') ? 'block' : 'none';
+        };
+        tipoServicioSelect.addEventListener('change', toggleReemplazoSection);
+        // Ejecutar al inicio por si hay validación fallida
+        toggleReemplazoSection();
+    }
+
+    // --- 4. LÓGICA DE REEMPLAZO (Sin cambios mayores, solo la URL dinámica) ---
+    const tipoReemplazoSelect = document.getElementById('select-tipo-reemplazo');
+    const itemReemplazoSelect = document.getElementById('select-item-reemplazo');
+    const reemplazoIdInput = document.getElementById('id_reemplazo_id');
+    const nSerieContainer = document.getElementById('n-serie-reemplazo-container');
+    const nSerieInput = document.getElementById('id_n_serie_reemplazo');
+
+    if (tipoReemplazoSelect && itemReemplazoSelect) {
+        
+        // Cargar tipos
+        fetch("{% url 'cenerisapp:api_get_tipos_componentes' %}")
+            .then(r => r.json())
+            .then(data => {
+                data.forEach(tipo => {
+                    const opt = document.createElement('option');
+                    opt.value = tipo;
+                    opt.textContent = tipo;
+                    tipoReemplazoSelect.appendChild(opt);
+                });
+            })
+            .catch(e => console.error("Error cargando tipos:", e));
+
+        // Listener Tipo
+        tipoReemplazoSelect.addEventListener('change', async () => {
+            const tipoSeleccionado = tipoReemplazoSelect.value;
+            itemReemplazoSelect.innerHTML = '<option value="">Cargando...</option>';
+            itemReemplazoSelect.disabled = true;
+            
+            if(reemplazoIdInput) reemplazoIdInput.value = '';
+            if(nSerieContainer) nSerieContainer.style.display = 'none';
+            if(nSerieInput) nSerieInput.value = '';
+
+            if (!tipoSeleccionado) {
+                itemReemplazoSelect.innerHTML = '<option value="">-- Selecciona un tipo primero --</option>';
+                return;
+            }
+            try {
+                // URL dinámica para componentes sin NS
+                const baseCompUrl = "{% url 'cenerisapp:api_get_componentes_sin_ns' %}";
+                const url = `${baseCompUrl}?tipo=${encodeURIComponent(tipoSeleccionado)}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+
+                itemReemplazoSelect.innerHTML = '<option value="">-- Selecciona un item disponible --</option>';
+                data.forEach(item => {
+                    itemReemplazoSelect.innerHTML += `<option value="${item.id}">${item.text}</option>`;
+                });
+                itemReemplazoSelect.disabled = false;
+            } catch (error) {
+                console.error('Error al cargar items disponibles:', error);
+                itemReemplazoSelect.innerHTML = '<option value="">Error al cargar</option>';
+            }
+        });
+
+        // Listener Item
+        itemReemplazoSelect.addEventListener('change', () => {
+            if(reemplazoIdInput) reemplazoIdInput.value = itemReemplazoSelect.value;
+            
+            if (itemReemplazoSelect.value && nSerieContainer) {
+                nSerieContainer.style.display = 'block';
+            } else if (nSerieContainer) {
+                nSerieContainer.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

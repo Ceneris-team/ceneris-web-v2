@@ -1,0 +1,106 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block title %}Detalle Programa {{ programa.anio }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800">{{ programa.nombre }} {{ programa.anio }}</h2>
+            <p class="text-gray-500">{{ programa.get_semestre_display }}</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'proyecto_monitoreo_smcv:lista_programas' %}" class="text-gray-600 hover:text-gray-900 font-bold px-3 py-2">
+                <i class="fas fa-arrow-left"></i> Atrás
+            </a>
+            <a href="{% url 'proyecto_monitoreo_smcv:agregar_fila_programa' programa.id %}" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow">
+                + Agregar Fila
+            </a>
+            <a href="{% url 'proyecto_monitoreo_smcv:pdf_programa' programa.id %}" target="_blank" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow">
+                <i class="fas fa-file-pdf mr-2"></i> PDF
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <table class="min-w-full text-sm text-left">
+            <thead class="bg-gray-100 text-gray-700 uppercase font-bold text-xs">
+                <tr>
+                    <th class="px-4 py-3 w-16 text-center">N°</th>
+                    <th class="px-4 py-3 w-32">Fecha Prog.</th>
+                    <th class="px-4 py-3 text-center">¿Ejecutado?</th>
+                    <th class="px-4 py-3">Equipos Programados</th>
+                    <th class="px-4 py-3">Observaciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for fila in filas %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-center font-bold">{{ fila.numero }}</td>
+                    <td class="px-4 py-3">{{ fila.fecha_programada|date:"d/m/Y" }}</td>
+                    <td class="px-4 py-3 text-center">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer toggle-execution" 
+                                data-id="{{ fila.id }}" 
+                                {% if fila.ejecutado %}checked{% endif %}>
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                            <span class="ml-3 text-sm font-medium text-gray-900 status-text">
+                                {% if fila.ejecutado %}SÍ{% else %}NO{% endif %}
+                            </span>
+                        </label>
+                    </td>
+                    <td class="px-4 py-3">
+                        <ul class="list-disc list-inside text-xs text-gray-600">
+                            {% for eq in fila.equipos_programados.all %}
+                                <li>
+                                    {{ eq.nombre }} ({{ eq.serie }})
+                                    <!-- Si no se ejecutó, mostrar alerta visual -->
+                                    {% if eq not in fila.equipos_ejecutados.all %}
+                                        <span class="text-red-500 font-bold ml-1 text-[10px]">[NO EJECUTADO]</span>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                    <td class="px-4 py-3 text-gray-500 italic">{{ fila.observaciones|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-4 py-8 text-center text-gray-400">
+                        Aún no hay filas en este cronograma.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.toggle-execution').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const id = this.dataset.id;
+            const estado = this.checked;
+            const labelText = this.parentElement.querySelector('.status-text');
+
+            fetch("{% url 'proyecto_monitoreo_smcv:api_toggle_ejecucion' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body: JSON.stringify({ id: id, estado: estado })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    labelText.textContent = estado ? "SÍ" : "NO";
+                } else {
+                    alert("Error al cambiar estado");
+                    this.checked = !estado; // Revertir si falló
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

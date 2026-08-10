@@ -1,0 +1,219 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block title %}Control de Vibrómetros{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-full h-screen flex flex-col">
+    <div class="mb-4">
+        <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="inline-flex items-center text-gray-600 hover:text-blue-600 font-semibold transition-colors">
+            <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-2 shadow-sm group-hover:bg-blue-100">
+                <i class="fas fa-arrow-left text-sm"></i>
+            </div>
+            Volver al Panel
+        </a>
+    </div>
+    <!-- Encabezado y Botones -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Matriz de Modificaciones - Vibrómetros</h1>
+            <p class="text-sm text-gray-500">Control detallado de sensibilidad y reemplazo de partes.</p>
+        </div>
+        
+        <div class="flex gap-1">
+
+            <!-- Botón Registrar Cambio -->
+            <a href="{% url 'proyecto_monitoreo_smcv:crear_cambio_componente' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-md hover:-translate-y-0.5">
+                <i class="fas fa-plus-circle mr-2"></i> Registrar Cambio
+            </a>
+
+            <a href="{% url 'proyecto_monitoreo_smcv:historial_cambios_componentes' %}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition shadow-md hover:-translate-y-0.5 text-sm">
+                <i class="fas fa-history mr-2"></i> Ver Historial
+            </a>
+        </div>
+    </div>
+
+    <!-- CONTENEDOR MODERNO DE LA TABLA -->
+    <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col flex-grow">
+        <div class="overflow-auto custom-scrollbar flex-grow">
+            
+            <table class="min-w-full border-collapse">
+                <!-- ENCABEZADO STICKY (Fijo al hacer scroll) -->
+                <thead class="sticky top-0 z-20 shadow-md text-xs uppercase text-gray-800 font-bold">
+                    <tr>
+                        <!-- Datos Fijos -->
+                         <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-3 py-2 min-w-[120px] text-center align-middle">Equipo</th>
+                         <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-3 py-2 min-w-[120px] text-center align-middle">Modelo</th>
+                         <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-3 py-2 min-w-[120px] text-center align-middle">Marca</th>
+                        <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-3 py-2 min-w-[120px] text-center align-middle">Serie<br>Equipo</th>
+                        <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-3 py-2 min-w-[100px] text-center align-middle">Fecha<br>Manufactura</th>
+                        <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-3 py-2 min-w-[200px] text-center align-middle">Accesorios<br>(Con Serie)</th>
+                        <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-3 py-2 min-w-[120px] text-center align-middle">Serie<br>Accesorio</th>
+                        
+                        <!-- Grupo Sensibilidad (Azulito) -->
+                        <th colspan="3" class="bg-[#dae8fc] border-r border-b border-gray-300 px-2 py-1 text-center">Niveles de Sensibilidad</th>
+                        
+                        <!-- Grupo Cambios (Verdecito) -->
+                        <th colspan="4" class="bg-[#d5e8d4] border-b border-gray-300 px-2 py-1 text-center">Fecha Cambio de Accesorios</th>
+                    </tr>
+                    <tr>
+                        <!-- Sub-headers Sensibilidad -->
+                        <th class="bg-[#dae8fc] border-r border-b border-gray-300 px-2 py-1 w-24 text-center">Eje X<br><span class="text-[9px] lowercase opacity-70">(mV/(m/s2))</span></th>
+                        <th class="bg-[#dae8fc] border-r border-b border-gray-300 px-2 py-1 w-24 text-center">Eje Y<br><span class="text-[9px] lowercase opacity-70">(mV/(m/s2))</span></th>
+                        <th class="bg-[#dae8fc] border-r border-b border-gray-300 px-2 py-1 w-24 text-center">Eje Z<br><span class="text-[9px] lowercase opacity-70">(mV/(m/s2))</span></th>
+
+                        <!-- Sub-headers Fechas -->
+                        <th class="bg-[#d5e8d4] border-r border-b border-gray-300 px-2 py-1 w-32 text-center text-[10px]">Cable 010AYCA<br>0005 (H-M)</th>
+                        <th class="bg-[#d5e8d4] border-r border-b border-gray-300 px-2 py-1 w-32 text-center text-[10px]">Batería</th>
+                        <th class="bg-[#d5e8d4] border-r border-b border-gray-300 px-2 py-1 w-32 text-center text-[10px]">Cable CBL217<br>05</th>
+                        <th class="bg-[#d5e8d4] border-b border-gray-300 px-2 py-1 w-32 text-center text-[10px]">Cable CBL217<br>01</th>
+                    </tr>
+                </thead>
+                
+                <tbody class="text-sm text-gray-700 bg-white divide-y divide-gray-100">
+                    {% for item in vibrometros_data %}
+                        {% for acc in item.accesorios %}
+                        <tr class="hover:bg-blue-50 transition-colors group">
+                            
+                            <!-- COLUMNAS DISPOSITIVO (Agrupadas) -->
+                            {% if forloop.first %}
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 px-3 py-2 font-bold text-center bg-white align-middle group-hover:bg-blue-50">
+                                    {{ item.dispositivo.nombre }}
+                                </td>
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 px-3 py-2 font-bold text-center bg-white align-middle group-hover:bg-blue-50">
+                                    {{ item.dispositivo.modelo }}
+                                </td>
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 px-3 py-2 font-bold text-center bg-white align-middle group-hover:bg-blue-50">
+                                    {{ item.dispositivo.marca }}
+                                </td>
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 px-3 py-2 font-bold text-center bg-white align-middle group-hover:bg-blue-50">
+                                    {{ item.dispositivo.serie }}
+                                </td>
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 px-3 py-2 text-center align-middle bg-white group-hover:bg-blue-50">
+                                    {{ item.dispositivo.diagnostico_set.first.fecha_manufactura|date:"d/m/Y"|default:"-" }}
+                                </td>
+                            {% endif %}
+
+                            <!-- COLUMNAS ACCESORIO -->
+                            <td class="border-r border-gray-200 px-3 py-2">
+                                {% if acc %}{{ acc.nombre }}{% else %}<span class="text-gray-300 italic">-</span>{% endif %}
+                            </td>
+                            <td class="border-r border-gray-200 px-3 py-2 text-center font-mono text-xs text-gray-500">
+                                {% if acc %}{{ acc.serie }}{% else %}-{% endif %}
+                            </td>
+
+                            <!-- SENSIBILIDAD (Inputs modernos) -->
+                            <td class="border-r border-gray-200 p-0 relative">
+                                {% if acc %}
+                                <input type="text" value="{{ acc.eje_x|default_if_none:'' }}" 
+                                    data-id="{{ acc.id }}" data-model="accesorio" data-field="eje_x"
+                                    class="editable-field w-full h-full text-center bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 text-xs py-2">
+                                {% endif %}
+                            </td>
+                            <td class="border-r border-gray-200 p-0 relative">
+                                {% if acc %}
+                                <input type="text" value="{{ acc.eje_y|default_if_none:'' }}" 
+                                    data-id="{{ acc.id }}" data-model="accesorio" data-field="eje_y"
+                                    class="editable-field w-full h-full text-center bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 text-xs py-2">
+                                {% endif %}
+                            </td>
+                            <td class="border-r border-gray-200 p-0 relative">
+                                {% if acc %}
+                                <input type="text" value="{{ acc.eje_z|default_if_none:'' }}" 
+                                    data-id="{{ acc.id }}" data-model="accesorio" data-field="eje_z"
+                                    class="editable-field w-full h-full text-center bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 text-xs py-2">
+                                {% endif %}
+                            </td>
+
+                            <!-- FECHAS CAMBIO (Agrupadas) -->
+                            {% if forloop.first %}
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 p-0 align-middle bg-[#f9fafb] text-center">
+                                    <span class="text-xs text-gray-700 font-medium">
+                                        {{ item.cambios.CABLE_HM|date:"d/m/Y"|default:"-" }}
+                                    </span>
+                                </td>
+                                <!-- BATERIA -->
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 p-0 align-middle bg-[#f9fafb] text-center">
+                                    <span class="text-xs text-gray-700 font-medium">
+                                        {{ item.cambios.BATERIA|date:"d/m/Y"|default:"-" }}
+                                    </span>
+                                </td>
+                                <!-- CABLE 05 -->
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 p-0 align-middle bg-[#f9fafb] text-center">
+                                    <span class="text-xs text-gray-700 font-medium">
+                                        {{ item.cambios.CABLE_05|date:"d/m/Y"|default:"-" }}
+                                    </span>
+                                </td>
+                                <!-- CABLE 01 -->
+                                <td rowspan="{{ item.row_span }}" class="p-0 align-middle bg-[#f9fafb] text-center">
+                                    <span class="text-xs text-gray-700 font-medium">
+                                        {{ item.cambios.CABLE_01|date:"d/m/Y"|default:"-" }}
+                                    </span>
+                                </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    {% empty %}
+                        <tr><td colspan="11" class="text-center py-10 text-gray-400 italic">No se encontraron vibrómetros registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Footer de la tabla -->
+        <div class="bg-gray-50 px-4 py-2 border-t text-xs text-gray-500 flex justify-between">
+            <span>Total equipos: {{ vibrometros_data|length }}</span>
+            <span>Edición habilitada en celdas</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('.editable-field').forEach(input => {
+            input.addEventListener('change', function() {
+                const modelType = this.dataset.model;
+                const id = this.dataset.id;
+                const field = this.dataset.field;
+                const value = this.value;
+                const parentCell = this.parentElement;
+                
+                let urlAPI = (modelType === 'accesorio') ? "{% url 'proyecto_monitoreo_smcv:api_update_accesorio' %}" : "{% url 'proyecto_monitoreo_smcv:api_update_cambio' %}";
+
+                // Feedback visual: Amarillo suave
+                parentCell.style.backgroundColor = "#fff3cd";
+
+                fetch(urlAPI, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": "{{ csrf_token }}"
+                    },
+                    body: JSON.stringify({ id: id, campo: field, valor: value })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.status === 'success') {
+                        // Feedback Éxito: Verde suave
+                        parentCell.style.backgroundColor = "#d1e7dd";
+                        setTimeout(() => parentCell.style.backgroundColor = "", 800);
+                    } else {
+                        alert("Error: " + data.mensaje);
+                        parentCell.style.backgroundColor = "#f8d7da";
+                    }
+                })
+                .catch(e => {
+                    console.error(e);
+                    parentCell.style.backgroundColor = "#f8d7da";
+                });
+            });
+        });
+    });
+</script>
+
+<style>
+    /* Scrollbar Azulito/Grisáceo Moderno */
+    .custom-scrollbar::-webkit-scrollbar { height: 10px; width: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f3f4f6; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; border: 2px solid #f3f4f6; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>
+{% endblock %}

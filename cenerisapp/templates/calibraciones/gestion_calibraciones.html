@@ -1,0 +1,63 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="header-container">
+        <h1>{{ titulo }}</h1>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Dispositivo</th>
+                    <th>N/S</th>
+                    <th>Tipo</th>
+                    <th>Estado Actual</th>
+                    <th>Última Calibración</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dispositivo in dispositivos %}
+                {% with calibracion=dispositivo.calibracion_set.first %}
+                <tr>
+                    <td data-label="Dispositivo">{{ dispositivo.nomDisp }}</td>
+                    <td data-label="N/S">{{ dispositivo.num_serie }}</td>
+                    <td data-label="Tipo">{{ dispositivo.tipoDisp }}</td>
+                    <td data-label="Estado Actual">
+                        {% if calibracion %}
+                            {{ calibracion.estado }}
+                        {% else %}
+                            <span class="status-badge status-warning">Sin Registro</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Última Calibración">
+                        {% if calibracion and calibracion.fecCalibracionC %}
+                            {{ calibracion.fecCalibracionC|date:"d/m/Y" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td data-label="Acciones">
+                        {% if not calibracion or calibracion.estado == 'No Calibrado' %}
+                            <form action="{% url 'cenerisapp:registrar_calibracion_ahora' dispositivo.id_dispositivo %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success">Calibrar Ahora</button>
+                            </form>
+                        {% else %}
+                             <!-- Opcional: un botón para ver el historial o "re-calibrar" -->
+                            <span class="text-muted">Ya calibrado</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endwith %}
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="no-data">No hay dispositivos registrados en el sistema.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

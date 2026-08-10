@@ -1,0 +1,157 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="header-container">
+        <h1>{{ titulo }}</h1>
+        <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="btn btn-secondary">Volver a la Lista</a>
+    </div>
+
+    <!-- Formulario para subir nuevas fotos -->
+    <div class="form-container">
+        <form method="post" enctype="multipart/form-data" class="form-card">
+            <h2>Cargar Nueva Imagen</h2>
+            {% csrf_token %}
+            
+            <!-- Campo de Modificación -->
+            <div class="form-group">
+                {{ form.modificacion.label_tag }}
+                {{ form.modificacion }}
+                <p class="form-help-text">Si esta foto es evidencia de una reparación específica, selecciónala aquí.</p>
+            </div>
+
+            <!-- Campo de Contexto (AHORA SIEMPRE VISIBLE) -->
+            <div class="form-group">
+                {{ form.contexto.label_tag }}
+                {{ form.contexto }}
+                <p class="form-help-text">Selecciona a qué reporte o sección pertenece esta imagen.</p>
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    {{ form.imagen_original.label_tag }} 
+                    {{ form.imagen_original }}
+                </div>
+                <!-- Campo Tipo de Foto (AHORA SIEMPRE VISIBLE) -->
+                <div class="form-group">
+                    {{ form.tipo_foto.label_tag }}
+                    {{ form.tipo_foto }}
+                </div>
+            </div>
+            
+            <!-- Texto de ayuda dinámico -->
+            <div id="help-text-container" class="form-help-text" style="margin-top: 10px; background-color: #e9f5e9; padding: 10px; border-radius: 5px;">
+                <!-- El texto de ayuda aparecerá aquí -->
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Cargar Imagen</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Galería de imágenes existentes -->
+    <div class="photo-gallery-container">
+        <h2>Imágenes Cargadas (Página {{ fotos.number }} de {{ fotos.paginator.num_pages }})</h2>
+        {% if fotos %}
+            <div class="photo-gallery">
+                {% for foto in fotos %} 
+                    <div class="photo-card">
+                        <img src="{{ foto.thumbnail.url }}" alt="Evidencia para {{ foto.tipo_foto }}">
+                        <div class="photo-info">
+                            <strong>Tipo:</strong> {{ foto.tipo_foto }}<br>
+                            <strong>Contexto:</strong> {{ foto.get_contexto_display }}<br>
+                            <strong>Cargada:</strong> {{ foto.fecha_carga|date:"d/m/Y H:i" }}
+                            <a href="{{ foto.imagen_original.url }}" target="_blank" class="view-original-link">Ver original</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- CONTROLES DE PAGINACIÓN -->
+            <div class="pagination">
+                <span class="step-links">
+                    {% if fotos.has_previous %}
+                        <a href="?page=1">&laquo; primera</a>
+                        <a href="?page={{ fotos.previous_page_number }}">anterior</a>
+                    {% endif %}
+
+                    <span class="current">
+                        Página {{ fotos.number }} de {{ fotos.paginator.num_pages }}.
+                    </span>
+
+                    {% if fotos.has_next %}
+                        <a href="?page={{ fotos.next_page_number }}">siguiente</a>
+                        <a href="?page={{ fotos.paginator.num_pages }}">última &raquo;</a>
+                    {% endif %}
+                </span>
+            </div>
+        {% else %}
+            <p style="text-align: center; color: #666;">No hay imágenes cargadas para este dispositivo.</p>
+        {% endif %}
+    </div>
+    
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // =========================================================================
+    // LÓGICA DE VISIBILIDAD ELIMINADA
+    // =========================================================================
+    // Antes aquí había un código que ocultaba el campo 'contexto' y 'tipo_foto'
+    // cuando seleccionabas una modificación. 
+    // SE HA ELIMINADO para que siempre puedas editar el reporte.
+    
+    // =========================================================================
+    // LÓGICA DE TEXTOS DE AYUDA (Sugerencias)
+    // =========================================================================
+    const contextoSelect = document.getElementById('id_contexto');
+    const helpTextContainer = document.getElementById('help-text-container');
+    
+    // Convertimos la lista de Django a un array de JavaScript
+    const tiposVisuales = {{ tipos_validos_para_fotos|safe }};
+    
+    function updateHelpText() {
+        const selectedContext = contextoSelect.value;
+        let helpHtml = '';
+
+        if (selectedContext === 'MANTENIMIENTO') {
+            helpHtml = `
+                <p>Para el <strong>Reporte de Mantenimiento</strong>, usa uno de estos tipos:</p>
+                <ul>
+                    <li><strong>evidencia1</strong>, <strong>evidencia2</strong>, <strong>evidencia3</strong></li>
+                </ul>
+            `;
+        } else if (selectedContext === 'REPORTE_VISUAL') {
+            helpHtml = `
+                <p>Para el <strong>Reporte Visual</strong>, el tipo debe coincidir con una de las filas del Excel:</p>
+                <ul>
+                    ${tiposVisuales.map(tipo => `<li><strong>${tipo}</strong></li>`).join('')}
+                </ul>
+            `;
+        } else if (selectedContext === 'CARDEX') {
+            helpHtml = `
+                <p>Para el <strong>Reporte CARDEX</strong>:</p>
+                <ul>
+                    <li>Si es una foto general del equipo, escribe: <strong>EVIDENCIA</strong></li>
+                    <li>Si es un sensor, escribe el gas (Ej: <strong>O2</strong>)</li>
+                    <li>Si es una parte, escribe el nombre (Ej: <strong>Carcasa</strong>)</li>
+                </ul>
+                <p><em>Nota: Si seleccionaste una modificación arriba, el sistema intentará detectar el nombre automáticamente, pero puedes cambiarlo aquí.</em></p>
+            `;
+        } else {
+            helpHtml = '<p>Selecciona un contexto para ver las sugerencias de tipos.</p>';
+        }
+        
+        helpTextContainer.innerHTML = helpHtml;
+    }
+
+    if (contextoSelect && helpTextContainer) {
+        // Actualizamos la ayuda cuando cambia la selección
+        contextoSelect.addEventListener('change', updateHelpText);
+        
+        // Ejecutamos una vez al cargar la página
+        updateHelpText();
+    }
+});
+</script>
+{% endblock %}

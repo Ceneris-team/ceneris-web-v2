@@ -1,0 +1,79 @@
+<!-- recursoshumanos/templates/recursoshumanos/proyectos/proyecto_form_tarjetas.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block body_class %}form-background{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        .back-button-container { max-width: 800px; margin: 30px auto 10px; text-align: left; }
+        .field-error { color: #dc3545; font-size: 0.8rem; font-weight: 600; text-align: left; margin-top: 5px; }
+        #msform .form-group { text-align: left; margin-bottom: 20px; }
+        #msform .form-group label { margin-bottom: 5px; font-weight: 500; color: #555; }
+        .selection-cards { display: flex; gap: 2rem; justify-content: center; margin-bottom: 2rem; flex-wrap: wrap; }
+        .card-select { padding: 2rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; text-align: center; width: 250px; }
+        .card-select i { font-size: 2.5rem; color: #d45b04; margin-bottom: 1rem; }
+        .card-select:hover { border-color: #d45b04; background-color: #fdf5f0; }
+        .card-select.active { border-color: #d45b04; background-color: #fbeadb; box-shadow: 0 0 15px rgba(212, 91, 4, 0.2); }
+         /* Estilos de las tarjetas y enlaces */
+        .selection-cards { display: flex; gap: 2rem; justify-content: center; margin-bottom: 2rem; flex-wrap: wrap; }
+        
+        /* Quitamos el subrayado de los enlaces */
+        a.card-link { text-decoration: none; color: inherit; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="back-button-container">
+        <a href="{% url 'calidad:reporte_maestro_emos' %}" class="btn-secondary">&larr; Volver</a>
+    </div>
+
+    <form id="msform" method="post" novalidate>
+        {% csrf_token %}
+        
+        {{ form.tipo_proyecto }}
+
+        <fieldset id="step-selection">
+            <h2 class="fs-title">Edicion de Emos</h2>
+            <h3 class="fs-subtitle">¿Qué deseas editar?</h3>
+            
+            <div class="selection-cards">
+
+                <a href="{% url 'calidad:programar_emo' %}?dni={{ emo.trabajador.dni }}&editar={{ emo.id }}" class="card-link">
+                    <div class="card-select">
+                        <i data-feather="calendar"></i>
+                        <h4>Editar Datos EMO</h4>
+                        <p>Modificar fecha programada, clínica, tipo de examen o proyecto asociado.</p>
+                    </div>
+                </a>
+                <a href="{% url 'calidad:editar_emo' emo.id %}" class="card-link">
+                    <div class="card-select">
+                        <i data-feather="activity"></i>
+                        <h4>Editar Resultados</h4>
+                        <p>Registrar o corregir aptitud médica, restricciones, fecha de realización y controles.</p>
+                    </div>
+                </a>
+                <a href="{% url 'calidad:confirmar_lectura_emo' emo.id %}" class="card-link">
+                    <div class="card-select">
+                        <i data-feather="file-text"></i>
+                        <h4>Editar Lectura</h4>
+                        <p>Adjuntar o reemplazar el PDF de lectura firmada y fecha de confirmación.</p>
+                    </div>
+                </a>
+            </div>
+        </fieldset>
+        
+    </form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Inicializamos los iconos de Feather
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+</script>
+{% endblock %}

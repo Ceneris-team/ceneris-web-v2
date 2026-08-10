@@ -1,0 +1,146 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Agendar Nueva Cita{% endblock %}
+
+{% block body_class %}form-background{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        /* Estilo para la barra de progreso de 3 pasos */
+        #progressbar.three-steps li {
+            width: 33.33%;
+        }
+        .back-button-container {
+            max-width: 800px; /* Ajusta el ancho máximo del formulario */
+            width: 90%;
+            margin: 30px auto 10px auto;
+            text-align: left;
+        }
+        .field-error { 
+            color: #dc3545; font-size: 0.8rem; font-weight: 600; 
+            text-align: left; margin-top: -10px; margin-bottom: 10px; 
+        }
+        .field-error ul { list-style: none; padding: 0; margin: 0; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="back-button-container">
+        <a href="{% url 'cotizaciones:lista_procesos' %}" class="btn btn-outline-secondary">
+            &larr; Volver a la lista de procesos
+        </a>
+    </div>
+
+    <form id="msform" method="post" novalidate>
+        {% csrf_token %}
+
+        <ul id="progressbar" class="three-steps">
+            <li class="active">Datos de Empresa</li>
+            <li>Datos de Contacto</li>
+            <li>Agendar Cita</li>
+        </ul>
+        
+        <!-- Fieldset 1: Datos de la Empresa -->
+        <fieldset>
+            <h2 class="fs-title">Información de la Empresa</h2>
+            <h3 class="fs-subtitle">Paso 1 de 3</h3>
+            
+            <input type="text" id="id_ruc" name="{{ form.ruc.html_name }}" placeholder="RUC *" value="{{ form.ruc.value|default_if_none:'' }}" required>
+            {% if form.ruc.errors %}<div class="field-error">{{ form.ruc.errors }}</div>{% endif %}
+
+            <input type="text" name="{{ form.nombre_empresa.html_name }}" placeholder="Nombre de la Empresa *" value="{{ form.nombre_empresa.value|default_if_none:'' }}" required>
+            {% if form.nombre_empresa.errors %}<div class="field-error">{{ form.nombre_empresa.errors }}</div>{% endif %}
+
+            <input type="text" name="{{ form.ubicacion.html_name }}" placeholder="Ubicación" value="{{ form.ubicacion.value|default_if_none:'' }}">
+            {% if form.ubicacion.errors %}<div class="field-error">{{ form.ubicacion.errors }}</div>{% endif %}
+
+            <input type="button" name="next" class="next action-button" value="Siguiente"/>
+        </fieldset>
+
+        <!-- Fieldset 2: Datos del Contacto -->
+        <fieldset>
+            <h2 class="fs-title">Información de Contacto</h2>
+            <h3 class="fs-subtitle">Paso 2 de 3</h3>
+            
+            <input type="text" name="{{ form.nombre_contacto.html_name }}" placeholder="Nombre del Contacto *" value="{{ form.nombre_contacto.value|default_if_none:'' }}" required>
+            {% if form.nombre_contacto.errors %}<div class="field-error">{{ form.nombre_contacto.errors }}</div>{% endif %}
+
+            <input type="email" name="{{ form.correo.html_name }}" placeholder="Correo del Contacto *" value="{{ form.correo.value|default_if_none:'' }}" required>
+            {% if form.correo.errors %}<div class="field-error">{{ form.correo.errors }}</div>{% endif %}
+
+            <input type="text" name="{{ form.telefono.html_name }}" placeholder="Teléfono" value="{{ form.telefono.value|default_if_none:'' }}">
+            {% if form.telefono.errors %}<div class="field-error">{{ form.telefono.errors }}</div>{% endif %}
+
+            <input type="button" name="previous" class="previous action-button-previous" value="Anterior"/>
+            <input type="button" name="next" class="next action-button" value="Siguiente"/>
+        </fieldset>
+
+        <!-- Fieldset 3: Datos de la Cita -->
+        <fieldset>
+            <h2 class="fs-title">Agendar la Cita</h2>
+            <h3 class="fs-subtitle">Paso 3 de 3 - ¡Último paso!</h3>
+
+            <label for="{{ form.fecha_citacion.id_for_label }}" style="text-align:left; width: 100%; margin-bottom: 5px; color: #6c757d;">Fecha y Hora de la Cita *</label>
+            <input type="datetime-local" class="form-control mb-3" name="{{ form.fecha_citacion.html_name }}" value="{{ form.fecha_citacion.value|default_if_none:''|date:'Y-m-d\TH:i' }}" required>
+            {% if form.fecha_citacion.errors %}<div class="field-error">{{ form.fecha_citacion.errors }}</div>{% endif %}
+
+            <input type="button" name="previous" class="previous action-button-previous" value="Anterior"/>
+            <input type="submit" name="submit" class="submit action-button" value="Iniciar Proceso"/>
+        </fieldset>
+    </form>
+
+    <!-- Modal de Bootstrap 5 para la alerta (adaptado) -->
+    <div class="modal fade" id="ruc-existente-modal" tabindex="-1" aria-labelledby="rucModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rucModalLabel">Proceso Existente Detectado</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="modal-body-text"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <a href="#" id="confirm-reassign-btn" class="btn btn-warning">Sí, reasignar y ver proceso</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <!-- Dependencias para el formulario multi-paso -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
+    <script src="{% static 'js/multistep-form.js' %}"></script>
+    
+    <!-- Script para la validación de RUC (usando Bootstrap 5) -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Obtenemos el campo RUC con JS nativo, ya que jQuery podría no estar listo
+        const rucInput = document.getElementById('id_ruc');
+        const rucModal = new bootstrap.Modal(document.getElementById('ruc-existente-modal'));
+        const modalBodyText = document.getElementById('modal-body-text');
+        const confirmReassignBtn = document.getElementById('confirm-reassign-btn');
+
+        // La lógica de verificación de RUC sigue siendo la misma
+        rucInput.addEventListener('blur', function() {
+            const ruc = rucInput.value.trim();
+            if (ruc) {
+                fetch(`{% url 'cotizaciones:check_ruc_api' %}?ruc=${ruc}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.exists) {
+                            modalBodyText.textContent = `Esta empresa ya tiene un proceso pendiente realizado por ${data.agendado_por}. ¿Desea reasignarlo a su nombre y continuar?`;
+                            const reassignUrl = `/cotizaciones/proceso/${data.proceso_pk}/reasignar/`;
+                            confirmReassignBtn.setAttribute('href', reassignUrl);
+                            rucModal.show();
+                        }
+                    })
+                    .catch(error => console.error('Error al verificar el RUC:', error));
+            }
+        });
+    });
+    </script>
+{% endblock %}

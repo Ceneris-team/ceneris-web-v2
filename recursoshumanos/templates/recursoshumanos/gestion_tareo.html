@@ -1,0 +1,87 @@
+<!-- dashboard/templates/dashboard/gestion_tareo.html -->
+{% extends "dashboard/base_rrhh.html" %}
+{% load custom_filters %}
+
+{% block title %}Gestión de Tareo Mensual{% endblock %}
+
+{% block content %}
+    <h1>Gestión de Tareo Mensual</h1>
+    <p><a href="{% url 'recursoshumanos:main_dashboard' %}">&larr; Volver</a></p>
+
+    <!-- Formulario para seleccionar el mes -->
+    <form method="get" class="filter-form">
+        <label for="mes">Seleccionar Mes:</label>
+        <input type="month" id="mes" name="mes" value="{{ mes_seleccionado }}">
+        <button type="submit">Cargar Mes</button>
+    </form>
+    <hr>
+
+    <h2>Horario para {{ mes_nombre }}</h2>
+
+    <!-- ========================================================== -->
+    <!-- NUEVO FORMULARIO DE ASIGNACIÓN MASIVA -->
+    <!-- ========================================================== -->
+    <form method="post" class="form-container">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="asignacion_masiva">
+        <h3>Asignación Masiva de Horario</h3>
+        
+        <div class="form-group">
+            <label>Seleccionar Trabajadores:</label>
+            <div style="height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+                <label><input type="checkbox" id="selectAllWorkers"> <strong>Seleccionar Todos</strong></label><br>
+                {% for trabajador in trabajadores %}
+                    <label><input type="checkbox" name="trabajadores_dni" value="{{ trabajador.dni }}" class="worker-checkbox"> {{ trabajador.nombre }}</label><br>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="fecha_inicio">Desde:</label>
+            <input type="date" name="fecha_inicio_masiva" required>
+        </div>
+        <div class="form-group">
+            <label for="fecha_fin">Hasta:</label>
+            <input type="date" name="fecha_fin_masiva" required>
+        </div>
+
+        <div class="form-group">
+            <label for="estado_masivo">Asignar Estado:</label>
+            <select name="estado_masivo" required>
+                <option value="C">C: Trabajo en Campo</option>
+                <option value="D">D: DÍA LIBRE</option>
+                <option value="O">O: Oficina</option>
+                <option value="Z">Z: No fiscalizado</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="ubicacion_masiva">En la Ubicación:</label>
+            <select name="ubicacion_masiva">
+                <option value="">-- Sin Ubicación Específica --</option>
+                {% for ubicacion in ubicaciones %}
+                    <option value="{{ ubicacion }}">{{ ubicacion }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <button type="submit" class="button--primary">Aplicar a Seleccionados</button>
+    </form>
+    <hr>
+    <!-- ========================================================== -->
+    
+    <h3>Detalle por Trabajador (para ajustes individuales)</h3>
+    <!-- ... (El formulario y la tabla de selección de trabajador individual se pueden mantener aquí para ajustes finos) ... -->
+    
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Script para el checkbox "Seleccionar Todos"
+    document.getElementById('selectAllWorkers').addEventListener('change', function(event) {
+        document.querySelectorAll('.worker-checkbox').forEach(function(checkbox) {
+            checkbox.checked = event.target.checked;
+        });
+    });
+</script>
+{% endblock %}

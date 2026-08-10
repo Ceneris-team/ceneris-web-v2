@@ -1,0 +1,27 @@
+<!-- calidad/templates/calidad/gestion_proyectos.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Gestión de Proyectos{% endblock %}
+
+{% block content %}
+    <h1>Gestión de Proyectos</h1>
+    <p>Administra los proyectos disponibles en el sistema.</p>
+    
+    <div class="dashboard-grid">
+        <!-- Tarjeta para Crear Nuevo Proyecto -->
+        <a href="{% url 'recursoshumanos:crear_proyecto' %}" class="card">
+            <div class="card__icon">📂</div>
+            <h2 class="card__title">Registrar Proyecto</h2>
+            <p class="card__description">Añade un nuevo proyecto al sistema con su información principal.</p>
+            <div class="card__footer">Registrar Nuevo &rarr;</div>
+        </a>
+        
+        <!-- Tarjeta para Ver Listado de Proyectos -->
+        <a href="{% url 'recursoshumanos:lista_proyectos' %}" class="card">
+            <div class="card__icon">📋</div>
+            <h2 class="card__title">Listado de Proyectos</h2>
+            <p class="card__description">Consulta, edita y gestiona la lista de todos los proyectos registrados.</p>
+            <div class="card__footer">Ver Listado &rarr;</div>
+        </a>
+    </div>
+{% endblock %}

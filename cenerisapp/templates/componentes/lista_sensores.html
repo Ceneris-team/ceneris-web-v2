@@ -1,0 +1,49 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="header-container">
+        <h1>{{ titulo }}</h1>
+        <a href="{% url 'componentes_indice' %}" class="btn btn-secondary">Volver al Índice</a>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>N/S</th>
+                    <th>Estado</th>
+                    <th>Instalado en</th>
+                    <th>Venc. Garantía</th>
+                    <th>Tipo de Gas</th>
+                    <th>Lote</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sensor in sensores %}
+                <tr>
+                    <td data-label="Nombre">{{ sensor.nomComp }}</td>
+                    <td data-label="N/S">{{ sensor.nSerieActual }}</td>
+                    <td data-label="Estado">{{ sensor.estComp }}</td>
+                    <td data-label="Instalado en">
+                        {% if sensor.dispositivo_instalado %}
+                            <!-- Si está instalado, muestra el nombre del dispositivo -->
+                            {{ sensor.dispositivo_instalado }}
+                        {% else %}
+                            <!-- Si no, indica que está en almacén -->
+                            <span class="status-badge status-available">En Almacén</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Venc. Garantía">{{ sensor.fecVencGarantia|date:"d/m/Y" }}</td>
+                    <td data-label="Tipo de Gas">{{ sensor.tipGas }}</td>
+                    <td data-label="Lote">#{{ sensor.inventario.id_inventario }}</td>
+                   
+                </tr>
+                {% empty %}
+                <tr><td colspan="9" class="no-data">No hay sensores registrados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Centro de Gestión de Empresas{% endblock %}
+
+{% block extra_head %}
+<style>
+    .management-hub-card {
+        display: block;
+        text-decoration: none;
+        color: #333;
+        background-color: #fff;
+        border-radius: 0.5rem;
+        padding: 2rem;
+        text-align: center;
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: 1px solid #e9ecef;
+    }
+    .management-hub-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15);
+        color: #0d6efd;
+    }
+    .management-hub-card .icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        display: block;
+    }
+    .management-hub-card h4 {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    .management-hub-card p {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Título de la Página -->
+    <div class="text-center mb-5">
+        <h2 class="display-6">Centro de Gestión de Empresas</h2>
+        <p class="lead text-muted">Selecciona una opción para continuar</p>
+    </div>
+
+    <!-- Fila con las Tarjetas de Navegación -->
+    <div class="row justify-content-center">
+        <!-- Tarjeta 1: Registrar Nueva Empresa -->
+        <div class="col-lg-4 col-md-6">
+            <a href="{% url 'cotizaciones:registrar_empresa' %}" class="management-hub-card shadow-sm">
+                <span class="icon text-primary"><i data-feather="plus-circle"></i></span>
+                <h4>Registrar Nueva Empresa</h4>
+                <p>Añade una nueva empresa a la base de datos central para iniciar futuros procesos.</p>
+            </a>
+        </div>
+
+        <!-- Tarjeta 2: Ver Lista de Empresas -->
+        <div class="col-lg-4 col-md-6">
+            <a href="{% url 'cotizaciones:lista_empresas_central' %}" class="management-hub-card shadow-sm">
+                <span class="icon text-success"><i data-feather="list"></i></span>
+                <h4>Ver Lista de Empresas</h4>
+                <p>Consulta, busca y gestiona todas las empresas registradas en el sistema.</p>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

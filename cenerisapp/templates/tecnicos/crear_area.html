@@ -1,0 +1,102 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="form-container">
+    <form method="post" class="form-card">
+        <h2>{{ titulo }}</h2>
+        {% csrf_token %}
+        <h3>Datos del Área</h3>
+        <div class="form-grid">
+            
+            <div class="form-group">
+                {{ form.nombreA.label_tag }}
+                {{ form.nombreA }}
+                {{ form.nombreA.errors }}
+            </div>
+            <div class="form-group">
+                {{ form.ubicacionA.label_tag }}
+                {{ form.ubicacionA }}
+                {{ form.ubicacionA.errors }}
+            </div>
+        </div>
+        
+
+        <hr>
+
+        <!-- Formset de Puntos Exactos -->
+        <div class="form-section">
+            <h3>Puntos Exactos en esta Área</h3>
+            
+            <!-- El management_form es OBLIGATORIO -->
+            {{ formset.management_form }}
+            
+            <div id="punto-form-list">
+                {% for punto_form in formset %}
+                    <div class="inline-form-group">
+                        <div class="form-group">
+                            {{ punto_form.nombre_punto.label_tag }}
+                            {{ punto_form.nombre_punto }}
+                            {{ punto_form.nombre_punto.errors }}
+                        </div>
+                        {% if punto_form.instance.pk and formset.can_delete %}
+                        <div class="form-group checkbox-group">
+                            {{ punto_form.DELETE }}
+                            <label for="{{ punto_form.DELETE.id_for_label }}">Eliminar</label>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Botón para añadir nuevas filas con JavaScript -->
+            <button type="button" id="add-punto-form" class="btn btn-secondary btn-sm">Añadir otro Punto Exacto</button>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Guardar Área de Trabajo</button>
+            <a href="{% url 'cenerisapp:lista_areas' %}" class="btn btn-secondary">Cancelar</a> 
+        </div>
+    </form>
+</div>
+
+<!-- Plantilla vacía para el JavaScript -->
+<div id="punto-empty-form" style="display:none;">
+    <div class="inline-form-group">
+        <div class="form-group">
+            {{ formset.empty_form.nombre_punto.label_tag }}
+            {{ formset.empty_form.nombre_punto }}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    function setupInlineFormset(prefix) {
+        const addBtn = document.getElementById(`add-${prefix}-form`);
+        if (!addBtn) return;
+
+        const formList = document.getElementById(`${prefix}-form-list`);
+        const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+        const emptyFormTemplateEl = document.getElementById(`${prefix}-empty-form`);
+
+        if (!formList || !totalFormsInput || !emptyFormTemplateEl) return;
+        
+        const emptyFormTemplate = emptyFormTemplateEl.innerHTML;
+
+        addBtn.addEventListener('click', () => {
+            const formIndex = parseInt(totalFormsInput.value);
+            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, formIndex);
+            formList.insertAdjacentHTML('beforeend', newFormHtml);
+            totalFormsInput.value = formIndex + 1;
+        });
+    }
+    // ¡Le decimos a la función que configure el formset con el prefijo 'form'!
+    // Por defecto, inlineformset_factory usa 'form' como prefijo.
+    setupInlineFormset('form'); 
+});
+</script>
+{% endblock %}

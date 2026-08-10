@@ -1,0 +1,142 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Crear Cotización Final{% endblock %}
+
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+  <div class="card">
+    <div class="card-header">
+      <h1>Crear Cotización para: {{ proceso.empresa.nombre }}</h1>
+    </div>
+    <div class="card-body">
+      <!-- Formulario Principal -->
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">{{ form.descripcion_pedido.label }}</label>
+          {{ form.descripcion_pedido }}
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">{{ form.tipo_servicio_producto.label }}</label>
+          {{ form.tipo_servicio_producto }}
+        </div>
+      </div>
+      
+      <hr>
+      <h3>Detalles de la Cotización</h3>
+      
+      <!-- Formset para los detalles -->
+      <table class="table" id="detalles-table">
+        <thead>
+          <tr>
+            <th>Descripción</th>
+            <th>Cantidad</th>
+            <th>Precio Unit.</th>
+            <th>Subtotal</th>
+            <th>Quitar</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{ formset.management_form }}
+          {% for form in formset %}
+            <tr class="detalle-form">
+              <td>{{ form.id }}{{ form.descripcion }}</td>
+              <td>{{ form.cantidad }}</td>
+              <td>{{ form.precio_unitario }}</td>
+              <td class="subtotal-cell">0.00</td>
+              <td>{{ form.DELETE }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="button" id="add-form" class="btn btn-secondary btn-sm">Añadir Fila</button>
+
+      <!-- Totales -->
+      <div class="row justify-content-end mt-4">
+        <div class="col-md-4">
+          <ul class="list-group">
+            <li class="list-group-item d-flex justify-content-between">
+              <strong>Subtotal:</strong> <span id="total-subtotal">0.00</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+              <strong>IGV (18%):</strong> <span id="total-igv">0.00</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+              <h4>Total:</h4> <h4 id="total-general">0.00</h4>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <button type="submit" class="btn btn-primary">Guardar Cotización</button>
+      <a href="{% url 'cotizaciones:detalle_proceso' pk=proceso.pk %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </div>
+</form>
+
+<!-- Plantilla vacía para clonar con JS -->
+<table style="display:none;">
+    <tr id="empty-form" class="detalle-form">
+        <td>{{ formset.empty_form.id }}{{ formset.empty_form.descripcion }}</td>
+        <td>{{ formset.empty_form.cantidad }}</td>
+        <td>{{ formset.empty_form.precio_unitario }}</td>
+        <td class="subtotal-cell">0.00</td>
+        <td>{{ formset.empty_form.DELETE }}</td>
+    </tr>
+</table>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tableBody = document.querySelector('#detalles-table tbody');
+    const addButton = document.getElementById('add-form');
+    const emptyForm = document.getElementById('empty-form').cloneNode(true);
+    const formsetPrefix = '{{ formset.prefix }}';
+    let totalForms = document.querySelector(`#id_${formsetPrefix}-TOTAL_FORMS`);
+
+    // --- FUNCIÓN PARA AÑADIR FILAS ---
+    addButton.addEventListener('click', function() {
+        let newForm = emptyForm.cloneNode(true);
+        let formRegex = new RegExp(`${formsetPrefix}-__prefix__`, 'g');
+        let currentFormCount = parseInt(totalForms.value);
+        
+        newForm.innerHTML = newForm.innerHTML.replace(formRegex, `${formsetPrefix}-${currentFormCount}`);
+        tableBody.appendChild(newForm);
+        totalForms.value = currentFormCount + 1;
+    });
+
+    // --- FUNCIÓN PARA CALCULAR TOTALES EN TIEMPO REAL ---
+    function updateTotals() {
+        let grandSubtotal = 0;
+        document.querySelectorAll('.detalle-form').forEach(row => {
+            let qty = parseFloat(row.querySelector('input[name*="cantidad"]').value) || 0;
+            let price = parseFloat(row.querySelector('input[name*="precio_unitario"]').value) || 0;
+            let subtotal = qty * price;
+            row.querySelector('.subtotal-cell').textContent = subtotal.toFixed(2);
+            grandSubtotal += subtotal;
+        });
+
+        let igv = grandSubtotal * 0.18;
+        let total = grandSubtotal + igv;
+
+        document.getElementById('total-subtotal').textContent = grandSubtotal.toFixed(2);
+        document.getElementById('total-igv').textContent = igv.toFixed(2);
+        document.getElementById('total-general').textContent = total.toFixed(2);
+    }
+    
+    // Escuchar cambios en cualquier input de la tabla
+    tableBody.addEventListener('input', function(e) {
+        if (e.target.tagName === 'INPUT') {
+            updateTotals();
+        }
+    });
+
+    // Calcular totales al cargar la página por si hay datos existentes
+    updateTotals();
+});
+</script>
+{% endblock %}

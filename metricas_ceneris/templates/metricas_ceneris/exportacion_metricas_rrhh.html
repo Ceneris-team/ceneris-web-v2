@@ -1,0 +1,148 @@
+{% extends 'recursoshumanos/base_rrhh.html' %}
+
+{% block title %}Exportar Metricas{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3">
+                <div>
+                    <h1 class="h4 mb-1 fw-bold text-dark">Exportar metricas</h1>
+                    <p class="text-muted mb-0">Pantalla aislada para exportacion: filtros + boton de descarga.</p>
+                </div>
+                <a href="{% url 'recursoshumanos:dashboard' %}" class="btn btn-outline-secondary">
+                    Volver a RRHH
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <form id="formExportacionAislada" method="GET" action="{% url 'metricas_ceneris:exportar_ranking_excel' %}">
+                <div class="row g-3">
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label for="filtroPeriodo" class="form-label fw-semibold">Periodo</label>
+                        <select id="filtroPeriodo" name="periodo" class="form-select">
+                            <option value="semestre" {% if periodo_tabla_defecto == 'semestre' %}selected{% endif %}>Semestre</option>
+                            <option value="mes" {% if periodo_tabla_defecto == 'mes' %}selected{% endif %}>Mes</option>
+                        </select>
+                    </div>
+
+                    <div id="contenedorAnio" class="col-12 col-md-6 col-lg-3">
+                        <label for="filtroAnio" class="form-label fw-semibold">Anio</label>
+                        <select id="filtroAnio" name="anio" class="form-select">
+                            {% for a in anios_disponibles %}
+                            <option value="{{ a }}" {% if a == anio_tabla_defecto %}selected{% endif %}>{{ a }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div id="contenedorMes" class="col-12 col-md-6 col-lg-3 {% if periodo_tabla_defecto != 'mes' %}d-none{% endif %}">
+                        <label for="filtroMes" class="form-label fw-semibold">Mes</label>
+                        <select id="filtroMes" name="mes" class="form-select">
+                            {% for mes_num, mes_nombre in meses_disponibles %}
+                            <option value="{{ mes_num }}" {% if mes_num == mes_tabla_defecto %}selected{% endif %}>{{ mes_nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div id="contenedorSemestre" class="col-12 col-md-6 col-lg-3 {% if periodo_tabla_defecto == 'mes' %}d-none{% endif %}">
+                        <label for="filtroSemestre" class="form-label fw-semibold">Semestre</label>
+                        <select id="filtroSemestre" name="semestre" class="form-select">
+                            <option value="1" {% if semestre_tabla_defecto == 1 %}selected{% endif %}>Semestre 1</option>
+                            <option value="2" {% if semestre_tabla_defecto == 2 %}selected{% endif %}>Semestre 2</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label for="filtroTipo" class="form-label fw-semibold">Tipo trabajador</label>
+                        <select id="filtroTipo" name="tipo" class="form-select">
+                            <option value="todos">Todos</option>
+                            <option value="operativo">Operativos</option>
+                            <option value="lider">Lideres (Supervisor y Responsable)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label for="filtroSede" class="form-label fw-semibold">Sede</label>
+                        <select id="filtroSede" name="sede" class="form-select">
+                            <option value="todas">Todas las sedes</option>
+                            {% for sede in sedes %}
+                            <option value="{{ sede.id }}">{{ sede.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label for="filtroArea" class="form-label fw-semibold">Area</label>
+                        <select id="filtroArea" name="area" class="form-select">
+                            <option value="todas">Todas las areas</option>
+                            {% for area in areas %}
+                            <option value="{{ area.0 }}">{{ area.1 }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label for="filtroOrden" class="form-label fw-semibold">Orden</label>
+                        <select id="filtroOrden" name="orden" class="form-select">
+                            <option value="score_desc">Score (Mayor a menor)</option>
+                            <option value="score_asc">Score (Menor a mayor)</option>
+                            <option value="nombre">Nombre (A-Z)</option>
+                            <option value="area">Area</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label for="filtroLimite" class="form-label fw-semibold">Limite</label>
+                        <select id="filtroLimite" name="limite" class="form-select">
+                            <option value="todos">Todos</option>
+                            <option value="10">Top 10</option>
+                            <option value="20">Top 20</option>
+                            <option value="50">Top 50</option>
+                            <option value="100">Top 100</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end mt-4">
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold">
+                        Exportar Excel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const filtroPeriodo = document.getElementById('filtroPeriodo');
+        const contenedorMes = document.getElementById('contenedorMes');
+        const contenedorSemestre = document.getElementById('contenedorSemestre');
+        const filtroMes = document.getElementById('filtroMes');
+        const filtroSemestre = document.getElementById('filtroSemestre');
+
+        if (!filtroPeriodo || !contenedorMes || !contenedorSemestre) {
+            return;
+        }
+
+        const actualizar = () => {
+            const esMes = filtroPeriodo.value === 'mes';
+            contenedorMes.classList.toggle('d-none', !esMes);
+            contenedorSemestre.classList.toggle('d-none', esMes);
+            if (filtroMes) {
+                filtroMes.disabled = !esMes;
+            }
+            if (filtroSemestre) {
+                filtroSemestre.disabled = esMes;
+            }
+        };
+
+        filtroPeriodo.addEventListener('change', actualizar);
+        actualizar();
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,67 @@
+    {% extends 'app_base.html' %}
+    {% block title %}{{ titulo }}{% endblock %}
+
+    {% block main_content %}
+        <div class="header-container">
+            <h1>{{ titulo }}</h1>
+            <!-- Si es Portátil, mostramos un solo botón -->
+            {% if dispositivo.tipoDisp == 'Portatil' %}
+                <!-- ENLACE PARA PORTÁTILES: Usa 'crear_certificado_dispositivo' y pasa el ID del dispositivo -->
+                <a href="{% url 'cenerisapp:crear_certificado_dispositivo' dispositivo.id_dispositivo %}" class="btn btn-primary">Nuevo Certificado</a>
+            {% endif %}
+        </div>
+        {% if dispositivo.tipoDisp == 'Fijo' and sensores_del_dispositivo %}
+            <div class="form-card" style="margin-bottom: 25px;">
+                <h3>Registrar Nuevo Certificado para un Sensor Específico</h3>
+                <p class="form-description">Selecciona el sensor que ha sido calibrado para crear su certificado.</p>
+                <div class="action-buttons">
+                    {% for sensor in sensores_del_dispositivo %}
+                            <!-- ENLACE PARA FIJOS: Usa 'crear_certificado_componente' y pasa el ID del componente -->
+                        <a href="{% url 'cenerisapp:crear_certificado_componente' sensor.componente_ptr.id_componente %}" class="btn btn-primary" style="margin-right: 30px;">
+                            Certificar {{ sensor.nomComp }} ({{ sensor.tipGas }})
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}    
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nro. Certificado</th>
+                        <th>Fecha</th>
+                        <th>Próxima Fecha</th>
+                        <th>Estado Final</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- ¡CORRECCIÓN AQUÍ! El bucle debe ser sobre 'certificados' -->
+                    {% for cert in certificados %}
+                    <tr>
+                        <td data-label="Nro. Certificado">{{ cert.nro_certificado }}</td>
+                        <td data-label="Fecha">{{ cert.fechCertificado|date:"d/m/Y" }}</td>
+                        <td data-label="Próxima Fecha">{{ cert.proxFecha|date:"d/m/Y" }}</td>
+                        <td data-label="Estado Final">{{ cert.estadoFinal }}</td>
+                        <td data-label="Acciones">
+                            <div class="action-buttons">
+                                <!-- ¡CORRECCIÓN AQUÍ! Usamos 'cert.id_certificado' -->
+                                <a href="{% url 'cenerisapp:descargar_certificado' cert.pk %}" class="btn btn-info" target="_blank">Descargar PDF</a>
+
+                                
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="no-data">No hay certificados registrados para este componente.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="form-actions" style="justify-content: flex-start; border-top: none; padding-top: 20px;">
+            <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="btn btn-secondary">Volver a la Lista de Dispositivos</a>
+        </div>
+    {% endblock %}

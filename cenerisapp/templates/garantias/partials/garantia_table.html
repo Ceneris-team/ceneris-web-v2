@@ -1,0 +1,35 @@
+<!-- en templates/garantias/partials/garantia_table.html -->
+{% load garantia_filters %}
+
+<div class="table-responsive">
+    <table class="table modern-table">
+        <thead>
+            <tr>
+                <th>Tipo de Item</th>
+                <th>Nombre / N° Serie</th>
+                <th>Instalado en</th>
+                <th>Fecha de Vencimiento</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr class="status-{{ item|garantia_status }}">
+                {% if item.tipoDisp %} {# Es un Dispositivo #}
+                    <td><i class="bi bi-display"></i> Dispositivo</td>
+                    <td><strong>{{ item.nomDisp }}</strong><br><small>{{ item.num_serie }}</small></td>
+                    <td>N/A</td>
+                    <td>{{ item.fecVencimientoGarantia|date:"d M, Y" }}</td>
+                {% else %} {# Es un Sensor #}
+                    <td><i class="bi bi-cpu"></i> Sensor</td>
+                    <td><strong>{{ item.nomComp }}</strong><br><small>{{ item.nSerieActual|default:"Sin N/S" }}</small></td>
+                    <td>{{ item.dispositivo_instalado.nomDisp|default:"En Stock" }}</td>
+                    <td>{{ item.fecVencimientoGarantia|date:"d M, Y" }}</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if not items %}
+        <p class="no-data">No hay ítems en esta categoría.</p>
+    {% endif %}
+</div>

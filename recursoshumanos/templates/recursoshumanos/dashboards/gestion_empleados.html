@@ -1,0 +1,41 @@
+<!-- dashboard/templates/dashboard/dashboards/gestion_empleados.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load custom_filters_rrhh %}
+{% block title %}Gestión de Empleados (Asistencia){% endblock %}
+{% block content %}
+    <h1>Gestión de Empleados</h1>
+    <p>Administra los trabajadores registrados en el sistema de control de asistencia.</p>
+    
+    <div class="dashboard-grid">
+        <a href="{% url 'recursoshumanos:crear_trabajador' %}" class="card">
+            <div class="card__icon">👤</div>
+            <h2 class="card__title">Registrar Empleado</h2>
+            <p class="card__description">Añade un nuevo trabajador al sistema y configura sus permisos de marcación.</p>
+            <div class="card__footer">Registrar Nuevo &rarr;</div>
+        </a>
+        
+        <a href="{% url 'recursoshumanos:lista_trabajadores' %}" class="card">
+            <div class="card__icon">📋</div>
+            <h2 class="card__title">Ver Empleados</h2>
+            <p class="card__description">Consulta, edita y gestiona la lista de todos los trabajadores de asistencia.</p>
+            <div class="card__footer">Ver Listado &rarr;</div>
+        </a>
+        {% if request.user|has_group:"Recursos Humanos" or request.user|has_group:"Supervisores" or request.user|has_group:"Gerencia" %}
+        <a href="{% url 'recursoshumanos:panel_aprobacion_he' %}" class="card">
+            <div class="card__icon">✅</div>
+            <h2 class="card__title">Aprobar Horas Extras</h2>
+            <p class="card__description">Gestiona y autoriza las solicitudes de Horas Extras pendientes de los trabajadores.</p>
+            <div class="card__footer">Ver Listado &rarr;</div>
+        </a>
+        {% endif %}
+        {% if request.user|has_group:"Recursos Humanos" or request.user|has_group:"Supervisores" or request.user|has_group:"Gerencia" %}
+        <a href="{% url 'recursoshumanos:reporte_faltas_web' %}" class="card">
+            <div class="card__icon">⚠️</div>
+            <h2 class="card__title">Reporte de faltas</h2>
+            <p class="card__description">Revisa, genera y consulta informes detallados sobre las faltas e inasistencias del personal.</p>
+            <div class="card__footer">Ver Listado &rarr;</div>
+        </a>
+        {% endif %}
+    </div>
+    
+{% endblock %}

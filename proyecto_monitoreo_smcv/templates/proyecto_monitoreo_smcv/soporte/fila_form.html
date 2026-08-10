@@ -1,0 +1,83 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block title %}Agregar Fila al Cronograma{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8 px-4">
+    
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800 border-l-4 border-orange-500 pl-3">
+            Agregar Fila al Cronograma
+        </h2>
+        <a href="{% url 'proyecto_monitoreo_smcv:detalle_programa' view.kwargs.programa_id %}" class="text-gray-500 hover:text-orange-600 font-medium transition">
+            <i class="fas fa-arrow-left mr-1"></i> Volver
+        </a>
+    </div>
+
+    <form method="post" class="bg-white shadow-md rounded-xl p-8 border border-gray-100">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <!-- Número de Item -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">N° Item</label>
+                {{ form.numero }}
+            </div>
+
+            <!-- Fecha Programada (Define la columna) -->
+            <div>
+                <label class="block text-sm font-bold text-blue-600 mb-2">Fecha Programada</label>
+                {{ form.fecha_programada }}
+            </div>
+
+            <!-- CHECKBOX EJECUTADO (El cambio) -->
+            <div class="flex flex-col justify-center bg-green-50 rounded-lg p-3 border border-green-100">
+                <label class="block text-sm font-bold text-green-700 mb-2 flex items-center">
+                    <i class="fas fa-check-circle mr-2"></i> ¿Se Ejecutó?
+                </label>
+                <div class="flex items-center">
+                    {{ form.ejecutado }} 
+                    <span class="ml-2 text-xs text-green-600">
+                        Marcar para poner la "X" verde en la misma fecha.
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+            <!-- Equipos Programados -->
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <label class="block text-sm font-bold text-blue-800 mb-2">
+                    <i class="fas fa-clipboard-list mr-1"></i> Equipos Programados
+                </label>
+                {{ form.equipos_programados }}
+                <p class="text-xs text-blue-400 mt-2">Equipos que deberían inspeccionarse.</p>
+            </div>
+
+            <!-- Equipos Ejecutados (Para pintar rojos los que falten) -->
+            <div class="bg-green-50 p-4 rounded-lg border border-green-100">
+                <label class="block text-sm font-bold text-green-800 mb-2">
+                    <i class="fas fa-tasks mr-1"></i> Equipos Realmente Inspeccionados
+                </label>
+                {{ form.equipos_ejecutados }}
+                <p class="text-xs text-green-600 mt-2">
+                    <strong>Nota:</strong> Si deja esto vacío, el sistema asume que se hicieron todos.
+                    <br>Si selecciona menos equipos que en "Programados", los faltantes saldrán en <span class="text-red-500 font-bold">ROJO</span>.
+                </p>
+            </div>
+        </div>
+
+        <!-- Observaciones -->
+        <div class="mb-8">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Observaciones</label>
+            {{ form.observaciones }}
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition transform hover:-translate-y-0.5 flex items-center">
+                <i class="fas fa-save mr-2"></i> Guardar Fila
+            </button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

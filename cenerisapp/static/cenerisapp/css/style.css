@@ -1,0 +1,2499 @@
+:root {
+    --bg_color: #ffffff;
+    --title_color: #d45b04;
+    --text_color: #333333;
+    --dark_color: #d45b04;
+    --second_color: #f5f5f5;  
+ 
+    --sidebar-width-collapsed: 80px;
+    --sidebar-width-expanded: 260px;
+ 
+    
+    --mobile-header-height: 60px;
+}
+ 
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+ 
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: var(--second_color);
+    overflow: auto;
+}
+ 
+/* ============================================= */
+/*        ESTILOS BASE (MOBILE FIRST)            */
+/* ============================================= */
+ 
+.mobile-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: var(--mobile-header-height);
+    background-color: var(--dark_color);
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    z-index: 1001;
+}
+
+.menu-toggle {
+    background: none; 
+    color: var(--bg_color);
+    border: none;
+    padding: 0;
+    font-size: 1.8rem;
+    cursor: pointer;
+    user-select: none;
+}
+ 
+.mobile-header__title {
+    margin-left: 10px;
+}
+ 
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: var(--sidebar-width-expanded);
+    background-color: var(--bg_color);
+    color: var(--text_color);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+}
+ 
+.sidebar.is-open {
+    transform: translateX(0);
+}
+ 
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+ 
+.overlay.is-open {
+    opacity: 1;
+    visibility: visible;
+}
+ 
+
+.sidebar__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    border-bottom: 1px solid var(--second_color);
+    flex-shrink: 0;
+}
+ 
+.sidebar__logo img {
+    height: 45px;
+    width: auto;
+}
+ 
+.sidebar__title {
+    font-size: 1.2rem;
+    color: var(--title_color);
+    white-space: nowrap;
+    opacity: 1;
+}
+ 
+.sidebar__toggle {
+    background: none;
+    border: none;
+    color: var(--text_color);
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: none;
+    user-select: none;
+}
+ 
+.sidebar__menu {
+    list-style: none;
+    padding-top: 15px;
+    flex-grow: 1;
+    padding: 0; /* Quitamos el padding por defecto del ul */
+    margin: 0;
+    overflow-y: auto;
+    scrollbar-color: var(--dark_color) var(--second_color); /* Color del pulgar y del track */
+    scrollbar-width: thin; /* Ancho del scrollbar */
+    overflow-x: hidden; /* Evita el scroll horizontal */
+}
+
+.sidebar__link {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 15px;
+    text-decoration: none;
+    color: var(--text_color);
+    white-space: nowrap;
+    transition: background-color 0.2s;
+   
+    /* Reseteos para que el botón se vea como un enlace */
+    background: none;
+    border: none;
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+}
+ 
+.sidebar__link:hover {
+    background-color: var(--dark_color);
+}
+ 
+.logout-form {
+    width: 100%;
+}
+ 
+ 
+.link__item {
+    font-size: 1.5rem;
+    width: 50px;
+    text-align: center;
+    flex-shrink: 0;
+}
+ 
+.link__text {
+    margin-left: 10px;
+    opacity: 1;
+}
+ 
+.logout-form {
+    width: 100%; /* El formulario debe ocupar todo el espacio del li */
+}
+ 
+.logout-button {
+    display: block;
+    width: 100%;
+}
+ 
+.sidebar__item .sidebar__item--logout:hover{
+    background-color: red;
+}
+/* --- MODIFICADO --- */
+/* Empujamos el contenido principal hacia abajo */
+.main-content {
+    padding: 20px;
+    padding-top: var(--mobile-header-height); /* ¡LA CLAVE! */
+    transition: margin-left 0.3s ease-in-out;
+}
+ 
+/* ============================================= */
+/*     MEJORA PROGRESIVA (VISTA DESKTOP)         */
+/* ============================================= */
+ 
+@media (min-width: 768px) {
+   
+    /* --- NUEVO --- */
+    /* Ocultamos el header móvil en pantallas grandes */
+    .mobile-header {
+        display: none;
+    }
+ 
+    /* --- MODIFICADO --- */
+    /* Reseteamos el padding del contenido principal */
+    .main-content {
+        padding-left: 50px;
+        padding-top: 20px; /* Volvemos al padding original */
+        margin-left: var(--sidebar-width-collapsed);
+    }
+   
+    /* El resto de tu CSS de escritorio se queda igual... */
+ 
+    .menu-toggle,
+    .overlay {
+        display: none;
+        
+    }
+ 
+    .sidebar {
+        transform: translateX(0);
+        width: var(--sidebar-width-collapsed);
+        transition: width 0.3s ease-in-out;
+    }
+ 
+    .sidebar__header {
+        flex-direction: column;
+        height: auto;
+        padding: 10px;
+        
+    }
+   
+    .sidebar__logo { order: 1; }
+    .sidebar__toggle {
+        order: 2;
+        margin-top: 10px;
+        display: block;
+    }
+    .sidebar__title { display: none; }
+    .link__text { opacity: 0; }
+ 
+    .sidebar.is-expanded {
+        width: var(--sidebar-width-expanded);
+        
+    }
+   
+    .sidebar.is-expanded .sidebar__header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+   
+    .sidebar.is-expanded .sidebar__logo { order: 0; }
+    .sidebar.is-expanded .sidebar__toggle { order: 0; }
+    .sidebar.is-expanded .sidebar__title { display: block; opacity: 1; margin-top: 15px;margin-right: 8px;}
+    .sidebar.is-expanded .link__text { opacity: 1; transition: opacity 0.3s 0.1s; }
+ 
+    .main-content.is-expanded {
+        margin-left: var(--sidebar-width-expanded);
+    }
+    .sidebar__item .sidebar__item--logout:hover{
+        background-color: red;
+    }
+}
+ 
+ 
+/* --- ESTILOS BASE (MOBILE FIRST) --- */
+.auth-container {
+padding: 20px;
+}
+.auth-card {
+background-color: var(--bg_color);
+padding: 25px;
+border-radius: 8px;
+box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+.auth-card h2 {
+color: var(--text_color);
+text-align: center;
+margin-bottom: 20px;
+}
+ 
+.auth-card form p {
+margin-bottom: 15px;
+}
+.auth-card form label {
+display: block;
+margin-bottom: 5px;
+color: var(--text_color);
+font-weight: bold;
+}
+.auth-card form input {
+width: 100%;
+padding: 10px;
+border: 1px solid #ccc;
+border-radius: 4px;
+box-sizing: border-box;
+}
+.auth-button {
+width: 100%;
+padding: 12px;
+background-color: var(--dark_color);
+color: var(--bg_color);
+border: none;
+border-radius: 4px;
+font-size: 1rem;
+cursor: pointer;
+transition: background-color 0.2s;
+}
+.auth-button:hover {
+background-color: var(--title_color);
+}
+.auth-switch {
+text-align: center;
+margin-top: 20px;
+}
+.auth-switch a {
+color: var(--dark_color);
+text-decoration: none;
+font-weight: bold;
+}
+ 
+@media (min-width: 768px) {
+    .auth-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 40px;
+    }
+    .auth-card {
+        width: 100%;
+        max-width: 400px; /* Ancho máximo de la tarjeta */
+    }
+}
+ 
+/* ============================================= */
+/*       ESTILOS PARA TABLAS DE DATOS            */
+/* ============================================= */
+ 
+/* --- Contenedor del Header y Botones --- */
+ 
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap; /* Para que se apilen en pantallas pequeñas */
+    gap: 15px; /* Espacio entre el título y el botón */
+}
+ 
+.header-container h1 {
+    color: var(--text_color);
+    font-size: 1.8rem;
+}
+ 
+/* Estilos de botones genéricos */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+ 
+.btn:hover {
+    opacity: 0.85;
+}
+ 
+.btn-primary { background-color: var(--dark_color); }
+.btn-secondary { background-color: #6c757d; }
+.btn-danger { background-color: #dc3545; }
+ 
+ 
+/* --- Contenedor y Estilos de la Tabla --- */
+ 
+.table-container {
+    background-color: var(--bg_color);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    overflow-x: visible; /* Permite scroll horizontal en pantallas muy pequeñas */
+}
+ 
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+ 
+thead tr {
+    border-bottom: 2px solid var(--second_color);
+}
+ 
+th {
+    padding: 15px;
+    text-align: left;
+    font-size: 0.9rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+ 
+tbody tr {
+    border-bottom: 1px solid var(--second_color);
+}
+ 
+tbody tr:last-child {
+    border-bottom: none;
+}
+ 
+td {
+    padding: 15px;
+    color: var(--text_color);
+}
+ 
+/* Mensaje para cuando no hay datos */
+.no-data {
+    text-align: center;
+    padding: 40px;
+    color: #888;
+}
+ 
+/* --- RESPONSIVIDAD (MOBILE FIRST) --- */
+ 
+@media (max-width: 768px) {
+    /* Ocultamos los encabezados de la tabla tradicionales */
+    thead {
+        display: none;
+    }
+ 
+    /* Cada fila se convierte en una 'tarjeta' */
+    tr {
+        display: block;
+        margin-bottom: 15px;
+        border: 1px solid var(--second_color);
+        border-radius: 5px;
+    }
+ 
+    td {
+        display: block;
+        text-align: right; /* Alineamos el contenido a la derecha */
+        padding-left: 50%; /* Dejamos espacio para la etiqueta */
+        position: relative;
+        border-bottom: 1px solid var(--second_color);
+    }
+    td:last-child {
+        border-bottom: none;
+    }
+   
+    /* El truco: usamos el 'data-label' para crear una pseudo-columna */
+    td::before {
+        content: attr(data-label); /* Toma el texto del atributo data-label */
+        position: absolute;
+        left: 15px;
+        font-weight: bold;
+        text-align: left;
+    }
+ 
+    td[data-label="Acciones"] {
+        padding-left: 15px; /* Reseteamos el padding para esta celda específica */
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+ 
+    .action-buttons {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center; /* Centra los botones verticalmente si tienen alturas diferentes */
+        gap: 8px;
+    }
+}
+/* ============================================= */
+/*       ESTILOS MODERNOS PARA FORMULARIOS       */
+/* ============================================= */
+ 
+/* --- Contenedor y Tarjeta --- */
+.form-container {
+    padding: 20px;
+}
+ 
+.form-card {
+    background-color: var(--bg_color);
+    padding: 30px 40px; /* Más padding para que respire */
+    border-radius: 12px; /* Bordes más redondeados */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08); /* Sombra más suave */
+    border: 1px solid var(--second_color);
+}
+ 
+.form-card h2 {
+    color: var(--text_color);
+    text-align: left;
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+}
+ 
+.form-description {
+    text-align: left;
+    color: #666;
+    margin-bottom: 30px;
+    border-bottom: 1px solid var(--second_color);
+    padding-bottom: 20px;
+}
+ 
+/* --- Grupos de Formulario y Campos (Inputs, Selects) --- */
+.form-group {
+    margin-bottom: 20px;
+}
+ 
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text_color);
+    font-weight: 600; /* Un poco más de grosor */
+    font-size: 0.9rem;
+}
+ 
+/* Estilo unificado para todos los campos de entrada */
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group select {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    background-color: #f8f9fa; /* Un fondo muy sutil */
+    transition: all 0.2s ease-in-out;
+}
+ 
+/* Efecto de Foco para los inputs */
+.form-group input[type="text"]:focus,
+.form-group input[type="date"]:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--title_color);
+    background-color: var(--bg_color);
+    box-shadow: 0 0 0 3px rgba(52, 168, 83, 0.15);
+}
+ 
+/* Estilos para los <select> */
+.form-group select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23333333' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1em;
+}
+ 
+ 
+/* --- Contenedor de Acciones (Botones) --- */
+.form-actions {
+    margin-top: 30px;
+    padding-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+ 
+ 
+/* --- MEJORA PROGRESIVA (VISTA DESKTOP CON GRID) --- */
+@media (min-width: 768px) {
+    .form-container {
+        display: flex;
+        justify-content: center;
+        padding: 40px;
+    }
+ 
+    .form-card {
+        width: 100%;
+        max-width: 1000px; /* Un poco más ancho para el grid */
+    }
+   
+    /* La magia del Grid para alinear campos */
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr; /* Dos columnas de igual tamaño */
+        gap: 20px; /* Espacio entre columnas */
+    }
+}
+ 
+/* ============================================= */
+/*       ESTILOS PARA TARJETA DE INFO EXTRA      */
+/* ============================================= */
+ 
+.info-card {
+    background-color: #e9f5e9; /* Un verde muy claro */
+    border-left: 5px solid var(--title_color);
+    padding: 20px;
+    margin-top: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+ 
+.info-card h3 {
+    margin-top: 0;
+    color: var(--dark_color);
+}
+ 
+.info-card p {
+    margin: 10px 0 0;
+    color: var(--text_color);
+}
+ 
+/* ============================================= */
+/*       ESTILOS MODERNOS PARA MENSAJES          */
+/* ============================================= */
+.messages-container {
+    padding: 0 20px; /* Alineado con el padding de .main-content */
+    margin-bottom: 20px;
+    list-style: none; /* Si usas un <ul> para los mensajes */
+}
+ 
+.message {
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+ 
+/* Icono de prefijo para cada tipo de mensaje */
+.message::before {
+    font-size: 1.5rem;
+    margin-right: 1rem;
+    font-weight: bold;
+}
+ 
+/* Éxito (Verde) */
+.message.success {
+    background-color: #e9f5e9;
+    border-color: #a3d3a2;
+    color: #1c6c2f;
+}
+.message.success::before {
+    content: '✓';
+    color: var(--dark_color);
+}
+ 
+/* Error (Rojo) */
+.message.error {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+.message.error::before {
+    content: '✗';
+    color: #721c24;
+}
+ 
+/* Advertencia (Amarillo) */
+.message.warning {
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+    color: #856404;
+}
+.message.warning::before {
+    content: '!';
+    color: #856404;
+}
+ 
+/* Información (Azul) */
+.message.info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+.message.info::before {
+    content: 'ℹ';
+    color: #0c5460;
+}
+ 
+/* Botón de cierre */
+.message-close {
+    margin-left: auto; /* Empuja el botón a la derecha */
+    cursor: pointer;
+    font-size: 1.8rem;
+    font-weight: bold;
+    line-height: 1;
+    background: none;
+    border: none;
+    color: inherit;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+.message-close:hover {
+    opacity: 1;
+}
+ 
+/* Resumen del último registro */
+.success-summary {
+    background-color: #e2f0d9;
+    border-left-color: #548235;
+}
+ 
+/* Estilos para el formulario de inventario */
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--second_color);
+}
+.form-section:last-of-type {
+    border-bottom: none;
+}
+ 
+.component-form-group {
+    background-color: var(--second_color);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+ 
+.component-form-group h4 {
+    margin-bottom: 15px;
+    color: var(--dark_color);
+}
+ 
+.quantity-stepper {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #f8f9fa;
+    width: fit-content; /* Se ajusta al contenido */
+    overflow: hidden; /* Para que los bordes redondeados funcionen */
+}
+ 
+.quantity-stepper input[type="number"] {
+    width: 80px; /* Ancho para el número */
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border: none;
+    background: none;
+    padding: 10px;
+}
+/* Oculta las flechas en Chrome, Safari, Edge */
+.quantity-stepper input[type="number"]::-webkit-inner-spin-button,
+.quantity-stepper input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+ 
+.stepper-btn {
+    background-color: var(--second_color);
+    border: none;
+    color: var(--text_color);
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 5px 15px;
+    line-height: 1;
+    transition: background-color 0.2s;
+}
+.stepper-btn:hover {
+    background-color: #e2e6ea;
+}
+ 
+.stepper-btn--minus {
+    border-right: 1px solid #ccc;
+}
+.stepper-btn--plus {
+    border-left: 1px solid #ccc;
+}
+ 
+.form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    font-family: inherit; /* Usa la misma fuente que el resto del body */
+    background-color: #f8f9fa;
+    transition: all 0.2s ease-in-out;
+    resize: vertical; /* Permite al usuario cambiar el tamaño verticalmente */
+    min-height: 80px; /* Altura mínima fija */
+}
+ 
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--title_color);
+    background-color: var(--bg_color);
+    box-shadow: 0 0 0 3px rgba(52, 168, 83, 0.15);
+}
+ 
+/* Para que la etiqueta y el checkbox queden en línea */
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.checkbox-group input[type="checkbox"] {
+    width: auto; /* El checkbox no debe ocupar el 100% */
+}
+ 
+/* El .form-grid es Mobile First por defecto (1 columna) */
+.form-grid {
+    display: grid;
+    gap: 20px;
+}
+ 
+/* En pantallas más grandes, el grid se pone a 2 columnas */
+@media (min-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+ 
+/* ============================================= */
+/*       ESTILOS PARA TARJETAS DE ÍNDICE         */
+/* ============================================= */
+
+.card-deck {
+    /* The magic of the masonry-like design! */
+    column-width: 300px;
+    column-gap: 25px;
+    margin-top: 20px;
+}
+
+/* --- Adjustments for Direct Children --- */
+.card-deck > .card,
+.card-deck > .card-link {
+    /* Prevents a card from being split between two columns. */
+    break-inside: avoid;
+    page-break-inside: avoid; /* For older browsers */
+    
+    /* Ensures the elements flow correctly as blocks within the columns. */
+    /* REMOVED: display: inline-block; This is often the culprit for layout issues.
+    The column properties are sufficient to manage the flow. */
+    display: block; /* Use block to prevent any inline-related spacing issues. */
+    width: 100%;
+    
+    /* Add a bottom margin to vertically separate the cards. */
+    margin-bottom: 25px;
+}
+
+.card-link {
+    text-decoration: none;
+    color: inherit;
+    /* This makes the entire card clickable, instead of just the text. */
+    display: block; 
+}
+
+.card {
+    background-color: var(--bg_color, #fff); /* Added a fallback */
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.07);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: 1px solid var(--second_color, #ccc); /* Added a fallback */
+    
+    /* The most important change: ensures natural height */
+    height: auto; 
+    
+    display: flex;
+    flex-direction: column;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.card-icon {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
+    color: var(--dark_color, #333); /* Added a fallback */
+}
+
+.card-title {
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+    color: #e57d17;
+}
+
+.card-description {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #555;
+    /* Flex-grow allows it to fill space if needed, but height: auto is the key. */
+    flex-grow: 1; 
+    margin-bottom: 20px;
+    /* Redundant, but ensures the height is not being fixed anywhere. */
+    height: auto; 
+}
+
+.card-action {
+    margin-top: auto;
+}
+
+.btn-info { background-color: #17a2b8; }
+.btn-success { background-color: #28a745; }
+ 
+ 
+.status-badge.status-available { background-color: #17a2b8; }
+
+/* ============================================= */
+/*       ESTILOS PARA FORMULARIOS DINÁMICOS      */
+/* ============================================= */
+
+.form-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--second_color);
+}
+.form-section h4 {
+    margin-bottom: 15px;
+    color: var(--dark_color);
+}
+
+.dynamic-rows-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Espacio entre cada fila */
+    margin-bottom: 15px;
+}
+
+.dynamic-row {
+    display: grid;
+    /* 5 columnas de tamaño flexible y una columna pequeña para el botón */
+    grid-template-columns: repeat(5, 1fr) auto; 
+    gap: 10px; /* Espacio entre los inputs de una misma fila */
+    align-items: center;
+}
+
+/* El botón de eliminar fila */
+.btn-remove-row {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.btn-remove-row:hover {
+    background-color: #f1b0b7;
+}
+
+/* --- Responsividad para las filas dinámicas --- */
+@media (max-width: 768px) {
+    .dynamic-row {
+        /* En móvil, cada input ocupa su propia línea */
+        grid-template-columns: 1fr auto;
+    }
+
+    /* Ocultamos los placeholders y usamos labels (si los tuvieras) */
+    .dynamic-row input {
+        margin-bottom: 5px;
+    }
+}
+
+/* ============================================= */
+/*       ESTILOS PARA INLINE FORMSETS            */
+/* ============================================= */
+
+.inline-form-group {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Espacio entre el input y el checkbox */
+    padding: 10px;
+    background-color: var(--second_color);
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.inline-form-group .form-group {
+    flex-grow: 1; /* Hace que el input ocupe el espacio disponible */
+    margin-bottom: 0;
+}
+
+.inline-form-group .checkbox-group {
+    flex-grow: 0; /* Evita que el grupo del checkbox crezca */
+}
+
+.btn-sm {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+/* ============================================= */
+/* ESTILOS PARA EL DASHBOARD (Layout Final) */
+/* ============================================= */
+
+.dashboard-container {
+    height: 100vh;
+    padding: 25px;
+    box-sizing: border-box; /* Asegura que el padding se incluya en la altura total */
+}
+
+/* El grid principal que gestiona el layout */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr; /* Una columna por defecto (móvil) */
+    gap: 25px;
+    height: 90%; /* Ocupa el 100% de la altura del contenedor padre */
+}
+
+/* Estilos de los widgets individuales */
+.dashboard-widget {
+    background-color: var(--bg_color, #fff);
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.07);
+    border: 1px solid var(--second_color, #ccc);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden; /* Oculta el contenido que desborda el widget */
+}
+
+.dashboard-widget h3 {
+    text-align: center;
+    margin-bottom: 8px;
+    color: var(--text_color, #333);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.chart-container {
+    width: 80%;
+    height: 80%;
+    flex-grow: 1; /* Permite que el contenedor del gráfico ocupe el espacio restante */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (min-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas:
+            "empresa empresa"
+            "tipo estado"
+            "area area";
+        
+        /* Ajuste clave para tablet: Dos filas de tamaño flexible */
+        grid-template-rows: auto auto 1fr;
+    }
+    
+    .widget-empresa { grid-area: empresa; }
+    .widget-tipo { grid-area: tipo; }
+    .widget-estado { grid-area: estado; }
+    .widget-area-estado { grid-area: area; }
+}
+
+
+
+@media (min-width: 992px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr 1fr 380px; /* Columna lateral con ancho fijo */
+        grid-template-areas:
+            "empresa empresa tipo"
+            "empresa empresa estado"
+            "area area area";
+        
+        /* Dos filas para distribuir la altura disponible */
+        grid-template-rows: min-content min-content 500px; 
+    }
+
+    .widget-empresa { grid-area: empresa; }
+    .widget-tipo { grid-area: tipo; }
+    .widget-estado { grid-area: estado; }
+    .widget-area-estado { grid-area: area; }
+}
+
+/* Pantallas muy anchas (`min-width: 1400px`) */
+@media (min-width: 1400px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr 1fr 450px; /* La columna lateral se hace más ancha */
+    }
+}
+
+.form-control-static {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    margin-bottom: 0;
+    min-height: 45px; /* To align with other inputs */
+    font-weight: 500;
+}
+/* ============================================= */
+/*       ESTILOS PARA ESTADO DE STOCK            */
+/* ============================================= */
+
+.stock-status {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: bold;
+    color: white;
+    text-align: center;
+}
+
+.stock-status.stock-verde {
+    background-color: #28a745; /* Verde */
+}
+.stock-status.stock-amarillo {
+    background-color: #ffc107; /* Amarillo */
+    color: #333; /* Texto oscuro para mejor contraste */
+}
+.stock-status.stock-rojo {
+    background-color: #dc3545; /* Rojo */
+}
+
+.status-badge.status-pending { background-color: #ffc107; color: #333; }
+.status-badge.status-completed { background-color: #28a745; }
+
+
+/* Estilos para la barra de progreso */
+.progress-bar-container {
+    background-color: var(--second_color);
+    border-radius: 20px;
+    height: 25px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.progress-bar {
+    background-color: var(--dark_color);
+    color: white;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+    transition: width 0.5s ease-in-out;
+}
+
+/* ============================================= */
+/*       ESTILOS PARA INFO EN FORMULARIOS        */
+/* ============================================= */
+
+.info-grid {
+    display: grid;
+    /* En móvil se apilan */
+    grid-template-columns: 1fr;
+    gap: 15px;
+    padding: 15px;
+    background-color: var(--second_color);
+    border-radius: 8px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-label {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.info-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text_color);
+}
+
+/* En pantallas más grandes, los ponemos en 3 columnas */
+@media (min-width: 768px) {
+    .info-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.filter-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+/* Reutilizamos .form-group que ya tienes estilizado */
+.filter-form .form-group label {
+    font-size: 0.9rem;
+    font-weight: normal;
+    margin-bottom: 5px;
+}
+
+/* Damos estilo al select si no lo tenías */
+.form-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: white;
+}
+
+
+/* ============================================= */
+/*       ESTILOS PARA MENÚ DESPLEGABLE (Dropdown) */
+/* ============================================= */
+
+/* El contenedor principal. 'position: relative' es la clave */
+.actions-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+/* El botón principal */
+.actions-btn {
+    /* Reutilizamos el estilo de tus botones */
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    background-color: var(--dark_color);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.actions-btn:hover {
+    background-color: var(--title_color);
+}
+
+/* El contenido del menú, oculto por defecto */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f1f1f1;
+    min-width: 200px; /* Ancho mínimo */
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 100;
+    border-radius: 6px;
+    right: 0;
+    
+    /* --- ¡LAS NUEVAS PROPIEDADES! --- */
+    max-height: 300px; /* Altura máxima del menú. Ajusta este valor. */
+    overflow-y: auto;  /* Si el contenido excede la altura máxima, muestra un scroll VERTICAL. */
+}
+
+/* Los enlaces dentro del menú */
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    font-size: 0.9rem;
+}
+
+.dropdown-content a:hover {
+    background-color: #ddd;
+}
+.dropdown-content .danger-link {
+    color: #dc3545; /* Color rojo para la acción de eliminar */
+}
+
+/* Clase que añadiremos con JavaScript para mostrar el menú */
+.show-dropdown {
+    display: block;
+}
+
+/* Estilos para la galería de fotos */
+.photo-gallery-container {
+    margin-top: 40px;
+}
+.photo-gallery {
+    display: grid;
+    /* Crea columnas responsivas:
+       - Mínimo 250px de ancho
+       - Ocupan 1 fracción del espacio disponible */
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}   
+.photo-card {
+    border: 1px solid var(--second_color);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    display: flex; /* Para controlar el contenido interno */
+    flex-direction: column;
+}
+
+.photo-card img {
+    /* --- ¡LA CORRECCIÓN CLAVE! --- */
+    width: 100%;       /* La imagen ocupa todo el ancho de su tarjeta */
+    height: 200px;     /* Le damos una altura fija */
+    object-fit: cover; /* Esto es mágico: recorta y centra la imagen para que
+                          llene el espacio sin deformarse */
+    display: block;    /* Elimina espacios extra debajo de la imagen */
+}
+
+.photo-info {
+    padding: 15px;
+    background-color: var(--bg_color);
+    flex-grow: 1; /* Ocupa el espacio restante */
+}
+
+.view-original-link {
+    font-size: 0.8rem;
+    display: block;
+    margin-top: 10px;
+}
+
+.filter-form-inline {
+        display: flex;
+        flex-wrap: wrap; /* Para que se apilen en pantallas pequeñas */
+        align-items: center;
+        gap: 15px;
+    }
+
+.filter-form-grid {
+    /* Asume que tienes un 'display: grid' definido aquí */
+    display: grid;
+    /* ... otras propiedades de grid ... */
+}
+
+/* Esta es la regla clave */
+.filter-form-grid .sensor-title-fullwidth {
+    /* Indica que el elemento debe empezar en la primera columna y terminar en la última.
+       Ajusta el número '4' si tu grid tiene un número diferente de columnas. */
+    grid-column: 1 / -1; 
+    margin-top: 15px; /* Añade espacio superior para separarlo visualmente */
+    margin-bottom: 10px; /* Añade espacio inferior */
+}
+
+/* ============================================= */
+/* ESTILOS DEL SUBMENU (LIMPIO)                  */
+/* ============================================= */
+
+.submenu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    background-color: transparent; /* Un fondo ligeramente diferente */
+    
+    /* Lógica para ocultar/mostrar con animación */
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+/* Estilo para los ítems y enlaces del submenú */
+.submenu__item .sidebar__link {
+    /* Indentación para que se vea como un subnivel */
+    padding-left: 50px; 
+    font-size: 0.9em; /* Un poco más pequeño que el texto principal */
+}
+
+/* ---- Estado Activo: Muestra el submenú ---- */
+.sidebar__item.has-submenu.active > .submenu {
+    max-height: 500px; /* Un valor suficientemente grande para mostrar todos los ítems */
+}
+
+/* ---- Flecha Indicadora ---- */
+.submenu-arrow {
+    margin-left: auto; /* Mueve la flecha a la derecha */
+    transition: transform 0.3s ease-out;
+}
+
+/* Rota la flecha cuando el submenú está activo */
+.sidebar__item.has-submenu.active .submenu-arrow {
+    transform: rotate(180deg);
+}
+
+/* --- ESTILOS MODERNOS PARA DASHBOARD --- */
+.dashboard-container.modern {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f7f9;
+    padding: 2rem;
+    border-radius: 10px;
+}
+
+.dashboard-header-modern {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+.dashboard-header-modern h1 {
+    font-size: 2.5rem;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+.dashboard-header-modern p {
+    font-size: 1.1rem;
+    color: #7f8c8d;
+}
+
+.search-container-modern {
+    max-width: 600px;
+    margin: 0 auto 3rem auto;
+    position: relative;
+}
+.search-form-modern .search-input {
+    width: 100%;
+    padding: 15px 20px 15px 50px; /* Espacio para el icono */
+    border-radius: 30px;
+    border: 1px solid #bdc3c7;
+    font-size: 1rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+.search-form-modern .search-input:focus {
+    outline: none;
+    border-color: var(--primary_color);
+    box-shadow: 0 4px 20px rgba(41, 128, 185, 0.2);
+}
+.search-form-modern .search-icon {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    color: #95a5a6;
+}
+
+.section-title.modern {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #34495e;
+    margin-top: 2rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+
+.info-card.modern {
+
+    background-color: #fff;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid #ecf0f1;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.info-card.modern-t {
+    width: 50%;
+    margin-bottom: 20px;
+    background-color: #fff;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid #ecf0f1;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.info-card.modern-t:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+}
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+.card-icon {
+    font-size: 1.5rem;
+    color: var(--primary_color);
+}
+.info-card h3, .info-card h4 {
+    margin: 0;
+    margin-bottom: 15px;
+    color: #2c3e50;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+.stat-card .stat-number {
+    font-size: 3rem;
+    font-weight: 700;
+    text-align: center;
+    color: #34495e;
+}
+
+.general-stats-grid.modern, .device-details-grid.modern {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+.history-grid.modern {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+.history-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 1rem;
+}
+.history-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid #ecf0f1;
+}
+.history-list li:last-child {
+    border-bottom: none;
+}
+.history-list .date {
+    display: inline-block;
+    background-color: #ecf0f1;
+    color: #7f8c8d;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    margin-right: 10px;
+}
+
+.no-data {
+    color: #95a5a6;
+    margin-top: 1rem;
+}
+
+/* ... (los estilos para .status-badge, .component-swap, etc. se quedan igual) ... */
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+.status-operativo { background-color: #2ecc71; }
+.status-inoperativo, .status-extraviado { background-color: #e74c3c; }
+.component-swap {
+    font-size: 0.9em;
+    line-height: 1.6;
+}
+.component-swap .out { color: #e74c3c; font-weight: bold; }
+.component-swap .in { color: #2ecc71; font-weight: bold; }
+
+@media (max-width: 768px) {
+    .history-grid { grid-template-columns: 1fr; }
+}
+
+.general-stats-grid.modern {
+    display: grid;
+    /* Usaremos 2 columnas para los 3 primeros widgets */
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 1.5rem;
+}
+
+.general-stats-grid.modern.arriba {
+    display: grid;
+    /* Usaremos 2 columnas para los 3 primeros widgets */
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 1.5rem;
+    /* Eliminamos 'place-items: left;' del padre para controlar la alineación individualmente */
+}
+
+/* 1. Alinea el PRIMER hijo a la izquierda (por defecto, pero explícito) */
+.general-stats-grid.modern.arriba > :first-child {
+    justify-self: end; 
+}
+
+/* 2. Alinea el SEGUNDO hijo a la derecha */
+.general-stats-grid.modern.arriba > :nth-child(2) {
+    justify-self: start; 
+}
+
+/* Regla específica para la tarjeta del gráfico de modificaciones */
+.info-card.modern.full-width-chart {
+    /* Le decimos que ocupe todas las columnas del grid (desde la 1 hasta la última) */
+    grid-column: 1 / -1; 
+}
+
+/* Ajuste responsivo para pantallas más pequeñas */
+@media (max-width: 992px) {
+    .general-stats-grid.modern {
+        /* Volvemos a 2 columnas */
+        grid-template-columns: 1fr 1fr;
+    }
+}
+@media (max-width: 768px) {
+    .general-stats-grid.modern {
+        /* Apilamos en 1 columna en móviles */
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- SOLUCIÓN PARA EL CRECIMIENTO INFINITO DEL GRÁFICO --- */
+
+/* 1. Hacemos que la tarjeta del gráfico sea un contenedor flex que crece verticalmente */
+.info-card.modern.chart-card {
+    display: flex;
+    flex-direction: column;
+    height: 350px; /* Puedes ajustar esta altura fija como prefieras */
+}
+
+.info-card.modern.chart-card-c {
+    padding-bottom: 50px; /* Puedes ajustar esta altura fija como prefieras */
+}
+
+/* 2. El título (h4) ocupa su espacio normal */
+.chart-card h4 {
+    flex-shrink: 0; /* Evita que el título se encoja */
+}
+
+/* 3. El nuevo 'wrapper' ocupa TODO el espacio vertical restante */
+.chart-wrapper {
+    position: relative; /* ¡La clave #1! */
+    flex-grow: 1;      /* ¡La clave #2! Ocupa el espacio disponible */
+    height: 100%;      /* Asegura que tenga una altura definida por el padre */
+}
+
+/* 4. El canvas ahora tiene un padre con posición relativa y tamaño definido,
+   por lo que se dibujará correctamente dentro de él. */
+.chart-wrapper canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;  /* Forzamos el ancho y alto */
+    height: 100% !important;
+}
+
+.info-card.modern.chart-card.full-width-chart {
+    height: 650px; /* Puedes ajustar esta altura fija como prefieras */
+    margin-bottom: 20px;
+}
+
+
+
+.activity-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    margin-top: 1rem;
+}
+
+.activity-list li {
+    padding: 12px 0;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.activity-list li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.activity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.activity-header strong {
+    color: #34495e;
+}
+
+.activity-body {
+    font-size: 0.9em;
+    color: #7f8c8d;
+}
+
+.activity-body .meta {
+    display: block;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+
+/* --- ESTILOS PARA DASHBOARD DE GARANTÍAS --- */
+.kpi-card {
+    text-align: center;
+}
+.kpi-card .card-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+.kpi-card .stat-number {
+    font-size: 2.5rem;
+    margin: 0;
+}
+.kpi-card small {
+    color: #7f8c8d;
+}
+
+/* Colores de las tarjetas KPI */
+.kpi-vigente .card-icon, .kpi-vigente .stat-number { color: #27ae60; }
+.kpi-proxima .card-icon, .kpi-proxima .stat-number { color: #f39c12; }
+.kpi-vencida .card-icon, .kpi-vencida .stat-number { color: #c0392b; }
+
+/* Estilos para la tabla */
+.modern-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.modern-table th, .modern-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ecf0f1;
+}
+.modern-table th {
+    font-weight: 600;
+    color: #34495e;
+}
+.modern-table small {
+    color: #95a5a6;
+    font-size: 0.85em;
+}
+.modern-table i {
+    margin-right: 8px;
+    color: #7f8c8d;
+}
+
+/* Colores de las filas de la tabla */
+.modern-table .status-vigente { border-left: 4px solid #27ae60; }
+.modern-table .status-proxima { border-left: 4px solid #f39c12; }
+.modern-table .status-vencida { border-left: 4px solid #c0392b; }
+
+
+/* --- ESTILOS PARA LA LÍNEA DE TIEMPO (TIMELINE) --- */
+
+.timeline-container {
+    position: relative;
+    padding-left: 50px; /* Espacio para la línea vertical y los iconos */
+    margin-top: 2rem;
+}
+
+/* La línea vertical central */
+.timeline-container::before {
+    content: '';
+    position: absolute;
+    left: 25px;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background-color: #ecf0f1;
+    padding: 5px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.timeline-icon {
+    position: absolute;
+    left: -30px; /* Centra el icono sobre la línea */
+    top: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    border: 3px solid #f4f7f9; /* Color de fondo de la página */
+    z-index: 1;
+}
+
+.timeline-content {
+    background-color: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #ecf0f1;
+    position: relative;
+    margin-left: 15px;
+}
+
+.timeline-date {
+    display: block;
+    font-size: 0.85em;
+    color: #95a5a6;
+    margin-bottom: 0.5rem;
+}
+
+.timeline-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    color: #34495e;
+}
+
+.timeline-description {
+    margin: 0;
+    color: #7f8c8d;
+}
+
+.timeline-badge {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    font-size: 0.75em;
+    font-weight: 600;
+    background-color: #ecf0f1;
+    color: #7f8c8d;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+/* Colores de los iconos (usando clases de Bootstrap si están disponibles) */
+.bg-info { background-color: #0dcaf0; }
+.bg-success { background-color: #198754; }
+.bg-warning { background-color: #ffc107; }
+.bg-primary { background-color: #0d6efd; }
+.bg-secondary { background-color: #6c757d; }
+
+.timeline-actions {
+    border-top: 1px solid #ecf0f1;
+    text-align: right;
+}
+
+/* ============================================= */
+/*     ESTILOS MODERNOS PARA FORMULARIO DE FILTROS   */
+/* ============================================= */
+
+/* Contenedor principal de los filtros */
+.filter-container {
+    background-color: #f8f9fa; /* Un gris muy claro */
+    padding: 2rem;
+    border-radius: 12px;
+    margin-bottom: 2.5rem;
+    border: 1px solid #dee2e6;
+}
+
+/* El grid que organiza los campos */
+.filter-form-grid {
+    display: grid;
+    /* Crea columnas automáticas que se ajustan al espacio */
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem 1.25rem; /* Espacio vertical y horizontal */
+    align-items: end; /* Alinea todos los elementos en la parte inferior de su celda */
+}
+
+/* Estilos para cada grupo de formulario (label + input) */
+.filter-form-grid .form-group {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+}
+
+/* Estilos para las etiquetas (labels) */
+.filter-form-grid .form-group label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #495057;
+    font-size: 0.9em;
+}
+
+/* Estilos para los inputs y selects */
+.filter-form-grid .form-control,
+.filter-form-grid .form-select {
+    padding: 0.75rem 1rem;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filter-form-grid .form-control:focus,
+.filter-form-grid .form-select:focus {
+    border-color: var(--primary_color, #007bff);
+    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.2);
+    outline: none;
+}
+
+/* Estilos específicos para que el campo de búsqueda ocupe más espacio */
+.filter-form-grid .form-group.full-width {
+    grid-column: 1 / -1; /* Ocupa todas las columnas */
+}
+
+/* Contenedor de los botones */
+.filter-form-grid .form-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end; /* Alinea los botones a la derecha */
+    grid-column: 1 / -1; /* Ocupa todo el ancho en la última fila */
+    margin-top: 1rem;
+    border-top: 1px solid #e9ecef;
+    padding-top: 1.5rem;
+}
+
+.filter-form-grid .btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+/* --- ESTILOS PARA EL GESTOR DE REPORTES CON CALENDARIO --- */
+.calendar-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+.calendar-nav h2 {
+    margin: 0;
+    color: #2c3e50;
+}
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+}
+.calendar-header {
+    text-align: center;
+    font-weight: 600;
+    padding-bottom: 10px;
+    color: #7f8c8d;
+}
+.calendar-day {
+    position: relative;
+    height: 120px;
+    background-color: #fff;
+    border: 1px solid #ecf0f1;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    overflow: hidden;
+}
+.calendar-day .day-number {
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    font-weight: bold;
+    color: #bdc3c7;
+}
+.calendar-day.other-month {
+    background-color: #f8f9fa;
+    color: #dadddf;
+    cursor: default;
+}
+.calendar-day:not(.other-month):hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.calendar-day .file-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #bdc3c7;
+    text-align: center;
+}
+.calendar-day .file-status i {
+    font-size: 2rem;
+}
+.calendar-day.has-file .file-status {
+    color: #27ae60;
+}
+.calendar-day.has-file a.file-link {
+    text-decoration: none;
+    color: #27ae60;
+}
+.calendar-day.drag-over {
+    border-color: var(--primary_color, #007bff);
+    border-style: dashed;
+    background-color: #eaf4ff;
+}
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Resaltado para préstamos que aún no han sido devueltos */
+.activity-list li.prestamo-abierto {
+    border-left: 4px solid #f39c12; /* Naranja de advertencia */
+    background-color: #fffaf0;
+}
+
+/* Contenedor de paginación */
+.pagination-container {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+}
+
+/* ============================================= */
+/*     ESTILOS PARA HISTORIAL MODERNO          */
+/* ============================================= */
+
+/* Contenedor principal de la sección de historial */
+.history-section-modern {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid #ecf0f1;
+}
+
+/* Reutilizamos los estilos del buscador del dashboard */
+/* Si ya los tienes en tu style.css, no necesitas repetirlos. */
+.search-container-modern {
+    max-width: 700px;
+    margin: 0 auto 3rem auto;
+    position: relative;
+}
+.search-form-modern .search-input {
+    width: 100%;
+    padding: 15px 20px 15px 50px;
+    border-radius: 30px;
+    border: 1px solid #bdc3c7;
+    font-size: 1rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+.search-form-modern .search-icon {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    color: #95a5a6;
+}
+/* ---- Fin de estilos reutilizados ---- */
+
+/* Contenedor para las tarjetas de resultado */
+.history-results {
+    display: grid;
+    gap: 1.5rem;
+}
+
+/* Estilo para cada tarjeta de actividad */
+.activity-card {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Resaltado para préstamos que aún no han sido devueltos */
+.activity-card.prestamo-abierto {
+    border-left: 5px solid #f39c12; /* Naranja de advertencia */
+    background-color: #fffaf0;
+}
+
+.activity-card .card-header {
+    justify-content: space-between; /* Alinea el título a la izquierda y la fecha a la derecha */
+}
+
+.activity-card .card-header .date {
+    font-size: 0.85em;
+    color: #7f8c8d;
+}
+
+.activity-card .activity-details {
+    padding-top: 1rem;
+}
+
+.activity-card .activity-details p {
+    margin: 0.5rem 0;
+    color: #34495e;
+}
+.activity-card .activity-details p strong {
+    color: #2c3e50;
+}
+
+/* Colores de los iconos de actividad */
+.icon-entrada { color: #27ae60; } /* Verde */
+.icon-salida { color: #e74c3c; } /* Rojo */
+
+/* Contenedor de paginación (si ya lo tienes, no es necesario repetirlo) */
+.pagination-container {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+}
+
+
+/* ============================================= */
+/*     ESTILOS PARA FORMULARIO DE FILTROS   */
+/* ============================================= */
+.filter-container {
+    background-color: #f8f9fa;
+    padding: 2rem;
+    border-radius: 12px;
+    margin-bottom: 2.5rem;
+    border: 1px solid #dee2e6;
+}
+.filter-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem 1.25rem;
+    align-items: end;
+}
+.filter-form-grid .form-group {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+}
+.filter-form-grid .form-group label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #495057;
+    font-size: 0.9em;
+}
+.filter-form-grid .form-control,
+.filter-form-grid .form-select {
+    padding: 0.75rem 1rem;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+.filter-form-grid .form-actions {
+    display: flex;
+    gap: 0.75rem;
+    /* Ajusta este valor para que ocupe una celda del grid */
+    justify-self: start; 
+}
+.filter-form-grid .btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+/* ============================================= */
+/*     ESTILOS MODERNOS Y PERSONALIZADOS PARA PAGINACIÓN   */
+/* ============================================= */
+
+.pagination-container {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+}
+
+.pagination {
+    display: flex;
+    list-style: none;
+    padding-left: 0;
+    border-radius: 0.5rem; /* Bordes redondeados para el contenedor */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.pagination .page-item {
+    margin: 0;
+}
+
+.pagination .page-link {
+    position: relative;
+    display: block;
+    padding: 0.75rem 1rem;
+    color: #495057; /* Color de texto gris oscuro */
+    text-decoration: none;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    transition: all 0.2s ease-in-out;
+}
+
+/* Estilo para el primer y último elemento */
+.pagination .page-item:first-child .page-link {
+    border-top-left-radius: 0.5rem;
+    border-bottom-left-radius: 0.5rem;
+}
+.pagination .page-item:last-child .page-link {
+    border-top-right-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+}
+
+/* Efecto Hover */
+.pagination .page-item:not(.active) .page-link:hover {
+    z-index: 2;
+    color: #d45b04; /* Tu color personalizado */
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+/* ---- ¡LA MAGIA! ESTILO DEL ELEMENTO ACTIVO ---- */
+.pagination .page-item.active .page-link {
+    z-index: 3;
+    color: #fff; /* Texto blanco */
+    background-color: #d45b04; /* Tu color personalizado */
+    border-color: #d45b04; /* Borde del mismo color */
+    font-weight: 600;
+}
+
+/* Estilo para el span dentro del elemento activo (para que no parezca un enlace) */
+.pagination .page-item.active .page-link span {
+    cursor: default;
+}
+
+/* Opcional: Estilos para elementos deshabilitados (si los usaras) */
+.pagination .page-item.disabled .page-link {
+    color: #6c757d;
+    pointer-events: none;
+    background-color: #fff;
+    border-color: #dee2e6;
+}
+/* Grid para la sección de detalles del dispositivo */
+.details-grid-modern {
+    display: grid;
+    grid-template-columns: 1fr 2fr; /* Columna de sensores más pequeña, la de certificados más grande */
+    gap: 1.5rem;
+    align-items: start; /* Alinea las tarjetas en la parte superior */
+}
+
+/* Estilos para la lista de certificados */
+.certificates-list .certificate-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #ecf0f1;
+}
+.certificates-list .certificate-item:last-child {
+    border-bottom: none;
+}
+
+/* Pequeño ajuste para la info meta en la lista de sensores */
+.history-list .meta-info {
+    font-size: 0.85em;
+    color: #95a5a6;
+}
+
+/* Media query para que se apilen en pantallas pequeñas */
+@media (max-width: 992px) {
+    .details-grid-modern {
+        grid-template-columns: 1fr; /* Una sola columna en tablets y móviles */
+    }
+}
+
+/* ============================================= */
+/*     ESTILOS PARA LA LISTA DE REPORTES         */
+/* ============================================= */
+
+.report-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.report-card-grid .info-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.report-card-grid .card-header .date {
+    font-size: 0.85em;
+    color: #7f8c8d;
+    margin-left: auto;
+}
+
+.report-card-grid .report-details {
+    flex-grow: 1; /* Hace que esta sección ocupe el espacio disponible */
+    padding-top: 1rem;
+}
+
+.report-card-grid .report-details p {
+    margin: 0.5rem 0;
+    color: #34495e;
+}
+.report-card-grid .report-details p strong {
+    color: #2c3e50;
+    min-width: 120px; /* Alinea los valores */
+    display: inline-block;
+}
+
+.card-footer-actions {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ecf0f1;
+    text-align: right;
+}
+
+/* ============================================= */
+/*     ESTILOS PARA LA LISTA DE PROGRAMAS        */
+/* ============================================= */
+
+/* Navegación por año */
+.year-nav {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+.year-nav-link {
+    padding: 0.75rem 1.5rem;
+    text-decoration: none;
+    background-color: #fff;
+    color: #495057;
+    border: 1px solid #dee2e6;
+    border-radius: 20px;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+}
+.year-nav-link:hover {
+    background-color: #f8f9fa;
+}
+.year-nav-link.active {
+    background-color: var(--primary_color, #d45b04 ); /* O tu color #d45b04 */
+    color: #fff;
+    border-color: var(--primary_color, #d45b04 );
+}
+
+/* Grid de tarjetas de programa */
+.program-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* Tarjeta de programa individual */
+.program-card .card-header {
+    justify-content: space-between;
+}
+.program-type-badge {
+    font-size: 0.8em;
+    font-weight: 600;
+    background-color: #ecf0f1;
+    color: #7f8c8d;
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+/* Estadísticas dentro de la tarjeta */
+.program-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 1.5rem 0;
+    text-align: center;
+}
+.stat-item span {
+    display: block;
+    color: #7f8c8d;
+    font-size: 0.9em;
+}
+.stat-item strong {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #34495e;
+}
+
+/* Barra de progreso */
+.progress-bar-container {
+    height: 25px;
+    background-color: #ecf0f1;
+    border-radius: 12.5px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+.progress-bar {
+    height: 100%;
+    background-color: #27ae60; /* Verde */
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.8em;
+    white-space: nowrap;
+    transition: width 0.5s ease-in-out;
+}
+
+/* ============================================= */
+/*     ESTILOS PARA LA LISTA DE LOTES            */
+/* ============================================= */
+
+.lote-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.lote-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.lote-card .card-header {
+    justify-content: space-between;
+}
+
+.lote-card .card-header .date {
+    font-size: 0.85em;
+    color: #7f8c8d;
+}
+
+.lote-card .lote-details {
+    flex-grow: 1;
+    padding: 1rem 0;
+}
+
+.lote-card .lote-description {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #34495e;
+    margin-bottom: 1rem;
+}
+
+.lote-card .lote-details p {
+    margin: 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.lote-card .lote-details p strong {
+    color: #2c3e50;
+}
+
+.lote-card .card-footer-actions {
+    margin-top: auto; /* Empuja el footer hacia abajo */
+    padding-top: 1rem;
+    border-top: 1px solid #ecf0f1;
+    text-align: right;
+}
+
+/* --- ESTILOS PARA LA PÁGINA DE ESCANEO --- */
+.scan-status-card {
+    padding: 2rem;
+    text-align: center;
+}
+.status-indicator {
+    margin-bottom: 1.5rem;
+}
+.status-indicator .badge {
+    font-size: 1.1rem;
+    padding: 0.75rem 1.25rem;
+}
+.scan-input {
+    text-align: center;
+    font-size: 1.5rem !important;
+    font-family: monospace;
+}
+
+/* ============================================= */
+/*     ESTILOS PARA AUTOCOMPLETADO (jQuery UI)   */
+/* ============================================= */
+
+/* Contenedor principal de la lista de sugerencias */
+.ui-autocomplete {
+    position: absolute; /* ¡Clave! Permite que flote sobre otros elementos */
+    cursor: default;
+    z-index: 1060; /* Asegura que esté por encima de otros elementos (excepto modales) */
+    list-style: none;
+    padding: 0.5rem 0;
+    margin: 0;
+    display: block;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    max-height: 250px; /* Evita que la lista sea demasiado larga */
+    overflow-y: auto; /* Añade scroll si hay muchos resultados */
+}
+
+/* Cada ítem de la lista */
+.ui-menu-item {
+    padding: 0;
+}
+
+/* El enlace dentro de cada ítem */
+.ui-menu-item-wrapper {
+    display: block;
+    padding: 0.75rem 1.25rem;
+    clear: both;
+    font-weight: 400;
+    color: #212529;
+    text-align: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    background-color: transparent;
+    border: 0;
+    transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+
+/* Estilo para el ítem activo (cuando pasas el ratón o usas las flechas) */
+.ui-state-active,
+.ui-menu-item-wrapper.ui-state-active {
+    color: #fff;
+    background-color: var(--primary_color, #007bff); /* Usa tu color primario */
+    cursor: pointer;
+}
+
+.ui-autocomplete .ui-autocomplete-category,
+.ui-autocomplete .ui-menu-item.no-results { /* A veces usa esta clase */
+    padding: 0.75rem 1.25rem;
+    color: #6c757d; /* Color gris */
+    font-style: italic;
+    font-weight: 600;
+}
+
+.ui-helper-hidden-accessible {
+    border: 0;
+    clip: rect(1px, 1px, 1px, 1px);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+}

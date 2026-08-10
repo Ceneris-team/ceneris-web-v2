@@ -1,0 +1,99 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+
+{% block title %}Nuevo Mantenimiento - Plataforma Ceneris{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8 px-4">
+    
+    <!-- Título de la página -->
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h2 class="text-3xl font-bold text-gray-800">Registrar Mantenimiento</h2>
+            <p class="text-gray-600 text-sm mt-1">Complete los detalles técnicos del servicio realizado.</p>
+        </div>
+        <!-- Link para volver atrás -->
+        <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="text-blue-600 hover:text-blue-800 font-semibold">
+            <i class="fas fa-arrow-left"></i> Volver al panel
+        </a>
+    </div>
+
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-100">
+        <form method="post" class="p-6 sm:p-8">
+            {% csrf_token %}
+
+            <!-- SECCIÓN 1: Identificación -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">
+                    <i class="fas fa-microchip text-blue-500 mr-2"></i> Información del Equipo y Actores
+                </h3>
+                
+                <div class="grid grid-cols-1 gap-6">
+                    <!-- Dispositivo (Buscador con Tom Select) -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2" for="{{ form.dispositivo.id_for_label }}">
+                            Dispositivo a mantener
+                        </label>
+                        {{ form.dispositivo }}
+                        {% if form.dispositivo.errors %}
+                            <p class="text-red-500 text-xs italic mt-1">{{ form.dispositivo.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                    <!-- Cliente -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Cliente</label>
+                        {{ form.cliente }}
+                    </div>
+                    <!-- Proveedor -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Proveedor</label>
+                        {{ form.proveedor }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 2: Detalles Técnicos -->
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">
+                    <i class="fas fa-tools text-green-500 mr-2"></i> Ejecución del Servicio
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    <!-- Equipo de Contraste -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Equipo de Contraste Utilizado</label>
+                        {{ form.equipo_contraste }}
+                    </div>
+
+                    <!-- Estado Final -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Estado Final del Equipo</label>
+                        {{ form.estado_final }}
+                    </div>
+                </div>
+
+                <!-- Trabajo Realizado (Textarea grande) -->
+                <div class="mt-4">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Descripción del Trabajo Realizado</label>
+                    {{ form.trabajo }}
+                    <p class="text-gray-400 text-xs mt-1">Describa detalladamente las acciones de limpieza, reparación o calibración.</p>
+                </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="flex items-center justify-end space-x-4 pt-6 border-t border-gray-100 mt-6">
+                <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" 
+                   class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded transition-colors">
+                    Cancelar
+                </a>
+                <button type="submit" 
+                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded shadow-md transform transition hover:-translate-y-0.5">
+                    <i class="fas fa-save mr-2"></i> Guardar Reporte
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

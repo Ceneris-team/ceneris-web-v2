@@ -1,0 +1,130 @@
+<!-- calidad/templates/calidad/formularios/crear_trabajador_multistep.html -->
+{% extends "dashboard/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Registro de Trabajador{% endblock %}
+
+{% block body_class %}form-background{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        #progressbar li { width: 33.33%; } /* 3 pasos */
+        .back-button-container { max-width: 800px; width: 90%; margin: 30px auto 10px auto; text-align: left; }
+        .field-error { color: #dc3545; font-size: 0.8rem; font-weight: 600; text-align: left; margin-top: -5px; margin-bottom: 10px; }
+        .field-error ul { list-style: none; padding: 0; margin: 0; }
+        #msform .form-group { text-align: left; margin-bottom: 20px; }
+        #msform label { display: block; margin-bottom: 5px; font-weight: 500; color: #555; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="back-button-container">
+        <a href="{% url 'calidad:gestion_calidad' %}?view=gestion_trabajadores" class="btn-secondary">&larr; Volver</a>
+    </div>
+
+    <form id="msform" method="post" novalidate>
+        {% csrf_token %}
+
+        <ul id="progressbar">
+            <li class="active">Identificación</li>
+            <li>Datos Personales</li>
+            <li>Información Laboral</li>
+        </ul>
+        
+        <!-- Fieldset 1: Identificación -->
+        <fieldset>
+            <h2 class="fs-title">Datos de Identificación</h2>
+            <h3 class="fs-subtitle">Información principal del trabajador.</h3>
+            
+            <!-- 'codigo_trabajador' eliminado: ahora usamos solo DNI como identificador -->
+
+            <input type="text" name="{{ form.dni.html_name }}" placeholder="DNI *" value="{{ form.dni.value|default_if_none:'' }}" required {% if form.instance.pk %}readonly style="background-color: #e9ecef;"{% endif %}>
+            {% if form.dni.errors %}<div class="field-error">{{ form.dni.errors }}</div>{% endif %}
+
+            <input type="text" name="{{ form.apellido_paterno.html_name }}" placeholder="Apellido Paterno *" value="{{ form.apellido_paterno.value|default_if_none:'' }}" required>
+            {% if form.apellido_paterno.errors %}<div class="field-error">{{ form.apellido_paterno.errors }}</div>{% endif %}
+            
+            <input type="text" name="{{ form.apellido_materno.html_name }}" placeholder="Apellido Materno *" value="{{ form.apellido_materno.value|default_if_none:'' }}" required>
+            {% if form.apellido_materno.errors %}<div class="field-error">{{ form.apellido_materno.errors }}</div>{% endif %}
+
+            <input type="text" name="{{ form.nombres.html_name }}" placeholder="Nombres *" value="{{ form.nombres.value|default_if_none:'' }}" required>
+            {% if form.nombres.errors %}<div class="field-error">{{ form.nombres.errors }}</div>{% endif %}
+
+            <input type="button" name="next" class="next action-button" value="Siguiente"/>
+        </fieldset>
+
+        <!-- Fieldset 2: Datos Personales y de Contacto -->
+        <fieldset>
+            <h2 class="fs-title">Datos Personales y de Contacto</h2>
+            <h3 class="fs-subtitle">Información complementaria.</h3>
+
+            <input type="email" name="{{ form.email.html_name }}" placeholder="Correo Electrónico (Opcional)" value="{{ form.email.value|default_if_none:'' }}">
+            {% if form.email.errors %}<div class="field-error">{{ form.email.errors }}</div>{% endif %}
+            
+            <input type="text" name="{{ form.telefono.html_name }}" placeholder="Teléfono (Opcional)" value="{{ form.telefono.value|default_if_none:'' }}">
+            {% if form.telefono.errors %}<div class="field-error">{{ form.telefono.errors }}</div>{% endif %}
+            
+            {{ form.sexo }}
+            {% if form.sexo.errors %}<div class="field-error">{{ form.sexo.errors }}</div>{% endif %}
+
+            <div class="form-group">
+                <label for="{{ form.fecha_nacimiento.id_for_label }}">Fecha de Nacimiento (Opcional)</label>
+                {{ form.fecha_nacimiento }}
+                {% if form.fecha_nacimiento.errors %}<div class="field-error">{{ form.fecha_nacimiento.errors }}</div>{% endif %}
+            </div>
+
+            <input type="button" name="previous" class="previous action-button-previous" value="Anterior"/>
+            <input type="button" name="next" class="next action-button" value="Siguiente"/>
+        </fieldset>
+        
+        <!-- Fieldset 3: Información Laboral -->
+        <fieldset>
+            <h2 class="fs-title">Información Laboral y Contractual</h2>
+            <h3 class="fs-subtitle">Define su rol y las fechas clave de su contrato.</h3>
+
+            {{ form.empresa }}
+            {% if form.empresa.errors %}<div class="field-error">{{ form.empresa.errors }}</div>{% endif %}
+            
+            {{ form.area }}
+            {% if form.area.errors %}<div class="field-error">{{ form.area.errors }}</div>{% endif %}
+            
+            <div class="form-group">
+                <label for="{{ form.sede.id_for_label }}">Sede (opcional)</label>
+                {{ form.sede }}
+                {% if form.sede.errors %}<div class="field-error">{{ form.sede.errors }}</div>{% endif %}
+            </div>
+            
+            {{ form.cargo }}
+            {% if form.cargo.errors %}<div class="field-error">{{ form.cargo.errors }}</div>{% endif %}
+            
+            {{ form.proyecto_actual }}
+            {% if form.proyecto_actual.errors %}<div class="field-error">{{ form.proyecto_actual.errors }}</div>{% endif %}
+
+            <input type="text" name="{{ form.centro_costo.html_name }}" placeholder="Centro de Costo (Opcional)" value="{{ form.centro_costo.value|default_if_none:'' }}">
+            {% if form.centro_costo.errors %}<div class="field-error">{{ form.centro_costo.errors }}</div>{% endif %}
+            
+            <div class="form-group">
+                <label for="{{ form.fecha_ingreso.id_for_label }}">Fecha de Ingreso</label>
+                {{ form.fecha_ingreso }}
+                {% if form.fecha_ingreso.errors %}<div class="field-error">{{ form.fecha_ingreso.errors }}</div>{% endif %}
+            </div>
+
+            <!-- Puedes añadir los otros campos de fecha de contrato aquí si los necesitas -->
+
+            <div class="checkbox-group" style="margin-top: 20px;">
+                {{ form.activo }}
+                <label for="{{ form.activo.id_for_label }}">Marcar como Activo</label>
+            </div>
+
+            <input type="button" name="previous" class="previous action-button-previous" value="Anterior"/>
+            <input type="submit" name="submit" class="submit action-button" value="Registrar Trabajador"/>
+        </fieldset>
+    </form>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.3/jquery.easing.min.js"></script>
+    <script src="{% static 'js/multistep-form.js' %}"></script>
+{% endblock %}

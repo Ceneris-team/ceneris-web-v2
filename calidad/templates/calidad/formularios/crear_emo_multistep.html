@@ -1,0 +1,335 @@
+<!-- calidad/templates/calidad/formularios/crear_emo_multistep.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ form_title|default:"Registro de EMO" }}{% endblock %}
+
+{% block body_class %}form-background{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        .back-button-container { max-width: 800px; width: 90%; margin: 30px auto 10px auto; text-align: left; }
+        .field-error { color: #dc3545; font-size: 0.8rem; font-weight: 600; text-align: left; margin-top: 5px; }
+        .field-error ul { list-style: none; padding: 0; margin: 0; }
+        #msform .form-group { text-align: left; margin-bottom: 20px; }
+        #msform .form-group label { margin-bottom: 5px; font-weight: 500; color: #555; }
+        #msform .is-invalid { border-color: #dc3545 !important; }
+        /* Fix checkbox width being stretched by global form styles */
+        #msform input[type="checkbox"] { width: auto !important; margin-bottom: 0; }
+        .control-form-group {
+            border-left: 3px solid var(--title_color, #d45b04);
+            padding: 15px;
+            margin-top: 1.5rem;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="back-button-container">
+        {# El botón de volver ahora es más inteligente y te regresa a la página anterior #}
+        <a href="{{ request.META.HTTP_REFERER|default_if_none:'javascript:history.back()' }}" class="btn-secondary">&larr; Volvera la Lista</a>
+    </div>
+
+    <form id="msform" method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        {# Campos que se envían pero no son visibles para el usuario (solo en creación de EMO) #}
+        {% if form.trabajador %}
+        <div style="display:none;">{{ form.trabajador }} {{ form.tipo_emo }}</div>
+        {% endif %}
+
+        <ul id="progressbar"></ul>
+        
+        <!-- Fieldset 1: Resultado Principal -->
+        <fieldset>
+            <h2 class="fs-title">{{ form_title|default:"Resultado General" }}</h2>
+            <h3 class="fs-subtitle">Para: <strong>{{ emo.trabajador }}</strong> ({{ emo.get_tipo_emo_display }})</h3>
+            <hr>
+            
+            <div class="form-group">
+                {{ form.fecha_realizacion.label_tag }}
+                {{ form.fecha_realizacion }}
+                {% if form.fecha_realizacion.errors %}<div class="field-error">{{ form.fecha_realizacion.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                {{ form.aptitud.label_tag }}
+                {{ form.aptitud }}
+                {% if form.aptitud.errors %}<div class="field-error">{{ form.aptitud.errors }}</div>{% endif %}
+            </div>
+            
+            <div id="campos-no-retiro">
+                 <div class="form-group">
+                    {{ form.fecha_vencimiento.label_tag }}
+                    {{ form.fecha_vencimiento }}
+                    {% if form.fecha_vencimiento.errors %}<div class="field-error">{{ form.fecha_vencimiento.errors }}</div>{% endif %}
+                </div>
+                <hr>
+                <div class="form-group">
+                    {{ form.cantidad_controles.label_tag }}
+                    {{ form.cantidad_controles }}
+                    {% if form.cantidad_controles.errors %}<div class="field-error">{{ form.cantidad_controles.errors }}</div>{% endif %}
+                </div>
+            </div>
+            
+            <input type="button" name="next" class="next action-button" value="Siguiente"/>
+        </fieldset>
+        
+        <!-- Fieldset 2: Detalles de Restricción (CONDICIONAL) -->
+        <fieldset id="fieldset-restriccion">
+            <h2 class="fs-title">Detalles de la Restricción / Observación</h2>
+            <h3 class="fs-subtitle">Describe la restricción u observación médica indicada.</h3>
+            
+            <div class="form-group">
+                {{ form.restriccion.label_tag }}
+                {{ form.restriccion }}
+                {% if form.restriccion.errors %}<div class="field-error">{{ form.restriccion.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                {{ form.comentario.label_tag }}
+                {{ form.comentario }}
+                {% if form.comentario.errors %}<div class="field-error">{{ form.comentario.errors }}</div>{% endif %}
+            </div>
+
+            <input type="button" name="previous" class="previous action-button-previous" value="Anterior"/>
+            <input type="button" name="next" class="next action-button" value="Siguiente"/>
+        </fieldset>
+
+        <!-- Fieldset 3: Planificación de Controles (CONDICIONAL) -->
+        <fieldset id="fieldset-controles">
+            <h2 class="fs-title">Planificar Controles de Seguimiento</h2>
+            <h3 class="fs-subtitle">Define las fechas y descripciones para cada control.</h3>
+            
+            <div id="controles-dinamicos-container">
+                <!-- Los formularios de control se insertarán aquí con JS -->
+            </div>
+
+            <input type="button" name="previous" class="previous action-button-previous" value="Anterior"/>
+            <input type="button" name="next" class="next action-button" value="Siguiente"/>
+        </fieldset>
+
+        <!-- Fieldset 4: Documentación -->
+        <fieldset id="fieldset-documentacion">
+            <h2 class="fs-title">SUBIR RESULTADO</h2>
+            <h3 class="fs-subtitle">
+                {% if is_edit_mode %}
+                    Adjunta un nuevo PDF para reemplazar el existente, o déjalo vacío para conservarlo.
+                {% else %}
+                    Adjunta el archivo PDF del resultado (opcional).
+                {% endif %}
+            </h3>
+            
+            <div class="form-group">
+                {{ form.archivo_pdf.label_tag }}
+                
+                {% if emo.archivo_pdf %}
+                    <div style="margin-bottom: 15px; font-size: 0.9em; background: #f8f9fa; padding: 12px 15px; border-radius: 6px; border: 1px solid #e9ecef;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <!-- Link al archivo -->
+                            <div style="display: flex; align-items: center;">
+                                <i data-feather="file-text" style="width: 16px; height: 16px; margin-right: 6px; color: #0056b3;"></i> 
+                                <span style="margin-right: 5px;">Archivo actual:</span>
+                                <a href="{{ emo.archivo_pdf.url }}" target="_blank" style="font-weight: 600; text-decoration: none; color: #0056b3; border-bottom: 1px dotted #0056b3;">
+                                    {{ emo.archivo_pdf.name|truncatechars:30 }}
+                                </a>
+                            </div>
+                            
+                            <!-- Checkbox de eliminar -->
+                            <div class="form-check" style="margin: 0; padding: 0; display: flex; align-items: center;">
+                                {{ form.eliminar_archivo_pdf }}
+                                <label for="{{ form.eliminar_archivo_pdf.id_for_label }}" class="form-check-label" style="margin-left: 6px; font-size: 0.9em; color: #dc3545; cursor: pointer; user-select: none;">
+                                    Eliminar archivo
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                {{ form.archivo_pdf }}
+                {% if form.archivo_pdf.errors %}<div class="field-error">{{ form.archivo_pdf.errors }}</div>{% endif %}
+            </div>
+
+            <input type="button" name="previous" class="previous action-button-previous" value="Anterior"/>
+            <input type="submit" name="submit" class="submit action-button" value="Guardar Resultados"/>
+        </fieldset>
+    </form>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.3/jquery.easing.min.js"></script>
+    
+    <script>
+    $(document).ready(function() {
+        // --- VARIABLES GLOBALES DEL FORMULARIO ---
+        const isEditMode = {{ is_edit_mode|default:False|yesno:"true,false" }};
+        const controlesData = JSON.parse('{{ controles_data_json|default:"[]"|safe }}');
+        const tipoEmo = "{{ emo.tipo_emo }}";
+        const aptitudSelect = $('#id_aptitud');
+        const cantidadControlesInput = $('#id_cantidad_controles');
+        
+        const fieldsetResultado = $('#msform fieldset').eq(0);
+        const fieldsetRestriccion = $('#fieldset-restriccion');
+        const fieldsetControles = $('#fieldset-controles');
+        const fieldsetDocumentacion = $('#fieldset-documentacion');
+        
+        const progressbar = $('#progressbar');
+        var animating;
+
+        // --- FUNCIÓN PARA GENERAR CONTROLES DINÁMICOS (ACTUALIZADA) ---
+        function generarCamposDeControl() {
+            const cantidad = parseInt(cantidadControlesInput.val(), 10) || 0;
+            const container = $('#controles-dinamicos-container');
+            container.empty();
+            
+            for (let i = 0; i < cantidad; i++) {
+                // Obtenemos los datos existentes si estamos en modo edición
+                const data = (isEditMode && controlesData[i]) ? controlesData[i] : { fecha: '', descripcion: '' };
+                
+                const formHtml = `
+                    <div class="form-group control-form-group">
+                        <h4>Detalles del Control #${i + 1}</h4>
+                        <label for="id_control_fecha_${i + 1}">Fecha Programada:</label>
+                        <input type="date" name="control_fecha_${i + 1}" required class="form-control" id="id_control_fecha_${i + 1}" value="${data.fecha}">
+                        <label for="id_control_descripcion_${i + 1}">Descripción:</label>
+                        <input type="text" name="control_descripcion_${i + 1}" maxlength="255" required class="form-control" id="id_control_descripcion_${i + 1}" value="${data.descripcion}">
+                    </div>`;
+                container.append(formHtml);
+            }
+        }
+
+        // --- FUNCIÓN PARA ACTUALIZAR LA UI (BARRAS Y PASOS) ---
+        function updateFormUI() {
+            let activeFieldsets = getActiveFieldsets();
+            let stepNames = {
+                'fs1': 'Resultado',
+                'fieldset-restriccion': 'Detalles',
+                'fieldset-controles': 'Controles',
+                'fieldset-documentacion': 'Documentos'
+            };
+
+            $('#msform fieldset').each(function() {
+                if (!activeFieldsets.map(fs => fs[0]).includes(this)) { $(this).hide(); }
+            });
+            
+            progressbar.empty();
+            let currentVisibleIndex = activeFieldsets.map(fs => fs.is(':visible')).lastIndexOf(true);
+
+            activeFieldsets.forEach(function(fs, index) {
+                let fsId = fs.prop('id') || `fs1`;
+                let liClass = (index <= currentVisibleIndex) ? 'active' : '';
+                progressbar.append(`<li class="${liClass}">${stepNames[fsId]}</li>`);
+            });
+            progressbar.find('li').css('width', `${100 / activeFieldsets.length}%`);
+        }
+
+        function getActiveFieldsets() {
+            let activeSteps = [fieldsetResultado];
+            if (tipoEmo === 'Retiro') {
+                activeSteps.push(fieldsetDocumentacion);
+            } else {
+                if (['Apto con Restricción', 'Observado'].includes(aptitudSelect.val())) {
+                    activeSteps.push(fieldsetRestriccion);
+                }
+                if ((parseInt(cantidadControlesInput.val(), 10) || 0) > 0) {
+                    activeSteps.push(fieldsetControles);
+                }
+                activeSteps.push(fieldsetDocumentacion);
+            }
+            return activeSteps;
+        }
+
+        // --- LÓGICA DE NAVEGACIÓN (BOTONES NEXT Y PREVIOUS) ---
+        $("#msform .next, #msform .previous").on('click', function() {
+            if (animating) return;
+
+            let activeFieldsets = getActiveFieldsets();
+            var current_fs = $(this).parent();
+            var isNext = $(this).hasClass('next');
+
+            if (isNext) {
+                var isValid = true;
+                current_fs.find('input:visible[required], select:visible[required], textarea:visible[required]').each(function() {
+                    if (!$(this).val()) {
+                        isValid = false;
+                        $(this).addClass('is-invalid');
+                    } else {
+                        $(this).removeClass('is-invalid');
+                    }
+                });
+                if (!isValid) {
+                    alert("Por favor, completa todos los campos requeridos en este paso.");
+                    return;
+                }
+            }
+            
+            current_fs.find('.is-invalid').removeClass('is-invalid');
+            animating = true;
+            let currentIndex = activeFieldsets.map(fs => fs[0]).indexOf(current_fs[0]);
+            let target_fs = isNext ? activeFieldsets[currentIndex + 1] : activeFieldsets[currentIndex - 1];
+            
+            if (!target_fs) { animating = false; return; }
+            target_fs = $(target_fs);
+
+            progressbar.find('li').removeClass('active');
+            let targetIndex = isNext ? currentIndex + 1 : currentIndex - 1;
+            for (let i = 0; i <= targetIndex; i++) {
+                progressbar.find('li').eq(i).addClass('active');
+            }
+
+            target_fs.show();
+            current_fs.animate({opacity: 0}, {
+                step: function(now) {
+                    var scale = isNext ? (1 - (1 - now) * 0.2) : (0.8 + (1 - now) * 0.2);
+                    var left = isNext ? ((now * 50) + "%") : (((1-now) * 50)+"%");
+                    var opacity = 1 - now;
+                    target_fs.css({'left': left, 'opacity': opacity});
+                    current_fs.css({'transform': 'scale(' + scale + ')', 'position': 'absolute'});
+                },
+                duration: 800,
+                complete: function(){
+                    current_fs.hide().css({'position': 'relative', 'transform': 'scale(1)'});
+                    target_fs.css({'position': 'relative'});
+                    animating = false;
+                },
+                easing: 'easeInOutBack'
+            });
+        });
+
+        // --- LÓGICA DE INICIALIZACIÓN ---
+        $('#msform fieldset').not(':first').hide();
+        
+        if (tipoEmo === 'Retiro') {
+            $('#campos-no-retiro').hide();
+        } else {
+            aptitudSelect.on('change', updateFormUI);
+            cantidadControlesInput.on('change keyup', function() {
+                generarCamposDeControl();
+                updateFormUI();
+            });
+        }
+        
+        // Ejecución inicial para configurar el formulario al cargar
+        generarCamposDeControl();
+        updateFormUI();
+        
+        // Lógica para ir al paso con error si el formulario se envía y falla
+        const firstErrorField = document.querySelector('#msform .field-error');
+        if (firstErrorField) {
+            const errorFieldset = firstErrorField.closest('fieldset');
+            if (errorFieldset) {
+                $('#msform fieldset').hide();
+                $(errorFieldset).show();
+                
+                let activeFieldsets = getActiveFieldsets();
+                let errorIndex = activeFieldsets.map(fs => fs[0]).indexOf(errorFieldset);
+                
+                $('#progressbar li').removeClass('active').each(function(index) {
+                    if (index <= errorIndex) { $(this).addClass('active'); }
+                });
+            }
+        }
+    });
+    </script>
+{% endblock %}

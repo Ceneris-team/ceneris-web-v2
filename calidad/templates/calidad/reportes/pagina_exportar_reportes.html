@@ -1,0 +1,209 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body_class %}form-background export-emos-page{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        /* Ajustes mínimos para que el export se vea como el form de Cargo (multistep) */
+        .export-emos-page { --title_color: #d45b04; }
+        .export-emos-page #msform { max-width: 520px; }
+
+        .export-emos-page .field-label {
+            display: block;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #2C3E50;
+            margin: 6px 0 6px;
+        }
+
+        .export-emos-page #msform .action-button.action-button--full {
+            width: 100%;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin: 10px 0 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* Periodo como acordeón, pero alineado al estilo del msform */
+        .export-emos-page details.periodo {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px 12px;
+            background: #fafafa;
+            margin: 6px 0 12px;
+        }
+        .export-emos-page details.periodo > summary {
+            cursor: pointer;
+            font-weight: 700;
+            color: #2C3E50;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .export-emos-page details.periodo > summary::-webkit-details-marker { display: none; }
+        .export-emos-page details.periodo > summary::after {
+            content: '▾';
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+        .export-emos-page details.periodo[open] > summary::after { content: '▴'; }
+        .export-emos-page .periodo-body { margin-top: 10px; }
+
+        .export-emos-page .row-fields { display: flex; gap: 12px; }
+        .export-emos-page .col-half { flex: 1; }
+
+        .export-emos-page .help-muted {
+            display: block;
+            margin: -4px 0 8px;
+            color: #6c757d;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        @media (max-width: 520px) {
+            .export-emos-page .row-fields { flex-direction: column; gap: 0; }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <form id="msform" class="export-emo-form" method="get" novalidate>
+        <fieldset style="display:block;">
+            <h2 class="fs-title">EXPORTAR REPORTE DE EMOS</h2>
+            <h3 class="fs-subtitle">Define los parámetros para tu archivo.</h3>
+
+            <label for="empresa" class="field-label">Empresa</label>
+            <select name="empresa" id="empresa">
+                <option value="">-- Todas las Empresas --</option>
+                {% for emp in opciones_empresas %}
+                    <option value="{{ emp.pk }}" {% if filtro_activo_empresa == emp.pk %}selected{% endif %}>
+                        {{ emp.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <label for="proyecto_padre" class="field-label">Proyecto Principal</label>
+            <select name="proyecto_padre" id="proyecto_padre">
+                <option value="">-- Todos los Proyectos --</option>
+                {% for proy in opciones_proyectos_padre %}
+                    <option value="{{ proy.pk }}" {% if filtro_activo_proyecto_padre == proy.pk %}selected{% endif %}>
+                        {{ proy.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <label for="subproyecto" class="field-label">Subproyecto / Área</label>
+            <select name="subproyecto" id="subproyecto" disabled>
+                <option value="">-- Todos --</option>
+            </select>
+
+            <details class="periodo">
+                <summary>Periodo (Año / Mes)</summary>
+                <div class="periodo-body">
+                    <div class="row-fields">
+                        <div class="col-half">
+                            <label for="ano" class="field-label">Año (exacto)</label>
+                            <select name="ano" id="ano">
+                                <option value="">-- Todos los años --</option>
+                                {% for ano in opciones_anos %}
+                                    <option value="{{ ano }}" {% if filtro_activo_ano == ano %}selected{% endif %}>
+                                        {{ ano }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <small class="help-muted">Si eliges un rango de años, se ignora este campo.</small>
+                        </div>
+                        <div class="col-half">
+                            <label for="mes" class="field-label">Mes</label>
+                            <select name="mes" id="mes">
+                                <option value="">Todo el Año</option>
+                                {% for valor, texto in opciones_meses %}
+                                    <option value="{{ valor }}" {% if filtro_activo_mes == valor %}selected{% endif %}>
+                                        {{ texto }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row-fields">
+                        <div class="col-half">
+                            <label for="ano_desde" class="field-label">Año (Desde)</label>
+                            <select name="ano_desde" id="ano_desde">
+                                <option value="">--</option>
+                                {% for ano in opciones_anos %}
+                                    <option value="{{ ano }}" {% if filtro_activo_ano_desde == ano %}selected{% endif %}>
+                                        {{ ano }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-half">
+                            <label for="ano_hasta" class="field-label">Año (Hasta)</label>
+                            <select name="ano_hasta" id="ano_hasta">
+                                <option value="">--</option>
+                                {% for ano in opciones_anos %}
+                                    <option value="{{ ano }}" {% if filtro_activo_ano_hasta == ano %}selected{% endif %}>
+                                        {{ ano }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <button type="submit" name="exportar" value="excel" class="action-button action-button--full">
+                <i data-feather="download"></i>
+                Generar Excel
+            </button>
+        </fieldset>
+    </form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const proyectoPadreSelect = document.getElementById('proyecto_padre');
+        const subproyectoSelect = document.getElementById('subproyecto');
+        const subproyectosMap = JSON.parse('{{ subproyectos_map_json|escapejs }}');
+
+        function updateSubproyectos() {
+            const padreId = proyectoPadreSelect.value;
+            subproyectoSelect.innerHTML = '<option value="">-- Todos --</option>';
+            
+            if (padreId && subproyectosMap[padreId]) {
+                subproyectoSelect.disabled = false;
+                subproyectosMap[padreId].forEach(function(sub) {
+                    const option = document.createElement('option');
+                    option.value = sub.id;
+                    option.textContent = `${sub.nombre} (${sub.codigo})`;
+                    
+                    // Mantener selección si venimos de recargar la página
+                    if(sub.id == "{{ filtro_activo_subproyecto }}") {
+                        option.selected = true;
+                    }
+                    
+                    subproyectoSelect.appendChild(option);
+                });
+            } else {
+                subproyectoSelect.disabled = true;
+            }
+        }
+
+        proyectoPadreSelect.addEventListener('change', updateSubproyectos);
+        
+        // Ejecutar al cargar para restaurar estado
+        updateSubproyectos(); 
+    });
+</script>
+{% endblock %}

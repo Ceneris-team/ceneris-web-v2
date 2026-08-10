@@ -1,0 +1,102 @@
+<!-- recursoshumanos/templates/recursoshumanos/ubicaciones/asignar_ubicaciones.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+{% block title %}Asignar Ubicaciones a {{ trabajador.nombre }}{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .assignment-board { display: flex; gap: 2rem; margin-top: 2rem; }
+        .assignment-column { flex: 1; background: #f4f7f9; padding: 1.5rem; border-radius: 10px; min-height: 400px; }
+        .assignment-column h3 { margin-top: 0; border-bottom: 2px solid #ddd; padding-bottom: 1rem; font-size: 1.2rem; }
+        .location-card { background: white; padding: 1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; cursor: grab; font-weight: 500; }
+        .location-card:active { cursor: grabbing; }
+        .sortable-ghost { background: #cce5ff; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Asignar Ubicaciones Permitidas</h1>
+            <p style="margin: 0;">Gestionando permisos para: <strong>{{ trabajador.nombre }} ({{ trabajador.dni }})</strong></p>
+        </div>
+        <div>
+            <a href="{% url 'recursoshumanos:lista_trabajadores' %}" class="btn-secondary">&larr; Volver al Listado</a>
+        </div>
+    </div>
+    
+    <p style="margin-top: 1rem;">Arrastra y suelta las ubicaciones para asignar o desasignar permisos de marcación.</p>
+
+    <div class="assignment-board">
+        <!-- Columna de Ubicaciones Disponibles -->
+        <div class="assignment-column">
+            <h3>Ubicaciones Disponibles</h3>
+            <div id="disponibles-list" class="location-list">
+                {% for ubicacion in ubicaciones_disponibles %}
+                <div class="location-card" data-id="{{ ubicacion.id }}">{{ ubicacion.nombre }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Columna de Ubicaciones Asignadas -->
+        <div class="assignment-column">
+            <h3>Ubicaciones Asignadas</h3>
+            <div id="asignadas-list" class="location-list">
+                {% for ubicacion in ubicaciones_asignadas %}
+                <div class="location-card" data-id="{{ ubicacion.id }}">{{ ubicacion.nombre }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const disponiblesList = document.getElementById('disponibles-list');
+        const asignadasList = document.getElementById('asignadas-list');
+        const csrfToken = '{{ csrf_token }}';
+        const updateUrl = `{% url 'recursoshumanos:actualizar_ubicaciones_trabajador' dni=trabajador.dni %}`;
+        
+        // Función para guardar el estado actual de las ubicaciones asignadas
+        function saveAssignedLocations() {
+            // Recolectamos los IDs de las tarjetas en la columna de 'asignadas'
+            const assignedCards = asignadasList.querySelectorAll('.location-card');
+            const assignedIds = Array.from(assignedCards).map(card => card.dataset.id);
+
+            // Enviamos la lista completa de IDs al servidor
+            fetch(updateUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    ubicaciones_ids: assignedIds
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'ok') {
+                    alert('Hubo un error al guardar los cambios.');
+                }
+            });
+        }
+        
+        // Inicializamos ambas listas
+        new Sortable(disponiblesList, { group: 'shared-locations', animation: 150, ghostClass: 'sortable-ghost' });
+        
+        new Sortable(asignadasList, {
+            group: 'shared-locations',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            // El evento 'onEnd' se dispara cuando se termina de arrastrar y soltar
+            onEnd: function (evt) {
+                // Guardamos el nuevo orden cada vez que se mueve una tarjeta
+                saveAssignedLocations();
+            }
+        });
+    });
+    </script>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="form-container">
+    <form method="post" class="form-card" id="venta-form">
+        <h2>{{ titulo }}</h2>
+        {% csrf_token %}
+
+        <!-- ¡IMPORTANTE! Mostramos errores generales del formulario -->
+        {% if form.non_field_errors %}
+            <div class="form-errors">
+                {% for error in form.non_field_errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <!-- Campo de búsqueda visible -->
+        <div class="form-group">
+            {{ form.componente_ns.label_tag }}
+            <div class="autocomplete-container">
+                {{ form.componente_ns }}
+                <div id="suggestions-box" class="suggestions-list"></div>
+            </div>
+            <p class="form-help-text">{{ form.componente_ns.help_text }}</p>
+            <!-- Mostramos errores específicos de este campo -->
+            <div class="form-error">{{ form.componente_ns.errors }}</div>
+        </div>
+
+        <!-- Campo de ID oculto -->
+        {{ form.id_componente }}
+        <!-- Mostramos errores del campo oculto (la causa más probable) -->
+        <div class="form-error">{{ form.id_componente.errors }}</div>
+
+
+        <div class="form-grid">
+            <div class="form-group">
+                {{ form.fecVenta.label_tag }}
+                {{ form.fecVenta }}
+                <div class="form-error">{{ form.fecVenta.errors }}</div>
+            </div>
+            <div class="form-group">
+                {{ form.estado.label_tag }}
+                {{ form.estado }}
+                <div class="form-error">{{ form.estado.errors }}</div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Registrar Venta</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

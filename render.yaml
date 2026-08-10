@@ -1,0 +1,38 @@
+# render.yaml - Versión FINAL CORREGIDA para Docker
+
+services:
+  - type: web
+    name: ceneris-web
+    runtime: docker
+    
+    repo: https://github.com/DEV-Ceneris/ceneris-web.git
+    branch: main
+    
+    dockerfilePath: ./Dockerfile
+
+    # Define el tipo de instancia (plan). 'starter' es el plan de $7.
+    # Esto reemplaza a 'instanceCount' para definir el nivel de recursos.
+    plan: starter
+
+    # Aumentar el tiempo de espera para que la app responda al Health Check
+    healthCheckPath: /
+
+    buildCommand: "./build.sh"
+
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ceneris-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.11.9" # O tu versión específica
+      - key: WEB_CONCURRENCY
+        value: 2 # Recomendado para el plan 'starter' para no agotar la RAM
+
+
+databases:
+  - name: ceneris-db
+    databaseName: ceneris_db_w52d
+    user: ceneris_db_w52d_user

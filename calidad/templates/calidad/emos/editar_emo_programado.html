@@ -1,0 +1,712 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Editar EMO Programado{% endblock %}
+
+{% block extra_head %}
+<style>
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+        padding: 40px 20px;
+    }
+
+    .edit-container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .edit-header {
+        background: linear-gradient(135deg, #d45b04 0%, #f0832f 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+    }
+
+    .edit-header h1 {
+        margin: 0 0 10px 0;
+        font-size: 28px;
+        font-weight: 600;
+    }
+
+    .edit-header p {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.95;
+    }
+
+    .edit-body {
+        padding: 40px;
+    }
+
+    .form-section {
+        margin-bottom: 30px;
+    }
+
+    .form-section h3 {
+        font-size: 18px;
+        color: #333;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #d45b04;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 5px;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 14px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #d45b04;
+        box-shadow: 0 0 0 3px rgba(212, 91, 4, 0.1);
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 120px;
+    }
+
+    .info-card {
+        background: #f0f7ff;
+        border-left: 4px solid #0066cc;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+
+    .info-card-title {
+        font-weight: 600;
+        color: #004399;
+        margin-bottom: 10px;
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 13px;
+    }
+
+    .info-label {
+        color: #666;
+        font-weight: 500;
+    }
+
+    .info-value {
+        color: #333;
+        font-weight: 600;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #d45b04 0%, #f0832f 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(212, 91, 4, 0.3);
+    }
+
+    .btn-secondary {
+        background: #e9ecef;
+        color: #333;
+    }
+
+    .btn-secondary:hover {
+        background: #dee2e6;
+    }
+
+    .btn-info {
+        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        color: white;
+    }
+
+    .btn-info:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3);
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #d45b04;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+    .full-width {
+        grid-column: 1 / -1;
+    }
+
+    /* Select buscable - Estilos */
+    .ss-hidden-select {
+        position: absolute !important;
+        left: -9999px !important;
+        width: 1px !important;
+        height: 1px !important;
+        overflow: hidden !important;
+    }
+
+    .searchable-select {
+        position: relative;
+        width: 100%;
+    }
+
+    .searchable-select .ss-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 14px;
+        background-color: #fff;
+        cursor: text;
+    }
+
+    .searchable-select .ss-control:focus {
+        outline: none;
+        border-color: #d45b04;
+        box-shadow: 0 0 0 3px rgba(212, 91, 4, 0.1);
+    }
+
+    .searchable-select .ss-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        max-height: 260px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .searchable-select.open .ss-dropdown {
+        display: block;
+    }
+
+    .searchable-select .ss-option {
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .searchable-select .ss-option:hover,
+    .searchable-select .ss-option.active {
+        background: #707070;
+        color: #ffffff;
+    }
+
+    .searchable-select .ss-option.selected {
+        background: #5f5f5f;
+        color: #ffffff;
+    }
+
+    .searchable-select .ss-empty {
+        padding: 8px 12px;
+        color: #6c757d;
+        font-size: 13px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-container">
+    <div class="edit-header">
+        <h1>✏️ Reprogramar EMO</h1>
+        <p>Los cambios realizados serán notificados al trabajador por correo electrónico</p>
+    </div>
+
+    <div class="edit-body">
+        <a href="{% url 'calidad:reporte_maestro_emos' %}" class="back-link">&larr; Volver a la lista</a>
+
+        <!-- INFORMACIÓN DEL TRABAJADOR -->
+        <div class="info-card">
+            <div class="info-card-title">👤 Información del Trabajador</div>
+            <div class="info-item">
+                <span class="info-label">Nombre:</span>
+                <span class="info-value">{{ trabajador.nombres }} {{ trabajador.apellido_paterno }} {{ trabajador.apellido_materno }}</span>
+            </div>
+            {% if trabajador.dni %}
+            <div class="info-item">
+                <span class="info-label">DNI:</span>
+                <span class="info-value">{{ trabajador.dni }}</span>
+            </div>
+            {% endif %}
+            {% if trabajador.email %}
+            <div class="info-item">
+                <span class="info-label">Email:</span>
+                <span class="info-value">{{ trabajador.email }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- FORMULARIO DE EDICIÓN -->
+        <form method="POST" class="edit-form">
+            {% csrf_token %}
+
+            <!-- SECCIÓN 1: DATOS DEL EMO -->
+            <div class="form-section">
+                <h3 style="color: #d45b04; border-bottom-color: #f0832f;">📋 Datos del Examen Médico</h3>
+                <div class="form-row">
+                    <!-- Tipo de EMO -->
+                    <div class="form-group">
+                        <label>Tipo de EMO:</label>
+                        <select name="tipo_emo" required>
+                            {% for value, label in tipo_emo_choices %}
+                                <option value="{{ value }}" {% if datos_sesion and datos_sesion.tipo_emo == value %}selected{% elif not datos_sesion and emo.tipo_emo == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Fecha Programada -->
+                    <div class="form-group">
+                        <label>Fecha Programada:</label>
+                        <input
+                            type="date"
+                            name="fecha_programada"
+                            value="{% if datos_sesion and datos_sesion.fecha_programada %}{{ datos_sesion.fecha_programada }}{% elif emo.fecha_programada %}{{ emo.fecha_programada|date:'Y-m-d' }}{% endif %}"
+                        />
+                    </div>
+
+                    <!-- Hora del Examen -->
+                    <div class="form-group">
+                        <label>Hora del Examen:</label>
+                        <input
+                            type="time"
+                            name="hora_examen"
+                            value="{% if datos_sesion and datos_sesion.hora_examen %}{{ datos_sesion.hora_examen }}{% elif emo.hora_examen %}{{ emo.hora_examen|time:'H:i' }}{% endif %}"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 2: CLÍNICA -->
+            <div class="form-section">
+                <h3 style="color: #0066cc; border-bottom-color: #4da6ff;">🏥 Clínica / Lugar del Examen</h3>
+                <div class="form-row">
+                    <!-- Clínica / Lugar -->
+                    <div class="form-group">
+                        <label>Clínica / Lugar:</label>
+                        <div class="searchable-select" id="clinica-ss">
+                            <input
+                                type="text"
+                                class="ss-control"
+                                id="clinica_ss_input"
+                                autocomplete="off"
+                                placeholder="Seleccionar Clínica..."
+                                role="combobox"
+                                aria-expanded="false"
+                            />
+                            <div class="ss-dropdown" id="clinica_ss_dropdown" role="listbox"></div>
+                        </div>
+                        <select name="lugar_examen_id" id="clinica_select" class="ss-hidden-select">
+                            <option value="">-- Sin asignar --</option>
+                            {% for clinica in clinicas %}
+                                <option value="{{ clinica.id }}" {% if datos_sesion and datos_sesion.lugar_examen_id|stringformat:'s' == clinica.id|stringformat:'s' %}selected{% elif not datos_sesion and emo.lugar_examen_id == clinica.id %}selected{% endif %}>{{ clinica.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 3: DATOS DE ASIGNACIÓN -->
+            <div class="form-section">
+                <h3 style="color: #28a745; border-bottom-color: #5cb85c;">👤 Datos de Asignación del Trabajador</h3>
+                <div class="form-row">
+                    <!-- Empresa -->
+                    <div class="form-group">
+                        <label>Empresa:</label>
+                        <select name="empresa_id">
+                            <option value="">-- Sin asignar --</option>
+                            {% for empresa in empresas %}
+                                <option value="{{ empresa.id }}" {% if datos_sesion and datos_sesion.empresa_id|stringformat:'s' == empresa.id|stringformat:'s' %}selected{% elif not datos_sesion and emo.empresa_id == empresa.id %}selected{% endif %}>{{ empresa.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Proyecto -->
+                    <div class="form-group">
+                        <label>Proyecto:</label>
+                        <div class="searchable-select" id="proyecto-ss">
+                            <input
+                                type="text"
+                                class="ss-control"
+                                id="proyecto_ss_input"
+                                autocomplete="off"
+                                placeholder="Seleccionar Proyecto..."
+                                role="combobox"
+                                aria-expanded="false"
+                            />
+                            <div class="ss-dropdown" id="proyecto_ss_dropdown" role="listbox"></div>
+                        </div>
+                        <select name="proyecto_id" id="proyecto_select" class="ss-hidden-select">
+                            <option value="">-- Sin asignar --</option>
+                            {% for proyecto in proyectos %}
+                                <option value="{{ proyecto.id }}" {% if datos_sesion and datos_sesion.proyecto_id|stringformat:'s' == proyecto.id|stringformat:'s' %}selected{% elif not datos_sesion and emo.proyecto_id == proyecto.id %}selected{% endif %}>{{ proyecto.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <!-- Subproyecto -->
+                    <div class="form-group">
+                        <label>Subproyecto:</label>
+                        <div class="searchable-select" id="subproyecto-ss">
+                            <input
+                                type="text"
+                                class="ss-control"
+                                id="subproyecto_ss_input"
+                                autocomplete="off"
+                                placeholder="Seleccionar Subproyecto..."
+                                role="combobox"
+                                aria-expanded="false"
+                            />
+                            <div class="ss-dropdown" id="subproyecto_ss_dropdown" role="listbox"></div>
+                        </div>
+                        <select name="subproyecto_id" id="subproyecto_select" class="ss-hidden-select">
+                            <option value="">-- Sin asignar --</option>
+                            {% for subproyecto in subproyectos %}
+                                <option value="{{ subproyecto.id }}" {% if datos_sesion and datos_sesion.subproyecto_id|stringformat:'s' == subproyecto.id|stringformat:'s' %}selected{% elif not datos_sesion and emo.subproyecto_id == subproyecto.id %}selected{% endif %}>{{ subproyecto.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Cargo / Puesto -->
+                    <div class="form-group">
+                        <label>Cargo / Puesto:</label>
+                        <div class="searchable-select" id="cargo-ss">
+                            <input
+                                type="text"
+                                class="ss-control"
+                                id="cargo_ss_input"
+                                autocomplete="off"
+                                placeholder="Seleccionar Cargo..."
+                                role="combobox"
+                                aria-expanded="false"
+                            />
+                            <div class="ss-dropdown" id="cargo_ss_dropdown" role="listbox"></div>
+                        </div>
+                        <select name="cargo_id" id="cargo_select" class="ss-hidden-select">
+                            <option value="">-- Sin asignar --</option>
+                            {% for cargo in cargos %}
+                                <option value="{{ cargo.id }}" {% if datos_sesion and datos_sesion.cargo_id|stringformat:'s' == cargo.id|stringformat:'s' %}selected{% elif not datos_sesion and emo.cargo_id == cargo.id %}selected{% endif %}>{{ cargo.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 4: COMENTARIO -->
+            <div class="form-section">
+                <h3 style="color: #6c757d; border-bottom-color: #adb5bd;">💬 Notas Internas (Opcional)</h3>
+                <div class="form-group full-width">
+                    <label>Notas sobre los cambios:</label>
+                    <textarea
+                        name="comentario_alerta"
+                        placeholder="Escribe notas internas sobre los cambios realizados (solo para registro interno, no se envía al trabajador)..."
+                    >{% if datos_sesion and datos_sesion.comentario_alerta %}{{ datos_sesion.comentario_alerta }}{% endif %}</textarea>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 5: OPCIONES DE NOTIFICACIÓN -->
+             <div class="form-section">
+                <div class="form-group full-width" style="background: #fff3cd; padding: 15px; border-radius: 6px; border: 1px solid #ffeeba;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 16px; color: #856404; font-weight: bold; margin: 0;">
+                        <!-- Checkbox marcado por defecto -->
+                        <input type="checkbox" name="enviar_correo" checked style="width: 20px; height: 20px;">
+                        <span>📧 Enviar correo de notificación al trabajador con los cambios</span>
+                    </label>
+                    <p style="margin: 5px 0 0 30px; font-size: 13px; color: #856404; opacity: 0.8;">
+                        Si desmarcas esta casilla, los cambios se guardarán pero el trabajador <strong>NO</strong> recibirá ningún correo.
+                    </p>
+                </div>
+            </div>
+
+            <!-- BOTONES DE ACCIÓN -->
+            <div class="action-buttons">
+                <a href="{% url 'calidad:reporte_maestro_emos' %}" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" name="ir_a_preview" value="true" class="btn btn-info">📧 Vista Previa del Correo</button>
+                <button type="submit" class="btn btn-primary">💾 Guardar y Enviar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // ===== FUNCIÓN GENÉRICA PARA SELECT BUSCABLE =====
+    function initSearchableSelect(config) {
+        const selectEl = document.getElementById(config.selectId);
+        const wrapperEl = document.getElementById(config.wrapperId);
+        const inputEl = document.getElementById(config.inputId);
+        const dropdownEl = document.getElementById(config.dropdownId);
+
+        if (!selectEl || !wrapperEl || !inputEl || !dropdownEl) return;
+
+        let allOptions = [];
+        
+        // Función para actualizar las opciones desde el select
+        function refreshOptions() {
+            allOptions = [];
+            for (let i = 0; i < selectEl.options.length; i++) {
+                const opt = selectEl.options[i];
+                allOptions.push({
+                    value: opt.value,
+                    text: opt.textContent.trim()
+                });
+            }
+        }
+        
+        refreshOptions(); // Cargar opciones inicialmente
+
+        function openDropdown() {
+            wrapperEl.classList.add('open');
+            inputEl.setAttribute('aria-expanded', 'true');
+        }
+
+        function closeDropdown() {
+            wrapperEl.classList.remove('open');
+            inputEl.setAttribute('aria-expanded', 'false');
+        }
+
+        function getFilteredOptions(query) {
+            const q = query.toLowerCase();
+            return allOptions.filter(opt => opt.text.toLowerCase().includes(q));
+        }
+
+        function renderDropdown(options) {
+            dropdownEl.innerHTML = '';
+            if (options.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'ss-empty';
+                empty.textContent = 'No se encontraron resultados';
+                dropdownEl.appendChild(empty);
+                return;
+            }
+
+            options.forEach((opt, index) => {
+                const div = document.createElement('div');
+                div.className = 'ss-option';
+                div.textContent = opt.text;
+                div.setAttribute('data-value', opt.value);
+                div.setAttribute('role', 'option');
+
+                if (opt.value === selectEl.value) {
+                    div.classList.add('selected');
+                }
+
+                div.addEventListener('click', function() {
+                    selectEl.value = opt.value;
+                    inputEl.value = opt.text;
+                    closeDropdown();
+                    selectEl.dispatchEvent(new Event('change'));
+                });
+
+                dropdownEl.appendChild(div);
+            });
+        }
+
+        function setControlValueFromSelect() {
+            const selected = selectEl.options[selectEl.selectedIndex];
+            inputEl.value = selected && selected.value ? selected.textContent.trim() : '';
+        }
+
+        setControlValueFromSelect();
+
+        inputEl.addEventListener('focus', function() {
+            const current = getFilteredOptions(inputEl.value);
+            renderDropdown(current);
+            openDropdown();
+        });
+
+        inputEl.addEventListener('input', function() {
+            const current = getFilteredOptions(inputEl.value);
+            renderDropdown(current);
+            openDropdown();
+        });
+
+        inputEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeDropdown();
+            }
+        });
+
+        document.addEventListener('mousedown', function(e) {
+            if (!wrapperEl.contains(e.target)) closeDropdown();
+        });
+
+        selectEl.addEventListener('change', function() {
+            setControlValueFromSelect();
+            const current = getFilteredOptions(inputEl.value);
+            renderDropdown(current);
+        });
+        
+        // Retornar objeto con método refresh
+        return {
+            refresh: function() {
+                refreshOptions();
+                setControlValueFromSelect();
+            }
+        };
+    }
+
+    // ===== INICIALIZAR SELECTS BUSCABLES =====
+    initSearchableSelect({
+        selectId: 'clinica_select',
+        wrapperId: 'clinica-ss',
+        inputId: 'clinica_ss_input',
+        dropdownId: 'clinica_ss_dropdown'
+    });
+
+    initSearchableSelect({
+        selectId: 'proyecto_select',
+        wrapperId: 'proyecto-ss',
+        inputId: 'proyecto_ss_input',
+        dropdownId: 'proyecto_ss_dropdown'
+    });
+
+    // Inicializar subproyecto y guardar referencia para refrescar después
+    const subproyectoSS = initSearchableSelect({
+        selectId: 'subproyecto_select',
+        wrapperId: 'subproyecto-ss',
+        inputId: 'subproyecto_ss_input',
+        dropdownId: 'subproyecto_ss_dropdown'
+    });
+
+    initSearchableSelect({
+        selectId: 'cargo_select',
+        wrapperId: 'cargo-ss',
+        inputId: 'cargo_ss_input',
+        dropdownId: 'cargo_ss_dropdown'
+    });
+
+    // ===== LÓGICA DE SUBPROYECTOS DINÁMICOS =====
+    const proyectoSelect = document.getElementById('proyecto_select');
+    const subproyectoSelect = document.getElementById('subproyecto_select');
+    
+    // Función para actualizar subproyectos cuando cambia el proyecto
+    function actualizarSubproyectos(mantenerSeleccionActual = false) {
+        const proyectoId = proyectoSelect.value;
+        
+        // Guardar el valor actual si se solicita mantenerlo
+        const valorActualSubproyecto = mantenerSeleccionActual ? subproyectoSelect.value : '';
+        
+        // Limpiar opciones actuales
+        subproyectoSelect.innerHTML = '<option value="">-- Sin asignar --</option>';
+        
+        // Si hay proyecto seleccionado, cargar sus subproyectos mediante AJAX
+        if (proyectoId) {
+            fetch(`/calidad/get-subproyectos/?proyecto_id=${proyectoId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.subproyectos && data.subproyectos.length > 0) {
+                        data.subproyectos.forEach(sub => {
+                            const option = document.createElement('option');
+                            option.value = sub.id;
+                            option.textContent = sub.nombre;
+                            
+                            // Si estamos manteniendo la selección y este es el valor guardado
+                            if (valorActualSubproyecto && String(sub.id) === String(valorActualSubproyecto)) {
+                                option.selected = true;
+                            }
+                            
+                            subproyectoSelect.appendChild(option);
+                        });
+                    }
+                    // IMPORTANTE: Refrescar el componente searchable select después de actualizar opciones
+                    if (subproyectoSS && subproyectoSS.refresh) {
+                        subproyectoSS.refresh();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al cargar subproyectos:', error);
+                });
+        } else {
+            // Si no hay proyecto, también refrescar para mostrar vacío
+            if (subproyectoSS && subproyectoSS.refresh) {
+                subproyectoSS.refresh();
+            }
+        }
+    }
+    
+    // Escuchar cambios en el select de proyecto
+    proyectoSelect.addEventListener('change', function() {
+        actualizarSubproyectos(); // No mantener selección cuando el usuario cambia proyecto
+    });
+    
+    // Al cargar la página, si hay un proyecto seleccionado y un subproyecto en datos de sesión,
+    // cargar los subproyectos correctos del proyecto actual
+    window.addEventListener('DOMContentLoaded', function() {
+        {% if datos_sesion and datos_sesion.proyecto_id %}
+        // Si hay datos de sesión con proyecto, cargar subproyectos manteniendo la selección
+        if (proyectoSelect.value) {
+            actualizarSubproyectos(true);
+        }
+        {% endif %}
+    });
+</script>
+{% endblock %}

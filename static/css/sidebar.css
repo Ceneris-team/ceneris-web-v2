@@ -1,0 +1,78 @@
+/* static/css/sidebar.css - Diseño minimalista final */
+
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@600&display=swap');
+
+/* Contenedor Principal (Wrapper) */
+.wrapper {
+    display: flex;
+    align-items: stretch;
+}
+
+/* La Barra de Navegación (Sidebar) */
+#sidebar {
+    min-width: 88px;
+    max-width: 88px;
+    background: #fff;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Lista de items del menú */
+#sidebar .components {
+    padding: 1rem 0;
+    list-style-type: none;
+    margin: 0;
+}
+
+#sidebar .navbar__item {
+    position: relative;
+}
+
+#sidebar .navbar__link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 56px;
+    width: 88px;
+    color: #6a778e; /* Color de icono por defecto */
+    transition: color 250ms ease, background-color 250ms ease; /* Transición suave */
+}
+
+/* --- EFECTO DE HOVER Y ACTIVO SIMPLIFICADO Y CORREGIDO --- */
+#sidebar .navbar__link:hover {
+    color: var(--title_color); /* El ícono se vuelve naranja en hover */
+}
+
+#sidebar .navbar__item.active .navbar__link {
+    color: var(--title_color);
+    /* Fondo sutil para indicar la página activa */
+    background-color: rgba(212, 91, 4, 0.05); 
+}
+
+/* Tooltip (el texto que aparece al lado) */
+#sidebar .navbar__link span {
+    position: absolute;
+    left: 100%;
+    transform: translateX(-24px);
+    margin-left: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    color: var(--title_color);
+    background: #fff;
+    padding: 12px;
+    transition: 250ms ease all;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+#sidebar .navbar__link:hover span {
+    opacity: 1;
+    transform: translateX(0);
+}

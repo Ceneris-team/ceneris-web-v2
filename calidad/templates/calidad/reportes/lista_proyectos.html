@@ -1,0 +1,67 @@
+{% extends "dashboard/base_rrhh.html" %}
+{% block title %}Gestión de Proyectos{% endblock %}
+{% block content %}
+
+    <div class="page-header">
+        <div>
+            <h1>Gestión de Proyectos</h1>
+            <p style="margin: 0;">Administra los proyectos en los que el personal puede ser asignado.</p>
+        </div>
+        <div>
+             <a href="{% url 'calidad:gestion_proyectos' %}" class="btn-secondary">&larr; Volver</a>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align: center; width: 50px;">N°</th>
+                <th>Nombre del Proyecto</th>
+                <th>Empresa</th>
+                <th>Cliente</th>
+                <th>Fecha de Inicio</th>
+                <th>Estado</th>
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for proyecto in proyectos %}
+            <tr>
+                <td style="text-align: center; font-weight: bold;">{{ forloop.counter }}</td>
+                <td><strong>{{ proyecto.nombre }}</strong></td>
+                <td>{{ proyecto.empresa.nombre }}</td>
+                <td>{{ proyecto.cliente|default:"--" }}</td>
+                <td>{{ proyecto.fecha_inicio|date:"d/m/Y"|default:"--" }}</td>
+                <td>
+                    {% if proyecto.activo %}
+                        <span style="color: green; font-weight: bold;">Activo</span>
+                    {% else %}
+                        <span style="color: grey;">Inactivo</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: center;">
+                    <a href="{% url 'editar_proyecto' proyecto.pk %}" class="table-action-link secondary">Editar</a>
+                    <a href="#" class="table-action-link danger" onclick="confirmDelete(event, 'form-delete-{{ proyecto.pk }}')">Eliminar</a>
+                    <form id="form-delete-{{ proyecto.pk }}" action="{% url 'eliminar_proyecto' proyecto.pk %}" method="post" style="display: none;">
+                        {% csrf_token %}
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align: center;">No hay proyectos registrados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+{% block extra_scripts %}
+    <script>
+        function confirmDelete(event, formId) {
+            event.preventDefault(); 
+            if (confirm('¿Estás seguro de que deseas eliminar este proyecto?')) {
+                document.getElementById(formId).submit();
+            }
+        }
+    </script>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>{{ titulo }}</h1>
+    <p>Los datos ingresados aquí se usarán como plantilla para todos los certificados que crees en esta sesión.</p>
+    
+    <form method="post" action="{% url 'configurar_lote_certificacion' %}">
+        {% csrf_token %}
+        <!-- Renderiza 'form', 'patrones_formset' y 'resultados_formset' igual que en tu otro formulario -->
+        
+        <button type="submit" class="btn btn-primary">Guardar Datos del Lote</button>
+    </form>
+{% endblock %}

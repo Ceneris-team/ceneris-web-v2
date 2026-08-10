@@ -1,0 +1,75 @@
+{% extends "dashboard/base_rrhh.html" %}
+
+{% block title %}Gestión de Empresas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Columna para el Formulario de Registro -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">Registrar Nueva Empresa</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Añade una nueva empresa a la base de datos central. El sistema verificará que el RUC no esté duplicado.</p>
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre de la Empresa</label>
+                            {{ form.nombre }}
+                            {% if form.nombre.errors %}<div class="invalid-feedback d-block">{{ form.nombre.errors }}</div>{% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.ruc.id_for_label }}" class="form-label">RUC</label>
+                            {{ form.ruc }}
+                             {% if form.ruc.errors %}<div class="invalid-feedback d-block">{{ form.ruc.errors }}</div>{% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.ubicacion.id_for_label }}" class="form-label">Ubicación</label>
+                            {{ form.ubicacion }}
+                             {% if form.ubicacion.errors %}<div class="invalid-feedback d-block">{{ form.ubicacion.errors }}</div>{% endif %}
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Registrar Empresa</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna para la Lista de Empresas -->
+        <div class="col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Lista Central de Empresas</h4>
+                    <span class="badge bg-secondary rounded-pill">{{ empresas_list.count }} en total</span>
+                </div>
+                <div class="card-body">
+                    <!-- Barra de Búsqueda -->
+                    <form method="get" class="mb-3">
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="q" placeholder="Buscar por Nombre o RUC..." value="{{ search_query }}">
+                            <button class="btn btn-outline-secondary" type="submit"><i data-feather="search"></i></button>
+                        </div>
+                    </form>
+
+                    <!-- Lista de Empresas -->
+                    <div class="list-group" style="max-height: 60vh; overflow-y: auto;">
+                        {% if empresas_list %}
+                            {% for empresa in empresas_list %}
+                                <div class="list-group-item list-group-item-action">
+                                    <strong>{{ empresa.nombre }}</strong><br>
+                                    <small class="text-muted">RUC: {{ empresa.ruc }}</small>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="alert alert-light text-center">
+                                No se encontraron empresas.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

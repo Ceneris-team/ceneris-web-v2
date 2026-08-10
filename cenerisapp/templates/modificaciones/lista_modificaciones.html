@@ -1,0 +1,149 @@
+{% extends 'app_base.html' %}
+{% load ceneris_tags query_filters %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+
+    <div class="dashboard-header-modern">
+        <h1>{{ titulo }}</h1>
+        <p>Registra y Consulta el historial de modificaciones.</p>
+        <a href="{% url 'cenerisapp:crear_modificacion' %}" class="btn btn-primary" style="background-color: #d45b04;">Registrar Modificación</a>
+    </div>
+
+
+    <div class="filter-container">
+        <form method="GET" action="" class="filter-form-grid">
+            
+            <div class="form-group">
+                <label for="dispositivo">Buscar por Dispositivo</label>
+                <input type="text" name="dispositivo" id="dispositivo" value="{{ filtros_aplicados.dispositivo }}" 
+                       class="form-control" placeholder="Nombre o N/S del dispositivo...">
+            </div>
+            
+            <div class="form-group">
+                <label for="trabajador">Realizado Por</label>
+                <input type="text" name="trabajador" id="trabajador" value="{{ filtros_aplicados.trabajador }}" 
+                       class="form-control" placeholder="Nombre del trabajador...">
+            </div>
+
+            <div class="form-group">
+                <label for="tipo">Tipo de Servicio</label>
+                <select name="tipo" id="tipo" class="form-select">
+                    <option value="">-- Todos --</option>
+                    {% for tipo in opciones_tipo_servicio %}
+                        <option value="{{ tipo }}" {% if filtros_aplicados.tipo == tipo %}selected{% endif %}>{{ tipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="fecha_desde">Fecha (Desde)</label>
+                <input type="date" name="fecha_desde" id="fecha_desde" value="{{ filtros_aplicados.fecha_desde }}" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="fecha_hasta">Fecha (Hasta)</label>
+                <input type="date" name="fecha_hasta" id="fecha_hasta" value="{{ filtros_aplicados.fecha_hasta }}" class="form-control">
+            </div>
+
+            <!-- Botones -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" style="background-color: #d45b04;">Filtrar</button>
+                <a href="{% url 'cenerisapp:lista_modificaciones' %}" class="btn btn-secondary">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Fecha</th>
+                    <th>Dispositivo</th>
+                    <th>Involucrado</th>
+                    <th>Tipo Servicio</th>
+                    <th>Motivo</th>
+                    <th>Realizado por</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mod in page_obj %}
+                <tr>
+                    <td data-label="ID">#{{ mod.id_modificacion }}</td>
+                    <td data-label="Fecha">{{ mod.fecInstalacionMod|date:"d/m/Y" }}</td>
+                    <td data-label="Dispositivo">
+                        {% if mod.id_dispositivo %}
+                            {{ mod.id_dispositivo }}
+                        {% else %}
+                            <span class="text-muted">No asignado</span>
+                        {% endif %}
+                    </td>
+
+                    <td data-label="Involucrado">
+                        {% if mod.sensor_saliente %}
+                            Sensor Saliente: {{ mod.sensor_saliente }}
+                        {% elif mod.parte_saliente %}
+                            Parte Saliente: {{ mod.parte_saliente }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+
+                        {% if mod.componente_entrante %}
+                            <br><small>Reemplazo: {{ mod.componente_entrante }}</small>
+                        {% endif %}
+                    </td>
+                    <td data-label="Tipo Servicio">{{ mod.tipoServicio }}</td>
+                    <td data-label="Motivo">{{ mod.MotivoCambio|truncatewords:10 }}</td>
+                    <td data-label="Realizado por">
+                        {% if mod.id_trabajador %}
+                            {{ mod.id_trabajador.nomEmpleado }}
+                        {% else %}
+                            <span class="text-muted">No asignado</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Acciones">
+                        <p style="font-weight: 100;">Falta boton de borrar</p>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="no-data">No hay modificaciones o servicios registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+     {% if page_obj.has_other_pages %}
+            <nav aria-label="Navegación de páginas" class="pagination-container">
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            {# ¡LA MAGIA! Usamos el nuevo tag para establecer page=1 #}
+                            <a class="page-link" href="?{% url_replace page=1 %}">&laquo; Primera</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% url_replace page=page_obj.previous_page_number %}">Anterior</a>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item active" aria-current="page">
+                        <span class="page-link">
+                            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% url_replace page=page_obj.next_page_number %}">Siguiente</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% url_replace page=page_obj.paginator.num_pages %}">Última &raquo;</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+{% endblock %}

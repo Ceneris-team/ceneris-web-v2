@@ -1,0 +1,52 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block title %}Nuevo Programa de Mantenimiento{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto py-12 px-4">
+    
+    <div class="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
+        <!-- Encabezado con degradado naranja -->
+        <div class="bg-gradient-to-r from-orange-500 to-red-500 px-8 py-6">
+            <h2 class="text-2xl font-bold text-white flex items-center">
+                <i class="fas fa-calendar-alt mr-3"></i> Nuevo Programa
+            </h2>
+            <p class="text-orange-100 mt-1 text-sm">Crear la cabecera para el cronograma anual/semestral.</p>
+        </div>
+
+        <form method="post" class="p-8 space-y-6">
+            {% csrf_token %}
+
+            <!-- Año -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Año</label>
+                <input type="number" name="anio" value="2025" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none transition-all">
+            </div>
+
+            <!-- Nombre -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Nombre del Programa</label>
+                <input type="text" name="nombre" value="PROGRAMA DE MANTENIMIENTO PREVENTIVO" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none transition-all">
+            </div>
+
+            <!-- Semestre -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Semestre</label>
+                <select name="semestre" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white">
+                    <option value="1">Primer Semestre (Ene - Jun)</option>
+                    <option value="2">Segundo Semestre (Jul - Dic)</option>
+                </select>
+            </div>
+
+            <!-- Botones -->
+            <div class="pt-6 flex justify-end gap-3">
+                <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="px-5 py-3 rounded-lg text-gray-600 font-medium hover:bg-gray-100 transition">
+                    Cancelar
+                </a>
+                <button type="submit" class="px-8 py-3 rounded-lg bg-orange-600 text-white font-bold hover:bg-orange-700 shadow-lg shadow-orange-500/30 transition transform hover:-translate-y-0.5">
+                    Crear Programa
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

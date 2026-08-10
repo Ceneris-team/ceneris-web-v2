@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center h-screen-1/2 mt-10">
+    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-8 rounded shadow-lg max-w-lg" role="alert">
+        <h3 class="font-bold text-xl mb-2">¡Ups! Ha ocurrido un problema</h3>
+        <p class="text-lg">{{ mensaje }}</p>
+    </div>
+    
+    <div class="mt-6">
+        <a href="/" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition">
+            Volver al Inicio
+        </a>
+        <!-- Opción para ir al admin si eres superusuario -->
+        {% if user.is_superuser %}
+        <a href="/admin/" class="ml-4 text-blue-600 hover:underline">
+            Ir al Admin para arreglarlo
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

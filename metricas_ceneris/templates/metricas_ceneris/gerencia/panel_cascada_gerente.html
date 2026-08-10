@@ -1,0 +1,340 @@
+{% extends 'metricas_ceneris/base.html' %}
+
+{% block content %}
+<div class="space-y-6">
+    <section class="relative overflow-hidden rounded-3xl border border-indigo-200 bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 text-white shadow-2xl">
+        <div class="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-cyan-300/20 blur-3xl"></div>
+        <div class="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-orange-400/20 blur-3xl"></div>
+
+        <div class="relative z-10 p-6 md:p-8">
+            <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div class="max-w-3xl">
+                    <span class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-indigo-100">
+                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                        Centro Gerencial de Evaluación
+                    </span>
+                    <h1 class="mt-3 text-3xl font-display font-black leading-tight md:text-5xl">Estructura de Gestión</h1>
+                    <p class="mt-2 max-w-2xl text-sm text-indigo-100 md:text-base">
+                        Flujo ordenado para Gerencia: primero Responsables, luego Supervisores, y evaluación directa solo en áreas sin responsable o supervisor activo.
+                    </p>
+                </div>
+
+                <div class="grid w-full max-w-xl grid-cols-2 gap-3">
+                    <div class="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+                        <p class="text-[11px] uppercase tracking-wider text-indigo-200">Encargados visibles</p>
+                        <p class="mt-1 text-2xl font-black">{{ total_lideres_filtrados }}</p>
+                    </div>
+                    <div class="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+                        <p class="text-[11px] uppercase tracking-wider text-indigo-200">Promedio directivo</p>
+                        <p class="mt-1 text-2xl font-black">{{ promedio_area }}</p>
+                    </div>
+                    <div class="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+                        <p class="text-[11px] uppercase tracking-wider text-indigo-200">Responsables</p>
+                        <p class="mt-1 text-2xl font-black">{{ total_responsables_filtrados }}</p>
+                    </div>
+                    <div class="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+                        <p class="text-[11px] uppercase tracking-wider text-indigo-200">Supervisores</p>
+                        <p class="mt-1 text-2xl font-black">{{ total_supervisores_filtrados }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <form method="get" class="grid grid-cols-1 gap-3 lg:grid-cols-12">
+            {% if area_activa_id %}
+            <input type="hidden" name="area_id" value="{{ area_activa_id }}">
+            {% endif %}
+
+            <div class="lg:col-span-5">
+                <label class="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">Buscar encargado</label>
+                <input type="text" name="q" value="{{ busqueda }}" placeholder="Nombre o apellido" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100">
+            </div>
+
+            <div class="lg:col-span-3">
+                <label class="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">Tipo de encargado</label>
+                <select name="tipo_lider" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                    <option value="todos" {% if tipo_lider == 'todos' %}selected{% endif %}>Todos</option>
+                    <option value="responsable" {% if tipo_lider == 'responsable' %}selected{% endif %}>Responsables</option>
+                    <option value="supervisor" {% if tipo_lider == 'supervisor' %}selected{% endif %}>Supervisores</option>
+                </select>
+            </div>
+
+            <div class="lg:col-span-4 flex items-end gap-2">
+                <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-500">
+                    <i class="ph ph-funnel"></i>
+                    Aplicar filtros
+                </button>
+                <a href="{% url 'metricas_ceneris:panel_evaluacion_gerente' %}" class="inline-flex items-center justify-center rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100">
+                    Limpiar
+                </a>
+            </div>
+        </form>
+    </section>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <aside class="space-y-6 xl:col-span-4">
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="mb-4 flex items-center justify-between">
+                    <h2 class="text-lg font-black text-slate-800">Responsables por Área</h2>
+                    <span class="rounded-lg bg-indigo-100 px-2 py-1 text-xs font-bold text-indigo-700">{{ areas_con_responsable|length }}</span>
+                </div>
+
+                <div class="space-y-3">
+                    {% for item in areas_con_responsable %}
+                    <a href="?area_id={{ item.area.id }}{% if tipo_lider %}&tipo_lider={{ tipo_lider }}{% endif %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}" class="block rounded-xl border p-3 transition-all {% if item.activa %}border-indigo-300 bg-indigo-50 shadow-sm{% else %}border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/50{% endif %}">
+                        <div class="flex items-start justify-between gap-2">
+                            <h3 class="text-sm font-bold text-slate-800">{{ item.area.nombre }}</h3>
+                            <span class="rounded-md bg-indigo-600 px-2 py-1 text-[10px] font-bold text-white">Responsable</span>
+                        </div>
+                        <div class="mt-2 grid grid-cols-3 gap-2 text-center">
+                            <div class="rounded-lg bg-slate-50 py-1.5">
+                                <p class="text-[10px] uppercase text-slate-400">Responsables</p>
+                                <p class="text-xs font-bold text-slate-700">{{ item.total_lideres_objetivo }}</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-50 py-1.5">
+                                <p class="text-[10px] uppercase text-slate-400">Equipo</p>
+                                <p class="text-xs font-bold text-slate-700">{{ item.total_colaboradores }}</p>
+                            </div>
+                            <div class="rounded-lg bg-emerald-50 py-1.5">
+                                <p class="text-[10px] uppercase text-emerald-500">Al día</p>
+                                <p class="text-xs font-bold text-emerald-700">{{ item.evaluados_mes }}</p>
+                            </div>
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                        No hay áreas con responsable activo.
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="mb-4 flex items-center justify-between">
+                    <h2 class="text-lg font-black text-slate-800">Supervisores (Áreas sin Responsable)</h2>
+                    <span class="rounded-lg bg-purple-100 px-2 py-1 text-xs font-bold text-purple-700">{{ areas_con_supervisor_sin_responsable|length }}</span>
+                </div>
+
+                <div class="space-y-3">
+                    {% for item in areas_con_supervisor_sin_responsable %}
+                    <a href="?area_id={{ item.area.id }}{% if tipo_lider %}&tipo_lider={{ tipo_lider }}{% endif %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}" class="block rounded-xl border p-3 transition-all {% if item.activa %}border-purple-300 bg-purple-50 shadow-sm{% else %}border-slate-200 bg-white hover:border-purple-200 hover:bg-purple-50/50{% endif %}">
+                        <div class="flex items-start justify-between gap-2">
+                            <h3 class="text-sm font-bold text-slate-800">{{ item.area.nombre }}</h3>
+                            <span class="rounded-md bg-purple-600 px-2 py-1 text-[10px] font-bold text-white">Supervisor</span>
+                        </div>
+                        <div class="mt-2 grid grid-cols-3 gap-2 text-center">
+                            <div class="rounded-lg bg-slate-50 py-1.5">
+                                <p class="text-[10px] uppercase text-slate-400">Supervisores</p>
+                                <p class="text-xs font-bold text-slate-700">{{ item.total_lideres_objetivo }}</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-50 py-1.5">
+                                <p class="text-[10px] uppercase text-slate-400">Equipo</p>
+                                <p class="text-xs font-bold text-slate-700">{{ item.total_colaboradores }}</p>
+                            </div>
+                            <div class="rounded-lg bg-emerald-50 py-1.5">
+                                <p class="text-[10px] uppercase text-emerald-500">Al día</p>
+                                <p class="text-xs font-bold text-emerald-700">{{ item.evaluados_mes }}</p>
+                            </div>
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                        No hay áreas sin responsable que dependan de supervisor.
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="mb-4 flex items-center justify-between">
+                    <h2 class="text-lg font-black text-slate-800">Áreas Directas</h2>
+                    <span class="rounded-lg bg-orange-100 px-2 py-1 text-xs font-bold text-orange-700">{{ areas_directas|length }}</span>
+                </div>
+
+                <div class="mb-3 grid grid-cols-2 gap-2">
+                    <div class="rounded-xl bg-orange-50 p-2 text-center">
+                        <p class="text-[10px] uppercase text-orange-500">Equipo total</p>
+                        <p class="text-lg font-black text-orange-700">{{ total_equipos_directos }}</p>
+                    </div>
+                    <div class="rounded-xl bg-rose-50 p-2 text-center">
+                        <p class="text-[10px] uppercase text-rose-500">Pendientes</p>
+                        <p class="text-lg font-black text-rose-700">{{ total_pendientes_directos }}</p>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    {% for item in areas_directas %}
+                    <a href="{% url 'metricas_ceneris:panel_area_directa_gerencia' item.area.id %}" class="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50/50 px-3 py-2 hover:bg-orange-50">
+                        <div>
+                            <p class="text-sm font-bold text-slate-800">{{ item.area.nombre }}</p>
+                            <p class="text-[11px] text-slate-500">Equipo: {{ item.total_colaboradores }} | Pendientes: {{ item.pendientes_mes }}</p>
+                        </div>
+                        <i class="ph ph-arrow-right text-orange-500"></i>
+                    </a>
+                    {% empty %}
+                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                        No hay áreas directas pendientes.
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </aside>
+
+        <main class="space-y-6 xl:col-span-8">
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="mb-4 flex flex-col gap-3">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <h2 class="text-lg font-black text-slate-800">Encargados Objetivo</h2>
+                        <span class="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{{ total_lideres_filtrados }} visibles</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span class="text-xs"><span class="font-black text-emerald-700">AD</span> <span class="text-emerald-600">Alto Desempeño</span> <span class="text-emerald-500">· 9 – 10</span></span>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                            <span class="text-xs"><span class="font-black text-indigo-700">A</span> <span class="text-indigo-600">Desempeño Esperado</span> <span class="text-indigo-500">· 7 – 8.9</span></span>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-100">
+                            <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                            <span class="text-xs"><span class="font-black text-amber-700">B</span> <span class="text-amber-600">En Proceso de Mejora</span> <span class="text-amber-500">· 5 – 6.9</span></span>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-100">
+                            <span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+                            <span class="text-xs"><span class="font-black text-rose-700">C</span> <span class="text-rose-600">Desempeño Deficiente</span> <span class="text-rose-500">· Menor a 5</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                                <th class="py-2">Encargado</th>
+                                <th class="py-2">Tipo</th>
+                                <th class="py-2">Área</th>
+                                <th class="py-2 text-center">Última nota</th>
+                                <th class="py-2">Estado</th>
+                                <th class="py-2 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in trabajadores %}
+                            <tr class="border-b border-slate-100 hover:bg-slate-50/70">
+                                <td class="py-3">
+                                    <p class="font-bold text-slate-800">{{ t.nombre_completo }}</p>
+                                </td>
+                                <td class="py-3">
+                                    <span class="inline-flex items-center rounded-md px-2 py-1 text-[11px] font-bold {{ t.tipo_lider_badge }}">{{ t.tipo_lider_label }}</span>
+                                </td>
+                                <td class="py-3 text-slate-600">{{ t.area.nombre|default:'Sin área' }}</td>
+                                <td class="py-3 text-center">
+                                    {% if t.ultima_nota > 0 %}
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black border
+                                        {% if t.ultima_nota >= 9 %}bg-emerald-50 text-emerald-700 border-emerald-100
+                                        {% elif t.ultima_nota >= 7 %}bg-indigo-50 text-indigo-700 border-indigo-100
+                                        {% elif t.ultima_nota >= 5 %}bg-amber-50 text-amber-700 border-amber-100
+                                        {% else %}bg-rose-50 text-rose-700 border-rose-100{% endif %}">
+                                        <span class="font-black">{% if t.ultima_nota >= 9 %}AD{% elif t.ultima_nota >= 7 %}A{% elif t.ultima_nota >= 5 %}B{% else %}C{% endif %}</span>
+                                        {{ t.ultima_nota|floatformat:1 }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-xs font-bold text-orange-600">Pendiente</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 text-xs font-semibold text-slate-500">
+                                    {% if t.hito_tipo == 'NUEVO' %}
+                                    Hito nuevo
+                                    {% elif t.hito_tipo == 'SEMESTRAL' %}
+                                    Hito semestral
+                                    {% else %}
+                                    Mensual
+                                    {% endif %}
+                                </td>
+                                <td class="py-3">
+                                    <div class="flex justify-end gap-2">
+                                        <a href="{% url 'metricas_ceneris:historial_trabajador' t.id %}" class="inline-flex items-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100">
+                                            Historial
+                                        </a>
+
+                                        <a href="{% url 'metricas_ceneris:evaluar_trabajador' t.id 'MENSUAL' %}" class="inline-flex items-center rounded-lg border border-indigo-100 bg-indigo-50 px-2.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100">
+                                            Por mes
+                                        </a>
+
+                                        {% if t.hito_tipo == 'MENSUAL' and t.btn_mensual_activo %}
+                                        <a href="{% url 'metricas_ceneris:evaluar_trabajador' t.id 'MENSUAL' %}" class="inline-flex items-center rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-indigo-500">Mensual</a>
+                                        {% elif t.hito_tipo == 'NUEVO' and t.btn_hito_activo %}
+                                        <a href="{% url 'metricas_ceneris:evaluar_trabajador' t.id 'NUEVO' %}" class="inline-flex items-center rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-500">Nuevo</a>
+                                        {% elif t.hito_tipo == 'SEMESTRAL' and t.btn_hito_activo %}
+                                        <a href="{% url 'metricas_ceneris:evaluar_trabajador' t.id 'SEMESTRAL' %}" class="inline-flex items-center rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-slate-700">Semestral</a>
+                                        {% else %}
+                                        <span class="inline-flex items-center rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-700">Al día</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="py-8 text-center text-sm font-semibold text-slate-400">
+                                    No hay mandos para los filtros aplicados.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="mb-3 flex items-center justify-between">
+                    <h2 class="text-lg font-black text-slate-800">Radar de Fortalezas</h2>
+                    <span class="text-xs font-semibold text-slate-500">Vista del alcance actual</span>
+                </div>
+                <div class="h-64">
+                    <canvas id="graficoRadarGerencia"></canvas>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const radarCanvas = document.getElementById('graficoRadarGerencia');
+    if (radarCanvas) {
+        const ctx = radarCanvas.getContext('2d');
+        const datosRadar = {{ radar_data|safe }};
+        new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['Operacional', 'Administrativo', 'Habilidades'],
+                datasets: [{
+                    data: datosRadar,
+                    fill: true,
+                    backgroundColor: 'rgba(79, 70, 229, 0.16)',
+                    borderColor: 'rgba(79, 70, 229, 1)',
+                    pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+                    pointBorderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    r: {
+                        suggestedMin: 0,
+                        suggestedMax: 10,
+                        angleLines: { color: 'rgba(148, 163, 184, 0.2)' },
+                        grid: { color: 'rgba(148, 163, 184, 0.2)' },
+                        pointLabels: { color: '#475569', font: { weight: 700 } }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

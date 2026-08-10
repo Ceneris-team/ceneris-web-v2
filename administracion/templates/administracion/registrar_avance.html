@@ -1,0 +1,363 @@
+{% extends "administracion/base_administracion.html" %}
+{% load format_filters %}
+
+{% block extra_head %}
+    {{ block.super }}
+    <!-- INICIO: Generamos el CSS de los porcentajes solo para esta página -->
+    <style>
+        {% for i in range_101 %}
+        #progress-3d-container .bar-{{ i }} { width: {{ i }}% !important; }
+        {% endfor %}
+    </style>
+    <!-- FIN: CSS de porcentajes -->
+{% endblock %}
+
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- === INICIO: PANEL DE PROGRESO 3D CORREGIDO Y AISLADO === -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i data-feather="trending-up" class="me-2"></i>Progreso para {{ progreso_mes_actual.nombre_mes }} {{ progreso_mes_actual.año }}</h5>
+            <a href="{% url 'administracion:lista_requerimientos' %}" class="btn btn-outline-secondary btn-sm">Volver a la lista</a>
+        </div>
+        <div id="progress-3d-container">
+            <div class="card-body text-center">
+                
+                <div class="d-flex justify-content-between align-items-center mb-3 px-md-5">
+                    <span class="text-muted">Consumido: <strong>{{ progreso_mes_actual.consumido|euro }}</strong></span>
+                    <h4 class="mb-0">{{ progreso_mes_actual.porcentaje }}%</h4>
+                    <span class="text-muted">Meta: <strong>{{ progreso_mes_actual.meta|floatformat:2 }}</strong></span>
+                </div>
+
+                {% with p_str=progreso_mes_actual.porcentaje|floatformat:0 %}
+                    {% if progreso_mes_actual.porcentaje > 100 %}
+                        {% with p_class=100 color='green' %}
+                            <div class="chart mx-auto" style="width: 80%;">
+                                <div class="bar {{ color }}">
+                                    <div class="face top">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face side-0">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face floor">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face side-a"></div>
+                                    <div class="face side-b"></div>
+                                    <div class="face side-1">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endwith %}
+                    {% elif progreso_mes_actual.porcentaje >= 91 %}
+                        {% with p_class=p_str color='green' %}
+                            <div class="chart mx-auto" style="width: 80%;">
+                                <div class="bar {{ color }}">
+                                    <div class="face top">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face side-0">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face floor">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face side-a"></div>
+                                    <div class="face side-b"></div>
+                                    <div class="face side-1">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endwith %}
+                    {% elif progreso_mes_actual.porcentaje >= 61 %}
+                        {% with p_class=p_str color='green-light' %}
+                            <div class="chart mx-auto" style="width: 80%;">
+                                <div class="bar {{ color }}">
+                                    <div class="face top">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face side-0">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face floor">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face side-a"></div>
+                                    <div class="face side-b"></div>
+                                    <div class="face side-1">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endwith %}
+                    {% elif progreso_mes_actual.porcentaje >= 31 %}
+                        {% with p_class=p_str color='orange' %}
+                            <div class="chart mx-auto" style="width: 80%;">
+                                <div class="bar {{ color }}">
+                                    <div class="face top">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face side-0">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face floor">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face side-a"></div>
+                                    <div class="face side-b"></div>
+                                    <div class="face side-1">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endwith %}
+                    {% else %}
+                        {% with p_class=p_str color='red' %}
+                            <div class="chart mx-auto" style="width: 80%;">
+                                <div class="bar {{ color }}">
+                                    <div class="face top">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face side-0">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face floor">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                    <div class="face side-a"></div>
+                                    <div class="face side-b"></div>
+                                    <div class="face side-1">
+                                        <div class="growing-bar bar-{{ p_class }}"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endwith %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+    </div>
+    <!-- === FIN: PANEL DE PROGRESO 3D === -->
+
+    <!-- Tarjeta de Resumen General del Requerimiento -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header">
+            <h3>Resumen del Requerimiento: {{ requerimiento.agente }}</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4"><strong>Tipo:</strong> {{ requerimiento.get_tipo_monitoreo_display }}</div>
+                <div class="col-md-4"><strong>Meta Anual:</strong> {{ requerimiento.cantidad_total }} unidades</div>
+                <div class="col-md-4"><strong>Meta Mensual (aprox):</strong> {{ requerimiento.meta_mensual|floatformat:2 }} unidades</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Columna del Formulario para Nuevos Registros -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5><i data-feather="plus-circle" class="me-2"></i>Añadir Consumo</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'administracion:registrar_avance' requerimiento.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.mes.id_for_label }}" class="form-label">{{ form.mes.label }}</label>
+                            {{ form.mes }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.año.id_for_label }}" class="form-label">{{ form.año.label }}</label>
+                            {{ form.año }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.cantidad_consumida.id_for_label }}" class="form-label">{{ form.cantidad_consumida.label }}</label>
+                            {{ form.cantidad_consumida }}
+                        </div>
+                        <hr>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Añadir Registro</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna del Historial de Registros -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5><i data-feather="clock" class="me-2"></i>Historial de Adiciones</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Período</th>
+                                    <th class="text-center">Cantidad Añadida</th>
+                                    <th>Registrado por</th>
+                                    <th>Fecha de Registro</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for registro in historial %}
+                                <tr>
+                                    <td class="fw-bold">{{ registro.get_mes_display }}/{{ registro.año }}</td>
+                                    <td class="text-center">{{ registro.cantidad_consumida }}</td>
+                                    <td>{{ registro.registrado_por.username|default:"N/A" }}</td>
+                                    <td>{{ registro.fecha_registro|date:"d/m/Y H:i" }}</td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn-icon-action secondary" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#editModal"
+                                                data-url="{% url 'administracion:editar_registro' registro.pk %}"
+                                                data-mes="{{ registro.mes }}"
+                                                data-anio="{{ registro.año }}"
+                                                data-cantidad="{{ registro.cantidad_consumida }}"
+                                                title="Editar Registro">
+                                            <i data-feather="edit-2"></i>
+                                        </button>
+                                        <button type="button" class="btn-icon-action danger" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteModal"
+                                                data-url="{% url 'administracion:eliminar_registro' registro.pk %}"
+                                                data-name="{{ registro.get_mes_display }}/{{ registro.año }}"
+                                                title="Eliminar Registro">
+                                            <i data-feather="trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center p-4">Aún no hay registros de consumo para este requerimiento.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Editar Registro -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editModalLabel">Editar Registro de Consumo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editForm" method="post">
+          {% csrf_token %}
+          <div class="modal-body">
+                <div class="mb-3">
+                    <label for="id_mes_edit" class="form-label">{{ form.mes.label }}</label>
+                    {{ form.mes }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_año_edit" class="form-label">{{ form.año.label }}</label>
+                    {{ form.año }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_cantidad_consumida_edit" class="form-label">{{ form.cantidad_consumida.label }}</label>
+                    {{ form.cantidad_consumida }}
+                </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Confirmar Eliminación -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="deleteModalLabel">Confirmar Eliminación</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>¿Estás seguro de que quieres eliminar este registro de adición?</p>
+        <p class="text-muted">Esta acción no se puede deshacer.</p>
+      </div>
+      <div class="modal-footer">
+        <form id="deleteForm" method="post">
+          {% csrf_token %}
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- Lógica para el Modal de Edición ---
+    const editModal = document.getElementById('editModal');
+    const editForm = document.getElementById('editForm');
+    
+    const mesEditInput = editModal.querySelector('#id_mes');
+    const anioEditInput = editModal.querySelector('#id_año');
+    const cantidadEditInput = editModal.querySelector('#id_cantidad_consumida');
+
+    editModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        
+        const url = button.getAttribute('data-url');
+        const mes = button.getAttribute('data-mes');
+        const anio = button.getAttribute('data-anio');
+        const cantidad = button.getAttribute('data-cantidad');
+        
+        editForm.action = url;
+        
+        mesEditInput.value = mes;
+        anioEditInput.value = anio;
+        cantidadEditInput.value = cantidad;
+    });
+
+    // --- Lógica para el Modal de Eliminación ---
+    const deleteModal = document.getElementById('deleteModal');
+    const deleteForm = document.getElementById('deleteForm');
+    const deleteRecordName = document.getElementById('deleteRecordName');
+
+    deleteModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const url = button.getAttribute('data-url');
+        const name = button.getAttribute('data-name');
+        
+        deleteForm.action = url;
+        // Si el elemento #deleteRecordName existe, actualízalo.
+        if (deleteRecordName) {
+            deleteRecordName.textContent = name;
+        }
+    });
+
+    // Pequeño ajuste para los IDs y 'for' de los labels en el modal
+    mesEditInput.id = 'id_mes_edit';
+    anioEditInput.id = 'id_año_edit';
+    cantidadEditInput.id = 'id_cantidad_consumida_edit';
+    editModal.querySelector('label[for=id_mes]').setAttribute('for', 'id_mes_edit');
+    editModal.querySelector('label[for=id_año]').setAttribute('for', 'id_año_edit');
+    editModal.querySelector('label[for=id_cantidad_consumida]').setAttribute('for', 'id_cantidad_consumida_edit');
+});
+</script>
+{% endblock %}

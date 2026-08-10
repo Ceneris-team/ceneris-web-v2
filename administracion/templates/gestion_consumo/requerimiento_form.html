@@ -1,0 +1,57 @@
+<!-- administracion/templates/administracion/requerimiento_form.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}{{ form_title }}{% endblock %}
+<!-- Usamos tu plantilla base para mantener la consistencia visual -->
+<!-- NOTA: Asegúrate de que la ruta a tu 'base.html' sea la correcta. -->
+<!-- Podría ser 'base.html', 'admin/base.html', etc. Ajústalo si es necesario. -->
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h3>{{ titulo }}</h3>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %} <!-- Token de seguridad de Django, ¡esencial! -->
+
+                <!-- Django renderizará los campos del formulario aquí. -->
+                <!-- Usamos un bucle para mostrarlos de forma ordenada -->
+                <div class="row">
+                    {% for field in form %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            
+                            <!-- Hacemos que los campos de fecha usen el tipo 'date' de HTML5 -->
+                            {% if field.name == 'fecha_inicio' or field.name == 'fecha_fin' %}
+                                <input type="date" name="{{ field.name }}" class="form-control" 
+                                       id="{{ field.id_for_label }}" 
+                                       value="{{ field.value|date:'Y-m-d'|default:'' }}" required>
+                            {% else %}
+                                {{ field.as_widget.attrs.class }}
+                                <input type="{{ field.field.widget.input_type }}" 
+                                       name="{{ field.name }}" 
+                                       class="form-control" 
+                                       id="{{ field.id_for_label }}"
+                                       value="{{ field.value|default:'' }}" required>
+                            {% endif %}
+
+                            {% if field.help_text %}
+                                <small class="form-text text-muted">{{ field.help_text }}</small>
+                            {% endif %}
+                            {% for error in field.errors %}
+                                <div class="alert alert-danger mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <hr>
+                
+                <button type="submit" class="btn btn-primary">{{ boton_texto }}</button>
+                <a href="#" class="btn btn-secondary">Cancelar</a> <!-- Cambiaremos este '#' más adelante -->
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,270 @@
+<!-- recursoshumanos/templates/recursoshumanos/proyectos/asignacion_masiva_proyectos.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+{% block title %}Asignación a Subproyectos{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/filtros_maestros.css' %}">
+    <style>
+        .assignment-board {
+            display: flex;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .assignment-column {
+            flex: 1;
+            background: #f4f7f9;
+            padding: 1.5rem;
+            border-radius: 10px;
+        }
+        .assignment-column h3 {
+            margin-top: 0;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        .worker-list {
+            min-height: 400px;
+            max-height: 60vh;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        .worker-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            margin-bottom: 1rem;
+            cursor: grab;
+        }
+        .worker-card:active {
+            cursor: grabbing;
+        }
+        .worker-card strong {
+            display: block;
+            color: #333;
+        }
+        .worker-card span {
+            font-size: 0.85rem;
+            color: #888;
+        }
+        .sortable-ghost {
+            background: #d4edda;
+            border: 2px dashed #155724;
+            opacity: 0.7;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>Asignación de Trabajadores a Subproyectos</h1>
+        <a href="{% url 'recursoshumanos:gestion_proyectos' %}" class="btn-secondary">&larr; Volver a Tarjetas</a>
+    </div>
+
+    <div class="master-filter-bar">
+        <form method="get" class="form-filters-master">
+            <div class="filter-group">
+                <label for="proyecto_padre_id">Proyecto Principal</label>
+                <select name="proyecto_padre_id" id="proyecto_padre_id">
+                    <option value="">-- Selecciona un Proyecto --</option>
+                    {% for proyecto in proyectos_padre %}
+                        <option value="{{ proyecto.pk }}" {% if selected_proyecto_padre_id == proyecto.pk %}selected{% endif %}>
+                            {{ proyecto.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="subproyecto_id">Subproyecto / Área</label>
+                <select name="subproyecto_id" id="subproyecto_id" {% if not selected_proyecto_padre_id %}disabled{% endif %}>
+                    <option value="">-- Selecciona un Subproyecto --</option>
+                    {# Este selector se llena con JavaScript #}
+                </select>
+            </div>
+        </form>
+    </div>
+
+    {% if selected_subproyecto %}
+        <div class="assignment-board">
+            <!-- Columna de Trabajadores Disponibles -->
+            <div class="assignment-column">
+                <h3>Trabajadores Disponibles ({{ trabajadores_disponibles.count }})</h3>
+                <input type="text" id="disponibles-search" class="search-input" placeholder="Buscar trabajador...">
+                <div id="disponibles-list" class="worker-list">
+                    {% for trabajador in trabajadores_disponibles %}
+                    <div class="worker-card" data-id="{{ trabajador.dni }}">
+                        <strong>{{ trabajador }}</strong>
+                        
+                        <div style="font-size: 0.85rem; color: #666; margin-top: 4px;">
+                            {% for asignacion in trabajador.asignaciones.all %}
+                                <div style="border-bottom: 1px solid #eee; padding: 2px 0;">
+                                    <span style="font-weight: 600; color: #d45b04;">{{ asignacion.proyecto.nombre }}:</span> 
+                                    {{ asignacion.cargo.nombre|default:"Sin Cargo" }}
+                                </div>
+                            {% empty %}
+                                <span style="color: #999; font-style: italic;">Sin asignaciones activas</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <!-- Columna de Trabajadores Asignados -->
+            <div class="assignment-column">
+                <h3>Asignados a {{ selected_subproyecto.nombre }} ({{ trabajadores_asignados.count }})</h3>
+                <input type="text" id="asignados-search" class="search-input" placeholder="Buscar trabajador...">
+                <div id="asignados-list" class="worker-list" data-proyecto-id="{{ selected_subproyecto.pk }}">
+                    {% for trabajador in trabajadores_asignados %}
+                    <div class="worker-card" data-id="{{ trabajador.dni }}">
+                        <strong>{{ trabajador }}</strong>
+                        <span>Sin Cargo (Editar)</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info" style="margin-top: 2rem;">
+            Selecciona un proyecto principal y luego un subproyecto para empezar a asignar personal.
+        </div>
+    {% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- 1. LÓGICA DE SELECTORES DEPENDIENTES ---
+        const proyectoPadreSelect = document.getElementById('proyecto_padre_id');
+        const subproyectoSelect = document.getElementById('subproyecto_id');
+        const subproyectosMap = JSON.parse('{{ subproyectos_map_json|safe }}');
+
+        function updateSubproyectos() {
+            const padreId = proyectoPadreSelect.value;
+            // Limpiamos el selector de subproyectos
+            subproyectoSelect.innerHTML = '<option value="">-- Selecciona un Subproyecto --</option>';
+            
+            if (padreId && subproyectosMap[padreId]) {
+                // Si hay un padre seleccionado y tiene subproyectos, los añadimos
+                subproyectoSelect.disabled = false;
+                subproyectosMap[padreId].forEach(function(sub) {
+                    const option = new Option(`${sub.nombre} (${sub.codigo})`, sub.id);
+                    subproyectoSelect.add(option);
+                });
+            } else {
+                // Si no, lo deshabilitamos
+                subproyectoSelect.disabled = true;
+            }
+        }
+
+        proyectoPadreSelect.addEventListener('change', function() {
+            // Cuando cambia el padre, solo actualizamos las opciones del hijo
+            updateSubproyectos();
+        });
+
+        subproyectoSelect.addEventListener('change', function() {
+            // Cuando se selecciona un subproyecto, enviamos el formulario para cargar la página
+            if (this.value) {
+                this.form.submit();
+            }
+        });
+
+        // Lógica para mantener los valores al recargar la página
+        updateSubproyectos();
+        const subproyectoSeleccionado = "{{ selected_subproyecto_id|default:'' }}";
+        if (subproyectoSeleccionado) {
+            subproyectoSelect.value = subproyectoSeleccionado;
+        }
+
+        // --- 2. LÓGICA DE DRAG AND DROP (SORTABLEJS) ---
+        const disponiblesList = document.getElementById('disponibles-list');
+        const asignadosList = document.getElementById('asignados-list');
+        
+        if (disponiblesList && asignadosList) {
+            const csrfToken = '{{ csrf_token }}';
+            const updateUrl = `{% url 'recursoshumanos:actualizar_asignacion_proyecto' %}`;
+
+            function updateAssignment(workerDni, newProjectId, targetListId) {
+                // Actualiza el contador de la lista
+                const listElement = document.getElementById(targetListId);
+                const countElement = listElement.parentElement.querySelector('h3');
+                const currentCount = parseInt(countElement.textContent.match(/\((\d+)\)/)[1]);
+                
+                // Determina si estamos añadiendo o quitando
+                const isAdding = targetListId === 'asignados-list';
+                const newCount = isAdding ? currentCount + 1 : currentCount - 1;
+
+                // Actualizamos el texto
+                countElement.textContent = countElement.textContent.replace(/\(\d+\)/, `(${newCount})`);
+
+
+                fetch(updateUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                    body: JSON.stringify({ worker_dni: workerDni, new_proyecto_id: newProjectId })
+                })
+                .then(response => {
+                    if (!response.ok) { console.error('Error al actualizar la asignación.'); }
+                });
+            }
+
+            new Sortable(disponiblesList, {
+                group: 'shared-projects',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onAdd: function (evt) {
+                    updateAssignment(evt.item.dataset.id, null, 'disponibles-list'); // Desasignar
+                    updateCounter('asignados-list', -1);
+                }
+            });
+            
+            new Sortable(asignadosList, {
+                group: 'shared-projects',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onAdd: function (evt) {
+                    const workerDni = evt.item.dataset.id;
+                    const newProjectId = evt.to.dataset.proyectoId;
+                    updateAssignment(workerDni, newProjectId, 'asignados-list'); // Asignar
+                    updateCounter('disponibles-list', -1);
+                }
+            });
+            
+            function updateCounter(listId, change) {
+                const h3 = document.querySelector(`#${listId}`).previousElementSibling;
+                const match = h3.innerText.match(/\((\d+)\)/);
+                if (match) {
+                    let count = parseInt(match[1]);
+                    count += change;
+                    h3.innerText = h3.innerText.replace(/\(\d+\)/, `(${count})`);
+                }
+            }
+        }
+        
+        // --- 3. LÓGICA DEL BUSCADOR ---
+        function setupSearch(inputId, listId) {
+            document.getElementById(inputId).addEventListener('keyup', function() {
+                const filter = this.value.toLowerCase();
+                const cards = document.querySelectorAll(`#${listId} .worker-card`);
+                cards.forEach(card => {
+                    const text = card.textContent.toLowerCase();
+                    card.style.display = text.includes(filter) ? '' : 'none';
+                });
+            });
+        }
+        setupSearch('disponibles-search', 'disponibles-list');
+        setupSearch('asignados-search', 'asignados-list');
+    });
+    </script>
+{% endblock %}

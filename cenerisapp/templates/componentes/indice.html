@@ -1,0 +1,28 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+ 
+{% block main_content %}
+    <div class="header-container">
+        <h1>{{ titulo }}</h1>
+    </div>
+ 
+    <div class="card-deck">
+        <!-- Tarjeta para Sensores -->
+        <a href="{% url 'lista_sensores' %}" class="card-link">
+            <div class="card">
+                <div class="card-icon">🌡️</div>
+                <h3 class="card-title">Ver Sensores</h3>
+                <p class="card-description">Consulta el inventario detallado de todos los sensores, incluyendo estado, calibración y garantía.</p>
+            </div>
+        </a>
+ 
+        <!-- Tarjeta para Otros Componentes -->
+        <a href="{% url 'lista_otros_componentes' %}" class="card-link">
+            <div class="card">
+                <div class="card-icon">📦</div>
+                <h3 class="card-title">Ver Otros Componentes</h3>
+                <p class="card-description">Revisa el resto de componentes del inventario como mobiliario, herramientas y otros equipos.</p>
+            </div>
+        </a>
+    </div>
+{% endblock %}

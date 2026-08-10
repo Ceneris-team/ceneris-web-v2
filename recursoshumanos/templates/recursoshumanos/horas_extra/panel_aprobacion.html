@@ -1,0 +1,339 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Aprobación de Horas Extra{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <style>
+        .page-header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 25px;
+            padding-top: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+
+        .header-titles h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: #0f172a;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .back-link:hover { color: #3b82f6; transform: translateX(-4px); }
+        .back-link svg { width: 18px; height: 18px; }
+
+        /* Estilos específicos para simular badges */
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .st-blue { background-color: #cfe2ff; color: #084298; }
+        .st-green { background-color: #d1e7dd; color: #0f5132; }
+        .st-red { background-color: #f8d7da; color: #842029; }
+        
+        /* Estilos para acciones con iconos */
+        .btn-icon-action {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            transition: transform 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-icon-action:hover { transform: scale(1.1); }
+        .btn-icon-action.success { color: #198754; } /* Verde */
+        .btn-icon-action.danger { color: #dc3545; }  /* Rojo */
+
+        /* Texto pequeño de aprobaciones previas */
+        .approval-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 0.75rem;
+        }
+        .approval-info span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header-container">
+        <div class="header-titles">
+            <a href="{% url 'recursoshumanos:gestion_empleados' %}" class="back-link">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+                Volver al Panel
+            </a>
+            <h1>Panel de Aprobación de Horas Extra</h1>
+            <p style="margin: 4px 0 0; color: #64748b;">Gestiona las solicitudes pendientes de tu aprobación.</p>
+        </div>
+    </div>
+
+    <h4 style="margin: 0 0 12px; color: #334155;">Solicitudes Pendientes de Aprobación</h4>
+
+    <!-- TABLA PENDIENTES -->
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha H.E.</th>
+                <th>Trabajador</th>
+                <th>Horas</th>
+                <th>Justificación</th>
+                
+                {# COLUMNA VISIBLE SOLO PARA GERENCIA #}
+                {% if is_gerente %}
+                <th>Aprobaciones Previas</th>
+                {% endif %}
+                
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for solicitud in solicitudes_pendientes %}
+            <tr>
+                <td>{{ solicitud.fecha_horas_extra|date:"d/m/Y" }}</td>
+                <td><strong>{{ solicitud.trabajador }}</strong></td>
+                <td>
+                    <span class="status-badge st-blue">{{ solicitud.cantidad_horas }} hrs</span>
+                </td>
+                <td>
+                    <span style="color: #6c757d;">{{ solicitud.justificacion|truncatechars:50 }}</span>
+                </td>
+
+                {# CONTENIDO DE LA COLUMNA DE GERENCIA #}
+                {% if is_gerente %}
+                <td>
+                    <div class="approval-info">
+                        <!-- Operador -->
+                        {% if solicitud.aprobado_por_operador %}
+                        <span style="color: #198754;">
+                            <i data-feather="check" style="width:12px; height:12px;"></i> Op: {{ solicitud.aprobado_por_operador.first_name }}
+                        </span>
+                        {% endif %}
+                        
+                        <!-- Admin / RRHH -->
+                        {% if solicitud.aprobado_por_admin %}
+                        <span style="color: #0d6efd;">
+                            <i data-feather="check" style="width:12px; height:12px;"></i> Adm: {{ solicitud.aprobado_por_admin.first_name }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </td>
+                {% endif %}
+
+                <td style="text-align: center;">
+                    <div class="table-actions-container">
+                        
+                        <!-- BOTÓN APROBAR -->
+                        <form action="{% url 'recursoshumanos:procesar_solicitud_he' solicitud.pk 'aprobar' %}" method="post" style="display: inline;" id="form-approve-{{ solicitud.pk }}">
+                            {% csrf_token %}
+                            <button type="button" class="btn-icon-action success" title="Aprobar" onclick="confirmAction('form-approve-{{ solicitud.pk }}', 'aprobar')">
+                                <i data-feather="check-circle"></i>
+                            </button>
+                        </form>
+
+                        <!-- BOTÓN RECHAZAR (Abre SweetAlert) -->
+                        <!-- Guardamos la URL de rechazo en un atributo data para usarla en JS -->
+                        <button type="button" 
+                                class="btn-icon-action danger" 
+                                title="Rechazar" 
+                                onclick="rejectRequest('{% url 'recursoshumanos:procesar_solicitud_he' solicitud.pk 'rechazar' %}')">
+                            <i data-feather="x-circle"></i>
+                        </button>
+
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{% if is_gerente %}6{% else %}5{% endif %}" style="text-align: center; padding: 30px; color: #6c757d;">
+                    <i data-feather="check-square" style="width: 40px; height: 40px; margin-bottom: 10px;"></i><br>
+                    ¡Todo al día! No tienes solicitudes pendientes.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="height: 28px;"></div>
+
+    <h4 style="margin: 0 0 12px; color: #334155;">Historial (Aprobadas / Rechazadas)</h4>
+    <p style="margin: 0 0 14px; color: #64748b; font-size: 0.9rem;">Total de registros: {{ historial_total }}</p>
+
+    <!-- TABLA HISTORIAL -->
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha H.E.</th>
+                <th>Trabajador</th>
+                <th>Horas</th>
+                <th>Justificación</th>
+                <th>Estado</th>
+                <th>Atendido por</th>
+                <th>Motivo Rechazo</th>
+                <th>Fecha Solicitud</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for solicitud in historial_page_obj %}
+            <tr>
+                <td>{{ solicitud.fecha_horas_extra|date:"d/m/Y" }}</td>
+                <td><strong>{{ solicitud.trabajador }}</strong></td>
+                <td><span class="status-badge st-blue">{{ solicitud.cantidad_horas }} hrs</span></td>
+                <td><span style="color: #6c757d;">{{ solicitud.justificacion|truncatechars:65 }}</span></td>
+                <td>
+                    {% if solicitud.estado == 'APROBADO' %}
+                        <span class="status-badge st-green">Aprobado</span>
+                    {% else %}
+                        <span class="status-badge st-red">Rechazado</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if solicitud.aprobado_por_gerente %}
+                        {{ solicitud.aprobado_por_gerente.get_full_name|default:solicitud.aprobado_por_gerente.username }}
+                    {% elif solicitud.aprobado_por_admin %}
+                        {{ solicitud.aprobado_por_admin.get_full_name|default:solicitud.aprobado_por_admin.username }}
+                    {% elif solicitud.aprobado_por_operador %}
+                        {{ solicitud.aprobado_por_operador.get_full_name|default:solicitud.aprobado_por_operador.username }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if solicitud.motivo_rechazo %}
+                        {{ solicitud.motivo_rechazo|truncatechars:55 }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>{{ solicitud.creado_en|date:"d/m/Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 24px; color: #6c757d;">
+                    No hay historial de solicitudes aprobadas o rechazadas.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if historial_page_obj.paginator.num_pages > 1 %}
+    <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:16px; flex-wrap:wrap;">
+        {% if historial_page_obj.has_previous %}
+            <a class="btn btn-sm btn-outline-secondary" href="?historial_page={{ historial_page_obj.previous_page_number }}">Anterior</a>
+        {% endif %}
+
+        <span style="font-size: 0.9rem; color: #475569;">
+            Página {{ historial_page_obj.number }} de {{ historial_page_obj.paginator.num_pages }}
+        </span>
+
+        {% if historial_page_obj.has_next %}
+            <a class="btn btn-sm btn-outline-secondary" href="?historial_page={{ historial_page_obj.next_page_number }}">Siguiente</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Input oculto para obtener el CSRF token en JS -->
+    <input type="hidden" id="csrf_token_global" value="{{ csrf_token }}">
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script>
+        // Inicializar iconos
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+
+        // 1. Confirmación simple para Aprobar
+        function confirmAction(formId, actionType) {
+            Swal.fire({
+                title: '¿Confirmar Aprobación?',
+                text: "Se registrará tu aprobación para esta solicitud.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, aprobar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(formId).submit();
+                }
+            });
+        }
+
+        // 2. Lógica avanzada para Rechazar (Input de texto)
+        async function rejectRequest(urlAction) {
+            const csrfToken = document.getElementById('csrf_token_global').value;
+
+            const { value: text, isDismissed } = await Swal.fire({
+                title: 'Rechazar Solicitud',
+                input: 'textarea',
+                inputLabel: 'Motivo del rechazo',
+                inputPlaceholder: 'Escribe aquí la razón...',
+                inputAttributes: {
+                    'aria-label': 'Escribe la razón del rechazo'
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Rechazar',
+                confirmButtonColor: '#dc3545',
+                cancelButtonText: 'Cancelar',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return '¡Debes escribir un motivo para rechazar!';
+                    }
+                }
+            });
+
+            if (text && !isDismissed) {
+                // Creamos un formulario dinámicamente para enviar el POST con el motivo
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = urlAction;
+
+                // Campo CSRF
+                const hiddenCsrf = document.createElement('input');
+                hiddenCsrf.type = 'hidden';
+                hiddenCsrf.name = 'csrfmiddlewaretoken';
+                hiddenCsrf.value = csrfToken;
+                form.appendChild(hiddenCsrf);
+
+                // Campo Motivo
+                const hiddenMotivo = document.createElement('input');
+                hiddenMotivo.type = 'hidden';
+                hiddenMotivo.name = 'motivo_rechazo';
+                hiddenMotivo.value = text;
+                form.appendChild(hiddenMotivo);
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    </script>
+{% endblock %}

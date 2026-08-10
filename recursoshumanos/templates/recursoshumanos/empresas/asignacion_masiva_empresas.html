@@ -1,0 +1,183 @@
+<!-- recursoshumanos/templates/recursoshumanos/empresas/asignacion_masiva_empresas.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+{% block title %}Asignación a Empresas{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/custom-select.css' %}">
+    <style>
+        .assignment-board { display: flex; gap: 2rem; margin-top: 2rem; }
+        .assignment-column { flex: 1; background: #f4f7f9; padding: 1.5rem; border-radius: 10px; }
+        .assignment-column h3 { margin-top: 0; border-bottom: 2px solid #ddd; padding-bottom: 1rem; font-size: 1.2rem; }
+        .worker-list { min-height: 400px; }
+        .worker-card { background: white; padding: 1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; cursor: grab; }
+        .worker-card:active { cursor: grabbing; }
+        .worker-card strong { display: block; color: #333; }
+        .worker-card span { font-size: 0.85rem; color: #888; }
+        .sortable-ghost { background: #d4edda; border: 2px dashed #155724; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>Asignación de Trabajadores a Empresas</h1>
+        <a href="{% url 'recursoshumanos:gestion_empresas' %}" class="btn-secondary">&larr; Volver a Tarjetas</a>
+    </div>
+
+    <!-- Barra de Selección con el nuevo estilo -->
+    <div class="master-filter-bar">
+        <form method="get" id="empresa-select-form">
+            <div class="custom-select-wrapper">
+                <div class="custom-select">
+                    <div class="custom-select__trigger">
+                        <span id="selected-value">
+                            {% if selected_empresa %}{{ selected_empresa.nombre }}{% else %}-- Selecciona una Empresa --{% endif %}
+                        </span>
+                    </div>
+                    <select name="empresa_id" id="empresa-selector">
+                        <option value="">-- Selecciona una Empresa --</option>
+                        {% for empresa in todos_los_empresas %}
+                            <option value="{{ empresa.pk }}" {% if selected_empresa and selected_empresa.pk == empresa.pk %}selected{% endif %}>
+                                {{ empresa.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if selected_empresa %}
+        <div class="assignment-board">
+            <!-- Columna de Disponibles -->
+            <div class="assignment-column">
+                <h3>Trabajadores sin Empresa ({{ trabajadores_disponibles.count }})</h3>
+                <input type="text" id="disponibles-search" class="search-input" placeholder="Buscar trabajador..." style="margin-bottom: 1rem;">
+                <div id="disponibles-list" class="worker-list">
+                    {% for trabajador in trabajadores_disponibles %}
+                    <div class="worker-card" data-id="{{ trabajador.dni }}" title="Proyectos: {% for asign in trabajador.asignaciones.all %}{{ asign.proyecto.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                        <strong>{{ trabajador }}</strong>
+                        <span>
+                            {% with proyectos=trabajador.asignaciones.all %}
+                                {% if proyectos.count == 1 %}
+                                    {{ proyectos.0.proyecto.nombre }}
+                                {% elif proyectos.count > 1 %}
+                                    {{ proyectos.count }} proyectos
+                                {% else %}
+                                    Sin asignaciones
+                                {% endif %}
+                            {% endwith %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Columna de Asignados -->
+            <div class="assignment-column">
+                <h3>Asignados a {{ selected_empresa.nombre }} ({{ trabajadores_asignados.count }})</h3>
+                <input type="text" id="asignados-search" class="search-input" placeholder="Buscar trabajador..." style="margin-bottom: 1rem;">
+                <div id="asignados-list" class="worker-list" data-empresa-id="{{ selected_empresa.pk }}">
+                    {% for trabajador in trabajadores_asignados %}
+                    <div class="worker-card" data-id="{{ trabajador.dni }}" title="Proyectos: {% for asign in trabajador.asignaciones.all %}{{ asign.proyecto.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                        <strong>{{ trabajador }}</strong>
+                        <span>
+                            {% with proyectos=trabajador.asignaciones.all %}
+                                {% if proyectos.count == 1 %}
+                                    {{ proyectos.0.proyecto.nombre }}
+                                {% elif proyectos.count > 1 %}
+                                    {{ proyectos.count }} proyectos
+                                {% else %}
+                                    Sin asignaciones
+                                {% endif %}
+                            {% endwith %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info">Selecciona una empresa para empezar a asignar personal.</div>
+    {% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- LÓGICA DEL SELECTOR PERSONALIZADO ---
+        const selectWrapper = document.querySelector('.custom-select-wrapper');
+        const select = document.getElementById('empresa-selector');
+
+        if (selectWrapper && select) {
+            selectWrapper.addEventListener('click', function(event) {
+                if (event.target.tagName !== 'SELECT') { this.classList.toggle('open'); }
+            });
+            select.addEventListener('change', function() {
+                this.form.submit();
+            });
+            document.addEventListener('click', function(event) {
+                if (!selectWrapper.contains(event.target)) {
+                    selectWrapper.classList.remove('open');
+                }
+            });
+        }
+
+        // --- LÓGICA DE DRAG AND DROP (CORREGIDA) ---
+        const disponiblesList = document.getElementById('disponibles-list');
+        const asignadosList = document.getElementById('asignados-list');
+        
+        if (disponiblesList && asignadosList) {
+            const csrfToken = '{{ csrf_token }}';
+            const updateUrl = `{% url 'recursoshumanos:actualizar_asignacion_empresa' %}`;
+
+            function updateAssignment(workerDni, newEmpresaId) {
+                fetch(updateUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                    body: JSON.stringify({ worker_dni: workerDni, new_empresa_id: newEmpresaId })
+                });
+            }
+
+            // Cuando una tarjeta ENTRA en la lista de DISPONIBLES, se desasigna.
+            new Sortable(disponiblesList, {
+                group: 'shared-empresas',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onAdd: function (evt) {
+                    const workerDni = evt.item.dataset.id;
+                    updateAssignment(workerDni, null); // Desasignar
+                }
+            });
+            
+            // Cuando una tarjeta ENTRA en la lista de ASIGNADOS, se asigna.
+            new Sortable(asignadosList, {
+                group: 'shared-empresas',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onAdd: function (evt) {
+                    const workerDni = evt.item.dataset.id;
+                    const newEmpresaId = evt.to.dataset.empresaId; // Lee el ID de la empresa de la lista de destino
+                    updateAssignment(workerDni, newEmpresaId); // Asignar
+                }
+            });
+            
+            // --- LÓGICA DEL BUSCADOR ---
+            function setupSearch(inputId, listId) {
+                $('#' + inputId).on('keyup', function() {
+                    var value = $(this).val().toLowerCase();
+                    $('#' + listId + ' .worker-card').filter(function() {
+                        $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                    });
+                });
+            }
+            setupSearch('disponibles-search', 'disponibles-list');
+            setupSearch('asignados-search', 'asignados-list');
+        }
+    });
+    </script>
+{% endblock %}

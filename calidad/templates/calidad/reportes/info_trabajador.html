@@ -1,0 +1,268 @@
+<!-- calidad/templates/calidad/info_trabajador.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Información de {{ trabajador|default:"Trabajador" }}{% endblock %}
+
+{% block content %}
+    <div class="profile-header">
+        <h1>Información general del trabajador</h1>
+        
+    </div>
+
+    {# Mostramos el buscador solo si no se ha encontrado un trabajador #}
+    {% if not trabajador %}
+        <div class="filter-bar">
+            <form method="get" class="form-filters">
+                <label for="dni"><strong>Buscar por DNI:</strong></label>
+                <input type="text" name="dni" id="dni" value="{{ dni_buscado }}" placeholder="Ingrese DNI..." style="width: 250px;">
+                <button type="submit">Buscar</button>
+            </form>
+        </div>
+    {% endif %}
+
+    {% if trabajador %}
+        <!-- Tarjeta de Perfil del Trabajador -->
+        <div class="profile-card">
+            <div class="profile-avatar">
+                <!-- Usamos un placeholder genérico para el avatar -->
+                <img src="https://ui-avatars.com/api/?name={{ trabajador.nombre|first }}{{ trabajador.apellido|first }}&background=d45b04&color=fff&size=150" alt="Avatar">
+                <h2>{{ trabajador }}</h2>
+                <span class="puesto">{{ trabajador.puesto }}</span>
+            </div>
+            <div class="profile-details">
+                <div class="detail-item">
+                    <div class="icon"><i data-feather="hash"></i></div>
+                    <div class="info">
+                        <span>{{ trabajador.dni }}</span>
+                        <span class="label">DNI</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <div class="icon"><i data-feather="briefcase"></i></div>
+                    <div class="info">
+                        <span>{{ trabajador.empresa }}</span>
+                        <span class="label">Empresa</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <div class="icon"><i data-feather="calendar"></i></div>
+                    <div class="info">
+                        <!-- CAMBIO REALIZADO AQUÍ: de 'fecha_inicio' a 'fecha_ingreso' -->
+                        <span>{{ trabajador.fecha_ingreso|date:"d M, Y"|default:"No registrada" }}</span>
+                        <span class="label">Fecha de Ingreso</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <div class="icon"><i data-feather="mail"></i></div>
+                    <div class="info">
+                        <span>{{ trabajador.email }}</span>
+                        <span class="label">Correo Electrónico</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <div class="icon"><i data-feather="phone"></i></div>
+                    <div class="info">
+                        <span>{{ trabajador.telefono|default:"No registrado" }}</span>
+                        <span class="label">Teléfono</span>
+                    </div>
+                </div>
+                 <div class="detail-item">
+                    <div class="icon"><i data-feather="tool"></i></div>
+                    <div class="info">
+                        <span>{{ trabajador.area }}</span>
+                        <span class="label">Área</span>
+                    </div>
+                </div>
+                 <div class="detail-item">
+                    <div class="icon"><i data-feather="map-pin"></i></div>
+                    <div class="info">
+                        <span>{{ trabajador.sede|default:"No asignada" }}</span>
+                        <span class="label">Sede</span>
+                    </div>
+                </div>
+                 <div class="detail-item">
+                    <div class="icon"><i data-feather="check-circle"></i></div>
+                    <div class="info">
+                        <span>{{ trabajador.aptitud_actual }}</span>
+                        <span class="label">Aptitud Actual</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-title">Resumen del último EMO realizado</h2>
+        
+        {% if ultimo_emo_realizado %}
+            <div class="summary-card-emo">
+                <div class="summary-status status-{{ ultimo_emo_realizado.aptitud|slugify }}">
+                    <i data-feather="check-circle"></i>
+                    <span>{{ ultimo_emo_realizado.get_aptitud_display }}</span>
+                </div>
+                <div class="summary-details">
+                    <div class="detail-item-summary">
+                        <span class="label">Tipo de EMO</span>
+                        <span>{{ ultimo_emo_realizado.get_tipo_emo_display }}</span>
+                    </div>
+                    <div class="detail-item-summary">
+                        <span class="label">Empresa (EMO)</span>
+                        <span>
+                            {% if ultimo_emo_realizado.empresa %}
+                                {{ ultimo_emo_realizado.empresa.nombre }}
+                            {% elif ultimo_emo_realizado.proyecto and ultimo_emo_realizado.proyecto.empresa %}
+                                {{ ultimo_emo_realizado.proyecto.empresa.nombre }}
+                            {% else %}
+                                {{ trabajador.empresa.nombre|default:"No registrada" }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="detail-item-summary">
+                        <span class="label">Subproyecto / Área</span>
+                        <span>
+                            {% if ultimo_emo_realizado.subproyecto %}
+                                {{ ultimo_emo_realizado.subproyecto.codigo|default:ultimo_emo_realizado.subproyecto.nombre|default:"No registrada" }}
+                            {% else %}
+                                {{ trabajador.area.codigo|default:trabajador.area.nombre|default:"No registrada" }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <!-- ¡NUEVO DETALLE AÑADIDO! -->
+                    <div class="detail-item-summary">
+                        <span class="label">Hospital</span>
+                        <span>{{ ultimo_emo_realizado.lugar_examen|default:"No registrado" }}</span>
+                    </div>
+                    <div class="detail-item-summary">
+                        <span class="label">Fecha de realización</span>
+                        <span>{{ ultimo_emo_realizado.fecha_realizacion|date:"d M, Y" }}</span>
+                    </div>
+                    <div class="detail-item-summary">
+                        <span class="label">Fecha de vencimiento</span>
+                        <span>{{ ultimo_emo_realizado.fecha_vencimiento|date:"d M, Y" }}</span>
+                    </div>
+                    <div class="detail-item-summary">
+                        <span class="label">Estado de vigencia</span>
+                        <span>
+                            {% if ultimo_emo_realizado.esta_vencido %}Vencido
+                            {% elif ultimo_emo_realizado.esta_por_vencer %}Por Vencer
+                            {% else %}Vigente{% endif %}
+                        </span>
+                    </div>
+                </div>
+                {% if ultimo_emo_realizado.restriccion %}
+                <div class="summary-notes">
+                    <strong>Restricción:</strong> {{ ultimo_emo_realizado.restriccion }}
+                </div>
+                {% endif %}
+            </div>
+        {% else %}
+            <p>Este trabajador no tiene ningún EMO realizado en su historial.</p>
+        {% endif %}
+
+
+        <!-- Historial de EMOs -->
+        <h2 class="section-title">Historial Completo de EMOs</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tipo de EMO</th>
+                    <th>Empresa (EMO)</th>
+                    <th>Proyecto</th>
+                    <th>Subproyecto / Área</th>
+                    <th>Hospital</th>
+                    <th>Aptitud</th>
+                    <th>Fecha Realización</th>
+                    <th>Fecha Vencimiento</th>
+                    <th>Lectura</th>
+                    <th style="text-align: center;">Documentos</th>
+                    <th style="text-align: center;">Acciones</th> <!-- ¡NUEVA COLUMNA! -->
+                </tr>
+            </thead>
+            <tbody>
+                {% for emo in historial_emos %}
+                <tr class="
+                    {% if emo.estado == 'Programado' %}emo-programado{% endif %}
+                    {% if emo.esta_vencido %}emo-vencido{% endif %}
+                    {% if emo.esta_por_vencer %}emo-por-vencer{% endif %}
+                    {% if emo.esta_vigente %}emo-vigente{% endif %}
+                ">
+                    <td>{{ emo.tipo_emo|default:"N/A" }}</td>
+                    <td>
+                        {% if emo.empresa %}
+                            {{ emo.empresa.nombre }}
+                        {% elif emo.proyecto and emo.proyecto.empresa %}
+                            {{ emo.proyecto.empresa.nombre }}
+                        {% else %}
+                            {{ emo.trabajador.empresa.nombre|default:"N/A" }}
+                        {% endif %}
+                    </td>
+                    <td>{{ emo.proyecto.nombre|default:"N/A" }}</td>
+                    <td>
+                        {% if emo.subproyecto %}
+                            {{ emo.subproyecto.codigo|default:emo.subproyecto.nombre|default:"N/A" }}
+                        {% else %}
+                            {{ emo.trabajador.area.codigo|default:emo.trabajador.area.nombre|default:"N/A" }}
+                        {% endif %}
+                    </td>
+                    <td>{{ emo.lugar_examen|default:"--" }}</td>
+                    <td>{{ emo.get_aptitud_display }}</td>
+                    <td>{{ emo.fecha_realizacion|date:"d/m/Y"|default:"N/A" }}</td>
+                    <td>{{ emo.fecha_vencimiento|date:"d/m/Y"|default:"N/A" }}</td>
+                    <td>
+                        {% if emo.confirmado_por_habilitador %}
+                            <span class="lectura-si">Sí</span>
+                        {% else %}
+                            <span class="lectura-no">No</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        <div class="table-actions-container" style="justify-content: center;">
+                            {% if emo.archivo_pdf %}
+                                <a href="{{ emo.archivo_pdf.url }}" target="_blank" class="btn-icon-action view" title="Ver Informe Principal">
+                                    <i data-feather="file-text"></i>
+                                </a>
+                            {% endif %}
+
+                            {% if emo.archivo_subsana %}
+                                <a href="{{ emo.archivo_subsana.url }}" target="_blank" class="btn-icon-action approve" title="Ver Evidencia de Subsanación">
+                                    <i data-feather="check-circle"></i>
+                                </a>
+                            {% endif %}
+                       
+                            {% if emo.archivo_confirmacion %}
+                                <a href="{{ emo.archivo_confirmacion.url }}" target="_blank" class="btn-icon-action" style="background-color: #e2e6ea; color: #495057;" title="Ver Evidencia de Lectura">
+                                    <i data-feather="eye"></i>
+                                </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td style="text-align: center;">
+                        <div class="table-actions-container" style="justify-content: center;">
+                            {# Mostramos el botón de editar solo si el EMO está 'Realizado' #}
+                            {% if emo.estado == 'Realizado' %}
+                            <a href="{% url 'calidad:editar_emo' emo.id %}" class="btn-icon-action view" title="Editar este EMO">
+                                <i data-feather="edit-2"></i>
+                            </a>
+                            {% endif %}
+                            
+                            {# Botón Eliminar #}
+                            <form action="{% url 'calidad:eliminar_emo' emo.id %}" method="POST" style="display: inline-block; margin: 0;">
+                                {% csrf_token %}
+                                <!-- El onsubmit lanza la alerta de confirmación antes de enviar -->
+                                <button type="submit" 
+                                        class="btn-icon-action delete" 
+                                        title="Eliminar EMO y Controles"
+                                        onclick="return confirm('¿Estás SEGURO de eliminar este EMO?\n\nEsta acción es irreversible y borrará también:\n- Los controles de seguimiento asociados.\n- Los archivos adjuntos.')"
+                                        style="border: none; background: transparent; padding: 0; cursor: pointer;">
+                                    <!-- Usamos un color rojo para indicar peligro -->
+                                    <i data-feather="trash-2" style="color: #dc3545;"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="11" style="text-align: center;">No hay EMOs registrados para este trabajador.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

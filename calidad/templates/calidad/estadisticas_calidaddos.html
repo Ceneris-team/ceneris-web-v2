@@ -1,0 +1,693 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+{% block title %}Dashboard de EMOs{% endblock %}
+
+{% block extra_head %}
+    <style>
+        /* ========================================= */
+        /* 1. ELIMINAR BORDES Y MAXIMIZAR ESPACIO    */
+        /* ========================================= */
+        .main-container, .container, .container-fluid {
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .dashboard-wrapper {
+            padding: 20px 25px;
+            background-color: #f4f6f9;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: auto auto auto auto auto; 
+            gap: 20px;
+            grid-template-areas:
+                "header header header header"
+                "filters filters filters filters"
+                "kpi1 kpi2 kpi3 kpi4"
+                "chartReadings chartReadings chartObs chartObs"
+                "chartPie chartEvol chartEvol chartEvol";
+        }
+
+        /* Áreas del Grid */
+        .header-area { grid-area: header; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .kpi-1 { grid-area: kpi1; }
+        .kpi-2 { grid-area: kpi2; }
+        .kpi-3 { grid-area: kpi3; }
+        .kpi-4 { grid-area: kpi4; }
+
+        .filters-area { 
+            grid-area: filters; 
+            background: white; 
+            padding: 15px; 
+            border-radius: 12px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+            display: flex;
+            align-items: flex-end;
+            gap: 15px;
+        }
+
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-group label { font-size: 0.85rem; font-weight: 600; color: #555; }
+        .filter-control { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; min-width: 150px; }
+        .btn-filter { background: #d45b04; color: white; border: none; padding: 9px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; height: 38px; }
+        .btn-filter:hover { background: #b04a03; }
+        .btn-reset { background: #6c757d; color: white; text-decoration: none; padding: 9px 20px; border-radius: 6px; font-weight: 600; height: 38px; display: inline-flex; align-items: center; }
+        
+        .chart-readings { grid-area: chartReadings; height: 400px; }
+        .chart-obs { grid-area: chartObs; height: 400px; }
+        
+        .chart-pie { grid-area: chartPie; height: 450px; }
+        .chart-evol { grid-area: chartEvol; height: 450px; }
+
+        /* Estilos de Paneles (Cards del Dashboard) */
+        .panel {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            border: 1px solid #eee;
+        }
+
+        .panel h4 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #444;
+            margin-bottom: 15px;
+            text-align: left;
+            border-left: 4px solid #d45b04; /* Marca */
+            padding-left: 10px;
+        }
+
+        .chart-container {
+            flex-grow: 1;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Estilos KPI Cards */
+        .kpi-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border-bottom: 4px solid transparent;
+            border-top: 1px solid #f0f0f0;
+            border-left: 1px solid #f0f0f0;
+            border-right: 1px solid #f0f0f0;
+        }
+        .kpi-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .kpi-card .kpi-title { font-size: 0.85rem; color: #888; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .kpi-card .kpi-value { font-size: 2.8rem; font-weight: 800; color: #333; margin: 5px 0; line-height: 1.1; }
+        .kpi-card .kpi-sub { font-size: 0.9rem; color: #666; font-weight: 500; }
+
+        /* Colores KPI */
+        .kpi-success { border-bottom-color: #28a745; }
+        .kpi-success .kpi-value { color: #28a745; }
+        .kpi-danger { border-bottom-color: #dc3545; }
+        .kpi-danger .kpi-value { color: #dc3545; }
+        .kpi-warning { border-bottom-color: #ffc107; }
+        .kpi-warning .kpi-value { color: #ffbc00; }
+        .kpi-info { border-bottom-color: #0d6efd; }
+        .kpi-info .kpi-value { color: #0d6efd; }
+
+        /* ========================================= */
+        /* 2. ESTILOS DEL MODAL                      */
+        /* ========================================= */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px);
+            z-index: 9999; display: flex; align-items: center; justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .modal-content-custom {
+            background: white; border-radius: 12px; width: 95%; max-width: 1400px;
+            max-height: 90vh; display: flex; flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .modal-header-custom {
+            padding: 20px 30px; background: linear-gradient(135deg, #d45b04 0%, #b04a03 100%);
+            color: white; border-radius: 12px 12px 0 0; display: flex;
+            justify-content: space-between; align-items: center;
+        }
+        .modal-header-custom h3 { margin: 0; font-size: 1.5rem; }
+        .close-btn {
+            background: none; border: none; color: white; font-size: 2rem; cursor: pointer;
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; transition: background 0.2s;
+        }
+        .close-btn:hover { background: rgba(255, 255, 255, 0.2); }
+
+        .modal-body-custom { padding: 30px; overflow-y: auto; max-height: calc(90vh - 80px); }
+
+        /* Tabla del Modal */
+        #tablaDetalle { font-size: 0.95rem; border-collapse: separate; border-spacing: 0; width: 100%; }
+        #tablaDetalle thead { position: sticky; top: 0; z-index: 10; background-color: #f8f9fa; }
+        #tablaDetalle th { padding: 15px; border-bottom: 2px solid #dee2e6; font-weight: 700; color: #555; text-align: left; }
+        #tablaDetalle td { padding: 15px; border-bottom: 1px solid #eee; vertical-align: top; } /* Vertical align top para que las tarjetas se vean bien */
+
+        /* ========================================= */
+        /* 3. ESTILOS DE LAS TARJETAS DE PROYECTO    */
+        /* ========================================= */
+        .projects-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 10px;
+            background-color: #fbfbfb;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        .project-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-left: 5px solid #ccc; /* Color por defecto */
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        .project-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
+
+        /* Colores semánticos de la tarjeta */
+        .project-card.vigente { border-left-color: #28a745; } /* Verde */
+        .project-card.vencido { border-left-color: #dc3545; } /* Rojo */
+        .project-card.por_vencer { border-left-color: #ffc107; } /* Amarillo */
+        .project-card.sin_registro { border-left-color: #6c757d; } /* Gris */
+
+        .p-card-header {
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f8f9fa;
+            background: #fff;
+        }
+
+        .p-project-name {
+            font-weight: 700;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .p-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .p-badge.vigente { background: #d4edda; color: #155724; }
+        .p-badge.vencido { background: #f8d7da; color: #721c24; }
+        .p-badge.por_vencer { background: #fff3cd; color: #856404; }
+        .p-badge.sin_registro { background: #e2e3e5; color: #383d41; }
+
+        .p-card-body {
+            padding: 12px 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .p-row { display: flex; flex-direction: column; }
+        .p-label { font-size: 0.7rem; color: #999; font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
+        .p-val { font-weight: 600; color: #444; }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr 1fr;
+                grid-template-areas:
+                    "header header"
+                    "filters filters"
+                    "kpi1 kpi2"
+                    "kpi3 kpi4"
+                    "chartReadings chartReadings"
+                    "chartObs chartObs"
+                    "chartPie chartPie"
+                    "chartEvol chartEvol";
+            }
+        }
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                grid-template-areas:
+                    "header" 
+                    "filters"
+                    "kpi1" "kpi2" "kpi3" "kpi4"
+                    "chartReadings" "chartObs" "chartPie" "chartEvol";
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+    <div class="dashboard-grid">
+        
+        <!-- HEADER -->
+        <div class="header-area">
+            <div>
+                <h2 style="font-weight: 800; color: #333; margin:0;">Dashboard de Gestión EMOs</h2>
+                <p style="margin:0; color:#666;">Vista integral de productividad y estado de salud ocupacional</p>
+            </div>
+            <div>
+                <span style="background: #e9ecef; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; color: #555;">
+                    📅 Análisis Semestral
+                </span>
+            </div>
+        </div>
+
+        <div class="filters-area">
+            <form method="get" style="display: flex; gap: 15px; width: 100%; align-items: flex-end;">
+                <div class="filter-group">
+                    <label>Empresa</label>
+                    <select name="empresa" class="filter-control">
+                        <option value="">Todas las empresas</option>
+                        {% for emp in opciones_empresas %}
+                            <option value="{{ emp.id }}" {% if filtro_activo_empresa == emp.id %}selected{% endif %}>{{ emp.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Desde</label>
+                    <input type="date" name="fecha_inicio" class="filter-control" value="{{ fecha_inicio }}">
+                </div>
+                <div class="filter-group">
+                    <label>Hasta</label>
+                    <input type="date" name="fecha_fin" class="filter-control" value="{{ fecha_fin }}">
+                </div>
+                <button type="submit" class="btn-filter">Filtrar Datos</button>
+                <a href="{% url 'calidad:estadisticas_calidad' %}" class="btn-reset">Limpiar</a>
+            </form>
+        </div>
+
+        <!-- KPIS -->
+        <div class="kpi-card kpi-1 kpi-success" onclick="abrirModal('vigentes')">
+            <div class="kpi-title">Cobertura Vigente</div>
+            <div class="kpi-value">{{ cobertura_emo_vigente }}</div>
+            <div class="kpi-sub">Trabajadores Aptos</div>
+        </div>
+        <div class="kpi-card kpi-2 kpi-danger" onclick="abrirModal('vencidos')">
+            <div class="kpi-title">Riesgo / Vencidos</div>
+            <div class="kpi-value">{{ trabajadores_con_emo_vencido }}</div>
+            <div class="kpi-sub">Atención Inmediata</div>
+        </div>
+        <div class="kpi-card kpi-3 kpi-warning" onclick="abrirModal('programados')">
+            <div class="kpi-title">Gestión Pendiente</div>
+            <div class="kpi-value">{{ emos_pendientes_programados }}</div>
+            <div class="kpi-sub">EMOs Programados</div>
+        </div>
+        <div class="kpi-card kpi-4 kpi-info" onclick="abrirModal('sinemo')">
+            <div class="kpi-title">Población Sin EMO</div>
+            <div class="kpi-value">{{ trabajadores_sin_emo }}</div>
+            <div class="kpi-sub">Nuevos / Pendientes</div>
+        </div>
+
+        <!-- GRÁFICO 1: LECTURAS -->
+        <div class="panel chart-readings">
+            <h4>📊 Productividad: Lecturas Realizadas vs Pendientes</h4>
+            <div class="chart-container">
+                <canvas id="chartReadings"></canvas>
+            </div>
+        </div>
+
+        <!-- GRÁFICO 2: OBSERVACIONES -->
+        <div class="panel chart-obs">
+            <!-- CAMBIO DE TÍTULO AQUÍ: -->
+            <h4>🩺 Seguimiento: Controles Médicos</h4>
+            <div class="chart-container">
+                <canvas id="chartObs"></canvas> <!-- Mantenemos el ID para no romper el CSS -->
+            </div>
+        </div>
+
+        <!-- GRÁFICO 3: TORTA EMPRESAS -->
+        <div class="panel chart-pie">
+            <h4>🏢 Distribución por Empresa</h4>
+            <div class="chart-container">
+                <canvas id="chartPie"></canvas>
+            </div>
+        </div>
+
+        <!-- GRÁFICO 4: EVOLUCIÓN -->
+        <div class="panel chart-evol">
+            <h4>📈 Tendencia Histórica de Aptitud</h4>
+            <div class="chart-container">
+                <canvas id="chartEvol"></canvas>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- MODAL DE DETALLE -->
+<div id="modalDetalle" class="modal-overlay" style="display: none;">
+    <div class="modal-content-custom">
+        <div class="modal-header-custom">
+            <h3 id="modalTitulo">Detalle</h3>
+            <button onclick="cerrarModal()" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body-custom">
+            <div id="loadingSpinner" style="text-align: center; padding: 40px;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Cargando...</span>
+                </div>
+            </div>
+            <div id="modalContenido" style="display: none;">
+                <div class="table-responsive">
+                    <table class="table" id="tablaDetalle">
+                        <thead id="theadDetalle"></thead>
+                        <tbody id="tbodyDetalle"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://unpkg.com/feather-icons"></script>
+
+<script>
+
+    Chart.register(ChartDataLabels);
+    const labelsTime = {{ labels_lecturas|safe }};
+    // ==========================================
+    // 1. INICIALIZACIÓN DE GRÁFICOS (Chart.js)
+    // ==========================================
+    const labelsLecturas = {{ labels_lecturas|safe }};
+    const dataLectRealizadas = {{ data_lecturas_realizadas|safe }};
+    const dataLectPendientes = {{ data_lecturas_pendientes|safe }};
+    const labelsObs = {{ labels_obs|safe }};
+    const dataObsPendientes = {{ data_obs_pendientes|safe }};
+    const dataObsRealizadas = {{ data_obs_realizadas|safe }};
+    const labelsEmpresas = {{ labels_empresas|safe }};
+    const dataEmpresasTotal = {{ data_empresas_total|safe }};
+    const dataEmpresasDetalle = {{ data_empresas_detalle|safe }};
+    const labelsEvol = {{ labels_evolucion|safe }};
+    const dataAptos = {{ data_aptos|safe }};
+    const dataRestriccion = {{ data_con_restriccion|safe }};
+    const dataProblemas = {{ data_problemas|safe }};
+
+    Chart.defaults.font.family = "'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif";
+    Chart.defaults.color = '#666';
+
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+
+        // --- CONFIGURACIÓN COMÚN DE PORCENTAJES PARA BARRAS ---
+    const datalabelsConfig = {
+        color: '#fff',
+        font: { weight: 'bold', size: 11 },
+        formatter: function(value, context) {
+            // Evitar mostrar 0% o valores nulos
+            if (value === 0) return '';
+            
+            // Calcular el total de la barra (Stack)
+            const dataIndex = context.dataIndex;
+            const datasetIndex = context.datasetIndex;
+            const chart = context.chart;
+            
+            // Sumamos los valores de todos los datasets en este índice (para barras apiladas)
+            let total = 0;
+            chart.data.datasets.forEach(dataset => {
+                total += dataset.data[dataIndex];
+            });
+            
+            if (total === 0) return '';
+            
+            const percentage = Math.round((value / total) * 100) + '%';
+            return percentage; // Muestra ej: "45%"
+        }
+    };
+
+    // 1. CHART LECTURAS (CON PORCENTAJES)
+        new Chart(document.getElementById('chartReadings'), {
+            type: 'bar',
+            data: {
+                labels: labelsTime,
+                datasets: [
+                    { label: 'Realizadas', data: dataLectRealizadas, backgroundColor: '#28a745', borderRadius: 4 },
+                    { label: 'Pendientes', data: dataLectPendientes, backgroundColor: '#e9ecef', borderColor: '#adb5bd', borderWidth: 1, borderRadius: 4, color: '#333' /* Color texto pendiente */ }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } },
+                plugins: {
+                    datalabels: {
+                        ...datalabelsConfig,
+                        // Ajuste visual: si el fondo es claro (pendiente), poner texto oscuro
+                        color: function(context) {
+                            return context.dataset.label === 'Pendientes' ? '#555' : '#fff';
+                        }
+                    }
+                }
+            }
+        });
+
+        // 2. CHART CONTROLES (CON PORCENTAJES)
+        new Chart(document.getElementById('chartObs'), {
+            type: 'bar',
+            data: {
+                labels: labelsTime,
+                datasets: [
+                    { label: 'Realizados', data: dataObsRealizadas, backgroundColor: '#20c997', borderRadius: 4 },
+                    { label: 'Pendientes', data: dataObsPendientes, backgroundColor: '#e9ecef', borderColor: '#adb5bd', borderWidth: 1, borderRadius: 4, color: '#333' }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } },
+                plugins: {
+                    datalabels: {
+                        ...datalabelsConfig,
+                        // Ajuste visual: si el fondo es claro (pendiente), poner texto oscuro
+                        color: function(context) {
+                            return context.dataset.label === 'Pendientes' ? '#555' : '#fff';
+                        }
+                    }
+                }
+            }
+        });
+
+        // 3. CHART EMPRESAS (Sin porcentajes dentro, solo hover)
+        new Chart(document.getElementById('chartPie'), {
+            type: 'doughnut',
+            data: {
+                labels: labelsEmpresas,
+                datasets: [{
+                    data: dataEmpresasTotal,
+                    backgroundColor: ['#d45b04', '#343a40', '#198754', '#0d6efd', '#ffc107', '#6f42c1', '#20c997'],
+                    borderWidth: 0, hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '65%',
+                plugins: {
+                    legend: { position: 'right' },
+                    datalabels: { display: false }, // Ocultar etiquetas en el pie para no saturar
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                // Tu lógica de hover existente
+                                return `${context.label}: ${context.raw}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // 4. CHART EVOLUCIÓN (Sin porcentajes, solo líneas)
+        new Chart(document.getElementById('chartEvol'), {
+            type: 'line',
+            data: {
+                labels: labelsTime,
+                datasets: [
+                    { label: 'Aptos', data: dataAptos, borderColor: '#198754', fill: false, tension: 0.3 },
+                    { label: 'Restricción', data: dataRestriccion, borderColor: '#ffc107', tension: 0.3 },
+                    { label: 'Observados', data: dataProblemas, borderColor: '#dc3545', tension: 0.3 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { x: { grid: { display: false } }, y: { beginAtZero: true } },
+                plugins: {
+                    datalabels: { display: false } // No queremos etiquetas en todas las líneas
+                }
+            }
+        });
+    });
+
+    // ==========================================
+    // 2. LÓGICA DEL MODAL (TARJETAS DE PROYECTO)
+    // ==========================================
+    function abrirModal(tipo) {
+        const modal = document.getElementById('modalDetalle');
+        const titulo = document.getElementById('modalTitulo');
+        const loading = document.getElementById('loadingSpinner');
+        const contenido = document.getElementById('modalContenido');
+        
+        modal.style.display = 'flex';
+        loading.style.display = 'block';
+        contenido.style.display = 'none';
+        
+        let url, tituloTexto;
+        switch(tipo) {
+            case 'vigentes': url = '{% url "calidad:api_trabajadores_vigentes" %}'; tituloTexto = 'Trabajadores Vigentes'; break;
+            case 'vencidos': url = '{% url "calidad:api_trabajadores_vencidos" %}'; tituloTexto = 'Trabajadores con EMO Vencido'; break;
+            case 'programados': url = '{% url "calidad:api_emos_programados" %}'; tituloTexto = 'Programación de EMOs'; break;
+            case 'sinemo': url = '{% url "calidad:api_trabajadores_sin_emo" %}'; tituloTexto = 'Trabajadores Sin Historial'; break;
+        }
+        
+        titulo.textContent = tituloTexto;
+
+        const paginaParams = new URLSearchParams(window.location.search);
+        const apiParams = new URLSearchParams();
+        const empresa = paginaParams.get('empresa');
+        if (empresa) {
+            apiParams.set('empresa', empresa);
+        }
+
+        const finalUrl = apiParams.toString() ? `${url}?${apiParams.toString()}` : url;
+        
+        fetch(finalUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                loading.style.display = 'none';
+                contenido.style.display = 'block';
+                renderizarTabla(tipo, data);
+            })
+            .catch(error => {
+                loading.innerHTML = '<p class="text-danger">Error al cargar datos</p>';
+                console.error(error);
+            });
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalDetalle').style.display = 'none';
+    }
+
+    function renderizarTabla(tipo, data) {
+        const thead = document.getElementById('theadDetalle');
+        const tbody = document.getElementById('tbodyDetalle');
+        
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+        
+        // Encabezado
+        thead.innerHTML = `
+            <tr>
+                <th style="width: 50px;">#</th>
+                <th style="width: 100px;">DNI</th>
+                <th style="width: 250px;">Trabajador / Empresa</th>
+                <th>Estado por Proyecto</th>
+            </tr>`;
+        
+        if (data.data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 40px;">No hay datos disponibles</td></tr>`;
+            return;
+        }
+
+        // Renderizar Filas y Tarjetas
+        data.data.forEach((item, index) => {
+            // Construir HTML de las tarjetas
+            let proyectosHtml = '<div class="projects-grid">';
+            
+            if (item.proyectos && item.proyectos.length > 0) {
+                item.proyectos.forEach(proy => {
+                    let estadoTexto = '';
+                    if(proy.estado === 'vigente') estadoTexto = 'Vigente';
+                    else if(proy.estado === 'vencido') estadoTexto = 'Vencido';
+                    else if(proy.estado === 'por_vencer') estadoTexto = 'Por Vencer';
+                    else estadoTexto = 'Sin EMO';
+
+                    let cuerpoTarjeta = '';
+                    
+                    if (proy.emo) {
+                        cuerpoTarjeta = `
+                            <div class="p-card-body">
+                                <div class="p-row"><span class="p-label">Tipo</span><span class="p-val">${proy.emo.tipo}</span></div>
+                                <div class="p-row"><span class="p-label">Aptitud</span><span class="p-val">${proy.emo.aptitud}</span></div>
+                                <div class="p-row"><span class="p-label">Fecha</span><span class="p-val">${proy.emo.fecha}</span></div>
+                                <div class="p-row"><span class="p-label">Vence</span><span class="p-val" style="${proy.estado === 'vencido' ? 'color:#dc3545' : ''}">${proy.emo.vencimiento}</span></div>
+                                <div class="p-row" style="grid-column: 1/-1;"><span class="p-label">Clínica</span><span class="p-val">${proy.emo.clinica}</span></div>
+                            </div>`;
+                    } else {
+                        cuerpoTarjeta = `
+                            <div class="p-card-body" style="color:#999; font-style:italic; display:flex; align-items:center;">
+                                <i data-feather="info" style="width:14px; margin-right:5px;"></i> Sin registro EMO
+                            </div>`;
+                    }
+
+                    proyectosHtml += `
+                        <div class="project-card ${proy.estado}">
+                            <div class="p-card-header">
+                                <div class="p-project-name">${proy.nombre} <small style="color:#888;">(${proy.codigo})</small></div>
+                                <div class="p-badge ${proy.estado}">${estadoTexto}</div>
+                            </div>
+                            ${cuerpoTarjeta}
+                        </div>`;
+                });
+            } else {
+                proyectosHtml += `<div style="padding:15px; color:#888;">Sin proyectos asignados</div>`;
+            }
+            proyectosHtml += '</div>';
+
+            // Fila de Tabla
+            let row = `
+                <tr class="main-row" style="vertical-align: top;">
+                    <td style="text-align: center; font-weight: bold; color: #888; padding-top: 20px;">${index + 1}</td>
+                    <td style="font-weight: 600; padding-top: 20px;">${item.dni}</td>
+                    <td style="padding-top: 20px;">
+                        <div style="font-weight: 700; color: #333; font-size: 1.05rem;">${item.nombre_completo}</div>
+                        <div style="color: #666; font-size: 0.9rem; margin-top: 4px;">${item.empresa}</div>
+                    </td>
+                    <td style="padding: 10px;">${proyectosHtml}</td>
+                </tr>`;
+            
+            tbody.innerHTML += row;
+        });
+        
+        feather.replace();
+    }
+
+    // Cerrar modal con tecla ESC
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') cerrarModal();
+    });
+</script>
+{% endblock %}

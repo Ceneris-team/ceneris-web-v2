@@ -1,0 +1,128 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Listado de Clínicas{% endblock %} 
+
+{% block extra_head %}
+    {# Estilos de tabla #}
+    <link rel="stylesheet" href="{% static 'css/tabla_estados.css' %}">
+    {# Estilos de SweetAlert2 (SOLO para esta vista) #}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Listado de Clínicas y Hospitales</h1> 
+            <p style="margin: 0;">Consulta, edita y gestiona la lista de centros médicos registrados en el sistema.</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'calidad:gestion_clinicas' %}" class="btn-secondary">&larr; Volver a Tarjetas</a>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align: center; width: 50px;">N°</th>
+                <th style="text-align:center; width: 90px;">Imagen</th>
+                <th>Nombre de la Clínica</th>
+                <th>Dirección</th>
+                <th>Teléfono</th>
+                <th>Email de Contacto</th>
+                <th>Persona de Contacto</th>
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for clinica in clinicas %}
+            <tr>
+                <td style="text-align: center; font-weight: bold;">{{ forloop.counter }}</td>
+                <td style="text-align:center;">
+                    {% if clinica.imagen_fachada %}
+                        <a href="{{ clinica.imagen_fachada.url }}" target="_blank" title="Ver imagen">
+                            <img src="{{ clinica.imagen_fachada.url }}" alt="Imagen de la clínica" style="width: 64px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd;" />
+                        </a>
+                    {% else %}
+                        --
+                    {% endif %}
+                </td>
+                <td><strong>{{ clinica.nombre }}</strong></td>
+                <td>{{ clinica.direccion|default:"--" }}</td>
+                <td>{{ clinica.telefono|default:"--" }}</td>
+                <td>{{ clinica.email_contacto|default:"--" }}</td>
+                <td>{{ clinica.persona_contacto|default:"--" }}</td>
+                <td style="text-align: center;">
+                    <div class="table-actions-container">
+                        <a href="{% url 'calidad:editar_clinica' clinica.pk %}" class="btn-icon-action secondary" title="Editar Clínica">
+                            <i data-feather="edit-2"></i>
+                        </a>
+                        
+                        <a href="#" class="btn-icon-action danger" title="Eliminar Clínica" onclick="confirmDelete(event, 'form-delete-{{ clinica.pk }}')">
+                            <i data-feather="trash-2"></i>
+                        </a>
+                        
+                        <form id="form-delete-{{ clinica.pk }}" action="{% url 'calidad:eliminar_clinica' clinica.pk %}" method="post" style="display: none;">
+                            {% csrf_token %}
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" style="text-align: center;">No hay clínicas registradas.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        // --- 1. Confirmación de eliminación ---
+        function confirmDelete(event, formId) {
+            event.preventDefault(); 
+            
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "Se eliminará esta clínica del registro. Si hay exámenes médicos vinculados a ella, no se podrá eliminar.",
+                icon: 'warning', 
+                showCancelButton: true, 
+                confirmButtonColor: '#d33', 
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, ¡eliminar!',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(formId).submit();
+                }
+            });
+        }
+
+        // --- 2. Notificaciones (Toasts) ---
+        document.addEventListener('DOMContentLoaded', function() {
+            {% if messages %}
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 5000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+
+                {% for message in messages %}
+                    Toast.fire({
+                        icon: '{{ message.tags }}', 
+                        title: '{{ message }}'
+                    });
+                {% endfor %}
+            {% endif %}
+        });
+    </script>
+{% endblock %}

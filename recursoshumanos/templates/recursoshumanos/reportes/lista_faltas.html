@@ -1,0 +1,255 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Reporte de Inasistencias{% endblock %}
+
+{% block extra_head %}
+    <!-- Estilos específicos para emular los badges sin Bootstrap pesado -->
+    <style>
+        .page-header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 25px;
+            padding-top: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+        .header-titles h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: #0f172a;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .back-link:hover { color: #3b82f6; transform: translateX(-4px); }
+        .back-link svg { width: 18px; height: 18px; }
+
+        /* Estilos para el formulario de filtros */
+        .filter-container {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            border: 1px solid #e9ecef;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .filter-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #495057;
+        }
+        .filter-input {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .btn-filter {
+            background-color: #d45b04;
+            color: white;
+            border: none;
+            padding: 9px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .btn-filter:hover { background-color: #d45b04; }
+        
+        /* Pequeños estilos para los estados (Badges simulados) */
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .st-success { background-color: #d1e7dd; color: #0f5132; }
+        .st-warning { background-color: #fff3cd; color: #664d03; }
+        .st-danger { background-color: #f8d7da; color: #842029; }
+        .st-info { background-color: #cff4fc; color: #055160; }
+        .st-secondary { background-color: #e2e3e5; color: #41464b; }
+    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+{% endblock %}
+
+{% block content %}
+    <div class="page-header-container">
+        <div class="header-titles">
+            <a href="{% url 'recursoshumanos:gestion_empleados' %}" class="back-link">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+                Volver al Panel
+            </a>
+            <h1>📉 Reporte de Inasistencias</h1>
+            <p style="margin: 0;">Consulta y gestiona las faltas, justificaciones y evidencias del personal.</p>
+        </div>
+        <div>
+             <button class="btn-secondary" onclick="window.print()">🖨️ Imprimir</button>
+        </div>
+    </div>
+
+    <!-- FILTROS -->
+    <form method="get" class="filter-container">
+        <div class="filter-group">
+            <label>Mes:</label>
+            <input type="month" name="mes" value="{{ mes_actual }}" class="filter-input">
+        </div>
+
+        <div class="filter-group">
+            <label>Buscar (Nombre/DNI):</label>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Ej. Juan Perez" class="filter-input">
+        </div>
+
+        <div class="filter-group">
+            <label>Estado Justificación:</label>
+            <select name="estado_justificacion" class="filter-input">
+                <option value="">-- Todos --</option>
+                <option value="SIN_JUSTIFICAR" {% if estado_filter == 'SIN_JUSTIFICAR' %}selected{% endif %}>Sin Justificar</option>
+                <option value="PENDIENTE" {% if estado_filter == 'PENDIENTE' %}selected{% endif %}>Pendiente Revisión</option>
+                <option value="APROBADO" {% if estado_filter == 'APROBADO' %}selected{% endif %}>Aprobado</option>
+                <option value="RECHAZADO" {% if estado_filter == 'RECHAZADO' %}selected{% endif %}>Rechazado</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <button type="submit" class="btn-filter">Filtrar Resultados</button>
+            {% if search_query or estado_filter %}
+                <a href="?mes={{ mes_actual }}" style="margin-left: 10px; color: #6c757d; text-decoration: none; align-self: center; font-size: 0.9rem;">Limpiar</a>
+            {% endif %}
+        </div>
+    </form>
+
+    <!-- TABLA -->
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Trabajador</th>
+                <th>Planificado</th>
+                <th>Estado Justificación</th>
+                <th style="text-align: center;">Evidencia</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for falta in faltas %}
+            <tr>
+                <!-- FECHA -->
+                <td>
+                    <strong>{{ falta.fecha|date:"d/m/Y" }}</strong> <br> 
+                    <span style="font-size: 0.85em; color: #6c757d;">{{ falta.fecha|date:"l" }}</span>
+                </td>
+                
+                <!-- TRABAJADOR -->
+                <td>
+                    <strong>{{ falta.trabajador.nombre_completo }}</strong><br>
+                    <span style="font-size: 0.85em; color: #6c757d;">DNI: {{ falta.trabajador.dni }}</span>
+                </td>
+                
+                <!-- PLANIFICADO -->
+                <td>
+                    {% if falta.estado == 'C' %}
+                        <span class="status-badge st-info">Campo</span>
+                    {% elif falta.estado == 'O' %}
+                        <span class="status-badge st-secondary">Oficina</span>
+                    {% else %}
+                        <span class="status-badge st-secondary">{{ falta.estado }}</span>
+                    {% endif %}
+                    <div style="font-size: 0.8em; color: #dc3545; margin-top: 2px; font-weight: bold;">No Asistió</div>
+                </td>
+
+                <!-- ESTADO JUSTIFICACIÓN -->
+                <td>
+                    {% if falta.justificacion %}
+                        {% if falta.justificacion.estado_solicitud == 'PENDIENTE' %}
+                            <span class="status-badge st-warning">Pendiente Revisión</span>
+                        {% elif falta.justificacion.estado_solicitud == 'APROBADO' %}
+                            <span class="status-badge st-success">Justificada</span>
+                        {% else %}
+                            <span class="status-badge st-danger">Rechazada</span>
+                        {% endif %}
+                        <div style="font-size: 0.8em; margin-top: 2px;">{{ falta.justificacion.get_motivo_display }}</div>
+                    {% else %}
+                        <span class="status-badge st-secondary">Sin Justificar</span>
+                    {% endif %}
+                </td>
+
+                <!-- ACCIONES / EVIDENCIA -->
+                <td style="text-align: center;">
+                    <div class="table-actions-container">
+                        {% if falta.justificacion and falta.justificacion.archivo_evidencia %}
+                            <a href="{{ falta.justificacion.archivo_evidencia.url }}" target="_blank" class="btn-icon-action secondary" title="Ver Evidencia">
+                                <i data-feather="paperclip"></i>
+                            </a>
+                        {% else %}
+                            <span style="color: #adb5bd;">--</span>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 30px;">
+                    <div style="color: #6c757d;">
+                        <i data-feather="inbox" style="width: 40px; height: 40px; margin-bottom: 10px;"></i><br>
+                        No se encontraron inasistencias con los filtros seleccionados.
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        // Inicializar Feather Icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+
+        // Notificaciones Toast (Mensajes de Django)
+        document.addEventListener('DOMContentLoaded', function() {
+            {% if messages %}
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 5000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+
+                {% for message in messages %}
+                    Toast.fire({
+                        icon: '{{ message.tags }}' === 'error' ? 'error' : 'success', 
+                        title: '{{ message }}'
+                    });
+                {% endfor %}
+            {% endif %}
+        });
+    </script>
+{% endblock %}

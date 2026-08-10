@@ -1,0 +1,115 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Listado de Empresas{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+{% endblock %}
+
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Listado de Empresas</h1>
+            <p style="margin: 0;">Consulta y gestiona la información de las empresas registradas en el sistema.</p>
+        </div>
+        <div>
+            <a href="{% url 'recursoshumanos:gestion_empresas' %}" class="btn-secondary">&larr; Volver a Tarjetas</a>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align: center; width: 50px;">N°</th>
+                <th>Nombre de la Empresa</th>
+                <th>RUC</th>
+                <th>Teléfono</th>
+                <th>Email de Contacto</th>
+                <th>Persona de Contacto</th>
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for empresa in empresas %}
+            <tr>
+                <td style="text-align: center; font-weight: bold;">{{ forloop.counter }}</td>
+                <td><strong>{{ empresa.nombre }}</strong></td>
+                <td>{{ empresa.ruc|default:"--" }}</td>
+                <td>{{ empresa.telefono|default:"--" }}</td>
+                <td>{{ empresa.email_contacto|default:"--" }}</td>
+                <td>{{ empresa.persona_contacto|default:"--" }}</td>
+                <td style="text-align: center;">
+                    <div class="table-actions-container">
+                        <a href="{% url 'recursoshumanos:editar_empresa' empresa.pk %}" class="btn-icon-action secondary" title="Editar Empresa"><i data-feather="edit-2"></i></a>
+                        
+                        <a href="#" class="btn-icon-action danger" title="Eliminar Empresa" onclick="confirmDelete(event, 'form-delete-{{ empresa.pk }}')">
+                            <i data-feather="trash-2"></i>
+                        </a>
+                        <form id="form-delete-{{ empresa.pk }}" action="{% url 'recursoshumanos:eliminar_empresa' empresa.pk %}" method="post" style="display: none;">
+                            {% csrf_token %}
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" style="text-align: center;">No hay empresas registradas.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        // --- 1. FUNCIÓN PARA EL MODAL DE CONFIRMACIÓN ---
+        // (Esta ya la tenías y funciona bien)
+        function confirmDelete(event, formId) {
+            event.preventDefault(); 
+            
+            Swal.fire({
+                title: '¿Estás realmente seguro?',
+                text: "¡Esta acción no se puede deshacer! Se eliminará la empresa permanentemente.",
+                icon: 'warning', 
+                showCancelButton: true, 
+                confirmButtonColor: '#d33', 
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, ¡eliminarla!',
+                cancelButtonText: 'No, cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(formId).submit();
+                }
+            });
+        }
+
+        // --- 2. SCRIPT PARA LOS MENSAJES DE ERROR/ÉXITO (NUEVO) ---
+        // (Esto reemplaza al HTML feo de la Imagen 1)
+        document.addEventListener('DOMContentLoaded', function() {
+            {% if messages %}
+                // Preparamos un "toast" (notificación pequeña)
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end', // Arriba a la derecha
+                    showConfirmButton: false,
+                    timer: 5000, // Dura 5 segundos
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+
+                // Mostramos cada mensaje que envió Django
+                {% for message in messages %}
+                    Toast.fire({
+                        icon: '{{ message.tags }}', // 'error' o 'success'
+                        title: '{{ message }}'
+                    });
+                {% endfor %}
+            {% endif %}
+        });
+    </script>
+{% endblock %}

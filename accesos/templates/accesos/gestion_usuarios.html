@@ -1,0 +1,292 @@
+{% extends 'layouts/base.html' %}
+
+{% block content %}
+
+<!-- ENCABEZADO Y ESTADÍSTICAS -->
+<div class="flex flex-col md:flex-row justify-between items-end mb-8">
+    <div>
+        <h2 class="text-2xl font-bold text-gray-800">Directorio de Usuarios</h2>
+        <p class="text-sm text-gray-500 mt-1">Gestión centralizada de credenciales y permisos.</p>
+    </div>
+    <div class="flex space-x-4 mt-4 md:mt-0">
+        <div class="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
+            <span class="block text-xs text-gray-400 uppercase font-bold">Total Personal</span>
+            <span class="text-xl font-bold text-gray-800">{{ stats.total }}</span>
+        </div>
+        <div class="bg-white px-4 py-2 rounded-lg shadow-sm border-l-4 border-green-500">
+            <span class="block text-xs text-gray-400 uppercase font-bold">Con Acceso</span>
+            <span class="text-xl font-bold text-green-600">{{ stats.con_acceso }}</span>
+        </div>
+        <div class="bg-white px-4 py-2 rounded-lg shadow-sm border-l-4 border-gray-300">
+            <span class="block text-xs text-gray-400 uppercase font-bold">Sin Acceso</span>
+            <span class="text-xl font-bold text-gray-500">{{ stats.sin_acceso }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- FILTRO / BUSCADOR (Visual) -->
+<div class="bg-white p-4 rounded-t-xl border-b border-gray-200 flex justify-between items-center shadow-sm">
+    <div class="relative w-full max-w-md">
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </span>
+        <input type="text" id="searchInput" onkeyup="filtrarTabla()" placeholder="Buscar por nombre, DNI o usuario..." 
+               class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+    </div>
+    <!-- Botón placeholder para 'Añadir Trabajador' si tuvieras esa vista -->
+    <button class="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition">
+        + Nuevo Trabajador
+    </button>
+</div>
+
+<!-- TABLA MAESTRA -->
+<div class="bg-white shadow-sm rounded-b-xl overflow-hidden border border-gray-200">
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200" id="tablaUsuarios">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Perfil Trabajador</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Estado Cuenta</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Roles / Grupos</th>
+                    <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for t in trabajadores %}
+                <tr class="hover:bg-gray-50 transition duration-150 group">
+                    
+                    <!-- COL 1: INFORMACIÓN DEL TRABAJADOR -->
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold border border-gray-300">
+                                {{ t.nombres|slice:":1" }}{{ t.apellido_paterno|slice:":1" }}
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-bold text-gray-900">{{ t.nombres }} {{ t.apellido_paterno }}</div>
+                                <div class="text-xs text-gray-500">DNI: {{ t.dni }}</div>
+                                <div class="text-xs text-gray-400 mt-0.5">{{ t.area|default:"Sin Área" }}</div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- COL 2: ESTADO DE CUENTA -->
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if t.user %}
+                            <div class="flex flex-col">
+                                <span class="flex items-center text-sm font-mono text-gray-700 font-semibold">
+                                    <svg class="w-4 h-4 text-gray-400 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                    {{ t.user.username }}
+                                </span>
+                                {% if t.user.is_active %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 w-max mt-1">
+                                        ● Activo
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 w-max mt-1">
+                                        ● Suspendido
+                                    </span>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-300">
+                                Sin Cuenta
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <!-- COL 3: ROLES (GRUPOS) -->
+                    <td class="px-6 py-4">
+                        {% if t.user %}
+                            <div class="flex flex-wrap gap-1 max-w-xs">
+                                {% for group in t.user.groups.all %}
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                        {{ group.name }}
+                                    </span>
+                                {% empty %}
+                                    <span class="text-xs text-gray-400 italic">Usuario básico</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <span class="text-gray-300 text-xs">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- COL 4: ACCIONES -->
+                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                        {% if t.user %}
+                            <!-- MENÚ DE ACCIONES PARA USUARIO EXISTENTE -->
+                            <div class="flex justify-center items-center space-x-3">
+                                <!-- Editar Roles -->
+                                <button onclick="abrirModalEditar('{{ t.id }}', '{{ t.nombres }}', [{% for g in t.user.groups.all %}'{{ g.id }}',{% endfor %}])" 
+                                        class="text-indigo-600 hover:text-indigo-900 tooltip" title="Gestionar Roles">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                                </button>
+                                
+                                <!-- Reset Password -->
+                                <a href="{% url 'accesos:resetear_password' t.id %}" 
+                                   onclick="return confirm('¿Generar nueva contraseña para {{ t.nombres }}?');"
+                                   class="text-orange-500 hover:text-orange-700 tooltip" title="Resetear Contraseña">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                                </a>
+
+                                <!-- Editar Datos Trabajador (Link a tu app de RRHH si existe) -->
+                                <a href="#" class="text-gray-400 hover:text-gray-600 tooltip" title="Ver ficha RRHH">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                </a>
+                            </div>
+                        {% else %}
+                            <!-- ACCIÓN PRINCIPAL: CREAR CUENTA -->
+                            <button onclick="abrirModalCrear('{{ t.id }}', '{{ t.nombres }} {{ t.apellido_paterno }}', '{{ t.dni }}')"
+                                    class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded shadow hover:bg-blue-700 transition flex items-center mx-auto">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                Crear Cuenta
+                            </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="px-6 py-10 text-center text-gray-500">No hay trabajadores registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ================= MODALES (REUTILIZAMOS LOS MISMOS DE ANTES) ================= -->
+
+<!-- MODAL CREAR -->
+<div id="modalCrear" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden z-50 flex justify-center items-center backdrop-blur-sm">
+    <div class="bg-white rounded-lg shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="bg-blue-600 px-6 py-4 flex justify-between items-center">
+            <h3 class="text-white font-bold text-lg">Habilitar Nuevo Usuario</h3>
+            <button onclick="cerrarModal('modalCrear')" class="text-blue-200 hover:text-white">✕</button>
+        </div>
+        
+        <form action="{% url 'accesos:crear_credenciales' %}" method="POST" class="p-6">
+            {% csrf_token %}
+            <input type="hidden" name="trabajador_id" id="inputCrearID">
+            
+            <div class="flex items-center mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <div class="bg-blue-100 p-2 rounded-full mr-3 text-blue-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Trabajador</p>
+                    <p id="modalCrearNombre" class="font-bold text-gray-800 text-lg leading-tight"></p>
+                    <p class="text-xs text-gray-400 mt-0.5">DNI: <span id="spanCrearDNI"></span></p>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Asignar Permisos (Grupos)</label>
+                <div class="border border-gray-200 rounded-lg max-h-48 overflow-y-auto bg-gray-50 divide-y divide-gray-100">
+                    {% for grupo in grupos_disponibles %}
+                    <label class="flex items-center p-3 hover:bg-white transition cursor-pointer">
+                        <input type="checkbox" name="grupos" value="{{ grupo.id }}" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300">
+                        <span class="ml-3 text-sm text-gray-700 font-medium">{{ grupo.name }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="cerrarModal('modalCrear')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancelar</button>
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 shadow-md transform active:scale-95 transition">Crear Acceso</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL EDITAR ROLES -->
+<div id="modalEditar" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden z-50 flex justify-center items-center backdrop-blur-sm">
+    <div class="bg-white rounded-lg shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center">
+            <h3 class="text-white font-bold text-lg">Gestionar Roles</h3>
+            <button onclick="cerrarModal('modalEditar')" class="text-indigo-200 hover:text-white">✕</button>
+        </div>
+
+        <form action="{% url 'accesos:editar_permisos' %}" method="POST" class="p-6">
+            {% csrf_token %}
+            <input type="hidden" name="trabajador_id" id="inputEditarID">
+            
+            <p class="text-sm text-gray-600 mb-4">Editando permisos para: <strong id="spanEditarNombre" class="text-indigo-700"></strong></p>
+
+            <div class="mb-6 border border-gray-200 rounded-lg max-h-60 overflow-y-auto bg-gray-50 divide-y divide-gray-100">
+                {% for grupo in grupos_disponibles %}
+                <label class="flex items-center p-3 hover:bg-white transition cursor-pointer">
+                    <input type="checkbox" name="grupos" value="{{ grupo.id }}" id="chk_edit_{{ grupo.id }}" class="form-checkbox h-4 w-4 text-indigo-600 rounded">
+                    <span class="ml-3 text-sm text-gray-700">{{ grupo.name }}</span>
+                </label>
+                {% endfor %}
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="cerrarModal('modalEditar')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cerrar</button>
+                <button type="submit" class="px-6 py-2 bg-indigo-600 text-white rounded font-bold hover:bg-indigo-700 shadow-md transform active:scale-95 transition">Guardar Cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- SCRIPTS (Búsqueda y Modales) -->
+<script>
+    // 1. Filtrado de Tabla en tiempo real
+    function filtrarTabla() {
+        let input = document.getElementById("searchInput");
+        let filter = input.value.toUpperCase();
+        let table = document.getElementById("tablaUsuarios");
+        let tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) { // Empezamos en 1 para saltar el header
+            let tds = tr[i].getElementsByTagName("td");
+            let found = false;
+            // Buscamos en todas las columnas de la fila
+            for (let j = 0; j < tds.length; j++) {
+                if (tds[j]) {
+                    let txtValue = tds[j].textContent || tds[j].innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            tr[i].style.display = found ? "" : "none";
+        }
+    }
+
+    // 2. Control de Modales
+    function abrirModalCrear(id, nombre, dni) {
+        document.getElementById('inputCrearID').value = id;
+        document.getElementById('modalCrearNombre').innerText = nombre;
+        document.getElementById('spanCrearDNI').innerText = dni;
+        
+        // Reset checkboxes
+        document.querySelectorAll('#modalCrear input[type="checkbox"]').forEach(c => c.checked = false);
+        
+        document.getElementById('modalCrear').classList.remove('hidden');
+    }
+
+    function abrirModalEditar(id, nombre, gruposIds) {
+        document.getElementById('inputEditarID').value = id;
+        document.getElementById('spanEditarNombre').innerText = nombre;
+
+        // Reset
+        document.querySelectorAll('#modalEditar input[type="checkbox"]').forEach(c => c.checked = false);
+
+        // Marcar existentes
+        gruposIds.forEach(gId => {
+            let chk = document.getElementById('chk_edit_' + gId);
+            if(chk) chk.checked = true;
+        });
+
+        document.getElementById('modalEditar').classList.remove('hidden');
+    }
+
+    function cerrarModal(id) {
+        document.getElementById(id).classList.add('hidden');
+    }
+</script>
+
+{% endblock %}

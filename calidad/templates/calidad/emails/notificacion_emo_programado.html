@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programación de EMO</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f5f5f5;">
+    <!-- CONTENEDOR PRINCIPAL -->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 20px 0;">
+        <tr>
+            <td align="center">
+                <!-- TABLA CONTENEDORA (700px) -->
+                <table width="700" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; max-width: 700px;">
+                    
+                    <!-- HEADER NARANJA -->
+                    <tr>
+                        <td bgcolor="#e67e22" style="padding: 40px 30px; text-align: center;">
+                            <h1 style="margin: 0 0 10px 0; padding: 0; font-size: 24px; font-weight: bold; color: #ffffff;">
+                                📋 ¡TU CITA ESTÁ CONFIRMADA!
+                            </h1>
+                            <p style="margin: 0; padding: 0; font-size: 13px; color: #ffffff;">
+                                Examen Médico Ocupacional Programado
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- TIPO DE EMO - DESTACADO -->
+                    <tr>
+                        <td bgcolor="#ff6f00" style="padding: 20px 30px; text-align: center;">
+                            <p style="margin: 0 0 5px 0; font-size: 12px; font-weight: bold; color: #ffffff; text-transform: uppercase; letter-spacing: 1px;">
+                                📌 TIPO DE EXAMEN
+                            </p>
+                            <p style="margin: 0; font-size: 22px; font-weight: bold; color: #ffffff; text-transform: uppercase;">
+                                {{ emo.get_tipo_emo_display }}
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- CONTENIDO PRINCIPAL -->
+                    <tr>
+                        <td style="padding: 30px;">
+                            
+                            <!-- SALUDO -->
+                            <p style="font-size: 16px; color: #333333; font-weight: bold; margin: 0 0 25px 0;">
+                                ¡Hola {{ trabajador.nombres }}! 👋
+                            </p>
+
+                            <!-- SECCIÓN: TU INFORMACIÓN -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 10px;">
+                                <tr>
+                                    <td style="font-size: 12px; font-weight: bold; color: #e67e22; text-transform: uppercase; padding: 10px 0; border-bottom: 2px solid #e67e22;">
+                                        👤 TU INFORMACIÓN
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- GRID DE INFO (2 COLUMNAS) -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 20px;">
+                                <tr>
+                                    <td width="50%" valign="top" style="padding: 0 5px 10px 0;">
+                                        <table width="100%" cellpadding="12" cellspacing="0" border="0" bgcolor="#f9f9f9" style="border-left: 3px solid #e67e22;">
+                                            <tr>
+                                                <td>
+                                                    <span style="display: block; font-size: 11px; color: #999999; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">NOMBRE COMPLETO</span>
+                                                    <span style="display: block; font-size: 14px; color: #333333; font-weight: bold;">{{ trabajador.nombres }} {{ trabajador.apellido_paterno }} {{ trabajador.apellido_materno }}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                    {% if trabajador.dni %}
+                                    <td width="50%" valign="top" style="padding: 0 0 10px 5px;">
+                                        <table width="100%" cellpadding="12" cellspacing="0" border="0" bgcolor="#f9f9f9" style="border-left: 3px solid #e67e22;">
+                                            <tr>
+                                                <td>
+                                                    <span style="display: block; font-size: 11px; color: #999999; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">DNI</span>
+                                                    <span style="display: block; font-size: 14px; color: #333333; font-weight: bold;">{{ trabajador.dni }}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% if emo.cargo or emo.empresa %}
+                                <tr>
+                                    {% if emo.cargo %}
+                                    <td width="50%" valign="top" style="padding: 0 5px 10px 0;">
+                                        <table width="100%" cellpadding="12" cellspacing="0" border="0" bgcolor="#f9f9f9" style="border-left: 3px solid #e67e22;">
+                                            <tr>
+                                                <td>
+                                                    <span style="display: block; font-size: 11px; color: #999999; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">CARGO</span>
+                                                    <span style="display: block; font-size: 14px; color: #333333; font-weight: bold;">{{ emo.cargo.nombre }}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                    {% endif %}
+                                    {% if emo.empresa %}
+                                    <td width="50%" valign="top" style="padding: 0 0 10px 5px;">
+                                        <table width="100%" cellpadding="12" cellspacing="0" border="0" bgcolor="#f9f9f9" style="border-left: 3px solid #e67e22;">
+                                            <tr>
+                                                <td>
+                                                    <span style="display: block; font-size: 11px; color: #999999; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">EMPRESA</span>
+                                                    <span style="display: block; font-size: 14px; color: #333333; font-weight: bold;">{{ emo.empresa.nombre }}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% endif %}
+                                {% if emo.proyecto or emo.subproyecto %}
+                                <tr>
+                                    {% if emo.proyecto %}
+                                    <td width="50%" valign="top" style="padding: 0 5px 10px 0;">
+                                        <table width="100%" cellpadding="12" cellspacing="0" border="0" bgcolor="#f9f9f9" style="border-left: 3px solid #e67e22;">
+                                            <tr>
+                                                <td>
+                                                    <span style="display: block; font-size: 11px; color: #999999; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">PROYECTO</span>
+                                                    <span style="display: block; font-size: 14px; color: #333333; font-weight: bold;">{{ emo.proyecto.nombre }}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                    {% endif %}
+                                    {% if emo.subproyecto %}
+                                    <td width="50%" valign="top" style="padding: 0 0 10px 5px;">
+                                        <table width="100%" cellpadding="12" cellspacing="0" border="0" bgcolor="#f9f9f9" style="border-left: 3px solid #e67e22;">
+                                            <tr>
+                                                <td>
+                                                    <span style="display: block; font-size: 11px; color: #999999; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">SUBPROYECTO/AREA</span>
+                                                    <span style="display: block; font-size: 14px; color: #333333; font-weight: bold;">{{ emo.subproyecto.nombre }}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% endif %}
+                            </table>
+
+                            <!-- DETALLES DE LA CITA -->
+                            {% if emo.lugar_examen %}
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 25px 0 10px 0;">
+                                <tr>
+                                    <td style="font-size: 12px; font-weight: bold; color: #e67e22; text-transform: uppercase; padding: 10px 0; border-bottom: 2px solid #e67e22;">
+                                        🏥 DETALLES DE TU CITA
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 20px;">
+                                <tr>
+                                    <td width="50%" valign="top" style="padding: 0 5px 10px 0;">
+                                        <table width="100%" cellpadding="12" cellspacing="0" border="0" bgcolor="#f9f9f9" style="border-left: 3px solid #e67e22;">
+                                            <tr>
+                                                <td>
+                                                    <span style="display: block; font-size: 11px; color: #999999; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">CLÍNICA</span>
+                                                    <span style="display: block; font-size: 14px; color: #333333; font-weight: bold;">{{ emo.lugar_examen.nombre }}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                    {% if emo.fecha_programada %}
+                                    <td width="50%" valign="top" style="padding: 0 0 10px 5px;">
+                                        <table width="100%" cellpadding="12" cellspacing="0" border="0" bgcolor="#f9f9f9" style="border-left: 3px solid #e67e22;">
+                                            <tr>
+                                                <td>
+                                                    <span style="display: block; font-size: 11px; color: #999999; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">📅 FECHA</span>
+                                                    <span style="display: block; font-size: 14px; color: #333333; font-weight: bold;">{{ emo.fecha_programada|date:"d/m/Y" }}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                <tr>
+                                    {% if emo.hora_examen %}
+                                    <td width="50%" valign="top" style="padding: 0 5px 10px 0;">
+                                        <table width="100%" cellpadding="12" cellspacing="0" border="0" bgcolor="#f9f9f9" style="border-left: 3px solid #e67e22;">
+                                            <tr>
+                                                <td>
+                                                    <span style="display: block; font-size: 11px; color: #999999; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">⏰ HORA</span>
+                                                    <span style="display: block; font-size: 14px; color: #333333; font-weight: bold;">{{ emo.hora_examen|time:"H:i" }}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% if emo.lugar_examen.direccion %}
+                                <tr>
+                                    <td colspan="2" style="padding: 0 0 10px 0;">
+                                        <table width="100%" cellpadding="12" cellspacing="0" border="0" bgcolor="#f9f9f9" style="border-left: 3px solid #e67e22;">
+                                            <tr>
+                                                <td>
+                                                    <span style="display: block; font-size: 11px; color: #999999; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">📍 DIRECCIÓN</span>
+                                                    <span style="display: block; font-size: 14px; color: #333333; font-weight: bold; margin-bottom: 8px;">{{ emo.lugar_examen.direccion }}</span>
+                                                    <a href="https://www.google.com/maps/search/?api=1&query={{ emo.lugar_examen.direccion|urlencode }}" target="_blank" style="color: #e67e22; text-decoration: none; font-weight: bold; font-size: 13px;">Ver en Google Maps →</a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </table>
+
+                            <!-- IMAGEN DE LA CLÍNICA -->
+                            {% if clinica_fachada_url %}
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+                                <tr>
+                                    <td>
+                                        <img src="{{ clinica_fachada_url }}" alt="Instalaciones de {{ emo.lugar_examen.nombre }}" width="640" style="width: 100%; max-width: 640px; height: auto; display: block; border: 0;" />
+                                    </td>
+                                </tr>
+                            </table>
+                            {% endif %}
+                            {% endif %}
+
+                            <!-- COMENTARIO PERSONALIZADO -->
+                            {% if comentario_alerta %}
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 25px 0 10px 0;">
+                                <tr>
+                                    <td style="font-size: 12px; font-weight: bold; color: #e67e22; text-transform: uppercase; padding: 10px 0; border-bottom: 2px solid #e67e22;">
+                                        💬 COMENTARIO
+                                    </td>
+                                </tr>
+                            </table>
+                            <table width="100%" cellpadding="12" cellspacing="0" border="0" bgcolor="#f0f8ff" style="border-left: 4px solid #3498db; margin-bottom: 20px;">
+                                <tr>
+                                    <td style="font-size: 13px; color: #555555; line-height: 1.6;">
+                                        {{ comentario_alerta|linebreaksbr }}
+                                    </td>
+                                </tr>
+                            </table>
+                            {% endif %}
+
+                            <!-- RECOMENDACIONES -->
+                            <table width="100%" cellpadding="15" cellspacing="0" border="0" bgcolor="#fff8f0" style="border-left: 4px solid #e67e22; margin: 25px 0;">
+                                <tr>
+                                    <td>
+                                        <h3 style="margin: 0 0 10px 0; font-size: 12px; color: #e67e22; font-weight: bold; text-transform: uppercase;">⚡ RECOMENDACIONES IMPORTANTES</h3>
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td style="font-size: 13px; color: #555555; padding: 3px 0;">
+                                                    <span style="color: #e67e22; font-weight: bold;">✓</span> Trae tu <strong>DNI original</strong> el día de la cita
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="font-size: 13px; color: #555555; padding: 3px 0;">
+                                                    <span style="color: #e67e22; font-weight: bold;">✓</span> Llega <strong>30 minutos antes</strong> de la hora programada
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="font-size: 13px; color: #555555; padding: 3px 0;">
+                                                    <span style="color: #e67e22; font-weight: bold;">✓</span> Asistir en <strong>ayunas</strong>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="font-size: 13px; color: #555555; padding: 3px 0;">
+                                                    <span style="color: #e67e22; font-weight: bold;">✓</span> <strong>Obligatorio</strong> revisar todas las indicaciones de las recomendaciones adjuntas
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="font-size: 13px; color: #555555; padding: 3px 0;">
+                                                    <span style="color: #e67e22; font-weight: bold;">✓</span> Usa ropa cómoda y sin accesorios metálicos
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- MENSAJE DE CIERRE -->
+                            <p style="color: #666666; font-size: 13px; line-height: 1.6; margin: 20px 0 0 0;">
+                                <strong style="color: #333333;">¿Preguntas o necesitas cambiar tu cita?</strong><br>
+                                Responde este correo o contacta con el área de Calidad. ¡Esperamos tu asistencia puntual!
+                            </p>
+
+                        </td>
+                    </tr>
+
+                    <!-- FOOTER -->
+                    <tr>
+                        <td bgcolor="#2c3e50" style="padding: 25px 30px; text-align: center;">
+                            <p style="margin: 3px 0; font-size: 11px; color: #ffffff;">
+                                <strong style="color: #e67e22;">CENERIS</strong> - Centro de Servicios Integrados
+                            </p>
+                            <p style="margin: 3px 0; font-size: 11px; color: #ffffff;">
+                                Área de Calidad | Gestión de EMOs
+                            </p>
+                            <p style="margin: 3px 0; font-size: 11px; color: #ffffff;">
+                                Este es un mensaje automático, por favor no responder a este correo.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+</body>
+</html>

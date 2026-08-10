@@ -1,0 +1,81 @@
+{# 1. Hereda de tu plantilla base de la aplicación #}
+{% extends 'app_base.html' %} 
+
+{% load static %}
+
+{# 2. Rellena el bloque del título #}
+{% block title %}Editar Dispositivo - {{ dispositivo.nomDisp }}{% endblock %}
+
+{# 3. Rellena el bloque del contenido principal #}
+{% block main_content %}
+    
+    <div class="form-container">
+        
+        <form method="post" class="form-card">
+            <h2>Editar Dispositivo</h2>
+            <p class="form-description">Actualiza la información del dispositivo: <strong>{{ dispositivo.nomDisp }}</strong></p>
+            
+            {% csrf_token %}
+
+            <!-- Campos que ocupan todo el ancho -->
+            <div class="form-group">
+                <label for="nomDisp">Nombre del Dispositivo:</label>
+                <input type="text" id="nomDisp" name="nomDisp" value="{{ dispositivo.nomDisp }}">
+            </div>
+
+            <!-- Usaremos un grid para poner los siguientes campos en columnas en desktop -->
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="num_serie">Número de Serie:</label>
+                    <input type="text" id="num_serie" name="num_serie" value="{{ dispositivo.num_serie }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="tag">TAG:</label>
+                    <input type="text" id="tag" name="tag" value="{{ dispositivo.tag }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="tipoDisp">Tipo:</label>
+                    <select id="tipoDisp" name="tipoDisp">
+                        <option value="Fijo" {% if dispositivo.tipoDisp == "Fijo" %}selected{% endif %}>Fijo</option>
+                        <option value="Portatil" {% if dispositivo.tipoDisp == "Portatil" %}selected{% endif %}>Portátil</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="estadoD">Estado:</label>
+                    <select id="estadoD" name="estadoD">
+                        <option value="Operativo" {% if dispositivo.estadoD == "Operativo" %}selected{% endif %}>Operativo</option>
+                        <option value="Inoperativo" {% if dispositivo.estadoD == "Inoperativo" %}selected{% endif %}>Inoperativo</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="fabDisp">Fabricante:</label>
+                    <input type="text" id="fabDisp" name="fabDisp" value="{{ dispositivo.fabDisp }}">
+                </div>
+            </div> <!-- Fin del form-grid -->
+
+             <!-- Las fechas las ponemos en su propio grid -->
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="fecIngreso">Fecha de Ingreso:</label>
+                    <input type="date" id="fecIngreso" name="fecIngreso" value="{{ dispositivo.fecIngreso|date:'Y-m-d' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="fecVencimientoGarantia">Vencimiento de Garantía:</label>
+                    <input type="date" id="fecVencimientoGarantia" name="fecVencimientoGarantia" value="{{ dispositivo.fecVencimientoGarantia|date:'Y-m-d' }}">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+
+    </div>
+
+{% endblock %}

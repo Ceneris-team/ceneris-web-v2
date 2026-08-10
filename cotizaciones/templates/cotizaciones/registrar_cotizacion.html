@@ -1,0 +1,56 @@
+<!-- cotizaciones/templates/cotizaciones/registrar_cotizacion.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Registrar Cotización{% endblock %}
+
+{% block content %}
+    <h1>Registrar Solicitud de Cotización</h1>
+
+    <form action="" method="post">
+        {% csrf_token %}
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <a href="{% url 'cotizaciones:lista_cotizaciones' %}" class="btn btn-outline-secondary btn-sm">Volver a la lista</a>
+        </div>
+
+        {# Renderizamos los campos del ModelForm (evitamos duplicados) #}
+        <h3>1. Datos de la Empresa</h3>
+        <div class="mb-3">
+            {{ form.nombre_empresa.label_tag }}<br>
+            {{ form.nombre_empresa }}
+        </div>
+        <div class="mb-3">
+            {{ form.ruc.label_tag }}<br>
+            {{ form.ruc }}
+        </div>
+        <div class="mb-3">
+            {{ form.ubicacion.label_tag }}<br>
+            {{ form.ubicacion }}
+        </div>
+
+        <h3>2. Datos del Contacto</h3>
+        <div class="mb-3">
+            {{ form.nombre_contacto.label_tag }}<br>
+            {{ form.nombre_contacto }}
+        </div>
+        <div class="mb-3">
+            {{ form.correo.label_tag }}<br>
+            {{ form.correo }}
+        </div>
+        <div class="mb-3">
+            {{ form.telefono.label_tag }}<br>
+            {{ form.telefono }}
+        </div>
+
+        <h3>3. Detalles del Pedido</h3>
+        <div class="mb-3">
+            {{ form.descripcion_pedido.label_tag }}<br>
+            {{ form.descripcion_pedido }}
+        </div>
+        <div class="mb-3">
+            {{ form.tipo_servicio_producto.label_tag }}<br>
+            {{ form.tipo_servicio_producto }}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Registrar Solicitud</button>
+    </form>
+{% endblock %}

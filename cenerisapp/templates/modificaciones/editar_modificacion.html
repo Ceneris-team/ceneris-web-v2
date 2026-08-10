@@ -1,0 +1,71 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="form-container">
+        <form method="post" class="form-card">
+            <h2>{{ titulo }}</h2>
+            <p class="form-description">Actualiza los detalles del servicio realizado en <strong>{{ modificacion.id_dispositivo }}</strong>.</p>
+            {% csrf_token %}
+
+            <!-- Mostramos errores generales (los que vienen del método 'clean') -->
+            {% if form.non_field_errors %}
+                <div class="form-errors">
+                    {% for error in form.non_field_errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    {{ form.id_dispositivo.label_tag }}
+                    {{ form.id_dispositivo }}
+                    <p class="form-help-text">{{ form.id_dispositivo.help_text }}</p>
+                    <div class="form-error">{{ form.id_dispositivo.errors }}</div>
+                </div>
+
+                <!-- CAMPO VIRTUAL CORRECTO -->
+                <div class="form-group">
+                    {{ form.componente_o_parte_involucrada.label_tag }}
+                    {{ form.componente_o_parte_involucrada }}
+                    <div class="form-error">{{ form.componente_o_parte_involucrada.errors }}</div>
+                </div>
+
+                <div class="form-group">
+                    {{ form.id_trabajador.label_tag }}
+                    {{ form.id_trabajador }}
+                    <div class="form-error">{{ form.id_trabajador.errors }}</div>
+                </div>
+                <div class="form-group">
+                    {{ form.fecInstalacionMod.label_tag }}
+                    {{ form.fecInstalacionMod }}
+                    <div class="form-error">{{ form.fecInstalacionMod.errors }}</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                {{ form.tipoServicio.label_tag }}
+                {{ form.tipoServicio }}
+                <div class="form-error">{{ form.tipoServicio.errors }}</div>
+            </div>
+            <div class="form-group">
+                {{ form.MotivoCambio.label_tag }}
+                {{ form.MotivoCambio }}
+                <div class="form-error">{{ form.MotivoCambio.errors }}</div>
+            </div>
+            <div class="form-group">
+                {{ form.descrTrabajo.label_tag }}
+                {{ form.descrTrabajo }}
+                <div class="form-error">{{ form.descrTrabajo.errors }}</div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                <a href="{% url 'lista_modificaciones' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- El JavaScript para el filtrado dinámico (se queda igual) -->
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/filtros_maestros.css' %}">
+    <style>
+        /* Clase para el fondo que ocupa todo el ancho y alto disponible
+           respetando la cabecera.
+        */
+        .report-background {
+            /* 1. Imagen de fondo oscurecida */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("https://img.freepik.com/free-photo/close-up-keyboard-glasses-executives-background_1098-3635.jpg");
+            background-size: cover;
+            background-position: center;
+
+            /* 2. Truco para ocupar todo el ancho de la pantalla (romper contenedor padre) */
+            width: 100vw; 
+            position: relative;
+            left: 50%;
+            right: 50%;
+            margin-left: -50vw;
+            margin-right: -50vw;
+            
+            /* 3. Altura: Ocupa al menos toda la altura visible menos la cabecera (aprox 80px) */
+            min-height: calc(100vh - 80px);
+            
+            /* 4. Centrar el formulario */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .export-container {
+            background-color: #ffffff;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            max-width: 750px;
+            width: 90%;
+            position: relative; /* Para que la X se posicione bien */
+        }
+
+        .export-container h1 {
+            margin-top: 0;
+            color: #333;
+            font-weight: 700;
+            text-align: center;
+        }
+        
+        .export-container p {
+            text-align: center;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .form-filters-master {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            align-items: flex-end;
+        }
+        
+        /* Estilos inputs */
+        .filter-group label {
+            font-weight: 600;
+            color: #444;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background: #fff;
+        }
+
+        .form-actions {
+            grid-column: 1 / -1;
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+        
+        .btn-export {
+            background-color: #198754;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: background-color 0.2s;
+        }
+        .btn-export:hover {
+            background-color: #157347;
+        }
+
+        /* Botón X de cerrar */
+        .btn-close-float {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #aaa;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn-close-float:hover {
+            color: #dc3545;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="report-background">
+        
+        <div class="export-container">
+            <a href="javascript:history.back()" class="btn-close-float">&times;</a>
+
+            <h1>{{ titulo }}</h1>
+            <p>Selecciona los filtros para generar tu archivo de Excel personalizado.</p>
+
+            <form method="get" class="form-filters-master">
+                <div class="filter-group">
+                    <label for="proyecto_padre">Proyecto Padre</label>
+                    <select name="proyecto_padre" id="proyecto_padre" required>
+                        <option value="" disabled selected>-- Seleccionar Proyecto --</option>
+                        {% for proy in opciones_proyectos_padre %}
+                            <option value="{{ proy.pk }}" {% if filtro_activo_proyecto_padre == proy.pk %}selected{% endif %}>{{ proy.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="ano">Año</label>
+                    <select name="ano" id="ano">
+                        {% for ano in opciones_anos %}
+                            <option value="{{ ano }}" {% if filtro_activo_ano == ano %}selected{% endif %}>{{ ano }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="mes">Mes</label>
+                    <select name="mes" id="mes">
+                        <option value="">Todo el Año</option>
+                        {% for valor, texto in opciones_meses %}
+                            <option value="{{ valor }}" {% if filtro_activo_mes == valor %}selected{% endif %}>{{ texto }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" name="exportar" value="excel" class="btn-export">
+                        <i data-feather="download"></i>
+                        <span>Generar y Descargar Excel</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}

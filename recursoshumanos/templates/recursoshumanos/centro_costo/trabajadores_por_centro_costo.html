@@ -1,0 +1,26 @@
+<!-- calidad/templates/calidad/centro_costo/trabajadores_por_centro_costo.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Trabajadores en {{ centro_costo.nombre }}{% endblock %}
+{% block content %}
+    <div class="page-header">
+        <h1>Trabajadores en: {{ centro_costo.nombre }} ({{ centro_costo.codigo }})</h1>
+        <a href="{% url 'recursoshumanos:lista_centro_costo' %}" class="btn-secondary">&larr; Volver al Listado</a>
+    </div>
+    <p>La siguiente tabla muestra todos los trabajadores actualmente asignados a este centro de costo.</p>
+
+    <table>
+        <thead><tr><th>DNI</th><th>Nombre Completo</th><th>Cargo</th><th>Proyecto Actual</th></tr></thead>
+        <tbody>
+            {% for trabajador in trabajadores %}
+            <tr>
+                <td>{{ trabajador.dni }}</td>
+                <td>{{ trabajador }}</td>
+                <td>{{ trabajador.cargo.nombre|default:"--" }}</td>
+                <td>{{ trabajador.proyecto_actual.nombre|default:"--" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">No hay trabajadores asignados a este centro de costo.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

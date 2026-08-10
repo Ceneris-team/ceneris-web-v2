@@ -1,0 +1,147 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load humanize %}
+
+{% block extra_head %}
+    {{ block.super }}
+    <style>
+        /* (Copia aquí exactamente los mismos estilos <style> de tu plantilla de ejemplo) */
+        :root {
+            --light-bg: #ffffff; --light-panel: #f8f9fa; --light-text: #212529;
+            --light-accent: #0d6efd; --light-subtle-text: #6c757d; --light-border: #dee2e6;
+        }
+        body { background-color: var(--light-bg) !important; }
+        .dashboard-card { background-color: var(--light-panel); color: var(--light-text); border: 1px solid var(--light-border); border-radius: 8px; height: 100%; }
+        .dashboard-card .card-header { background-color: transparent; border-bottom: 1px solid var(--light-border); color: var(--light-accent); font-weight: bold; text-transform: uppercase; }
+        .dashboard-card .card-body h1, .dashboard-card .card-body h2, .dashboard-card .card-body h3 { color: var(--light-text); }
+        .kpi-card { display: flex; align-items: center; padding: 1rem; border-bottom: 1px solid var(--light-border); background: transparent; }
+        .kpi-card:last-child { border-bottom: none; }
+        .kpi-icon { font-size: 2rem; color: var(--light-accent); margin-right: 1rem; flex-shrink: 0; }
+        .kpi-content h5 { margin: 0; font-size: 0.9rem; color: var(--light-subtle-text); text-transform: uppercase; }
+        .kpi-content p { margin: 0; font-size: 1.5rem; font-weight: bold; color: var(--light-text); }
+    </style>
+{% endblock %}
+
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Fila de Filtros -->
+    <div class="d-flex justify-content-between align-items-center mb-4 px-2">
+        <h3 style="color: var(--light-text);">{{ titulo }}</h3>
+        <form method="get" class="d-flex align-items-center">
+            <label for="year" class="form-label me-2 mb-0" style="color: var(--light-subtle-text);">Año:</label>
+            <select name="year" id="year" class="form-select form-select-sm" onchange="this.form.submit()">
+                {% for year in available_years %}
+                    <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <div class="row g-4">
+        <!-- Columna Izquierda: Gráfico de Líneas y Barras -->
+        <div class="col-lg-8">
+            <div class="row g-4">
+                <div class="col-12"><div class="card dashboard-card"><div class="card-header">Valor Aprobado por Mes</div><div class="card-body"><canvas id="lineChart"></canvas></div></div></div>
+                <div class="col-12"><div class="card dashboard-card"><div class="card-header">Top 5 Comerciales (por valor aprobado)</div><div class="card-body"><div style="min-height:420px;"><canvas id="barChart" style="height:420px; width:100%;"></canvas></div></div></div></div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: KPIs y Gráfico de Anillo -->
+        <div class="col-lg-4">
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card dashboard-card">
+                        <div class="card-header">Indicadores Clave de Ventas</div>
+                        <div class="card-body p-0">
+                            <div class="row g-0">
+                                <div class="col-6"><div class="kpi-card"><i data-feather="log-in" class="kpi-icon"></i><div class="kpi-content"><h5>Procesos Iniciados</h5><p>{{ kpi_total_procesos }}</p></div></div></div>
+                                <div class="col-6"><div class="kpi-card"><i data-feather="percent" class="kpi-icon"></i><div class="kpi-content"><h5>Tasa Conversión</h5><p>{{ kpi_tasa_conversion }}%</p></div></div></div>
+                                <div class="col-12"><div class="kpi-card"><i data-feather="dollar-sign" class="kpi-icon"></i><div class="kpi-content"><h5>Valor Aprobado</h5><p>S/ {{ kpi_valor_aprobado|intcomma }}</p></div></div></div>
+                                <div class="col-6"><div class="kpi-card"><i data-feather="check-circle" class="kpi-icon"></i><div class="kpi-content"><h5>Coti. Aprobadas</h5><p>{{ kpi_cotizaciones_aprobadas }}</p></div></div></div>
+                                <div class="col-6"><div class="kpi-card"><i data-feather="award" class="kpi-icon"></i><div class="kpi-content"><h5>Top Comercial</h5><p>{{ kpi_top_comercial }}</p></div></div></div>
+                                <div class="col-12"><div class="kpi-card"><i data-feather="shopping-cart" class="kpi-icon"></i><div class="kpi-content"><h5>Ticket Promedio</h5><p>S/ {{ kpi_ticket_promedio|intcomma }}</p></div></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12"><div class="card dashboard-card"><div class="card-header">Estado de Cotizaciones del Año</div><div class="card-body"><canvas id="doughnutChart"></canvas></div></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Paleta de colores para los gráficos de ventas
+            const chartColors = ['#0d6efd', '#6c757d', '#198754', '#ffc107', '#dc3545', '#0dcaf0'];
+
+            // --- GRÁFICO DE LÍNEAS (VENTAS MENSUALES) ---
+            const lineChartData = JSON.parse('{{ line_chart_data|safe }}');
+            const lineCtx = document.getElementById('lineChart').getContext('2d');
+            new Chart(lineCtx, {
+                type: 'line',
+                data: {
+                    labels: lineChartData.labels,
+                    datasets: [{
+                        label: 'Valor Total Aprobado (S/)',
+                        data: lineChartData.data,
+                        borderColor: '#198754',
+                        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: chartOptions('y', 'Soles (S/)')
+            });
+
+            // --- GRÁFICO DE BARRAS (TOP COMERCIALES) ---
+            const barChartData = JSON.parse('{{ bar_chart_data|safe }}');
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: barChartData.labels,
+                    datasets: [{
+                        label: 'Valor Aprobado (S/)',
+                        data: barChartData.data,
+                        backgroundColor: chartColors,
+                    }]
+                },
+                options: chartOptions('x', 'Soles (S/)')
+            });
+
+            // --- GRÁFICO DE ANILLO (ESTADOS) ---
+            const doughnutChartData = JSON.parse('{{ doughnut_chart_data|safe }}');
+            const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
+            new Chart(doughnutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: doughnutChartData.labels,
+                    datasets: [{
+                        data: doughnutChartData.data,
+                        backgroundColor: chartColors,
+                        borderColor: 'var(--light-panel)',
+                        borderWidth: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { color: 'var(--light-text)' } } }
+                }
+            });
+            
+            // Función de ayuda para configurar opciones comunes
+            function chartOptions(axis, label) {
+                // (Copia aquí la misma función 'chartOptions' de tu plantilla de ejemplo)
+                return {
+                    indexAxis: axis === 'x' ? 'y' : 'x', responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { color: 'var(--light-text)' } }, tooltip: { backgroundColor: '#000', titleColor: '#fff', bodyColor: '#fff' } },
+                    scales: { x: { ticks: { color: 'var(--light-subtle-text)' }, grid: { color: 'rgba(0,0,0,0.05)' } }, y: { ticks: { color: 'var(--light-subtle-text)' }, grid: { color: 'rgba(0,0,0,0.05)' }, title: { display: true, text: label, color: 'var(--light-subtle-text)' } } }
+                };
+            }
+        });
+    </script>
+{% endblock %}

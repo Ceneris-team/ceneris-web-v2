@@ -1,0 +1,100 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div style="padding-bottom: 30px;">
+<div class="dashboard-container modern">
+    <div class="dashboard-header-modern">
+        <h1>Programas de Calibración</h1>
+        <p>Navega por año y filtra para ver el progreso de cada programa.</p>
+        <a href="{% url 'cenerisapp:crear_programa' %}" class="btn btn-primary" style="background-color: #d45b04; margin-top: 1rem;">Nuevo Programa</a>
+    </div>
+
+    <!-- NAVEGACIÓN POR AÑO -->
+    <nav class="year-nav">
+        {% for ano in anos_disponibles %}
+            <a href="?year={{ ano }}" class="year-nav-link {% if ano == ano_seleccionado %}active{% endif %}">
+                {{ ano }}
+            </a>
+        {% empty %}
+            <p>No hay programas registrados para ningún año.</p>
+        {% endfor %}
+    </nav>
+
+    <!-- FILTROS -->
+    <div class="filter-container" style="max-width: 700px;margin: 0 auto;">
+        <form method="GET" class="filter-form-grid">
+            <!-- Pasamos el año actual como un campo oculto para mantenerlo al filtrar -->
+            <input type="hidden" name="year" value="{{ ano_seleccionado }}">
+            
+            <div class="form-group">
+                <label for="mes">Filtrar por Mes</label>
+                <select name="mes" id="mes" class="form-select">
+                    <option value="">-- Todos los Meses --</option>
+                    {% for num, nombre in meses_disponibles %}
+                        <option value="{{ num }}" {% if filtros_aplicados.mes == num %}selected{% endif %}>{{ nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="tipo">Filtrar por Tipo</label>
+                <select name="tipo" id="tipo" class="form-select">
+                    <option value="">-- Todos los Tipos --</option>
+                     {% for val, text in tipos_disponibles %}
+                        <option value="{{ val }}" {% if filtros_aplicados.tipo == val %}selected{% endif %}>{{ text }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" style="background-color: #d45b04;">Filtrar</button>
+                <a href="?year={{ ano_seleccionado }}" class="btn btn-secondary">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- GRID DE TARJETAS DE PROGRAMA -->
+    <div class="program-card-grid" style="margin-bottom: 2rem;">
+        {% for programa in programas %}
+            <div class="info-card modern program-card">
+                <div class="card-header">
+                    <i class="bi bi-calendar-check card-icon"></i>
+                    <h4>{{ programa.get_mes_display }} {{ programa.ano }}</h4>
+                    <span class="program-type-badge">{{ programa.get_tipo_dispositivo_display }}</span>
+                </div>
+                
+                <div class="program-stats">
+                    <div class="stat-item">
+                        <span>Programado</span>
+                        <strong>{{ programa.totalPrograma }}</strong>
+                    </div>
+                    <div class="stat-item">
+                        <span>Ejecutado</span>
+                        <strong>{{ programa.totalEjecutado }}</strong>
+                    </div>
+                </div>
+
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: {{ programa.porcentaje_progreso }}%;">
+                        {{ programa.porcentaje_progreso }}%
+                    </div>
+                </div>
+
+                <div class="card-footer-actions">
+                    <a href="{% url 'cenerisapp:editar_programa' programa.id_programa %}" class="btn btn-secondary btn-sm">Editar</a>
+                    <a href="{% url 'cenerisapp:ver_certificados_programa' programa.id_programa %}" class="btn btn-info btn-sm">
+                        Ver Certificados
+                    </a>
+                </div>
+            </div>
+        {% empty %}
+            <div class="info-card modern text-center" style="grid-column: 1 / -1;">
+                <p class="no-data">No hay programas registrados para el año {{ ano_seleccionado }} con los filtros aplicados.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+</div>
+{% endblock %}

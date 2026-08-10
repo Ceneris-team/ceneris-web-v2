@@ -1,0 +1,50 @@
+<!-- dashboard/templates/dashboard/gestion_justificaciones.html -->
+{% extends "dashboard/base_rrhh.html" %}
+{% block title %}Gestión de Justificaciones{% endblock %}
+
+{% block content %}
+    <h1>Gestión de Justificaciones</h1>
+    <p><a href="{% url 'recursoshumanos:main_dashboard' %}">&larr; Volver</a></p>
+
+    <div class="form-container">
+        <h2>Añadir Nueva Justificación</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <br>
+            <button type="submit" class="button--primary">Guardar Justificación</button>
+        </form>
+    </div>
+
+    <h2>Justificaciones Registradas</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Trabajador</th>
+                <th>Tipo</th>
+                <th>Rango de Fechas</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for justificacion in justificaciones %}
+            <tr>
+                <td>{{ justificacion.nombreTrabajador }} ({{ justificacion.dniTrabajador }})</td>
+                <td>{{ justificacion.tipo }}</td>
+                <td>{{ justificacion.fechaInicio }} - {{ justificacion.fechaFin }}</td>
+                <td>{{ justificacion.descripcion }}</td>
+                <td>
+                    <form method="post" onsubmit="return confirm('¿Seguro que quieres eliminar esta justificación?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="delete_id" value="{{ justificacion.id }}">
+                        <button type="submit" style="background: none; border: none; color: red; cursor: pointer; padding: 0;">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">No hay justificaciones registradas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

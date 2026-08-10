@@ -1,0 +1,88 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 900px; margin-top: 2rem;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="color: #2c3e50;">{{ titulo }}</h2>
+        <a href="{% url 'calidad:reporte_maestro_emos' %}" class="btn-secondary">&larr; Volver</a>
+    </div>
+
+    <div class="card" style="padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+        
+        <!-- 1. PDF PRINCIPAL (Resultados) -->
+        <div style="margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+            <h4 style="color: #d45b04; margin-bottom: 10px;">1. Resultados del Examen (PDF Principal)</h4>
+            {% if emo.archivo_pdf %}
+                <a href="{{ emo.archivo_pdf.url }}" target="_blank" class="btn btn-primary" style="text-decoration: none;">
+                    <i data-feather="download"></i> Descargar Resultados
+                </a>
+            {% else %}
+                <span class="text-muted" style="font-style: italic;">No hay archivo cargado.</span>
+            {% endif %}
+        </div>
+
+        <!-- 2. LECTURA / CONFIRMACIÓN -->
+        <div style="margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+            <h4 style="color: #d45b04; margin-bottom: 10px;">2. Constancia de Lectura Firmada</h4>
+            {% if emo.archivo_confirmacion %}
+                <a href="{{ emo.archivo_confirmacion.url }}" target="_blank" class="btn btn-info" style="background-color: #17a2b8; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px;">
+                    <i data-feather="file-text"></i> Ver Constancia
+                </a>
+                <p style="margin-top: 5px; font-size: 0.9em;"><strong>Fecha Confirmación:</strong> {{ emo.fecha_confirmacion|date:"d/m/Y" }}</p>
+            {% else %}
+                <span class="text-muted" style="font-style: italic;">Pendiente de subir.</span>
+            {% endif %}
+        </div>
+
+        <!-- 3. SUBSANACIÓN -->
+        <div style="margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+            <h4 style="color: #d45b04; margin-bottom: 10px;">3. Levantamiento de Observaciones</h4>
+            {% if emo.archivo_subsana %}
+                <a href="{{ emo.archivo_subsana.url }}" target="_blank" class="btn btn-success" style="background-color: #28a745; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px;">
+                    <i data-feather="check-circle"></i> Ver Subsanación
+                </a>
+            {% else %}
+                <span class="text-muted" style="font-style: italic;">No aplica o no cargado.</span>
+            {% endif %}
+        </div>
+
+        <!-- 4. CONTROLES (Archivos adjuntos en controles) -->
+        <!-- SOLO VISIBLE PARA EL DOCTOR -->
+        {% if es_doctor %}
+            <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 15px;">
+                <h4 style="color: #d45b04; margin-bottom: 10px;">4. Archivos de Controles Médicos (Privado)</h4>
+                {% if emo.controles.all %}
+                    <ul style="list-style: none; padding: 0;">
+                        {% for control in emo.controles.all %}
+                            <li style="margin-bottom: 10px; background: #fff3cd; padding: 10px; border-radius: 5px; border: 1px solid #ffeeba;">
+                                <strong>{{ control.descripcion }}</strong> ({{ control.fecha_programada|date:"d/m/Y" }})
+                                <br>
+                                {% if control.archivo_adjunto %}
+                                    <a href="{{ control.archivo_adjunto.url }}" target="_blank" style="color: #856404; text-decoration: underline;">
+                                        <i data-feather="paperclip" style="width: 14px;"></i> Ver Adjunto Confidencial
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted" style="font-size: 0.9em;">Sin archivo adjunto.</span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <span class="text-muted" style="font-style: italic;">No hay controles registrados.</span>
+                {% endif %}
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<script>
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+</script>
+{% endblock %}

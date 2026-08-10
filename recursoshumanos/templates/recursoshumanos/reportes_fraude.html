@@ -1,0 +1,63 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Reportes de Fraude{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Listado de Intentos de fraude</h1>
+            <p style="margin: 0;">Esta tabla muestra todos los intentos de registro de asistencia que fueron bloqueados por las medidas de seguridad, como el uso de ubicaciones falsas (Fake GPS), VPNs o dispositivos rooteados.</p>
+            {% if fuentes_fraude %}
+            <p style="margin: 6px 0 0; font-size: 0.85rem; color: #6b7280;">
+                Fuente de datos: {{ fuentes_fraude|join:", " }}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha y Hora</th>
+                <th>Nombre del Trabajador</th>
+                <th>DNI</th>
+                <th>Razón del Bloqueo</th>
+                <th>Ubicación Falsa Reportada</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fraude in fraudes %}
+            <tr style="background-color: #fff1f1;"> 
+                
+                <td>{{ fraude.fecha_hora|date:"d/m/Y H:i:s" }}</td>
+                
+                <td>
+                    {{ fraude.trabajador.nombre_completo }}
+                </td>
+                
+                <td>{{ fraude.trabajador.dni }}</td>
+                
+                <td><strong>{{ fraude.motivo_detectado }}</strong></td>
+                
+                <td>
+                    {% if fraude.latitud_reportada and fraude.longitud_reportada %}
+                        {{ fraude.latitud_reportada }}, {{ fraude.longitud_reportada }}
+                        <br>
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ fraude.latitud_reportada|stringformat:'f' }},{{ fraude.longitud_reportada|stringformat:'f' }}" target="_blank" style="font-size: 0.85rem; color: #3b82f6;">
+                            (Ver en mapa)
+                        </a>
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 2rem; color: #10b981; font-weight: bold;">
+                    ¡Excelente! No se han detectado intentos de fraude.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

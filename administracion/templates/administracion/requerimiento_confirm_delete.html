@@ -1,0 +1,27 @@
+{% extends "administracion/base_administracion.html" %}
+
+{% block title %}Confirmar Eliminación{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h3>Confirmar Eliminación</h3>
+                </div>
+                <div class="card-body">
+                    <p>¿Estás seguro de que quieres eliminar permanentemente el requerimiento para <strong>"{{ object.agente }}"</strong>?</p>
+                    <p class="text-muted">Esta acción no se puede deshacer.</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <a href="{% url 'administracion:lista_requerimientos' %}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,110 @@
+<!-- calidad/templates/calidad/dashboard_calidad.html -->
+{% extends "dashboard/base_rrhh.html" %}
+{% load custom_filters %}
+{% block title %}Dashboard de Calidad{% endblock %}
+
+{% block content %}
+
+    <!-- con este cambio extraemos de views. gestion calidad extraemos las variables-->
+    <h1>{{ page_info.title }}</h1>
+    <p>{{ page_info.subtitle }}</p>
+    
+    <div class="dashboard-grid">
+        {% if current_view == 'gestion_trabajadores' or current_view == 'dashboard_calidad' %}
+            
+            {% if request.user|has_group:"Calidad" or request.user|has_group:"Supervisores" %}
+            <!-- Tarjeta para Crear Empleado -->
+            <a href="{% url 'crear_trabajador' %}" class="card">
+                <div class="card__icon">👤</div>
+                <h2 class="card__title">Registrar nuevo empleado</h2>
+                <p class="card__description">Registra un nuevo trabajador en el sistema con toda su información.</p>
+                <div class="card__footer">Registrar Nuevo &rarr;</div>
+            </a>
+            {% endif %}
+
+            {% if request.user|has_group:"Calidad" or request.user|has_group:"Supervisores" %}
+            <!-- Tarjeta para Ver Listado -->
+            <a href="{% url 'lista_trabajadores' %}" class="card">
+                <div class="card__icon">📋</div>
+                <h2 class="card__title">Listado de Empleados</h2>
+                <p class="card__description">Consulta, edita y gestiona la lista de todos los trabajadores registrados.</p>
+                <div class="card__footer">Ver Listado &rarr;</div>
+            </a>
+            {% endif %}
+
+        {% endif %}   
+            
+        {% if current_view == 'gestion_certificados' or current_view == 'dashboard_calidad' %}
+            {% if request.user|has_group:"Calidad" or request.user|has_group:"Supervisores" %}
+            <!-- Tarjeta para Cargar Certificado -->
+            <a href="{% url 'lista_emos_pendientes' %}" class="card">
+                <div class="card__icon">📤</div>
+                <h2 class="card__title">EMOS pendientes a subir resultado</h2>
+                <p class="card__description">Verifica y sube los resultados de EMOs</p>
+                <div class="card__footer">Cargar Archivo &rarr;</div>
+            </a>
+            {% endif %}
+
+            {% if request.user|has_group:"Calidad" or request.user|has_group:"Supervisores" %}
+            <!-- Añade más tarjetas específicas para Calidad -->
+            <a href="{% url 'lista_programacion_emos' %}" class="card"> <!-- ¡ENLACE ACTUALIZADO! -->
+                <div class="card__icon">📜</div>
+                <h2 class="card__title">Programar EMO</h2>
+                <p class="card__description">Ver la lista de trabajadores que requieren un nuevo examen médico.</p>
+                <div class="card__footer">Ver Prioridades &rarr;</div>
+            </a>
+            {% endif %}
+            {% if request.user|has_group:"Calidad" or request.user|has_group:"Supervisores" %}
+            <!-- Tarjeta para Cargar Certificado -->
+            <a href="{% url 'lista_para_subsanar' %}" class="card">
+                <div class="card__icon">📎</div>
+                <h2 class="card__title">Subir Subsanaciones</h2>
+                <p>Adjunta la evidencia para trabajadores con observaciones.</p>
+                <div class="card__footer">Ver Pendientes &rarr;</div>
+            </a>
+            {% endif %}
+            
+        {% endif %}
+        {% if current_view == 'filtro_emos' or current_view == 'dashboard_calidad' %}
+            
+            {% if request.user|has_group:"Calidad" or request.user|has_group:"Supervisores" %}
+                <!-- Añade más tarjetas específicas para Calidad -->
+                <a href="{% url 'lista_emos' %}" class="card">
+                    <div class="card__icon">📜</div>
+                    <h2 class="card__title">Vigencia de EMOs</h2>
+                    <p class="card__description">
+                        Consulta todos los certificados vigentes y vencidos del personal
+                    </p>
+                    <div class="card__footer">
+                        Consultar &rarr;
+                    </div>
+                </a>
+            {% endif %}
+
+            {% if request.user|has_group:"Calidad" or request.user|has_group:"Supervisores" %}
+            <!-- Tarjeta para Cargar Certificado -->
+            <a href="{% url 'reporte_aptitud_emos' %}" class="card">
+                <div class="card__icon">✅</div>
+                <h2 class="card__title">Reporte de Aptitud</h2>
+                <p class="card__description">Filtra y visualiza el estado de aptitud del último EMO de cada trabajador.</p>
+                <div class="card__footer">Generar Reporte &rarr;</div>
+            </a>
+            {% endif %}
+
+        {% endif %} 
+
+        {% if current_view == 'observaciones' or current_view == 'dashboard_calidad' %}
+            <!-- Añade más tarjetas específicas para Calidad -->
+
+            {% if request.user|has_group:"Calidad" or request.user|has_group:"Supervisores" %}
+            <a href="{% url 'reporte_maestro_emos' %}?aptitud=Apto con Restricción&aptitud=Observado" class="card">
+                <div class="card__icon">📎</div>
+                <h2 class="card__title">Subir Evidencia</h2>
+                <p>Consulta la lista de EMOs con observaciones que requieren un documento de subsanación.</p>
+                <div class="card__footer">Ver Lista &rarr;</div>
+            </a>
+            {% endif %}
+
+        {% endif %} 
+    </div>
+{% endblock %}

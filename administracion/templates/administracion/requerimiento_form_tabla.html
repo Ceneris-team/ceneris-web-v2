@@ -1,0 +1,176 @@
+{% extends "administracion/base_administracion.html" %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <form method="post" id="requerimiento-formset">
+        {% csrf_token %}
+        
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h3>{{ titulo }}</h3>
+            </div>
+            <div class="card-body">
+                
+                <div class="row mb-4 p-3 bg-light border rounded">
+                    <div class="col-md-12">
+                        <p class="form-text text-muted">
+                            Ingrese el período que aplicará para los requerimientos de la tabla.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="fecha_inicio" class="form-label fw-bold">Fecha de Inicio del Período</label>
+                        <input type="date" class="form-control" name="fecha_inicio" id="fecha_inicio" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="fecha_fin" class="form-label fw-bold">Fecha de Fin del Período</label>
+                        <input type="date" class="form-control" name="fecha_fin" id="fecha_fin" required>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tipo de Monitoreo</th>
+                                <th>Agente / Producto</th>
+                                <th style="width: 200px;">Cantidad Total</th>
+                                <th style="width: 150px;" class="text-center">Meta Mensual (Calculada)</th>
+                                <th style="width: 80px;" class="text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="form-container">
+                            {{ formset.management_form }}
+                            {% for form in formset %}
+                                <tr class="form-row">
+                                    {{ form.id }}
+                                    <td>{{ form.tipo_monitoreo }}</td>
+                                    <td>{{ form.agente }}</td>
+                                    <td>{{ form.cantidad_total }}</td>
+                                    <td class="text-center align-middle">
+                                        <span class="fw-bold meta-display">0</span>
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <button type="button" class="btn btn-danger btn-sm remove-form">
+                                            <i data-feather="trash-2" style="width:16px; height:16px;"></i>
+                                        </button>
+                                        <div style="display: none;">{{ form.DELETE }}</div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <button type="button" id="add-form" class="btn btn-success mt-2">
+                    <i data-feather="plus-circle" class="me-2"></i> Añadir Requerimiento
+                </button>
+            </div>
+            <div class="card-footer text-end">
+                
+                <button type="submit" class="btn btn-primary">Guardar Todos los Requerimientos</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Plantilla para la nueva fila (OCULTA) -->
+<template id="form-template">
+    <tr class="form-row">
+        <td>{{ formset.empty_form.tipo_monitoreo }}</td>
+        <td>{{ formset.empty_form.agente }}</td>
+        <td>{{ formset.empty_form.cantidad_total }}</td>
+        <td class="text-center align-middle">
+            <span class="fw-bold meta-display">0</span>
+        </td>
+        <td class="text-center align-middle">
+            <button type="button" class="btn btn-danger btn-sm remove-form">
+                <i data-feather="trash-2" style="width:16px; height:16px;"></i>
+            </button>
+            <div style="display: none;">{{ formset.empty_form.DELETE }}</div>
+        </td>
+    </tr>
+</template>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fechaInicioInput = document.getElementById('fecha_inicio');
+    const fechaFinInput = document.getElementById('fecha_fin');
+    const formContainer = document.getElementById('form-container');
+    const addButton = document.getElementById('add-form');
+    const formTemplate = document.getElementById('form-template');
+    const totalFormsInput = document.getElementById('id_form-TOTAL_FORMS');
+
+    const recalcularMetas = () => {
+        const fechaInicioVal = fechaInicioInput.value;
+        const fechaFinVal = fechaFinInput.value;
+
+        if (!fechaInicioVal || !fechaFinVal) return;
+        const fechaInicio = new Date(fechaInicioVal);
+        const fechaFin = new Date(fechaFinVal);
+        if (fechaFin < fechaInicio) return;
+
+        let meses = (fechaFin.getFullYear() - fechaInicio.getFullYear()) * 12;
+        meses += fechaFin.getMonth() - fechaInicio.getMonth();
+        if (meses <= 0) {
+            meses = 1;
+        }
+
+        document.querySelectorAll('.form-row').forEach(row => {
+            const cantidadInput = row.querySelector('input[name$="-cantidad_total"]');
+            const metaDisplay = row.querySelector('.meta-display');
+            
+            const cantidad = parseFloat(cantidadInput.value) || 0;
+            let metaCalculada = 0;
+
+            if (cantidad > 0) {
+                // --- INICIO DEL CAMBIO ---
+                // Usamos Math.round() para redondear al entero más cercano.
+                metaCalculada = Math.round(cantidad / meses);
+                // --- FIN DEL CAMBIO ---
+            }
+            
+            metaDisplay.textContent = metaCalculada;
+        });
+    };
+
+    fechaInicioInput.addEventListener('change', recalcularMetas);
+    fechaFinInput.addEventListener('change', recalcularMetas);
+
+    formContainer.addEventListener('input', (e) => {
+        if (e.target && e.target.name.includes('-cantidad_total')) {
+            recalcularMetas();
+        }
+    });
+
+    const addFormRow = () => {
+        let formIdx = parseInt(totalFormsInput.value);
+        const newRow = formTemplate.content.cloneNode(true);
+        
+        newRow.querySelectorAll('input, select').forEach(input => {
+            input.name = input.name.replace('__prefix__', formIdx);
+            input.id = input.id.replace('__prefix__', formIdx);
+        });
+        
+        formContainer.appendChild(newRow);
+        totalFormsInput.value = formIdx + 1;
+        feather.replace();
+    };
+    
+    addButton.addEventListener('click', addFormRow);
+
+    formContainer.addEventListener('click', function(e) {
+        const removeButton = e.target.closest('.remove-form');
+        if (removeButton) {
+            e.preventDefault();
+            removeButton.closest('.form-row').remove();
+        }
+    });
+});
+</script>
+{% endblock %}

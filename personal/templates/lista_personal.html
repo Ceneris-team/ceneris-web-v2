@@ -1,0 +1,249 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block meta %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'personal/css/style.css' %}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/imagehover.css/2.0.0/css/imagehover.min.css" integrity="sha512-SYBBAnJsPEzSQ/kBqkR/9krJ+EUgF624c8uaMBww1Q26pnCw5k7zVmtc48BfXjZ9MRNNBveIdhx/na1xRLWgjw==" crossorigin="anonymous" referrerpolicy="no-referrer" />    
+{% endblock %}
+
+{% block content %}
+
+<div class="content-area">
+    <div class="page-header">
+      <div class="header-text">
+          <h1 class="page-title">Equipo de Personal</h1>
+          <div class="page-desc">Gestiona y filtra a los miembros de tu equipo.</div>
+      </div>
+      <div class="header-actions">
+          <button id="open-add-personal-modal-btn" class="btn-create">
+              <i class="fa fa-plus"></i> Añadir Personal
+          </button>
+      </div>
+    </div>
+
+    <hr style="margin: 2rem 20px;">
+
+        <!-- === NUEVO: BUSCADOR DE PROYECTOS === -->
+    <div class="project-finder-container">
+        <h3>Buscar Personal por Proyecto</h3>
+        <!-- ¡AÑADE EL DATA-ATTRIBUTE AQUÍ! -->
+        <form method="get" class="project-filter-form" data-search-url="{% url 'proyectos:api_search_proyectos' %}">
+            <select name="proyecto_id" id="project-search-select" style="width: 100%;"></select>
+            <button type="submit" class="btn-create">Buscar</button>
+            {% if proyecto_seleccionado_id %}
+                <a href="{% url 'personal:lista_personal' %}" class="btn-clear-filters">Mostrar todo el personal</a>
+            {% endif %}
+        </form>
+    </div>
+
+    {% if proyecto_seleccionado_id %}
+
+        {% if tareas_del_proyecto %}
+            <!-- MODO 1: MOSTRAR TAREAS DEL PROYECTO SELECCIONADO -->
+            <div class="project-tasks-view">
+                {% if tareas_del_proyecto %}
+                    <!-- MODO 1: MOSTRAR TAREAS DEL PROYECTO SELECCIONADO -->
+                    <div class="project-tasks-view">
+                        
+                        {% for grupo_tarea in tareas_del_proyecto %}
+                            <div class="task-group">
+                                <h4 class="task-title">{{ grupo_tarea.tarea.titulo }}</h4>
+                                <div class="assigned-personnel-list">
+                                    
+                                    {% for asignacion in grupo_tarea.asignaciones %}
+                                        <!-- Tarjeta de Información -->
+                                        <!-- Usamos la variable 'delay' que viene de la vista -->
+                                        <div class="person-info-card animate__animated animate__fadeInUp" style="animation-delay: {{ asignacion.delay }}s;">
+                                            <div class="person-details">
+                                                <!-- Accedemos a los objetos 'persona' y 'subtarea' -->
+                                                <strong class="person-name">{{ asignacion.persona.nombre }} {{ asignacion.persona.apellido }}</strong>
+                                                <span class="person-role">{{ asignacion.persona.cargo }}</span>
+                                            </div>
+                                            <div class="subtask-context">
+                                                Asignado a: <em>{{ asignacion.subtarea.titulo }}</em>
+                                            </div>
+                                            <button type="button" class="btn-unassign-personal-small" title="Desasignar de esta tarea"
+                                                    data-subtarea-id="{{ asignacion.subtarea.id }}"
+                                                    data-personal-id="{{ asignacion.persona.id }}"
+                                                    data-nombre-persona="{{ asignacion.persona.nombre }} {{ asignacion.persona.apellido }}"
+                                                    data-nombre-subtarea="{{ asignacion.subtarea.titulo }}"
+                                                    data-url="{% url 'personal:api_unassign_personal' subtarea_id=asignacion.subtarea.id personal_id=asignacion.persona.id %}">
+                                                <i class="fa fa-user-times"></i>
+                                            </button>
+                                        </div>
+                                    {% endfor %}
+
+                                    {% if not grupo_tarea.asignaciones %}
+                                        <p class="no-personnel-assigned">Nadie asignado a las subtareas de esta tarea principal.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                        
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+
+        <!-- === SECCIÓN 1: FILTROS === -->
+        <div class="filters-container">
+            <form method="get" class="filter-form">
+                <div class="filter-group text-search persona" sr>
+                    <i class="fa fa-search"></i>
+                    <input type="text" name="q_nombre" placeholder="Buscar por nombre o apellido..." value="{{ filtros_aplicados.q_nombre|default_if_none:'' }}">
+                </div>
+                <div class="filter-group">
+                    <label for="area-filter">Filtrar por Área:</label>
+                    <select name="area" id="area-filter" onchange="this.form.submit()">
+                        <option value="">Todas las Áreas</option>
+                        {% for area in areas_trabajo %}
+                            <option value="{{ area.id }}" {% if filtros_aplicados.area == area.id|stringformat:"s" %}selected{% endif %}>{{ area.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="cargo-filter">Filtrar por Cargo:</label>
+                    <select name="cargo" id="cargo-filter" onchange="this.form.submit()">
+                        <option value="">Todos los Cargos</option>
+                        {% for cargo in cargos %}
+                            <option value="{{ cargo }}" {% if filtros_aplicados.cargo == cargo %}selected{% endif %}>{{ cargo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <a href="{% url 'personal:lista_personal' %}" class="btn-clear-filters">Limpiar Filtros</a>
+            </form>
+        </div>
+
+        <!-- === SECCIÓN 2: TABLA DE DATOS === -->
+        <div class="table-container">
+            <div class="scrollable-table">
+                <div class="content-bar header">
+                    <div class="item-foto">Foto</div>
+                    <div class="item-nombre">Nombre Completo</div>
+                    <div class="item-cargo">Cargo</div>
+                    <div class="item-area">Área de Trabajo</div>
+                    <div class="item-acciones">Acciones</div>
+                </div>
+                
+                {% for persona in personal_list %}
+                    <div class="content-bar">
+                        <div class="item-foto">
+                            {% if persona.foto %}
+                                <img src="{{ persona.foto.url }}" alt="{{ persona.nombre }}">
+                            {% else %}
+                                <div class="initials-placeholder">
+                                    <span>{{ persona.initials }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="item-nombre">{{ persona.nombre }} {{ persona.apellido }}</div>
+                        <div class="item-cargo">{{ persona.cargo }}</div>
+                        <div class="item-area">{{ persona.area_trabajo.nombre }}</div>
+                        <div class="item-acciones">
+                            <!-- Aquí podrías poner botones de editar/eliminar específicos de la tabla -->
+                            <a href="#" class="cbbtn" data-toggle="modal" data-target="#team-member-{{ persona.id }}"><i class="fa fa-eye"></i></a>
+                            <button type="button" class="cbbtn btn-delete-personal" title="Eliminar Personal"
+                                    data-id="{{ persona.id }}"
+                                    data-nombre="{{ persona.nombre }} {{ persona.apellido }}"
+                                    data-url="{% url 'personal:api_delete_personal' persona.pk %}">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- === SECCIÓN 3: TARJETAS VISUALES === -->
+        <div class="row justify-content-center mt-3">
+            {% for persona in personal_list %}
+                
+
+                <!-- El modal se puede quedar aquí, se genera una vez por persona -->
+                <div id="team-member-{{ persona.id }}" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                        
+                        <!-- ENCABEZADO: Limpio y simple -->
+                        <div class="modal-header">
+                            <h4 class="modal-title">{{ persona.nombre }} {{ persona.apellido }}</h4>
+                            <!-- Este es el único botón de cierre '×' en la esquina -->
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        
+                        <!-- CUERPO: Con layout de dos columnas -->
+                        <div class="modal-body">
+                            <div class="profile-container">
+                                <!-- Columna Izquierda: Avatar -->
+                                <div class="item-foto">
+                                    {% if persona.foto %}
+                                        <img src="{{ persona.foto.url }}" alt="{{ persona.nombre }}">
+                                    {% else %}
+                                        <div class="initials-placeholder">
+                                            <span>{{ persona.initials }}</span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <!-- Columna Derecha: Detalles -->
+                                <div class="profile-details">
+                                    <h5>{{ persona.cargo }}</h5>
+                                    <p><strong>DNI:</strong> {{ persona.dni }}</p>
+                                    <p><strong>Área:</strong> {{ persona.area_trabajo.nombre }}</p>
+                                    <p><strong>Correo:</strong> {{ persona.correo }}</p>
+                                    <p><strong>Teléfono:</strong> {{ persona.telefono }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        
+
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+                <div class="col-12 text-center">
+                    <p>No se encontró personal que coincida con los filtros.</p>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% include 'crear_personal_modal.html' %}
+</div>
+
+<div id="unassign-confirm-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content animate__animated animate__fadeInDown">
+        <h2>Confirmar Desasignación</h2>
+        <p id="unassign-modal-text">¿Estás seguro?</p>
+        <div class="modal-actions">
+            <button id="cancel-unassign-btn" class="btn-secondary">Cancelar</button>
+            <button id="confirm-unassign-btn" class="btn-danger">Sí, Desasignar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE CONFIRMACIÓN PARA ELIMINAR PERSONAL -->
+<div id="delete-personal-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content animate__animated animate__fadeInDown">
+        <h2>Confirmar Eliminación</h2>
+        <p id="delete-personal-text">¿Estás seguro de que quieres eliminar este registro? Esta acción no se puede deshacer.</p>
+        
+        <div id="delete-personal-error" class="error-list" style="display: none;"></div>
+
+        <div class="modal-actions">
+            <button id="cancel-delete-personal-btn" class="btn-secondary">Cancelar</button>
+            <button id="confirm-delete-personal-btn" class="btn-danger">Sí, Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'personal/js/project_finder.js' %}"></script>
+<script src="{% static 'personal/js/personal_modal.js' %}"></script>
+<script src="{% static 'personal/js/unassign_handler.js' %}"></script>
+<script src="{% static 'personal/js/delete_personal_handler.js' %}"></script>
+{% endblock %}

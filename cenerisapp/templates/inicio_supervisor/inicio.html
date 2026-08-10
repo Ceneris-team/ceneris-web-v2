@@ -1,0 +1,99 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% block title %}Inicio{% endblock %}
+
+{% block main_content %}
+<style>
+    .main-container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: transparent; /* Color crema de fondo */
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .header-bar {
+        background-color: #d45b04; /* Azul oscuro */
+        color: white;
+        text-align: center;
+        padding: 15px;
+        font-size: 1.5rem;
+        font-weight: bold;
+        border-radius: 10px 10px 0 0;
+        margin: -20px -20px 20px -20px;
+    }
+    .button-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+    }
+    .grid-button {
+        background-color: #eaa573; /* Azul intermedio */
+        color: white;
+        padding: 20px;
+        text-align: center;
+        text-decoration: none;
+        border-radius: 25px; /* Bordes muy redondeados */
+        font-weight: bold;
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+    .grid-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .grid-button.disabled {
+        background-color: #95a5a6;
+        cursor: not-allowed;
+    }
+</style>
+
+<div class="main-container">
+    <div class="header-bar">INICIO</div>
+    <div class="button-grid">
+        
+        {% for group in user.groups.all %}
+            {% if group.name == 'Supervisor' %}
+                <!-- === VISTA PARA SUPERVISOR (Acceso a todo) === -->
+                <a href="reportes/tabla-portatiles/" class="grid-button" >1. BASE DE DATOS PORTÁTILES</a>
+                <a href="registros/rapido/" class="grid-button" >2. ESTATUS DIARIO DE ENTREGA</a>
+                <a href="dispositivos/" class="grid-button" >3. MANTENIMIENTO DETECTORES PORTATILES</a>
+                <a href="seguimiento/" class="grid-button" >4. SEGUIMIENTO DIARIO</a>
+                <a href="dispositivos/" class="grid-button" >5. CARDEX</a>
+                <a href="dispositivos/" class="grid-button" >6. CALIBRACIONES / CERTIFICACIONES</a>
+                <a href="dashboard/portatiles/" class="grid-button" >7. INVENTARIO / STOCK PORTATILES</a>
+                <a href="reportes/" class="grid-button" >8. REPORTES DE PÉRDIDA</a>
+                <a href="registros/rapido/" class="grid-button" >9. REPORTE DIARIO IN-OUT</a>
+                <a href="{% url 'cenerisapp:gestor_reportes' tipo_reporte='ALARM' %}" class="grid-button" >10. REPORTE DE ALARMAS</a>
+                <a href="{% url 'cenerisapp:gestor_reportes' tipo_reporte='GALAXY' %}" class="grid-button" >11. REPORTE DIARIO GALAXY</a>
+                <a href="garantias/" class="grid-button" >12. GARANTÍAS</a>
+                <a href="{% url 'cenerisapp:gestor_reportes' tipo_reporte='QUINCENAL' %}" class="grid-button" >13. INFORMES QUINCENALES</a>
+                <a href="reportes/fijos/" class="grid-button" >14. BASE DE DATOS FIJOS</a>
+                <a href="dispositivos/" class="grid-button" >15. CERTIFICACIONES FIJOS</a>
+                <a href="dashboard/fijos/" class="grid-button" >16. STOCK FIJOS</a>
+                <a href="modificaciones/cargar-historial/" class="grid-button" >Cargar data antigua de los kardex</a>
+                <a href="certificados/anexos/agregar/" class="grid-button" >Cargar Anexos de Certificados</a>
+            
+            {% elif group.name == 'Técnico' %}
+                <!-- === VISTA PARA TÉCNICO (Acceso limitado) === -->
+                <a href="registros/rapido/" class="grid-button" >1. REPORTE DIARIO IN-OUT</a>
+                <a href="{% url 'cenerisapp:gestor_reportes' tipo_reporte='ALARM' %}" class="grid-button" >2. DATA DIARIA</a>
+                <a href="{% url 'cenerisapp:gestor_reportes' tipo_reporte='GALAXY' %}" class="grid-button" >3. REPORTE DIARIO GALAXY</a>
+                <a href="alarmas/seleccionar/" class="grid-button" >4. REPORTE DE ALARMAS</a>
+                <a href="reportes/" class="grid-button" >5. REPORTES DE PERDIDAS/DAÑOS</a>
+                <a href="dispositivos/" class="grid-button" >6. MANTENIMIENTO DE DETECTORES PORTATILES</a>
+                <a href="ocurrencias/" class="grid-button" >7. CUADRO DE OCURRENCIAS</a>
+                <a href="dispositivos/" class="grid-button" >8. CALIBRACIONES/CERTIFICACIONES PORTATILES</a>
+                <a href="seguimiento/" class="grid-button" >9. SEGUIMIENTO DIARIO PORTATILES</a>
+                <a href="modificaciones/cargar-historial/" class="grid-button" >Cargar data antigua de los kardex</a>
+                <a href="certificados/anexos/agregar/" class="grid-button" >Cargar Anexos de Certificados</a>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

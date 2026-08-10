@@ -1,0 +1,267 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+
+{% block title %}Programación Diaria - {{ fecha|date:"d M" }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    
+    <!-- ENCABEZADO -->
+    <div class="flex justify-between items-center mb-6">
+        <div class="flex items-center gap-4">
+            <a href="{% url 'proyecto_monitoreo_smcv:vista_semana_operativa' anio_back mes_back semana_back %}" 
+            class="bg-white p-2 rounded-full shadow hover:bg-gray-100 text-gray-600 transition" 
+            title="Volver a los días de la semana">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800 capitalize">
+                    {{ fecha|date:"l, d F Y" }}
+                </h1>
+                <p class="text-gray-500">Asignación de monitoristas y logística diaria.</p>
+            </div>
+        </div>
+        <!-- Indicador de Día -->
+        <div class="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg font-bold shadow-sm">
+            <i class="far fa-calendar-alt mr-2"></i> Programación Operativa
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- COLUMNA IZQUIERDA: TAREAS DISPONIBLES (BOLSA SEMANAL) -->
+        <div class="lg:col-span-1 space-y-4">
+            <h3 class="font-bold text-gray-700 flex items-center">
+                <i class="fas fa-list-ul mr-2 text-brand-600"></i>
+                Pendientes Semana (Saldo)
+            </h3>
+            
+            <div class="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                {% for item in tareas_disponibles %}
+                <!-- Tarjeta de Tarea -->
+                <div onclick="seleccionarTarea('{{ item.tarea.id }}', '{{ item.tarea.programacion_mensual.puesto.nombre }}', '{{ item.tarea.programacion_mensual.agente.nombre }}')" 
+                     class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:border-brand-500 hover:shadow-md transition group relative">
+                    
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-bold text-gray-800 text-sm">{{ item.tarea.programacion_mensual.puesto.nombre }}</p>
+                            <p class="text-xs text-gray-500">{{ item.tarea.programacion_mensual.puesto.superintendencia.nombre }}</p>
+                        </div>
+                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">
+                            {{ item.tarea.programacion_mensual.agente.nombre }}
+                        </span>
+                    </div>
+                    
+                    <div class="mt-3 flex justify-between items-center">
+                        <span class="text-xs text-gray-400">Clic para asignar</span>
+                        <div class="flex items-center">
+                            <span class="text-xs font-bold uppercase mr-2 text-gray-500">Saldo:</span>
+                            <span class="bg-brand-100 text-brand-800 font-bold px-2 rounded">{{ item.saldo }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                    <p class="text-gray-500 text-sm">No hay tareas pendientes para esta semana.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: FORMULARIO DE ASIGNACIÓN -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                <div class="bg-gray-50 px-6 py-3 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-800">Nueva Asignación</h3>
+                    <!-- Toggle Planeado/No Planeado -->
+                    <div class="flex items-center">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="check-no-planeado" class="sr-only peer" onchange="toggleNoPlaneado()">
+                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                            <span class="ms-3 text-sm font-medium text-gray-700" id="label-planeado">Planeado</span>
+                        </label>
+                    </div>
+                </div>
+
+                <form method="post" class="p-6">
+                    {% csrf_token %}
+                    
+                    <!-- Campo Oculto para ID de Tarea Semanal -->
+                    <input type="hidden" name="plan_semanal_id" id="input_plan_semanal_id">
+                    <input type="hidden" name="es_planeado" id="input_es_planeado" value="True">
+
+                    <!-- SECCIÓN 1: QUÉ (Se llena al hacer clic en la izquierda o manual si es No Planeado) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 bg-blue-50 p-4 rounded-lg border border-blue-100" id="info-tarea-seleccionada">
+                        <div>
+                            <label class="block text-xs font-bold text-blue-800 uppercase">Puesto</label>
+                            <input type="text" id="display_puesto" class="w-full bg-transparent border-0 font-bold text-gray-700 p-0 focus:ring-0" placeholder="Seleccione una tarea..." readonly>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-blue-800 uppercase">Agente</label>
+                            <input type="text" id="display_agente" class="w-full bg-transparent border-0 font-bold text-gray-700 p-0 focus:ring-0" placeholder="-" readonly>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN NO PLANEADO (Oculta por defecto) -->
+                    <div id="campos-no-planeado" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 bg-red-50 p-4 rounded-lg border border-red-100">
+                        <div class="col-span-2 text-xs text-red-600 font-bold uppercase mb-1">Emergencia / No Planeado</div>
+                        <!-- Aquí podrías poner selects completos de todos los puestos/agentes si quisieras -->
+                        <div class="col-span-2">
+                            <p class="text-sm text-gray-600">Para tareas no planeadas, selecciona manualmente:</p>
+                            <!-- (Simplificación: Podrías añadir selects de Django forms aquí) -->
+                            <div class="mt-2 text-red-500 text-sm font-bold">Funcionalidad No Planeada: Implementar selects completos de Puesto/Agente aquí.</div>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN 2: QUIÉN Y CUÁNDO -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        
+                        <!-- Monitoristas (Multi Select Simple) -->
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Monitorista(s)</label>
+                            <select name="monitoristas" multiple class="w-full border-gray-300 rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 h-32">
+                                {% for w in trabajadores %}
+                                    <option value="{{ w.id }}">{{ w.nombre_completo }}</option>
+                                {% endfor %}
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Mantén presionado Ctrl para seleccionar varios.</p>
+                        </div>
+
+                        <!-- Logística -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Hora Inicio</label>
+                                <input type="time" name="hora" class="w-full border-gray-300 rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Lugar / Punto de Encuentro</label>
+                                <input type="text" name="lugar" class="w-full border-gray-300 rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500" placeholder="Ej: Line Up, Oficina...">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Cantidad a Realizar Hoy</label>
+                                <input type="number" name="cantidad_programada" value="1" min="1" class="w-full border-gray-300 rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botón Submit -->
+                    <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-lg shadow transition flex justify-center items-center">
+                        <i class="fas fa-plus-circle mr-2"></i> Asignar Tarea al Día
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA INFERIOR: LO YA PROGRAMADO HOY -->
+    <div class="mt-10">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">Programación del Día</h3>
+        <div class="bg-white shadow rounded-lg overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Hora</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Puesto / Ubicación</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Agente</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Monitoristas</th>
+                        <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Estado</th>
+                        <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Cant.</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for detalle in prog_diaria.detalles.all %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {{ detalle.hora|time:"H:i"|default:"--" }}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-bold text-gray-900">{{ detalle.puesto.nombre }}</div>
+                            <div class="text-xs text-gray-500">{{ detalle.lugar|default:"-" }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">
+                                {{ detalle.agente.nombre }}
+                            </span>
+                            {% if not detalle.es_planeado %}
+                                <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-bold ml-1">Extra</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            {% for m in detalle.monitoristas_asignados.all %}
+                                <div class="flex items-center gap-1">
+                                    <i class="fas fa-user text-gray-400 text-xs"></i> {{ m.nombre }}
+                                </div>
+                            {% endfor %}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                {{ detalle.estado_tarea }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-center font-bold text-gray-800">
+                            {{ detalle.cantidad_programada }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-10 text-center text-gray-500 italic">
+                            No hay tareas asignadas para hoy aún. Selecciona una de la lista izquierda.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- SCRIPT PARA INTERACTIVIDAD -->
+<script>
+    function seleccionarTarea(id, puesto, agente) {
+        // Llenar campos visuales
+        document.getElementById('display_puesto').value = puesto;
+        document.getElementById('display_agente').value = agente;
+        
+        // Llenar campo oculto para el Backend
+        document.getElementById('input_plan_semanal_id').value = id;
+        
+        // Asegurar modo planeado
+        document.getElementById('check-no-planeado').checked = false;
+        toggleNoPlaneado();
+        
+        // Feedback visual (resaltar formulario)
+        document.querySelector('form').scrollIntoView({ behavior: 'smooth' });
+        document.querySelector('form').classList.add('ring-2', 'ring-brand-300');
+        setTimeout(() => document.querySelector('form').classList.remove('ring-2', 'ring-brand-300'), 1000);
+    }
+
+    function toggleNoPlaneado() {
+        const isChecked = document.getElementById('check-no-planeado').checked;
+        const infoPlaneado = document.getElementById('info-tarea-seleccionada');
+        const camposNoPlaneado = document.getElementById('campos-no-planeado');
+        const label = document.getElementById('label-planeado');
+        const inputEsPlaneado = document.getElementById('input_es_planeado');
+
+        if (isChecked) {
+            // Modo NO PLANEADO
+            label.innerText = "No Planeado";
+            label.classList.add('text-red-600');
+            infoPlaneado.classList.add('opacity-50', 'pointer-events-none');
+            camposNoPlaneado.classList.remove('hidden');
+            
+            // Limpiar selección previa
+            document.getElementById('input_plan_semanal_id').value = "";
+            document.getElementById('display_puesto').value = "Tarea No Planeada";
+            document.getElementById('display_agente').value = "-";
+            inputEsPlaneado.value = "False";
+        } else {
+            // Modo PLANEADO
+            label.innerText = "Planeado";
+            label.classList.remove('text-red-600');
+            infoPlaneado.classList.remove('opacity-50', 'pointer-events-none');
+            camposNoPlaneado.classList.add('hidden');
+            inputEsPlaneado.value = "True";
+        }
+    }
+</script>
+{% endblock %}

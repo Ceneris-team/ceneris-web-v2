@@ -1,0 +1,120 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+
+{% block title %}Gestión de Programacion Mensuales{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    
+    <!-- Encabezado con Botón de Acción Principal -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Programaciones Mensuales</h1>
+            <p class="text-gray-600 mt-1">Gestiona, importa y visualiza las metas de monitoreo por mes.</p>
+        </div>
+        
+        <!-- Botón Importar Excel -->
+        <a href="{% url 'proyecto_monitoreo_smcv:importar_plan' %}" class="group bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition transform hover:-translate-y-1 flex items-center">
+            <div class="bg-green-700 p-2 rounded-md mr-3 group-hover:bg-green-600 transition">
+                <i class="fas fa-file-excel text-xl"></i>
+            </div>
+            <div class="text-left">
+                <span class="block text-xs font-light opacity-90">Nueva Carga</span>
+                <span class="block text-sm">Importar Excel</span>
+            </div>
+        </a>
+    </div>
+
+    <!-- Mensajes de Alerta -->
+    {% if messages %}
+        {% for message in messages %}
+        <div class="mb-6 p-4 rounded-lg border-l-4 {% if message.tags == 'success' %}bg-green-50 border-green-500 text-green-700{% else %}bg-red-50 border-red-500 text-red-700{% endif %} shadow-sm flex justify-between items-center">
+            <div>{{ message }}</div>
+            <button onclick="this.parentElement.remove()" class="text-sm font-bold opacity-50 hover:opacity-100">X</button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- GRID DE TARJETAS (NUEVO DISEÑO) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        {% for plan in planes %}
+        <!-- Tarjeta de Mes -->
+        <div class="bg-white rounded-xl shadow-md border border-gray-200 hover:shadow-xl transition-all duration-300 group flex flex-col relative overflow-hidden">
+            
+            <!-- (Se eliminó la barra decorativa h-1 bg-brand-500 aquí) -->
+
+            <!-- Cuerpo de la Tarjeta -->
+            <div class="p-6 flex-grow">
+                
+                <!-- Cabecera: Mes y Año -->
+                <div class="flex justify-between items-start mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800 capitalize">
+                        {% if plan.mes == 1 %}Enero{% elif plan.mes == 2 %}Febrero{% elif plan.mes == 3 %}Marzo{% elif plan.mes == 4 %}Abril{% elif plan.mes == 5 %}Mayo{% elif plan.mes == 6 %}Junio{% elif plan.mes == 7 %}Julio{% elif plan.mes == 8 %}Agosto{% elif plan.mes == 9 %}Septiembre{% elif plan.mes == 10 %}Octubre{% elif plan.mes == 11 %}Noviembre{% elif plan.mes == 12 %}Diciembre{% endif %}
+                    </h3>
+                    <span class="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full border border-blue-100 font-bold">
+                        <i class="far fa-calendar-alt mr-1"></i> {{ plan.anio }}
+                    </span>
+                </div>
+
+                <!-- Métricas Centrales -->
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Meta Total -->
+                    <div>
+                        <span class="text-xs text-gray-500 uppercase font-bold tracking-wider">Meta Total</span>
+                        <div class="flex items-baseline mt-1">
+                            <span class="text-3xl font-bold text-gray-800">{{ plan.total_meta }}</span>
+                            <span class="text-xs text-gray-400 ml-1">pts</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Puestos -->
+                    <div class="text-right border-l border-gray-100 pl-4">
+                        <span class="text-xs text-gray-500 uppercase font-bold tracking-wider">Alcance</span>
+                        <div class="flex items-baseline justify-end mt-1">
+                            <span class="text-xl font-bold text-gray-600">{{ plan.total_puestos }}</span>
+                            <span class="text-xs text-gray-400 ml-1">Puestos</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer: Botones de Acción Integrados -->
+            <div class="flex border-t border-gray-100">
+                
+                <!-- Botón Gestionar (Principal) -->
+                <a href="{% url 'proyecto_monitoreo_smcv:tablero_mensual' plan.anio plan.mes %}" 
+                   class="flex-grow p-4 text-center bg-gray-50 hover:bg-brand-50 transition group-hover:text-brand-700 flex items-center justify-center">
+                    <span class="font-bold text-sm">Gestionar Semanas</span>
+                    <i class="fas fa-arrow-right ml-2 text-xs transform group-hover:translate-x-1 transition-transform"></i>
+                </a>
+
+                <!-- Botón Eliminar (Secundario) -->
+                <form action="{% url 'proyecto_monitoreo_smcv:eliminar_plan' plan.anio plan.mes %}" method="POST" class="border-l border-gray-200" onsubmit="return confirm('¿⚠️ ELIMINAR PLAN {{ plan.mes }}/{{ plan.anio }}?\n\nEsta acción es irreversible.');">
+                    {% csrf_token %}
+                    <button type="submit" class="h-full px-5 bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-600 transition" title="Eliminar Plan">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </form>
+            </div>
+
+        </div>
+        {% empty %}
+        
+        <!-- Estado Vacío -->
+        <div class="col-span-full py-16 text-center bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 mb-4">
+                <i class="fas fa-folder-open text-3xl text-gray-400"></i>
+            </div>
+            <h3 class="text-xl font-medium text-gray-900">No hay planes mensuales</h3>
+            <p class="mt-1 text-gray-500">Sube un archivo Excel para comenzar.</p>
+            <div class="mt-6">
+                <a href="{% url 'proyecto_monitoreo_smcv:importar_plan' %}" class="text-brand-600 font-bold hover:underline">
+                    Comenzar Importación &rarr;
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+</div>
+{% endblock %}

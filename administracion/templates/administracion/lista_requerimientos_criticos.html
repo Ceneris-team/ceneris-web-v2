@@ -1,0 +1,82 @@
+<!-- administracion/templates/administracion/lista_requerimientos_criticos.html -->
+
+{% extends "administracion/base_administracion.html" %}
+{% load humanize format_filters %}
+
+{% block extra_head %}
+    <style>
+        body { background-color: #f8f9fa !important; }
+        .critical-card {
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-left: 5px solid #dc3545; /* Borde rojo para indicar criticidad */
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        .progress {
+            height: 2rem;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        .reason-text {
+            font-style: italic;
+            color: #6c757d;
+            margin-top: 0.75rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Encabezado y Botón de Volver -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>{{ titulo }}</h2>
+            <p class="text-muted">Análisis detallado de los requerimientos críticos {{ periodo_texto }}.</p>
+        </div>
+        <a href="{{ back_url }}" class="btn btn-secondary">
+            <i data-feather="arrow-left" class="me-1"></i> Volver al Dashboard
+        </a>
+    </div>
+
+    <!-- Lista de Requerimientos Críticos -->
+    {% for item in requerimientos_criticos %}
+        <div class="critical-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ item.requerimiento.agente }}</h4>
+                <span class="badge bg-danger">Crítico</span>
+            </div>
+            <small class="text-muted">Tipo: {{ item.requerimiento.get_tipo_monitoreo_display }}</small>
+            <hr>
+
+            <!-- La Visualización Didáctica -->
+            <div class="my-3">
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Progreso del Periodo</span>
+                    <span><strong>{{ item.consumo_periodo|euro }}</strong> de <strong>{{ item.meta_periodo|euro }}</strong></span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar bg-danger" role="progressbar" 
+                         style="width: {{ item.porcentaje }}%;" 
+                         aria-valuenow="{{ item.porcentaje }}" 
+                         aria-valuemin="0" aria-valuemax="100">
+                        {{ item.porcentaje }}%
+                    </div>
+                </div>
+                <p class="reason-text mt-2">
+                    <i data-feather="info" style="width: 1rem;"></i>
+                    <!-- CAMBIO: Usamos la explicación dinámica de la vista -->
+                    Este requerimiento es crítico porque {{ item.explicacion }}
+                </p>
+            </div>
+        </div>
+    {% empty %}
+        <div class="alert alert-success text-center">
+            <h4 class="alert-heading">¡Buenas Noticias!</h4>
+            <p>No se encontraron requerimientos en estado crítico para el año {{ selected_year }}.</p>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

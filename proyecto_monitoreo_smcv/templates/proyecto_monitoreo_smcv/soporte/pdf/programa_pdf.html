@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page { size: A3 landscape; margin: 1cm; }
+        body { font-family: Arial, sans-serif; font-size: 8pt; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+        th, td { border: 1px solid #000; padding: 2px; text-align: center; vertical-align: middle; }
+        
+        /* Colores Específicos */
+        .bg-orange-light { background-color: #fce4d6; } /* Fondo general tabla */
+        .bg-orange-dark { background-color: #f4b084; } /* Encabezado meses */
+        .bg-yellow { background-color: #ffc000; } /* Vib */
+        .bg-blue { background-color: #00b0f0; } /* Dos */
+        .bg-red { background-color: #ff0000; } /* Bom */
+        .bg-green { background-color: #c6e0b4; } /* Ejecutado */
+        
+        .header-title { font-size: 16pt; font-weight: bold; }
+        .sub-title { font-weight: bold; background-color: #f4b084; padding: 5px; border: 1px solid #000; border-top: none; }
+        
+        .text-red { color: red; font-weight: bold; }
+        .text-left { text-align: left !important; padding-left: 5px; }
+        .separador { height: 30px; }
+        /* Ajuste de anchos */
+        .col-n { width: 30px; }
+        .col-eq { width: 250px; }
+        .col-tipo { width: 60px; }
+        .col-pe { width: 30px; }
+        .col-fecha { width: 55px; font-size: 7pt; }
+        .col-obs { width: 200px; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. ENCABEZADO SUPERIOR -->
+    <table>
+        <tr>
+            <td width="20%"><img src="{{ logo_url }}" style="width: 180px;"></td>
+            <td width="60%" class="header-title">
+                PROGRAMA DE INSPECCION {{ programa.anio }} - EQUIPOS DEL SERVICIO DE MONITOREO OCUPACIONAL
+            </td>
+            <td width="20%">
+                <div style="font-weight: bold;">Código: CEN-PY-MCV-PR-08-PG-02</div>
+                <div>Versión: 1</div>
+                <div>Fecha: 05/02/2025</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- 2. BARRA DE TÍTULO NARANJA -->
+    <div class="sub-title">
+        PROGRAMA DE MANTENIMIENTO PREVENTIVO {{ programa.anio }} - EQUIPOS DEL SERVICIO DE MONITOREO OCUPACIONAL
+    </div>
+
+    <!-- 3. TABLA CRONOGRAMA -->
+    <table>
+        <thead>
+            <tr class="bg-orange-light">
+                <th rowspan="2" class="col-n">N°</th>
+                <th rowspan="2" class="col-eq">Equipos</th>
+                <th rowspan="2" class="col-tipo">Vib/Dos/BomG.</th>
+                <th rowspan="2" class="col-pe">P/E</th>
+                
+                <!-- MESES PARTE 1 -->
+                {% for mes in parte1.meses %}
+                    <th colspan="{{ mes.colspan }}" class="bg-orange-dark">{{ mes.nombre }}</th>
+                {% endfor %}
+                
+                <th rowspan="2" width="50px">N° eq</th>
+                <th rowspan="2" class="col-obs">Observaciones</th>
+            </tr>
+            <tr class="bg-orange-light">
+                <!-- SEMANAS PARTE 1 -->
+                {% for semana in parte1.semanas %}
+                    <th class="col-fecha">{{ semana|date:"d/m/Y" }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows_data %}
+            <!-- FILA P -->
+            <tr>
+                <td rowspan="2">{{ row.numero }}</td>
+                <td rowspan="2" class="text-left" style="font-size: 7pt; vertical-align: top;">
+                    <!-- Vibrometros -->
+                    {% if row.vibros %}
+                        <div>- Vibrómetro s/n: 
+                            {% for v in row.vibros %}
+                                <span class="{% if v.rojo %}text-red{% endif %}">{{ v.serie }}</span>{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Dosimetros -->
+                    {% if row.dosis %}
+                        <div>- Dosímetros s/n: 
+                            {% for d in row.dosis %}
+                                <span class="{% if d.rojo %}text-red{% endif %}">{{ d.serie }}</span>{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Bombas -->
+                    {% if row.bombas %}
+                        <div>- Bombas gravimétrica s/n: 
+                            {% for b in row.bombas %}
+                                <span class="{% if b.rojo %}text-red{% endif %}">{{ b.serie }}</span>{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- NUEVO: OTROS EQUIPOS (Monitores, etc.) -->
+                    {% if row.otros %}
+                        <div>- Otros: 
+                            {% for o in row.otros %}
+                                <!-- Mostramos Nombre y Serie para identificarlo mejor -->
+                                <span class="{% if o.rojo %}text-red{% endif %}">{{ o.nombre }} ({{ o.serie }})</span>{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </td>
+
+
+                <!-- Colores de Tipo -->
+                <td rowspan="2" style="padding:0;">
+                    <!-- Colores Vib/Dos/Bom -->
+                    <div style="height:100%; width:33%; float:left; background-color:#ffc000;">Vib <br><br><br></div>
+                    <div style="height:100%; width:33%; float:left; background-color:#00b0f0;">Dos <br><br><br></div>
+                    <div style="height:100%; width:33%; float:left; background-color:#ff0000;">Bom<br>G<br><br></div>
+                </td>
+                <td class="bg-orange-light">P</td>
+                
+                <!-- CHECKS PARTE 1 -->
+                {% for semana in parte1.semanas %}
+                    <td>{% if semana == row.fecha_p %}X{% endif %}</td>
+                {% endfor %}
+
+                <td rowspan="2">{{ row.total_eq }}</td>
+                <td rowspan="2" class="text-left" style="font-size: 6pt;">{{ row.observaciones }}</td>
+            </tr>
+            <!-- FILA E -->
+            <tr>
+                <td class="bg-green">E</td>
+                {% for semana in parte1.semanas %}
+                    <td>{% if semana == row.fecha_e %}X{% endif %}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="separador"></div>
+
+    <!-- ========================================== -->
+    <!-- TABLA PARTE 2 (Siguientes 3 meses) -->
+    <!-- ========================================== -->
+    <!-- Solo si hay datos en la parte 2 -->
+    {% if parte2.semanas %}
+    <table>
+        <thead>
+            <tr class="bg-orange-light">
+                <!-- Repetimos columnas fijas para saber de qué equipo hablamos -->
+                <th rowspan="2" class="col-n">N°</th>
+                <th rowspan="2" class="col-eq">Equipos </th>
+                <th rowspan="2" class="col-tipo">Vib/Dos/BomG.</th>
+                <th rowspan="2" class="col-pe">P/E</th>
+                
+                <!-- MESES PARTE 2 -->
+                {% for mes in parte2.meses %}
+                    <th colspan="{{ mes.colspan }}" class="bg-orange-dark">{{ mes.nombre }}</th>
+                {% endfor %}
+                
+                <th rowspan="2" width="50px">N° eq</th>
+                <th rowspan="2" class="col-obs">Observaciones</th>
+            </tr>
+            <tr class="bg-orange-light">
+                <!-- SEMANAS PARTE 2 -->
+                {% for semana in parte2.semanas %}
+                    <th class="col-fecha">{{ semana|date:"d/m/Y" }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows_data %}
+            <!-- FILA P -->
+            <tr>
+                <td rowspan="2">{{ row.numero }}</td>
+                
+                <!-- Repetimos info de equipos (Opcional, pero recomendado para legibilidad) -->
+                <td rowspan="2" class="text-left" style="font-size: 7pt;">
+                    (Ver tabla superior para detalle)
+                </td>
+                
+                <td rowspan="2" style="padding:0;">
+                    <!-- Colores igual que arriba -->
+                    <div style="height:100%; width:33%; float:left; background-color:#ffc000;">Vib <br><br><br></div>
+                    <div style="height:100%; width:33%; float:left; background-color:#00b0f0;">Dos <br><br><br></div>
+                    <div style="height:100%; width:33%; float:left; background-color:#ff0000;">Bom<br>G<br><br></div>
+                </td>
+                <td class="bg-orange-light">P</td>
+                
+                <!-- CHECKS PARTE 2 -->
+                {% for semana in parte2.semanas %}
+                    <td>{% if semana == row.fecha_p %}X{% endif %}</td>
+                {% endfor %}
+
+                <td rowspan="2">{{ row.total_eq }}</td>
+                <td rowspan="2" class="text-left" style="font-size: 6pt;">{{ row.observaciones }}</td>
+            </tr>
+            <!-- FILA E -->
+            <tr>
+                <td class="bg-green">E</td>
+                {% for semana in parte2.semanas %}
+                    <td>{% if semana == row.fecha_e %}X{% endif %}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+</body>
+</html>

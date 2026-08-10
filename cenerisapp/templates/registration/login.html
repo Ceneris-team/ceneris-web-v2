@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Iniciar Sesión - Controlador{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h2>Iniciar Sesión</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="auth-button">Ingresar</button>
+        </form>
+        <p class="auth-switch">¿No tienes una cuenta? <a href="{% url 'registro' %}">Regístrate</a></p>
+    </div>
+</div>
+{% endblock %}

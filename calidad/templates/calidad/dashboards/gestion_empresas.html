@@ -1,0 +1,27 @@
+<!-- calidad/templates/calidad/gestion_empresas.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Gestión de Empresas{% endblock %}
+
+{% block content %}
+    <h1>Gestión de Empresas</h1>
+    <p>Administra la información de las empresas asociadas al sistema.</p>
+    
+    <div class="dashboard-grid">
+        <!-- Tarjeta para Crear Nueva Empresa -->
+        <a href="{% url 'recursoshumanos:crear_empresa' %}" class="card">
+            <div class="card__icon">🏢</div>
+            <h2 class="card__title">Registrar Empresa</h2>
+            <p class="card__description">Añade una nueva empresa al sistema con toda su información de contacto.</p>
+            <div class="card__footer">Registrar Nueva &rarr;</div>
+        </a>
+        
+        <!-- Tarjeta para Ver Listado de Empresas -->
+        <a href="{% url 'recursoshumanos:lista_empresas' %}" class="card">
+            <div class="card__icon">📋</div>
+            <h2 class="card__title">Listado de Empresas</h2>
+            <p class="card__description">Consulta, edita y gestiona la lista de todas las empresas registradas.</p>
+            <div class="card__footer">Ver Listado &rarr;</div>
+        </a>
+    </div>
+{% endblock %}

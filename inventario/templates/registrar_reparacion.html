@@ -1,0 +1,112 @@
+{% extends 'index.html' %}
+
+{% block content %}
+
+<div class="page-header">
+        <div class="header-text">
+            <div class="page-title">Registrar Reparación para {{ item_insumo.insumo_padre.nombre }}</div>
+            <div class="page-desc">Número de Serie: <strong>{{ item_insumo.numero_serie }}</strong></div>
+        </div>
+        <a href="{% url 'inventario:detalle_insumo' item_insumo.insumo_padre.pk %}" class="btn-secondary">Volver al Detalle</a>
+    </div>
+<div class="split-screen-container">
+    
+    <!-- LADO DEL FORMULARIO -->
+    <div class="form-side">
+        <div class="form-container">
+            <form method="post">
+                <h2>Registrar Reparación para "{{ insumo.nombre }}"</h2>
+                {% csrf_token %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-success" role="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                <div class="form-group">
+                    {{ form.fecha_reporte.label_tag }}
+                    {{ form.fecha_reporte }}
+                </div>
+                <div class="form-group mb-3">
+                    {{ form.item_insumo.label_tag }}
+                    {{ form.item_insumo }}
+                    {% if form.item_insumo.help_text %}
+                        <small class="form-text text-muted">{{ form.item_insumo.help_text }}</small>
+                    {% endif %}
+                    {{ form.item_insumo.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.descripcion.label_tag }}
+                    {{ form.descripcion }}
+                </div>
+                <div class="form-group">
+                    {{ form.costo.label_tag }}
+                    {{ form.costo }}
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn-submit">Guardar Registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- LADO DE LA LISTA DE REGISTROS -->
+    <div class="list-side">
+        <h3>Historial de Reparaciones</h3>
+        <div class="record-list">
+            {% for registro in historial %}
+                <div class="record-card">
+                    <div class="record-date">{{ registro.fecha_reporte|date:"d M Y" }}</div>
+                    <p class="record-desc">{{ registro.descripcion }}</p>
+                    <div class="record-cost">Costo: ${{ registro.costo|floatformat:2 }}</div>
+                </div>
+            {% empty %}
+                <p>No hay reparaciones previas para este item.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- CSS específico para esta página (puedes moverlo a styles.css) -->
+<style>
+    .list-side {
+        flex: 1;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+    }
+    .list-side h3 {
+        margin-top: 0;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 1rem;
+        margin-bottom: 1rem;
+    }
+    .record-list {
+        flex-grow: 1;
+        overflow-y: auto; /* Permite scroll si la lista es larga */
+    }
+    .record-card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .record-date {
+        font-weight: bold;
+        color: #555;
+        font-size: 0.9rem;
+    }
+    .record-desc {
+        margin: 10px 0;
+        color: #333;
+    }
+    .record-cost {
+        text-align: right;
+        font-weight: bold;
+        color: #e74c3c;
+    }
+</style>
+{% endblock %}

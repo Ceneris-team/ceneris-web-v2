@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page { size: A4 landscape; margin: 1cm; } /* HOJA ECHADA */
+        body { font-family: Arial, sans-serif; font-size: 9pt; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+        th, td { border: 1px solid #000; padding: 3px; text-align: center; vertical-align: middle; }
+        
+        /* Colores IDÉNTICOS a tu imagen */
+        .bg-blue { background-color: #e7e7e7; font-weight: bold; } /* Azul claro encabezado */
+        .bg-yellow { background-color: #e7e7e7; } /* Amarillo inputs */
+        .bg-green { background-color: #00b050; color: white; font-weight: bold; } /* Bueno */
+        .bg-red { background-color: #ff0000; color: white; font-weight: bold; } /* Malo */
+        .header-title { font-size: 14pt; font-weight: bold; }
+        .section-title { background-color: #b4c6e7; font-weight: bold; } /* Azul grisaceo titulos */
+        
+        .text-left { text-align: left !important; padding-left: 5px; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. ENCABEZADO -->
+    <table>
+        <tr>
+            <td width="20%"><img src="{{ logo_url }}" style="width: 180px;"></td>
+            <td width="60%" class="header-title">FORMATO DE INSPECCIÓN ESPECÍFICA DE EQUIPOS</td>
+            <td width="20%">
+                <div>Código: CEN-PY-MCV-PR-08-F-02</div>
+                <div>Versión: 1</div>
+                <div>Fecha: 01/03/2025</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- FECHA -->
+    <table style="width: 30%;">
+        <tr>
+            <td class="bg-blue" width="40%">FECHA INSPECCIÓN</td>
+            <td>{{ inspeccion.fecha_inspeccion|date:"d/m/Y" }}</td>
+        </tr>
+    </table>
+
+    <!-- 2. DATOS GENERALES -->
+    <div class="section-title" style="text-align: center; border:1px solid #000;">DATOS GENERALES</div>
+    <table>
+        <tr class="bg-blue">
+            <th>EQUIPO</th><th>MARCA</th><th>MODELO</th><th>SERIE</th><th>FECHA CALIBRACIÓN</th>
+        </tr>
+        <tr>
+            <td>{{ dispositivo.nombre }}</td>
+            <td>{{ dispositivo.marca }}</td>
+            <td>{{ dispositivo.modelo }}</td>
+            <td>{{ dispositivo.serie }}</td>
+            <td>
+                <!-- Buscar ultima calib -->
+                {{ dispositivo.calibracion_set.last.fecha_calibracion|date:"d/m/Y"|default:"-" }}
+            </td>
+        </tr>
+    </table>
+    <!-- Accesorios y Observaciones (Fila extra) -->
+    <table>
+        <tr>
+            <td class="bg-blue" width="20%">USO / APLICACIÓN</td>
+            <td width="30%">{{ dispositivo.uso }}</td>
+            <td class="bg-blue" width="10%">ACCESORIOS</td>
+            <td width="40%">
+                {% for acc in dispositivo.accesorios.all %}
+                    {% if acc.serie %} <!-- Solo si tiene serie -->
+                        {{ acc.nombre }}
+                        <!-- Truco para poner coma, pero no es perfecto si el ultimo no tiene serie -->
+                        {% if not forloop.last %}, {% endif %}
+                    {% endif %}
+                {% endfor %}
+            </td>
+        </tr>
+    </table>
+
+    <!-- 3. ESTADO DEL EQUIPO (Checklist) -->
+    <div class="section-title" style="text-align: center; border:1px solid #000;">ESTADO DEL EQUIPO</div>
+    <table style="width: 100%;">
+        <!-- Encabezados -->
+        <tr>
+            <!-- Bloque Izquierdo -->
+            <th width="15%"></th> <!-- Etiqueta -->
+            <th width="7%" class="bg-green">Bueno</th>
+            <th width="7%" class="bg-red">Malo</th>
+            <th width="7%" style="background-color: yellow;">No Aplica</th>
+            
+            <!-- Bloque Derecho -->
+            <th width="15%"></th> <!-- Etiqueta -->
+            <th width="7%" class="bg-green">Bueno</th>
+            <th width="7%" class="bg-red">Malo</th>
+            <th width="7%" style="background-color: yellow;">No Aplica</th>
+            
+            <!-- Observaciones -->
+            <th width="28%" style="background-color: #ccc; color: black;">OBSERVACIONES</th>
+        </tr>
+
+        <!-- Fila 1: Case | Batería -->
+        <tr>
+            <td class="text-left bg-white">Estado del case</td>
+            <td>{% if detalle.estado_case == 'B' %}✓{% endif %}</td>
+            <td>{% if detalle.estado_case == 'M' %}✓{% endif %}</td>
+            <td>{% if detalle.estado_case == 'NA' %}✓{% endif %}</td>
+            
+            <td class="text-left bg-white">Batería</td>
+            <td>{% if detalle.estado_bateria == 'B' %}✓{% endif %}</td>
+            <td>{% if detalle.estado_bateria == 'M' %}✓{% endif %}</td>
+            <td>{% if detalle.estado_bateria == 'NA' %}✓{% endif %}</td>
+            
+            <!-- Celda Gigante de Observaciones (Ocupa 3 filas) -->
+            <td rowspan="3" class="bg-yellow text-left" style="vertical-align: top; padding: 5px;">
+                {{ inspeccion.observaciones_generales|default:"Ninguna." }}
+            </td>
+        </tr>
+
+        <!-- Fila 2: Botones | Accesorios -->
+        <tr>
+            <td class="text-left bg-white">Botones, Teclas, Puertos</td>
+            <td>{% if detalle.estado_botones == 'B' %}✓{% endif %}</td>
+            <td>{% if detalle.estado_botones == 'M' %}✓{% endif %}</td>
+            <td>{% if detalle.estado_botones == 'NA' %}✓{% endif %}</td>
+            
+            <td class="text-left bg-white">Accesorios</td>
+            <td>{% if detalle.estado_accesorios == 'B' %}✓{% endif %}</td>
+            <td>{% if detalle.estado_accesorios == 'M' %}✓{% endif %}</td>
+            <td>{% if detalle.estado_accesorios == 'NA' %}✓{% endif %}</td>
+        </tr>
+
+        <!-- Fila 3: Pantalla | (Espacio Vacío) -->
+        <tr>
+            <td class="text-left bg-white">Pantalla</td>
+            <td>{% if detalle.estado_pantalla == 'B' %}✓{% endif %}</td>
+            <td>{% if detalle.estado_pantalla == 'M' %}✓{% endif %}</td>
+            <td>{% if detalle.estado_pantalla == 'NA' %}✓{% endif %}</td>
+            
+            <!-- Celdas vacías a la derecha para cuadrar -->
+            <td class="bg-white"></td>
+            <td></td><td></td><td></td>
+        </tr>
+    </table>
+
+    <!-- 4. PRUEBA DE OPERATIVIDAD (SECCIÓN DINÁMICA) -->
+    <div class="section-title" style="text-align: center; border:1px solid #000;">PRUEBA DE OPERATIVIDAD</div>
+    
+    <!-- Tiempos -->
+    <table>
+        <tr>
+            <td class="bg-yellow">TIEMPO DE PRUEBA</td> <td>{{ prueba.tiempo_total }}</td>
+            <td class="bg-yellow">HORA INICIO</td> <td>{{ prueba.hora_inicio }}</td>
+            <td class="bg-yellow">HORA FIN</td> <td>{{ prueba.hora_fin }}</td>
+        </tr>
+    </table>
+
+    <!-- AQUÍ ESTÁ LA MAGIA CONDICIONAL -->
+    
+    {% if tipo_equipo == "BOMBA" %}
+        <!-- TABLA ESPECÍFICA PARA BOMBAS -->
+        <table>
+            <tr style="background-color: #ccc; color: black;">
+                <th colspan="2">BOMBA GRAVIMÉTRICA</th>
+                <th>TASA DE FLUJO</th>
+            </tr>
+            <tr>
+                <td rowspan="3">FLUJO DE EVALUACIÓN</td>
+                <td>PRE-CALIBRACIÓN (L/m)</td>
+                <td class="bg-yellow">{{ prueba.flujo_pre_calibracion }}</td>
+            </tr>
+            <tr>
+                <td>POST-CALIBRACIÓN (L/m)</td>
+                <td class="bg-yellow">{{ prueba.flujo_post_calibracion }}</td>
+            </tr>
+            <tr>
+                <td>PROMEDIO (L/m)</td>
+                <td class="bg-yellow">{{ prueba.flujo_promedio }}</td>
+            </tr>
+        </table>
+
+    {% elif tipo_equipo == "DOSIMETRO" %}
+        <!-- TABLA ESPECÍFICA PARA DOSÍMETROS (La de tu imagen) -->
+        <table>
+            <tr class="bg-blue">
+                <th colspan="4">DOSÍMETRO DE RUIDO</th>
+            </tr>
+            <tr>
+                <td class="bg-blue">RESPUESTA</td>
+                <td class="bg-blue">TASA DE CAMBIO</td> 
+                <td class="bg-blue" colspan="2">PONDERACIÓN</td> 
+            </tr>
+            <tr>
+                <td >{{ prueba.respuesta }}</td>
+                <td >{{ prueba.tasa_cambio }}</td>
+                <td  colspan="2">{{ prueba.ponderacion }}</td>
+            </tr>
+            <tr>
+                <td colspan="4">RESULTADOS CALIBRACIÓN</td>
+            </tr>
+            <tr>
+                <td class="bg-blue">CALIBRADOR</td> <td >{{ prueba.equipo_patron.nombre }}</td>
+                <td class="bg-blue">PRE-CALIBRACIÓN dB</td> <td >{{ prueba.db_pre_calibracion }}</td>
+            </tr>
+            <tr>
+                <td class="bg-blue">SERIE</td> <td >{{ prueba.equipo_patron.serie }}</td>
+                <td class="bg-blue">POST-CALIBRACIÓN dB</td> <td >{{ prueba.db_post_calibracion }}</td>
+            </tr>
+        </table>
+        
+    {% elif tipo_equipo == "VIBROMETRO" %}
+        <table style="width: 100%;">
+            <!-- Título General -->
+            <tr class="bg-blue">
+                <th colspan="4">VIBRÓMETRO</th>
+            </tr>
+            
+            <!-- Encabezados de Series -->
+            <tr>
+                <td class="bg-blue" width="25%">SERIE C.COMPLETO</td>
+                <td width="25%" >{{ prueba.serie_cuerpo|default:"-" }}</td>
+                <td class="bg-blue" width="25%">SERIE MANO BRAZO</td>
+                <td width="25%" >{{ prueba.serie_mano|default:"-" }}</td>
+            </tr>
+
+            <!-- Encabezados de Sensibilidad -->
+            <tr>
+                <td colspan="2">SENSIBILIDAD</td>
+                <td colspan="2">SENSIBILIDAD</td>
+            </tr>
+
+            <!-- Filas de Ejes (Izquierda vs Derecha) -->
+            <tr>
+                <td class="bg-yellow">Eje X</td> <td>{{ prueba.sens_x_cuerpo }}</td>
+                <td class="bg-yellow">Eje X</td> <td>{{ prueba.sens_x_mano }}</td>
+            </tr>
+            <tr>
+                <td class="bg-yellow">Eje Y</td> <td>{{ prueba.sens_y_cuerpo }}</td>
+                <td class="bg-yellow">Eje Y</td> <td>{{ prueba.sens_y_mano }}</td>
+            </tr>
+            <tr>
+                <td class="bg-yellow">Eje Z</td> <td>{{ prueba.sens_z_cuerpo }}</td>
+                <td class="bg-yellow">Eje Z</td> <td>{{ prueba.sens_z_mano }}</td>
+            </tr>
+        </table>
+    {% endif %}
+    
+    <div class="section-title" style="text-align: center; border:1px solid #000; margin-top: 5px;">RESULTADOS</div>
+
+    {% if tipo_equipo == "BOMBA" %}
+        <table style="width: 100%;">
+            <tr style="background-color: #ccc; color: black;">
+                <th width="30%">BOMBA GRAVIMÉTRICA</th>
+                <th width="10%">SI</th>
+                <th width="10%">NO</th>
+            </tr>
+            <tr>
+                <td class="text-left">¿Presenta flujo constante?</td>
+                <td>{% if prueba.bomba_flujo_constante == 'SI' %}X{% endif %}</td>
+                <td>{% if prueba.bomba_flujo_constante == 'NO' %}X{% endif %}</td>
+            </tr>
+            <tr>
+                <td class="text-left">¿Presenta ruido excesivo?</td>
+                <td>{% if prueba.bomba_ruido_excesivo == 'SI' %}X{% endif %}</td>
+                <td>{% if prueba.bomba_ruido_excesivo == 'NO' %}X{% endif %}</td>
+            </tr>
+        </table>
+        <table style="margin-top: -1px;">
+            <tr>
+                <td width="20%" class="bg-blue">CONDICIÓN DEL EQUIPO</td>
+                <td class="bg-yellow text-left">{{ detalle.resultado_final }}</td>
+            </tr>
+        </table>
+    {% elif tipo_equipo == "VIBROMETRO" %}
+        <table style="width: 100%;">
+            <tr class="bg-blue">
+                <th colspan="2">NIVELES DE ACELERACIÓN</th>
+            </tr>
+            <tr>
+                <td width="30%" class="text-center bg-yellow">Eje X - AEQ(m/s2)</td>
+                <td width="70%" class="text-left">{{ prueba.vibro_aeq_x }}</td>
+            </tr>
+            <tr>
+                <td class="text-center bg-yellow">Eje Y - AEQ(m/s2)</td>
+                <td class="text-left">{{ prueba.vibro_aeq_y }}</td>
+            </tr>
+            <tr>
+                <td class="text-center bg-yellow">Eje Z - AEQ(m/s2)</td>
+                <td class="text-left">{{ prueba.vibro_aeq_z }}</td>
+            </tr>
+        </table>
+        <table style="margin-top: -1px;">
+            <tr>
+                <td width="20%" class="bg-blue">CONDICIÓN DEL EQUIPO</td>
+                <td class="text-left">{{ detalle.resultado_final }}</td>
+            </tr>
+        </table>
+    {% elif tipo_equipo == "DOSIMETRO" %}
+        <table style="width: 100%;">
+            <tr class="bg-blue">
+                <th colspan="2">LECTURAS</th>
+                <th>FUENTES DE RUIDO</th>
+            </tr>
+            <tr>
+                <td class="text-center">L. máx dB(A)</td>
+                <td>{{ prueba.l_max }}</td>
+                <td rowspan="3" style="vertical-align: middle;">
+                    {{ prueba.fuentes_ruido }}
+                </td>
+            </tr>
+            <tr>
+                <td class="text-center">L. min dB(A)</td>
+                <td>{{ prueba.l_min }}</td>
+            </tr>
+            <tr>
+                <td class="text-center">L. pico dB(A)</td>
+                <td>{{ prueba.l_pico }}</td>
+            </tr>
+        </table>
+        
+        <table style="margin-top: -1px;">
+            <tr>
+                <td width="20%" class="bg-blue">CONDICIÓN DEL EQUIPO</td>
+                <td class="bg-yellow text-left">{{ detalle.resultado_final }}</td>
+            </tr>
+        </table>
+    {% endif %}
+    
+    <!-- 5. FIRMAS -->
+    <table style="border: none;margin-left: 400px; position: relative;">
+        <tr>
+            <td style="border: none; text-align: center;">
+                <b>RESPONSABLE DE LA INSPECCIÓN</b><br><br><br><br>
+                <img src="{{ firmaT_url }}" style="width: 90px;position: absolute;margin: 0 auto;top: 15px;left: 460px;"><br>   
+                _________________________<br>
+                {{ inspeccion.responsable.nombre }}<br>
+                {{ inspeccion.responsable.cargo }}
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

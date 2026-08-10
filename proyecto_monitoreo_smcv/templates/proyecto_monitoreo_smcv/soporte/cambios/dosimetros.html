@@ -1,0 +1,188 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block title %}Control de Dosímetros{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-full h-screen flex flex-col">
+    <div class="mb-4">
+        <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="inline-flex items-center text-gray-600 hover:text-blue-600 font-semibold transition-colors">
+            <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-2 shadow-sm group-hover:bg-blue-100">
+                <i class="fas fa-arrow-left text-sm"></i>
+            </div>
+            Volver al Panel
+        </a>
+    </div>
+    <!-- ENCABEZADO -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Matriz de Modificaciones - Dosímetros</h1>
+            <p class="text-sm text-gray-500">Gestión de micrófonos y pantallas cortaviento.</p>
+        </div>
+        
+        <div class="flex gap-3">
+            <a href="{% url 'proyecto_monitoreo_smcv:historial_cambios_dosimetros' %}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition shadow-md hover:-translate-y-0.5 text-sm">
+                <i class="fas fa-history mr-2"></i> Historial
+            </a>
+            <a href="{% url 'proyecto_monitoreo_smcv:crear_cambio_dosimetro' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-md hover:-translate-y-0.5 text-sm">
+                <i class="fas fa-plus-circle mr-2"></i> Registrar Cambio
+            </a>
+        </div>
+    </div>
+
+    <!-- TABLA -->
+    <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col flex-grow">
+        <div class="overflow-auto custom-scrollbar flex-grow">
+            <table class="min-w-full border-collapse">
+                <thead class="sticky top-0 z-20 shadow-md text-xs uppercase text-gray-800 font-bold tracking-tight">
+                    <tr>
+                        <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-2 py-2 min-w-[120px] text-left align-middle">Equipo</th>
+                        <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-2 py-2 min-w-[100px] text-center align-middle">Marca</th>
+                        <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-2 py-2 min-w-[100px] text-center align-middle">Modelo</th>
+                        <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-2 py-2 min-w-[100px] text-center align-middle">Serie</th>
+                        <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-2 py-2 min-w-[100px] text-center align-middle">Fecha<br>Manuf.</th>
+                        <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-4 py-2 min-w-[150px] text-left align-middle">Accesorios</th>
+                        <th rowspan="2" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-2 py-2 min-w-[100px] text-center align-middle">Serie<br>Accesorio</th>
+                        
+                        <!-- Grupo Cambios -->
+                        <th colspan="4" class="bg-[#d5e8d4] border-b border-gray-300 px-2 py-1 text-center text-green-900">Fecha Cambio de Accesorios</th>
+                    </tr>
+                    <tr>
+                        <th class="bg-[#d5e8d4] border-r border-b border-gray-300 px-1 py-1 w-28 text-center text-[10px]">Micrófono</th>
+                        <th class="bg-[#d5e8d4] border-r border-b border-gray-300 px-1 py-1 w-28 text-center text-[10px]">Clips de<br>Sujeción</th>
+                        <th class="bg-[#d5e8d4] border-r border-b border-gray-300 px-1 py-1 w-28 text-center text-[10px]">Pantalla<br>Cortaviento</th>
+                        <th class="bg-[#d5e8d4] border-b border-gray-300 px-1 py-1 w-28 text-center text-[10px]">Prox. Cambio<br>Pantalla</th>
+                    </tr>
+                </thead>
+                
+                <tbody class="text-sm text-gray-700 bg-white divide-y divide-gray-100">
+                    {% for item in dosimetros_data %}
+                        {% for acc in item.accesorios %}
+                        <tr class="hover:bg-green-50 transition-colors group">
+                            
+                            <!-- COLUMNAS DISPOSITIVO -->
+                            {% if forloop.first %}
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 px-2 py-2 font-bold bg-white align-middle">{{ item.dispositivo.nombre }}</td>
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 px-2 py-2 text-center bg-white align-middle">{{ item.dispositivo.marca }}</td>
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 px-2 py-2 text-center bg-white align-middle">{{ item.dispositivo.modelo }}</td>
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 px-2 py-2 text-center bg-white align-middle font-mono">{{ item.dispositivo.serie }}</td>
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 px-2 py-2 text-center bg-white align-middle text-xs">{{ item.dispositivo.diagnostico_set.first.fecha_manufactura|date:"d/m/Y"|default:"-" }}</td>
+                            {% endif %}
+
+                            <!-- COLUMNAS ACCESORIO -->
+                            <td class="border-r border-gray-200 px-4 py-2 text-xs">{% if acc %}{{ acc.nombre }}{% else %}-{% endif %}</td>
+                            
+                            <!-- Serie Accesorio Editable -->
+                            <td class="border-r border-gray-200 p-0 relative">
+                                {% if acc %}
+                                <input type="text" value="{{ acc.serie }}" 
+                                    data-id="{{ acc.id }}" data-model="accesorio" data-field="serie"
+                                    class="editable-field w-full h-full text-center bg-transparent border-none focus:ring-2 focus:ring-green-500 text-xs font-mono">
+                                {% endif %}
+                            </td>
+
+                            <!-- === FECHAS CAMBIO (EDITABLES) === -->
+                            {% if forloop.first %}
+                                <!-- MICRÓFONO -->
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 p-0 align-middle bg-[#f0fdf4]">
+                                    <input type="date" value="{{ item.cambios.MICROFONO|date:'Y-m-d' }}" 
+                                        data-id="{{ item.dispositivo.id }}" data-model="cambio" data-field="MICROFONO"
+                                        class="editable-field w-full h-full bg-transparent border-none text-center text-[11px] text-green-800 focus:ring-0 cursor-pointer py-2">
+                                </td>
+                                
+                                <!-- CLIPS -->
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 p-0 align-middle bg-[#f0fdf4]">
+                                    <input type="date" value="{{ item.cambios.CLIPS|date:'Y-m-d' }}" 
+                                        data-id="{{ item.dispositivo.id }}" data-model="cambio" data-field="CLIPS"
+                                        class="editable-field w-full h-full bg-transparent border-none text-center text-[11px] text-green-800 focus:ring-0 cursor-pointer py-2">
+                                </td>
+                                
+                                <!-- PANTALLA -->
+                                <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 p-0 align-middle bg-[#f0fdf4]">
+                                    <input type="date" value="{{ item.cambios.PANTALLA|date:'Y-m-d' }}" 
+                                        data-id="{{ item.dispositivo.id }}" data-model="cambio" data-field="PANTALLA"
+                                        class="editable-field w-full h-full bg-transparent border-none text-center text-[11px] text-green-800 focus:ring-0 cursor-pointer py-2">
+                                </td>
+                                
+                                <!-- PROX. CAMBIO (Calculado) -->
+                                <td rowspan="{{ item.row_span }}" class="p-0 align-middle bg-[#f0fdf4] text-center">
+                                    <span class="text-[11px] font-bold text-red-600 block w-full py-2">
+                                        {{ item.prox_pantalla|date:"d/m/Y"|default:"-" }}
+                                    </span>
+                                </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    {% empty %}
+                        <tr><td colspan="11" class="text-center py-10 text-gray-400">No hay dosímetros registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="bg-gray-50 px-4 py-2 border-t text-xs text-gray-500 flex justify-between">
+            <span>Total: {{ dosimetros_data|length }} equipos</span>
+            <span>Edición activa en celdas</span>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SCRIPT PARA GUARDADO AUTOMÁTICO (AJAX) -->
+<!-- ============================================ -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('.editable-field').forEach(input => {
+            input.addEventListener('change', function() {
+                const modelType = this.dataset.model; // 'accesorio' o 'cambio'
+                const id = this.dataset.id;
+                const field = this.dataset.field; // ej: 'MICROFONO'
+                const value = this.value;
+                const parentCell = this.parentElement;
+                
+                // Determinar a qué API llamar
+                let urlAPI = (modelType === 'accesorio') ? "{% url 'proyecto_monitoreo_smcv:api_update_accesorio' %}" : "{% url 'proyecto_monitoreo_smcv:api_update_cambio' %}";
+
+                // Feedback Visual: Cargando (Amarillo)
+                parentCell.style.backgroundColor = "#fff3cd";
+
+                fetch(urlAPI, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": "{{ csrf_token }}"
+                    },
+                    body: JSON.stringify({ id: id, campo: field, valor: value })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.status === 'success') {
+                        // Feedback Éxito: Verde
+                        parentCell.style.backgroundColor = "#d1e7dd";
+                        
+                        // Si cambiaron la PANTALLA, recargamos para que Python recalcule la "Próxima Fecha (+6 meses)"
+                        if (field === 'PANTALLA') {
+                            setTimeout(() => window.location.reload(), 500);
+                        } else {
+                            // Volver al color original después de 1 segundo
+                            setTimeout(() => parentCell.style.backgroundColor = "", 1000);
+                        }
+                    } else {
+                        alert("Error: " + data.mensaje);
+                        parentCell.style.backgroundColor = "#f8d7da";
+                    }
+                })
+                .catch(e => {
+                    console.error(e);
+                    parentCell.style.backgroundColor = "#f8d7da";
+                });
+            });
+        });
+    });
+</script>
+
+<style>
+    .custom-scrollbar::-webkit-scrollbar { height: 10px; width: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f3f4f6; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>
+{% endblock %}

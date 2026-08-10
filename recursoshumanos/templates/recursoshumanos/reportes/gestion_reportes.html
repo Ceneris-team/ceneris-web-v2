@@ -1,0 +1,46 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Gestión de Reportes{% endblock %}
+{% block content %}
+    <h1>Gestión de Reportes</h1>
+    <p>Administra los reportes para la asignación de personal de asistencia.</p>
+    {% if current_view == 'reportes' %}
+            
+            <!-- Tarjeta para Exportar Reporte Diario -->
+            <a href="{% url 'recursoshumanos:exportar_formato_planilla' %}" class="card">
+                <div class="card__icon">📥</div>
+                <h2 class="card__title">Exportar Formato Planilla</h2>
+                <p class="card__description">
+                    Descarga un listado simple con todas las marcaciones de entrada y salida
+                    de un día específico en formato Excel.
+                </p>
+                <div class="card__footer">
+                    Ir a Exportación &rarr;
+                </div>
+            </a>
+            <!-- Tarjeta para Exportar Reporte Diario -->
+            <a href="{% url 'recursoshumanos:exportar_reporte_diario' %}" class="card">
+                <div class="card__icon">📥</div>
+                <h2 class="card__title">Exportar Marcas del Día</h2>
+                <p class="card__description">
+                    Descarga un listado simple con todas las marcaciones de entrada y salida
+                    de un día específico en formato Excel.
+                </p>
+                <div class="card__footer">
+                    Ir a Exportación &rarr;
+                </div>
+            </a>
+            <!-- Tarjeta para Exportar Reporte Maestro -->
+            <a href="{% url 'recursoshumanos:exportar_reporte_maestro' %}" class="card">
+                <div class="card__icon">📄</div>
+                <h2 class="card__title">Exportar Reporte Maestro</h2>
+                <p class="card__description">
+                    Genera el informe mensual consolidado en formato Excel, idéntico al sistema
+                    de tareo, con todas las asistencias, faltas y justificaciones.
+                </p>
+                <div class="card__footer">
+                    Ir a Exportación &rarr;
+                </div>
+            </a>    
+
+        {% endif %}
+{% endblock %}

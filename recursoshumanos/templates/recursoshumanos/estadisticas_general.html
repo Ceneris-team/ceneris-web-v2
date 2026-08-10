@@ -1,0 +1,350 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Dashboard 360 RRHH{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Liberamos a los contenedores padres de sus restricciones */
+        body, main, .container, .container-fluid, .content-wrapper, #content { 
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            overflow-x: hidden; /* Evita que el espaciado genere scroll horizontal */
+        }
+
+        /* Le damos el "respiro" exacto a tu contenedor principal */
+        .rrhh-hero {
+            padding-left: 1.5rem !important; /* Cambia a 1rem si lo quieres un poco más pequeño */
+            padding-right: 1.5rem !important; 
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box; /* Asegura que el padding se calcule hacia adentro */
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="rrhh-hero">
+        <div class="rrhh-hero-glow rrhh-hero-glow-a"></div>
+        <div class="rrhh-hero-glow rrhh-hero-glow-b"></div>
+
+        <div class="filter-bar">
+            <form method="get" class="form-filters">
+                <label for="mes">Mes analizado</label>
+                <input type="month" id="mes" name="mes" value="{{ mes_seleccionado }}">
+                <button type="submit">Actualizar</button>
+            </form>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-value">{{ total_marcas_kpi }}</div>
+                <div class="kpi-label">Marcas unificadas</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value">{{ fuentes_activas_kpi }}/3</div>
+                <div class="kpi-label">Fuentes activas</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value">{{ puntualidad_mes_kpi }}</div>
+                <div class="kpi-label">Puntualidad general</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value">{{ total_faltas_kpi }}</div>
+                <div class="kpi-label">Faltas del mes</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value">{{ total_fraudes_kpi }}</div>
+                <div class="kpi-label">Intentos de fraude</div>
+            </div>
+        </div>
+
+        <div class="charts-grid-new">
+            <section class="chart-card chart-card-sm">
+                <h3>Estado de cumplimiento</h3>
+                <div class="chart-canvas-wrap">
+                    <canvas id="cumplimientoChart"></canvas>
+                </div>
+            </section>
+
+            <section class="chart-card chart-card-lg">
+                <h3>Flujo diario por fuente</h3>
+                <div class="chart-canvas-wrap">
+                    <canvas id="dailyFlowChart"></canvas>
+                </div>
+            </section>
+
+            <section class="chart-card chart-card-lg">
+                <h3>Reloj de marcaciones por hora</h3>
+                <div class="chart-canvas-wrap">
+                    <canvas id="hourClockChart"></canvas>
+                </div>
+            </section>
+
+            <section class="chart-card chart-card-sm top-workers-card">
+                <div class="chart-title-row">
+                    <h3>Top 10 por trabajador</h3>
+                    <select id="topWorkersMetric" class="chart-select" aria-label="Seleccionar tipo de top">
+                        <option value="puntuales" selected>Asistencias puntuales</option>
+                        <option value="tardanzas">Tardanzas</option>
+                        <option value="faltas">Faltas</option>
+                    </select>
+                </div>
+                <div class="chart-canvas-wrap">
+                    <canvas id="topWorkersChart"></canvas>
+                </div>
+            </section>
+
+            <section class="chart-card chart-card-lg">
+                <h3>Balance de horas (Top 15: extra vs faltantes)</h3>
+                <div class="chart-canvas-wrap">
+                    <canvas id="balanceHorasChart"></canvas>
+                </div>
+            </section>
+
+            <section class="chart-card chart-card-sm fraud-summary-card">
+                <h3>Fraude por ubicacion</h3>
+                <div class="fraud-summary-wrap">
+                    {% if fraude_total_eventos > 0 %}
+                        <p class="fraud-main-text">
+                            Mayor incidencia en
+                            <strong>{{ fraude_top_ubicacion }}</strong>
+                        </p>
+                        <div class="fraud-main-value">{{ fraude_top_cantidad }} casos</div>
+                        <div class="fraud-subtext">{{ fraude_top_participacion }}% del total ({{ fraude_total_eventos }} reportes)</div>
+
+                        <ul class="fraud-ranking-list">
+                            {% for item in fraude_ranking %}
+                                <li>
+                                    <span class="fraud-location">{{ item.ubicacion }}</span>
+                                    <span class="fraud-count">{{ item.cantidad }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="fraud-empty-text">No se detectaron fraudes en el periodo seleccionado.</p>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const colors = {
+                app: '#0ea5e9',
+                bio: '#f97316',
+                excel: '#14b8a6',
+                puntual: '#22c55e',
+                tardanza: '#f59e0b',
+                falta: '#ef4444',
+                danger: '#ef4444'
+            };
+
+            new Chart(document.getElementById('cumplimientoChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: {{ cumplimiento_labels|safe }},
+                    datasets: [{
+                        data: {{ cumplimiento_data|safe }},
+                        backgroundColor: [colors.puntual, colors.tardanza, colors.falta],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '62%',
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            new Chart(document.getElementById('dailyFlowChart'), {
+                type: 'line',
+                data: {
+                    labels: {{ flujo_dias_labels|safe }},
+                    datasets: [
+                        {
+                            label: 'App movil',
+                            data: {{ flujo_app_data|safe }},
+                            borderColor: colors.app,
+                            backgroundColor: 'rgba(14,165,233,0.15)',
+                            fill: true,
+                            tension: 0.32,
+                        },
+                        {
+                            label: 'Biometrico/Huellero',
+                            data: {{ flujo_bio_data|safe }},
+                            borderColor: colors.bio,
+                            backgroundColor: 'rgba(249,115,22,0.12)',
+                            fill: true,
+                            tension: 0.32,
+                        },
+                        {
+                            label: 'Excel importado',
+                            data: {{ flujo_excel_data|safe }},
+                            borderColor: colors.excel,
+                            backgroundColor: 'rgba(20,184,166,0.12)',
+                            fill: true,
+                            tension: 0.32,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { position: 'top' } },
+                    scales: { x: { ticks: { autoSkip: true, maxTicksLimit: 16 } } }
+                }
+            });
+
+            new Chart(document.getElementById('hourClockChart'), {
+                type: 'bar',
+                data: {
+                    labels: {{ reloj_horas_labels|safe }},
+                    datasets: [
+                        { label: 'App movil', data: {{ reloj_app_data|safe }}, backgroundColor: colors.app, stack: 'fuentes' },
+                        { label: 'Biometrico/Huellero', data: {{ reloj_bio_data|safe }}, backgroundColor: colors.bio, stack: 'fuentes' },
+                        { label: 'Excel importado', data: {{ reloj_excel_data|safe }}, backgroundColor: colors.excel, stack: 'fuentes' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: {
+                        x: { stacked: true, ticks: { maxRotation: 45, minRotation: 45 } },
+                        y: { stacked: true, beginAtZero: true }
+                    }
+                }
+            });
+
+            const topWorkersSeries = {
+                puntuales: {
+                    label: 'Asistencias puntuales',
+                    labels: {{ top_puntuales_labels|safe }},
+                    data: {{ top_puntuales_data|safe }},
+                    backgroundColor: colors.puntual
+                },
+                tardanzas: {
+                    label: 'Tardanzas',
+                    labels: {{ top_tardanzas_labels|safe }},
+                    data: {{ top_tardanzas_data|safe }},
+                    backgroundColor: colors.tardanza
+                },
+                faltas: {
+                    label: 'Faltas',
+                    labels: {{ top_faltas_labels|safe }},
+                    data: {{ top_faltas_data|safe }},
+                    backgroundColor: colors.falta
+                }
+            };
+
+            const topWorkersChart = new Chart(document.getElementById('topWorkersChart'), {
+                type: 'bar',
+                data: {
+                    labels: topWorkersSeries.puntuales.labels,
+                    datasets: [{
+                        label: topWorkersSeries.puntuales.label,
+                        data: topWorkersSeries.puntuales.data,
+                        backgroundColor: topWorkersSeries.puntuales.backgroundColor
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            ticks: {
+                                callback: function(value) {
+                                    const label = this.getLabelForValue(value) || '';
+                                    return label.length > 22 ? label.slice(0, 22) + '...' : label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const topWorkersMetricSelect = document.getElementById('topWorkersMetric');
+            topWorkersMetricSelect.addEventListener('change', function (event) {
+                const selectedMetric = event.target.value;
+                const selectedSeries = topWorkersSeries[selectedMetric] || topWorkersSeries.puntuales;
+
+                topWorkersChart.data.labels = selectedSeries.labels;
+                topWorkersChart.data.datasets[0].label = selectedSeries.label;
+                topWorkersChart.data.datasets[0].data = selectedSeries.data;
+                topWorkersChart.data.datasets[0].backgroundColor = selectedSeries.backgroundColor;
+                topWorkersChart.update();
+            });
+
+            const balanceLabels = {{ balance_trabajadores_labels|safe }};
+            const balanceExtra = {{ balance_extra_data|safe }};
+            const balanceFaltantes = {{ balance_faltantes_data|safe }}.map(value => -Math.abs(value));
+
+            new Chart(document.getElementById('balanceHorasChart'), {
+                type: 'bar',
+                data: {
+                    labels: balanceLabels,
+                    datasets: [
+                        { label: 'Horas extra', data: balanceExtra, backgroundColor: 'rgba(14,165,233,0.8)', borderRadius: 6 },
+                        { label: 'Horas faltantes', data: balanceFaltantes, backgroundColor: 'rgba(148,163,184,0.75)', borderRadius: 6 }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const horas = Math.abs(context.parsed.x || 0).toFixed(2);
+                                    return `${context.dataset.label}: ${horas} h`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return `${Math.abs(value)} h`;
+                                }
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            ticks: {
+                                callback: function(value) {
+                                    const label = this.getLabelForValue(value) || '';
+                                    return label.length > 32 ? label.slice(0, 32) + '...' : label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+        });
+    </script>
+{% endblock %}

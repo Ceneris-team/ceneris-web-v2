@@ -1,0 +1,76 @@
+<!-- dashboard/templates/dashboard/gestion_ubicaciones.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Gestión de Ubicaciones{% endblock %}
+
+{% block extra_css %}
+<style>
+    table th:last-child,
+    table td:last-child {
+        text-align: center;
+    }
+    
+    .table-actions-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Listado de Ubicaciones y Áreas</h1>
+            <p style="margin: 0;">Aqui puedes ver la lista de ubicaciones registradas</p>
+        </div>
+        <div>
+            <!-- ¡BOTÓN CAMBIADO! Ahora vuelve al dashboard de tarjetas -->
+            <a href="{% url 'recursoshumanos:gestion_ubicaciones' %}" class="btn-secondary">&larr; Volver</a>
+        </div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Coordenadas (Lat, Lon)</th>
+                <th>Radio (m)</th>
+                <th>Hora de Entrada</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ubicacion in ubicaciones %}
+            <tr>
+                <td>{{ ubicacion.nombre }}</td>
+                <td>{{ ubicacion.latitud }}, {{ ubicacion.longitud }}</td>
+                <td>{{ ubicacion.radio }}</td>
+                <td>{{ ubicacion.horaEntrada }}</td>
+                <td>
+                    <div class="table-actions-container">
+                        <a href="{% url 'recursoshumanos:ubicacion_editar' pk=ubicacion.id %}" class="btn-icon-action secondary" title="Editar Ubicación"><i data-feather="edit-2"></i></a>
+                        <a href="#" class="btn-icon-action danger" title="Eliminar Ubicación" onclick="confirmDelete(event, 'form-delete-{{ ubicacion.id }}')"><i data-feather="trash-2"></i></a>
+                        <form id="form-delete-{{ ubicacion.id }}" action="{% url 'recursoshumanos:ubicacion_eliminar' pk=ubicacion.id %}" method="post" style="display: none;">
+                            {% csrf_token %}
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">No hay ubicaciones registradas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function confirmDelete(event, formId) {
+        event.preventDefault(); 
+        if (confirm('¿Estás seguro de que deseas eliminar esta ubicación?')) {
+            document.getElementById(formId).submit();
+        }
+    }
+</script>
+{% endblock %}

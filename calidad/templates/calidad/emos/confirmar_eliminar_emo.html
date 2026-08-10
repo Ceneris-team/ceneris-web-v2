@@ -1,0 +1,24 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Eliminar EMO{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 600px; margin-top: 50px; text-align: center;">
+    <div class="card" style="padding: 30px; border: 1px solid #dc3545;">
+        <h2 style="color: #dc3545;">¿Estás seguro?</h2>
+        <p style="font-size: 1.1em;">Estás a punto de eliminar el registro de EMO de:</p>
+        <h3>{{ emo.trabajador }}</h3>
+        <p>Fecha: {{ emo.fecha_programada|date:"d/m/Y" }} | Clínica: {{ emo.lugar_examen }}</p>
+        
+        <p style="color: #666; margin-top: 20px;">Esta acción es irreversible y eliminará también los archivos asociados y controles.</p>
+
+        <form method="post" style="margin-top: 30px; display: flex; justify-content: center; gap: 15px;">
+            {% csrf_token %}
+            <a href="{% url 'calidad:reporte_maestro_emos' %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-danger" style="background-color: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                Sí, Eliminar EMO
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,339 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block title %}Inspección Específica{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto py-8 px-4">
+    <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Registro de Inspección</h2>
+
+    <form method="post" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        {% csrf_token %}
+
+        <!-- 1. CABECERA -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+                <label class="block font-bold text-gray-700">Fecha Inspección</label>
+                {{ form.fecha_inspeccion }}
+            </div>
+            <div>
+                <label class="block font-bold text-gray-700">Responsable</label>
+                {{ form.responsable }}
+            </div>
+        </div>
+
+        <!-- 2. EQUIPO -->
+        <div class="mb-6 bg-blue-50 p-4 rounded border border-blue-200">
+            <label class="block font-bold text-gray-700 mb-2">Equipo a Inspeccionar</label>
+            {{ form.dispositivo }} <!-- Tom Select -->
+        </div>
+
+        <!-- 3. ESTADO DEL EQUIPO (SOLUCIÓN TABLA) -->
+        <h3 class="font-bold text-lg mb-2 text-gray-800 bg-gray-200 p-2">Estado del Equipo</h3>
+        <div class="overflow-x-auto mb-6">
+            <table class="min-w-full border border-gray-400 text-sm text-center">
+                <thead class="font-bold text-white">
+                    <tr>
+                        <th class="bg-white text-gray-800 border p-2 text-left w-1/4">Componente</th>
+                        <th class="bg-green-600 border p-2 w-20">Bueno</th>
+                        <th class="bg-red-600 border p-2 w-20">Malo</th>
+                        <th class="bg-yellow-400 text-black border p-2 w-20">N.A.</th>
+                        
+                        <!-- Columna Derecha (Opcional si quieres dividir en 2 bloques como la imagen o todo en 1) -->
+                        <!-- Haremos una sola tabla larga para simplificar el form -->
+                    </tr>
+                </thead>
+                <tbody class="bg-white">
+                    <!-- Fila CASE -->
+                    <tr>
+                        <td class="border p-2 text-left font-bold">Estado del case</td>
+                        <!-- Iteramos los radio buttons manualmente -->
+                        {% for radio in form.estado_case %}
+                            <td class="border p-2">{{ radio.tag }}</td>
+                        {% endfor %}
+                    </tr>
+                    <!-- Fila BOTONES -->
+                    <tr>
+                        <td class="border p-2 text-left font-bold">Botones, Teclas, Puertos</td>
+                        {% for radio in form.estado_botones %}
+                            <td class="border p-2">{{ radio.tag }}</td>
+                        {% endfor %}
+                    </tr>
+                    <!-- Fila PANTALLA -->
+                    <tr>
+                        <td class="border p-2 text-left font-bold">Pantalla</td>
+                        {% for radio in form.estado_pantalla %}
+                            <td class="border p-2">{{ radio.tag }}</td>
+                        {% endfor %}
+                    </tr>
+                    <!-- Fila BATERIA -->
+                    <tr>
+                        <td class="border p-2 text-left font-bold">Batería</td>
+                        {% for radio in form.estado_bateria %}
+                            <td class="border p-2">{{ radio.tag }}</td>
+                        {% endfor %}
+                    </tr>
+                    <!-- Fila ACCESORIOS -->
+                    <tr>
+                        <td class="border p-2 text-left font-bold">Accesorios</td>
+                        {% for radio in form.estado_accesorios %}
+                            <td class="border p-2">{{ radio.tag }}</td>
+                        {% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="mt-4">
+                <label class="font-bold text-gray-700 block mb-1">Observaciones:</label>
+                <!-- Renderizamos el nuevo campo -->
+                {{ form.observaciones_generales }}
+            </div>
+        </div>
+
+        <!-- 4. DATOS OPERATIVOS (Comunes) -->
+        <h3 class="font-bold text-lg mb-2 text-gray-800 bg-gray-200 p-2">Prueba de Operatividad</h3>
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <div><label>Hora Inicio</label>{{ form.hora_inicio }}</div>
+            <div><label>Hora Fin</label>{{ form.hora_fin }}</div>
+            <div><label>Tiempo Total</label>{{ form.tiempo_total }}</div>
+        </div>
+
+        <!-- ================= DATOS ESPECÍFICOS ================= -->
+        
+        <!-- A. BOMBA -->
+        <div id="section-bomba" class="hidden spec-section bg-gray-50 p-4 border rounded mb-4">
+            <h4 class="font-bold text-blue-800 mb-2 border-b">Bomba Gravimétrica</h4>
+            <div class="grid grid-cols-2 gap-4">
+                <div><label>Flujo Evaluación</label>{{ form.flujo_evaluacion }}</div>
+                <div><label>Flujo Promedio</label>{{ form.flujo_promedio }}</div>
+                <div><label>Pre-Calibración (L/m)</label>{{ form.flujo_pre }}</div>
+                <div><label>Post-Calibración (L/m)</label>{{ form.flujo_post }}</div>
+            </div>
+            
+            <!-- RESULTADOS BOMBA -->
+            <div class="mt-4 border-t pt-4">
+                <h5 class="font-bold text-sm text-gray-800 mb-4 uppercase bg-blue-100 p-2 rounded">
+                    Resultados de Inspección
+                </h5>
+
+                <!-- Pregunta 1: Flujo Constante -->
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 border-b border-gray-100 pb-2">
+                    <span class="text-gray-700 font-bold w-full sm:w-1/2">
+                        ¿Presenta flujo constante?
+                    </span>
+                    
+                    <div class="flex w-full sm:w-1/2 justify-end gap-10">
+                        <!-- OPCIÓN SI -->
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" 
+                                   name="bomba_flujo_constante" 
+                                   value="SI" 
+                                   class="radio-manual"
+                                   {% if form.bomba_flujo_constante.value == 'SI' %}checked{% endif %}>
+                            <span class="ml-2 text-sm font-bold text-gray-700">SI</span>
+                        </label>
+
+                        <!-- OPCIÓN NO -->
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" 
+                                   name="bomba_flujo_constante" 
+                                   value="NO" 
+                                   class="radio-manual"
+                                   {% if form.bomba_flujo_constante.value == 'NO' %}checked{% endif %}>
+                            <span class="ml-2 text-sm font-bold text-gray-700">NO</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Pregunta 2: Ruido Excesivo -->
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-2">
+                    <span class="text-gray-700 font-bold w-full sm:w-1/2">
+                        ¿Presenta ruido excesivo?
+                    </span>
+                    
+                    <div class="flex w-full sm:w-1/2 justify-end gap-10">
+                        <!-- OPCIÓN SI -->
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" 
+                                   name="bomba_ruido_excesivo" 
+                                   value="SI" 
+                                   class="radio-manual"
+                                   {% if form.bomba_ruido_excesivo.value == 'SI' %}checked{% endif %}>
+                            <span class="ml-2 text-sm font-bold text-gray-700">SI</span>
+                        </label>
+
+                        <!-- OPCIÓN NO -->
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" 
+                                   name="bomba_ruido_excesivo" 
+                                   value="NO" 
+                                   class="radio-manual"
+                                   {% if form.bomba_ruido_excesivo.value == 'NO' %}checked{% endif %}>
+                            <span class="ml-2 text-sm font-bold text-gray-700">NO</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- B. VIBROMETRO -->
+        <div id="section-vibrometro" class="hidden spec-section bg-gray-50 p-6 border rounded mb-6 shadow-sm">
+            <h4 class="font-bold text-green-800 mb-6 border-b border-green-200 pb-2 text-lg">
+                <i class="fas fa-wave-square mr-2"></i> Inspección de Vibrómetro
+            </h4>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                <!-- COLUMNA IZQUIERDA: CUERPO COMPLETO -->
+                <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                    <h5 class="font-bold text-sm text-center mb-4 text-green-700 bg-green-50 p-2 rounded uppercase tracking-wide">
+                        Cuerpo Completo
+                    </h5>
+                    
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-gray-500 mb-1 uppercase">Serie Sensor</label>
+                        <!-- Renderizamos el input con estilo manual para asegurar que se vea -->
+                        <input type="text" name="serie_cuerpo" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <label class="w-16 text-xs font-bold text-gray-600">Eje X:</label>
+                            <input type="text" name="sens_x_cuerpo" class="flex-1 p-2 border border-gray-300 rounded focus:ring-green-500 outline-none h-8 text-sm">
+                        </div>
+                        <div class="flex items-center">
+                            <label class="w-16 text-xs font-bold text-gray-600">Eje Y:</label>
+                            <input type="text" name="sens_y_cuerpo" class="flex-1 p-2 border border-gray-300 rounded focus:ring-green-500 outline-none h-8 text-sm">
+                        </div>
+                        <div class="flex items-center">
+                            <label class="w-16 text-xs font-bold text-gray-600">Eje Z:</label>
+                            <input type="text" name="sens_z_cuerpo" class="flex-1 p-2 border border-gray-300 rounded focus:ring-green-500 outline-none h-8 text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: MANO BRAZO -->
+                <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                    <h5 class="font-bold text-sm text-center mb-4 text-blue-700 bg-blue-50 p-2 rounded uppercase tracking-wide">
+                        Mano Brazo
+                    </h5>
+                    
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-gray-500 mb-1 uppercase">Serie Sensor</label>
+                        <input type="text" name="serie_mano" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <label class="w-16 text-xs font-bold text-gray-600">Eje X:</label>
+                            <input type="text" name="sens_x_mano" class="flex-1 p-2 border border-gray-300 rounded focus:ring-blue-500 outline-none h-8 text-sm">
+                        </div>
+                        <div class="flex items-center">
+                            <label class="w-16 text-xs font-bold text-gray-600">Eje Y:</label>
+                            <input type="text" name="sens_y_mano" class="flex-1 p-2 border border-gray-300 rounded focus:ring-blue-500 outline-none h-8 text-sm">
+                        </div>
+                        <div class="flex items-center">
+                            <label class="w-16 text-xs font-bold text-gray-600">Eje Z:</label>
+                            <input type="text" name="sens_z_mano" class="flex-1 p-2 border border-gray-300 rounded focus:ring-blue-500 outline-none h-8 text-sm">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RESULTADOS VIBROMETRO -->
+            <div class="mt-6 border-t border-gray-200 pt-4">
+                <h5 class="font-bold text-sm text-gray-800 mb-3">Resultados: Niveles de Aceleración (AEQ)</h5>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Eje X - AEQ</label>
+                        <input type="text" name="vibro_aeq_x" class="w-full p-2 border border-gray-300 rounded focus:border-green-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Eje Y - AEQ</label>
+                        <input type="text" name="vibro_aeq_y" class="w-full p-2 border border-gray-300 rounded focus:border-green-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Eje Z - AEQ</label>
+                        <input type="text" name="vibro_aeq_z" class="w-full p-2 border border-gray-300 rounded focus:border-green-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- C. DOSIMETRO -->
+        <div id="section-dosimetro" class="hidden spec-section bg-gray-50 p-4 border rounded mb-4">
+            <h4 class="font-bold text-purple-800 mb-2 border-b">Dosímetro de Ruido</h4>
+            <div class="grid grid-cols-4 gap-2 mb-2">
+                <div><label>Tasa Cambio</label>{{ form.tasa_cambio }}</div>
+                <div><label>Ponderación</label>{{ form.ponderacion }}</div>
+                <div><label>Respuesta</label>{{ form.respuesta }}</div>
+                <div><label>Calibrador</label>{{ form.equipo_patron }}</div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-2">
+                <div><label>Pre-Calibración dB</label>{{ form.db_pre }}</div>
+                <div><label>Post-Calibración dB</label>{{ form.db_post }}</div>
+            </div>
+            <!-- RESULTADOS DOSIMETRO -->
+            <div class="mt-4 border-t pt-2">
+                <h5 class="font-bold text-sm mb-2">Lecturas Finales</h5>
+                <div class="grid grid-cols-3 gap-4">
+                    <div><label>L. máx dB(A)</label>{{ form.lectura_max }}</div>
+                    <div><label>L. min dB(A)</label>{{ form.lectura_min }}</div>
+                    <div><label>L. pico dB(A)</label>{{ form.lectura_pico }}</div>
+                </div>
+                <div class="mt-2">
+                    <label>Fuentes de Ruido:</label>
+                    {{ form.fuentes_ruido }}
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. FINAL -->
+        <div class="mt-6 bg-yellow-100 p-4 rounded border border-yellow-300">
+            <label class="block font-bold text-gray-800 mb-1">Condición Final del Equipo</label>
+            {{ form.resultado_final }}
+        </div>
+
+        <div class="mt-8 flex justify-end gap-4">
+            <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="px-6 py-3 bg-gray-100 text-gray-700 font-bold rounded hover:bg-gray-200 transition">
+                Cancelar
+            </a>
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded shadow-lg transition transform hover:-translate-y-0.5">
+                Guardar
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    .radio-manual {
+        -webkit-appearance: radio !important;
+        -moz-appearance: radio !important;
+        appearance: radio !important;
+        display: inline-block !important;
+        width: 18px !important;
+        height: 18px !important;
+        margin: 0 !important;
+        cursor: pointer;
+        accent-color: #2563eb; /* Azul */
+    }
+</style>
+<!-- JS VISIBILIDAD (Igual que antes) -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const selectEquipo = document.getElementById('select-dispositivo');
+        
+        function toggleSections(text) {
+            document.querySelectorAll('.spec-section').forEach(el => el.classList.add('hidden'));
+            if (!text) return;
+            text = text.toLowerCase();
+            
+            if (text.includes('bomba')) document.getElementById('section-bomba').classList.remove('hidden');
+            else if (text.includes('dosimetro') || text.includes('dosímetro')) document.getElementById('section-dosimetro').classList.remove('hidden');
+            else if (text.includes('vibrometro') || text.includes('vibrómetro')) document.getElementById('section-vibrometro').classList.remove('hidden');
+        }
+
+        selectEquipo.addEventListener('change', function() {
+            toggleSections(this.options[this.selectedIndex].text);
+        });
+    });
+</script>
+{% endblock %}

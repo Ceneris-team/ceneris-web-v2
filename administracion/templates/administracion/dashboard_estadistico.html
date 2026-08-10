@@ -1,0 +1,296 @@
+{% extends "administracion/base_administracion.html" %}
+{% load humanize format_filters %}
+
+{% block extra_head %}
+    {{ block.super }}
+    <!-- Estilos específicos para el Dashboard (tema claro) -->
+    <style>
+        :root {
+            --light-bg: #ffffff; /* fondo blanco */
+            --light-panel: #f8f9fa; /* tarjetas claras */
+            --light-text: #212529; /* texto oscuro */
+            --light-accent: #e67e22; /* acento naranja */
+            --light-subtle-text: #6c757d; /* texto sutil */
+            --light-border: #dee2e6;
+        }
+
+        /* Fondo blanco para esta página */
+        body {
+            background-color: var(--light-bg) !important;
+        }
+
+        .dashboard-card {
+            background-color: var(--light-panel);
+            color: var(--light-text);
+            border: 1px solid var(--light-border);
+            border-radius: 8px;
+            height: 100%;
+        }
+        .dashboard-card .card-header {
+            background-color: transparent;
+            border-bottom: 1px solid var(--light-border);
+            color: var(--light-accent);
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .dashboard-card .card-body h1, .dashboard-card .card-body h2, .dashboard-card .card-body h3 {
+            color: var(--light-text);
+        }
+        
+        /* Estilos para las tarjetas KPI */
+        .kpi-card {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid var(--light-border);
+            background: transparent;
+        }
+        .kpi-card:last-child {
+            border-bottom: none;
+        }
+        .kpi-icon {
+            font-size: 2rem;
+            color: var(--light-accent);
+            margin-right: 1rem;
+            flex-shrink: 0;
+        }
+        .kpi-content h5 {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--light-subtle-text);
+        }
+        .kpi-content p {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--light-text);
+        }
+        .kpi-link {
+            text-decoration: none;
+            display: block;
+            transition: transform 0.2s ease-in-out;
+        }
+        .kpi-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
+    </style>
+{% endblock %}
+
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Fila de Filtros -->
+    <div class="d-flex justify-content-between align-items-center mb-4 px-2">
+        <h3 style="color: var(--light-text);">{{ titulo }}</h3>
+        <form method="get" class="d-flex align-items-center">
+            <label for="month" class="form-label me-2 mb-0" style="color: var(--light-subtle-text);">Mes:</label>
+            <select name="month" id="month" class="form-select form-select-sm me-3" onchange="this.form.submit()">
+                {% for month_val, month_name in available_months %}
+                    <option value="{{ month_val }}" {% if month_val|stringformat:"s" == selected_month %}selected{% endif %}>{{ month_name }}</option>
+                {% endfor %}
+            </select>
+            <label for="year" class="form-label me-2 mb-0" style="color: var(--light-subtle-text);">Año:</label>
+            <select name="year" id="year" class="form-select form-select-sm" onchange="this.form.submit()">
+                {% for year in available_years %}
+                    <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <div class="row g-4">
+        <!-- Columna Izquierda: Gráfico de Líneas y Barras -->
+        <div class="col-lg-8">
+            <div class="row g-4">
+                <!-- Gráfico de Progreso Anual Acumulado -->
+                <div class="col-12">
+                    <div class="card dashboard-card">
+                        <div class="card-header">Consumo Mensual vs. Meta</div>
+                        <div class="card-body">
+                            <canvas id="lineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <!-- Gráfico de Top 10 Requerimientos -->
+                <div class="col-12">
+                    <div class="card dashboard-card">
+                        <div class="card-header">Top 10 Requerimientos con Mayor Carga Anual</div>
+                        <div class="card-body">
+                            <!-- Aumentamos la altura del canvas para que las barras horizontales no se vean aplastadas -->
+                            <div style="min-height:420px;">
+                                <canvas id="barChart" style="height:420px; width:100%;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: KPIs y Gráfico de Anillo -->
+        <div class="col-lg-4">
+            <div class="row g-4">
+                <!-- Tarjetas de KPIs -->
+                <div class="col-12">
+                    <div class="card dashboard-card">
+                        <div class="card-header">Indicadores Clave</div>
+                        <div class="card-body p-0">
+                            <div class="row g-0">
+                                <div class="col-6"><div class="kpi-card"><i data-feather="target" class="kpi-icon"></i><div class="kpi-content"><h5>Req. Activos</h5><p>{{ kpi_total_requerimientos }}</p></div></div></div>
+                                <div class="col-6"><div class="kpi-card"><i data-feather="trending-up" class="kpi-icon"></i><div class="kpi-content"><h5>Progreso General</h5><p>{{ kpi_progreso_general }}%</p></div></div></div>
+                                <div class="col-6"><div class="kpi-card"><i data-feather="check-circle" class="kpi-icon"></i><div class="kpi-content"><h5>Completados</h5><p>{{ kpi_completados }}</p></div></div></div>
+                                <div class="col-6">
+                                    <!-- ¡AÑADIMOS EL ENLACE AQUÍ! -->
+                                    <a href="{{ kpi_criticos_link }}" class="kpi-link">
+                                        <div class="kpi-card">
+                                            <i data-feather="alert-triangle" class="kpi-icon"></i>
+                                            <div class="kpi-content">
+                                                <h5>Críticos</h5>
+                                                <p>{{ kpi_criticos }}</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-6"><div class="kpi-card"><i data-feather="zap" class="kpi-icon"></i><div class="kpi-content"><h5>Mes Productivo</h5><p>{{ kpi_mes_productivo }}</p></div></div></div>
+                                <div class="col-6"><div class="kpi-card"><i data-feather="package" class="kpi-icon"></i><div class="kpi-content"><h5>Total Consumido</h5><p>{{ kpi_total_consumido_año|euro }}</p></div></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Gráfico de Distribución por Tipo -->
+                <div class="col-12">
+                    <div class="card dashboard-card">
+                        <div class="card-header">Distribución por Tipo de Monitoreo</div>
+                        <div class="card-body">
+                            <canvas id="doughnutChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block extra_scripts %}
+    <!-- Incluimos la librería Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Paleta de colores para los gráficos
+            const chartColors = ['#e67e22', '#3498db', '#2ecc71', '#f1c40f', '#e74c3c', '#9b59b6'];
+
+            // --- 1. GRÁFICO DE LÍNEAS ---
+            // --- 1. GRÁFICO DE LÍNEAS (Configuración actualizada) ---
+        const lineChartData = JSON.parse('{{ line_chart_data|safe }}');
+        const lineCtx = document.getElementById('lineChart').getContext('2d');
+        new Chart(lineCtx, {
+            type: 'line',
+            data: {
+                labels: lineChartData.labels,
+                datasets: [{
+                    label: 'Consumo Mensual Real',
+                    data: lineChartData.consumo_data,
+                    borderColor: '#3498db', // Un color azul claro
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.3 // Mantiene una curva suave
+                }, {
+                    label: 'Meta Mensual',
+                    data: lineChartData.meta_data,
+                    borderColor: '#e67e22', // El color naranja que ya usas
+                    // ¡Quitamos el borderDash para que la línea sea sólida!
+                    fill: false,
+                    tension: 0.1 // Una tensión baja hace la línea más recta
+                }]
+            },
+            // Usamos una versión simplificada de tus opciones para este gráfico
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { color: 'var(--light-text)' } },
+                },
+                scales: {
+                    x: { ticks: { color: 'var(--light-subtle-text)' } },
+                    y: { 
+                        ticks: { color: 'var(--light-subtle-text)' },
+                        title: { display: true, text: 'Consumo Total', color: 'var(--light-subtle-text)' } 
+                    }
+                }
+            }
+        });
+
+            // --- 2. GRÁFICO DE BARRAS HORIZONTALES ---
+            const barChartData = JSON.parse('{{ bar_chart_data|safe }}');
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: barChartData.labels,
+                    datasets: [{
+                        label: 'Cantidad Total Requerida',
+                        data: barChartData.data,
+                        backgroundColor: chartColors,
+                        borderColor: 'transparent',
+                        borderWidth: 1
+                    }]
+                },
+                options: chartOptions('x', 'Cantidad Total')
+            });
+
+            // --- 3. GRÁFICO DE ANILLO (DONA) ---
+            const doughnutChartData = JSON.parse('{{ doughnut_chart_data|safe }}');
+            const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
+            new Chart(doughnutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: doughnutChartData.labels,
+                    datasets: [{
+                        label: 'Consumo',
+                        data: doughnutChartData.data,
+                        backgroundColor: chartColors,
+                        borderColor: 'var(--dark-panel)',
+                        borderWidth: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: 'var(--dark-text)' } }
+                    }
+                }
+            });
+
+            // Función de ayuda para configurar opciones comunes de los gráficos
+            function chartOptions(axis, label) {
+                return {
+                    indexAxis: axis === 'x' ? 'y' : 'x',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: 'var(--light-text)' } },
+                        tooltip: {
+                            backgroundColor: '#000',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: 'var(--light-subtle-text)' },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y: {
+                            ticks: { color: 'var(--light-subtle-text)' },
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            title: { display: true, text: label, color: 'var(--light-subtle-text)' }
+                        }
+                    }
+                };
+            }
+        });
+    </script>
+{% endblock %}

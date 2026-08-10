@@ -1,0 +1,301 @@
+<!-- calidad/templates/calidad/reportes/lista_emos_por_confirmar.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/tabla_estados.css' %}">
+    <link rel="stylesheet" href="{% static 'css/filtros_maestros.css' %}">
+    <style>
+        /* Maximizar ancho de pantalla eliminando margenes de contenedores */
+        .main-container, .container, .container-fluid {
+            max-width: 100% !important;
+            width: 100% !important;
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+            margin: 0 !important;
+        }
+
+        .form-filters-master { display: flex; flex-wrap: wrap; gap: 1.5rem 1rem; align-items: flex-end; }
+        .filter-group { flex: 1 1 180px; min-width: 180px; max-width: 300px; }
+        #apellidos-input { position: relative !important; opacity: 1 !important; height: auto !important; z-index: 1 !important; width: 100%; padding: 0.6rem 1rem; border: 1px solid #ced4da; border-radius: 6px; }
+        #apellidos-input:focus { border-color: #86b7fe; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); outline: none; }
+        .form-actions { display: flex; gap: 0.75rem; padding-bottom: 2px; flex-grow: 0; }
+        .form-actions .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; font-weight: 500; border-radius: 6px; white-space: nowrap; border: none; transition: background-color 0.2s ease; }
+        .form-actions .btn-primary { background-color: #d45b04; color: #ffffff; }
+        .form-actions .btn-primary:hover { background-color: #b04a03; }
+        .form-actions .btn-secondary { background-color: #6c757d; color: #ffffff; }
+        .form-actions .btn-secondary:hover { background-color: #5a6268; }
+        .form-actions i { width: 16px; height: 16px; }
+        
+        /* Estilos para códigos de colores según días transcurridos - MUY ESPECÍFICOS */
+        table tbody tr.emo-advertencia {
+            background-color: rgba(255, 193, 7, 0.2) !important;
+        }
+        table tbody tr.emo-advertencia:hover {
+            background-color: rgba(255, 193, 7, 0.35) !important;
+        }
+        table tbody tr.emo-urgente {
+            background-color: rgba(220, 53, 69, 0.25) !important;
+        }
+        table tbody tr.emo-urgente:hover {
+            background-color: rgba(220, 53, 69, 0.4) !important;
+        }
+        table tbody tr.emo-pendiente {
+            background-color: rgba(108, 117, 125, 0.08) !important;
+        }
+        table tbody tr.emo-pendiente:hover {
+            background-color: rgba(108, 117, 125, 0.15) !important;
+        }
+        
+        /* Nota informativa */
+        .info-note {
+            background-color: #e7f3ff;
+            border-left: 4px solid #0d6efd;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            border-radius: 4px;
+        }
+        .info-note h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1rem;
+            color: #084298;
+            font-weight: 600;
+        }
+        .info-note ul {
+            margin: 0.5rem 0 0 0;
+            padding-left: 1.5rem;
+        }
+        .info-note li {
+            margin: 0.25rem 0;
+            color: #333;
+        }
+        .color-sample {
+            display: inline-block;
+            width: 20px;
+            height: 12px;
+            border-radius: 2px;
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+        .color-amarillo { background-color: rgba(255, 193, 7, 0.4); border: 1px solid #ffc107; }
+        .color-rojo { background-color: rgba(220, 53, 69, 0.4); border: 1px solid #dc3545; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <h1>{{ titulo }}</h1>
+    <p>Utiliza los filtros para segmentar los EMOs que necesitan ser confirmados de lectura.</p>
+    
+    <div class="info-note">
+        <h4><i data-feather="info" style="width:18px; height:18px; vertical-align: middle;"></i> Plazo de Confirmación de Lectura</h4>
+        <p style="margin: 0.5rem 0;">Los EMOs deben tener su lectura antes de los<strong>15 días</strong> desde su fecha de realización.</p>
+        <ul>
+            <li><span class="color-sample color-amarillo"></span> <strong>Amarillo:</strong> Quedan menos de 8 días para el vencimiento (≥7 días transcurridos).</li>
+            <li><span class="color-sample color-rojo"></span> <strong>Rojo:</strong> Plazo vencido (≥15 días sin confirmación).</li>
+        </ul>
+    </div>
+
+    <div class="master-filter-bar">
+        <form method="get" class="form-filters-master">
+            <div class="filter-group" style="flex-grow: 1.5; min-width: 250px;">
+                <label for="apellidos-input">Buscar Trabajador</label>
+                <input type="text" name="apellidos" id="apellidos-input" value="{{ filtro_activo_apellidos }}" placeholder="Nombre, apellido o DNI...">
+            </div>
+            <div class="filter-group">
+                <label for="empresa">Empresa</label>
+                <select name="empresa" id="empresa">
+                    <option value="">Todas</option>
+                    {% for emp in opciones_empresas %}<option value="{{ emp.pk }}" {% if filtro_activo_empresa == emp.pk %}selected{% endif %}>{{ emp.nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="aptitud">Aptitud Médica</label>
+                <select name="aptitud" id="aptitud">
+                    <option value="">Todas</option>
+                    {% for value, text in opciones_aptitud %}<option value="{{ value }}" {% if filtro_activo_aptitud == value %}selected{% endif %}>{{ text }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="tipo_emo">Tipo de EMO</label>
+                <select name="tipo_emo" id="tipo_emo">
+                    <option value="">Todos</option>
+                    {% for value, text in opciones_tipo_emo %}<option value="{{ value }}" {% if filtro_activo_tipo_emo == value %}selected{% endif %}>{{ text }}</option>{% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="estado_urgencia">Estado</label>
+                <select name="estado_urgencia" id="estado_urgencia">
+                    {% for value, text in opciones_estado_urgencia %}<option value="{{ value }}" {% if filtro_activo_estado_urgencia == value %}selected{% endif %}>{{ text }}</option>{% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="clinica">Clínica</label>
+                <select name="clinica" id="clinica">
+                    <option value="">Todas</option>
+                    {% for cli in opciones_clinicas %}<option value="{{ cli.pk }}" {% if filtro_activo_clinica == cli.pk %}selected{% endif %}>{{ cli.nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="cargo">Cargos</label>
+                <select name="cargo" id="cargo">
+                    <option value="">Todos</option>
+                    {% for cargo in opciones_cargos %}<option value="{{ cargo.pk }}" {% if filtro_activo_cargo == cargo.pk %}selected{% endif %}>{{ cargo.nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="fecha_desde">F. Realización (Desde)</label>
+                <input type="date" name="fecha_desde" id="fecha_desde" value="{{ filtro_activo_fecha_desde }}">
+            </div>
+            
+            <div class="filter-group">
+                <label for="fecha_hasta">F. Realización (Hasta)</label>
+                <input type="date" name="fecha_hasta" id="fecha_hasta" value="{{ filtro_activo_fecha_hasta }}">
+            </div>
+            
+            <div class="filter-group">
+                <label for="proyecto_padre">Proyecto</label>
+                <select name="proyecto_padre" id="proyecto_padre">
+                    <option value="">Todos</option>
+                    {% for proy in opciones_proyectos_padre %}
+                        <option value="{{ proy.pk }}" {% if filtro_activo_proyecto_padre == proy.pk %}selected{% endif %}>
+                            {{ proy.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="subproyecto">Código del Proyecto</label>
+                <select name="subproyecto" id="subproyecto" {% if not filtro_activo_proyecto_padre %}disabled{% endif %}>
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary"><i data-feather="filter"></i><span>Buscar</span></button>
+                <a href="{% url 'calidad:lista_emos_por_confirmar' %}" class="btn btn-secondary"><i data-feather="refresh-cw"></i><span>Limpiar</span></a>
+            </div>
+        </form>
+    </div>
+
+    <table style="margin-top: 2rem;">
+        <thead>
+            <tr>
+                <th style="text-align: center; width: 50px;">N°</th>
+                <th>Trabajador</th>
+                <th>Empresa</th>
+                <th>Proyectos</th>
+                <th>Código Proyecto</th>
+                <th>Cargos</th>
+                <th>Tipo de EMO</th>
+                <th>Aptitud</th>
+                <th>Fecha de Realización</th>
+                <th>Fecha Límite Lectura</th>
+                <th style="text-align: center;">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emo in emos %}
+            <tr data-dias="{{ emo.dias_transcurridos }}" data-clase="{{ emo.clase_urgencia }}"
+                {% if emo.clase_urgencia == 'emo-urgente' %}
+                    style="background-color: #f8d7da !important;"
+                {% elif emo.clase_urgencia == 'emo-advertencia' %}
+                    style="background-color: #fff3cd !important;"
+                {% endif %}>
+                <td style="text-align: center; font-weight: bold;">{{ forloop.counter }}</td>
+                <td>
+                    <strong>{{ emo.trabajador }}</strong>
+                    <br><small>{{ emo.trabajador.dni }}</small>
+                </td>
+                <td>{{ emo.empresa.nombre|default:"--" }}</td>
+                
+                <td>
+                    {% if emo.proyecto %}
+                        {# Cuando hay un EMO con proyecto, mostrar ese proyecto #}
+                        <div class="proyecto-badge" style="font-weight:bold;">
+                            {{ emo.proyecto.nombre }}
+                            {% if emo.proyecto.parent %}
+                                <span style="color:#888; font-size:0.9em;">({{ emo.proyecto.parent.nombre }})</span>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        --
+                    {% endif %}
+                </td>
+                
+                <td>
+                    {% if emo.subproyecto %}
+                        {{ emo.subproyecto.codigo|default:"--" }}
+                    {% elif emo.proyecto %}
+                        {{ emo.proyecto.codigo|default:"--" }}
+                    {% else %}
+                        --
+                    {% endif %}
+                </td>
+                
+                <td>
+                    {{ emo.cargo.nombre|default:"--" }}
+                </td>
+                
+                <td>{{ emo.get_tipo_emo_display }}</td>
+                <td><span class="aptitud-{{ emo.aptitud|slugify }}">{{ emo.get_aptitud_display }}</span></td>
+                <td>{{ emo.fecha_realizacion|date:"d/m/Y"|default:"--" }}</td>
+                <td {% if emo.clase_urgencia == 'emo-urgente' %}style="color: #dc3545; font-weight: bold;"{% elif emo.clase_urgencia == 'emo-advertencia' %}style="color: #ffc107; font-weight: bold;"{% endif %}>
+                    {{ emo.fecha_limite_lectura|date:"d/m/Y"|default:"--" }}
+                </td>
+                <td style="text-align: center;">
+                    <div class="table-actions-container">
+                        <a href="{% url 'calidad:confirmar_lectura_emo' emo.id %}" class="btn-icon-action secondary" title="confirmar lectura">
+                            <i data-feather="check-circle"></i>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="11" style="text-align: center;">No hay EMOs pendientes de confirmación. ¡Todo al día!</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const proyectoPadreSelect = document.getElementById('proyecto_padre');
+    const subproyectoSelect = document.getElementById('subproyecto');
+    const subproyectosMap = {{ subproyectos_map_json|safe }};
+
+    function updateSubproyectos() {
+        const padreId = proyectoPadreSelect.value;
+        subproyectoSelect.innerHTML = '<option value="">Todos</option>';
+        if (padreId && subproyectosMap[padreId]) {
+            subproyectoSelect.disabled = false;
+            subproyectosMap[padreId].forEach(function(sub) {
+                const option = document.createElement('option');
+                option.value = sub.id;
+                option.textContent = `${sub.nombre} (${sub.codigo})`;
+                
+                if(sub.id == "{{ filtro_activo_subproyecto }}") {
+                    option.selected = true;
+                }
+                
+                subproyectoSelect.appendChild(option);
+            });
+        } else {
+            subproyectoSelect.disabled = true;
+        }
+    }
+
+    proyectoPadreSelect.addEventListener('change', updateSubproyectos);
+    
+    updateSubproyectos(); 
+});
+</script>
+{% endblock %}

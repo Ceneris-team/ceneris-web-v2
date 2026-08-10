@@ -1,0 +1,357 @@
+<!-- dashboard/templates/dashboard/login.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - ASSISTCENERIS</title>
+    <!-- Importamos la fuente Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- 1. Reset y Layout Base a Pantalla Completa --- */
+        :root {
+            --primary-color: #d45b04; /* Tu color naranja de marca */
+            --text-color: #333;
+            --subtext-color: #888;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%; /* Asegura que ambos ocupen toda la altura */
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            overflow: hidden; /* Evita cualquier scroll no deseado */
+            display: flex; /* ¡SOLUCIÓN CLAVE! El body es ahora el contenedor flex */
+        }
+
+
+        /* --- 2. Paneles Izquierdo (Decorativo) y Derecho (Formulario) --- */
+        .login-panel {
+            padding: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50%;
+            height: 100vh;
+        }
+
+        .login-panel-left {
+            position: relative; /* Mantiene la posición para el overlay */
+            flex-direction: column; /* Organiza los elementos verticalmente */
+            justify-content: center; /* Centra el texto 'Bienvenido' verticalmente */
+            align-items: stretch; /* Estira los hijos para que ocupen todo el ancho */
+            color: white;
+            background-image: url("{% static 'img/login_background.jpg' %}");
+            background-size: cover;
+            background-position: center;
+        }
+
+        /* Capa de color superpuesta para legibilidad */
+        .login-panel-left::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, rgba(212, 91, 4, 0.85), rgba(212, 91, 4, 0.65));
+            z-index: 1;
+        }
+
+        /* Elementos dentro del panel izquierdo */
+        .login-panel-left .logo, .login-panel-left .welcome-text {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .login-panel-left .logo-container {
+            flex-grow: 0; /* No permite que este contenedor crezca */
+        }
+        
+        .login-panel-left .logo {
+            width: 300px; /* <-- Aumenta el tamaño aquí. Prueba con 80px, 100px o lo que se vea mejor. */
+            height: auto; /* Asegura que la altura se ajuste proporcionalmente */
+            display: block; 
+        }
+
+        .login-panel-left .welcome-container {
+            flex-grow: 1; /* Permite que este contenedor ocupe el espacio central */
+            display: flex;
+            align-items: center; /* Centra el texto verticalmente dentro de su espacio */
+            justify-content: center; /* Centra el texto horizontalmente */
+            text-align: center;
+        }
+
+        .login-panel-left .welcome-text h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        /* Panel derecho */
+        .login-panel-right {
+            background-color: #fff;
+        }
+        .login-form-content {
+            width: 100%;
+            max-width: 380px;
+        }
+
+
+        /* --- 3. Elementos del Formulario (sin cambios significativos) --- */
+        .login-form-content h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 8px;
+        }
+        .login-form-content .subtitle {
+            color: var(--subtext-color);
+            margin-bottom: 30px;
+            font-size: 1rem;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--subtext-color);
+            margin-bottom: 8px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: 'Poppins', sans-serif;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(212, 91, 4, 0.15);
+        }
+        .login-button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .login-button:hover {
+            background-color: #a74703;
+            transform: translateY(-2px);
+        }
+
+        /* --- 4. Mensajes de Error y Diseño Responsivo --- */
+        .messages {
+            list-style: none; padding: 0; margin-bottom: 20px;
+        }
+        .message.error {
+            background-color: #f8d7da; color: #721c24; padding: 12px;
+            border: 1px solid #f5c6cb; border-radius: 8px; font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column; /* Apila los paneles en móvil */
+            }
+            .login-panel {
+                width: 100%; /* Cada panel ocupa todo el ancho */
+                height: auto; /* La altura se ajusta al contenido */
+            }
+            .login-panel-left {
+                display: none; /* Ocultamos el panel decorativo para dar espacio al formulario */
+            }
+            .login-panel-right {
+                flex-grow: 1; /* El panel del formulario ocupa todo el espacio restante */
+            }
+        }
+
+        /* Estilos para mensajes del login */
+
+        .messages-container {
+            margin-bottom: 25px;
+            width: 100%;
+        }
+
+        .alert {
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            
+            animation: slideDown 0.4s ease-out forwards;
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        @keyframes slideDown {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert.error {
+            background-color: #fef2f2;
+            border: 1px solid #fee2e2;
+            color: #991b1b;
+        }
+
+        .alert.success {
+            background-color: #f0fdf4;
+            border: 1px solid #dcfce7;
+            color: #166534;
+        }
+
+        .alert.warning {
+            background-color: #fffbeb;
+            border: 1px solid #fef3c7;
+            color: #92400e;
+        }
+
+        /* Clase para desvanecer con JS */
+        .alert.fade-out {
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        /* Botón de cerrar (X) */
+        .close-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: inherit;
+            opacity: 0.6;
+            font-size: 1.1rem;
+            line-height: 1;
+            padding: 0;
+            margin-top: 2px;
+            transition: opacity 0.2s;
+        }
+        .close-btn:hover {
+            opacity: 1;
+        }       
+    </style>
+</head>
+<body>
+
+    <!-- El HTML ahora es más simple, solo los dos paneles -->
+    <div class="login-panel login-panel-left">
+        <div class="logo-container">
+            <img src="{% static 'img/image.png' %}" alt="Logo" class="logo" />
+        </div>
+        <div class="welcome-container">
+            <div class="welcome-text">
+                <h1>Bienvenido de Vuelta!</h1>
+            </div>
+        </div>
+    </div>
+
+    <div class="login-panel login-panel-right">
+        <div class="login-form-content">
+            <h2>Iniciar Sesión</h2>
+            <p class="subtitle">Ingresa para acceder a tu panel.</p>
+
+            <!-- ========================================== -->
+            <!-- AGREGA ESTE BLOQUE DE CÓDIGO AQUÍ -->
+            <!-- ========================================== -->
+            <div class="messages-container">
+                {% if messages %}
+                    {% for message in messages %}
+                    <div class="alert {{ message.tags }}" role="alert">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <!-- Icono SVG según tipo (opcional, aquí un icono de alerta genérico) -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <span>{{ message }}</span>
+                        </div>
+                        <button class="close-btn" onclick="this.parentElement.remove()">×</button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+
+                <!-- Errores del formulario (no de mensajes flash) -->
+                {% if form.non_field_errors %}
+                    {% for error in form.non_field_errors %}
+                    <div class="alert error" role="alert">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                            <span>{{ error }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            <!-- ========================================== -->
+
+            <form method="post" action="{% url 'login' %}">
+                <!-- (El resto de tu formulario sigue igual) -->
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="{{ form.username.id_for_label }}">Nombre de Usuario</label>
+                    <input type="text" name="{{ form.username.html_name }}" id="{{ form.username.id_for_label }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.password.id_for_label }}">Contraseña</label>
+                    <input type="password" name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}" required>
+                </div>
+                
+                <button type="submit" class="login-button">Ingresar</button>
+            </form>
+        </div>
+    </div>
+<script>
+    // Esperar a que el documento cargue
+    document.addEventListener('DOMContentLoaded', function() {
+        // Seleccionar todas las alertas
+        const alerts = document.querySelectorAll('.alert');
+        
+        if (alerts.length > 0) {
+            // Esperar 5 segundos (5000 milisegundos)
+            setTimeout(function() {
+                alerts.forEach(function(alert) {
+                    // Agregar clase para desvanecer
+                    alert.classList.add('fade-out');
+                    
+                    // Esperar a que termine la animación CSS (0.5s) para eliminar del DOM
+                    setTimeout(function() {
+                        alert.remove();
+                    }, 500); 
+                });
+            }, 5000); // <-- TIEMPO DE ESPERA (Cámbialo si quieres más o menos)
+        }
+    });
+</script>
+</body>
+</html>

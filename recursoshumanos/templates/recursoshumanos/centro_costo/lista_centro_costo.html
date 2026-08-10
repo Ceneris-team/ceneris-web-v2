@@ -1,0 +1,65 @@
+<!-- calidad/templates/calidad/centro_costo/lista_centro_costo.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Listado de Centros de Costo{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Listado de Centros de Costo</h1>
+            <p style="margin: 0;">Consulta y gestiona los centros de costo disponibles.</p>
+        </div>
+        <div>
+            <a href="{% url 'recursoshumanos:gestion_centro_costo' %}" class="btn-secondary">&larr; Volver a Tarjetas</a>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre del Centro de Costo</th>
+                <th style="text-align: center;">Trabajadores Asignados</th>
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cc in centros_de_costo %}
+            <tr>
+                <td><strong>{{ cc.codigo }}</strong></td>
+                <td>{{ cc.nombre }}</td>
+                <td style="text-align: center;">{{ cc.trabajadores.count }}</td>
+                <td style="text-align: center;">
+                    <div class="table-actions-container">
+                        <!-- Botón para ver la lista de trabajadores -->
+                        <a href="{% url 'recursoshumanos:trabajadores_por_centro_costo' cc.pk %}" class="table-action-link">Ver Trabajadores</a>
+                        
+                        <!-- Acciones de Editar y Eliminar -->
+                        <a href="{% url 'recursoshumanos:editar_centro_costo' cc.pk %}" class="table-action-link secondary">Editar</a>
+                        <a href="#" class="table-action-link danger" onclick="confirmDelete(event, 'form-delete-{{ cc.pk }}')">Eliminar</a>
+
+                        <form id="form-delete-{{ cc.pk }}" action="{% url 'recursoshumanos:eliminar_centro_costo' cc.pk %}" method="post" style="display: none;">
+                            {% csrf_token %}
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center;">No hay centros de costo registrados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>
+        function confirmDelete(event, formId) {
+            event.preventDefault(); 
+            if (confirm('¿Estás seguro de que deseas eliminar este centro de costo?')) {
+                document.getElementById(formId).submit();
+            }
+        }
+    </script>
+{% endblock %}

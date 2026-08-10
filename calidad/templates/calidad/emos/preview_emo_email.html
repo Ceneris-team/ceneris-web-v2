@@ -1,0 +1,861 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Vista Previa de Correo - Programación EMO{% endblock %}
+
+{% block extra_head %}
+<style>
+    body {
+        background: white;
+        min-height: 100vh;
+        padding: 0;
+        margin: 0;
+    }
+
+    .preview-container {
+        max-width: 50%;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 0px;
+        box-shadow: none;
+        overflow: hidden;
+    }
+
+    .preview-header {
+        background: linear-gradient(135deg, #d45b04 0%, #f0832f 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+    }
+
+    .preview-header h1 {
+        margin: 0 0 10px 0;
+        font-size: 28px;
+        font-weight: 600;
+    }
+
+    .preview-header p {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.95;
+    }
+
+    .preview-body {
+        padding: 0;
+    }
+
+    .email-preview-section {
+        margin-bottom: 30px;
+    }
+
+    .email-meta {
+        background: #f8f9fa;
+        border-left: 4px solid #d45b04;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+    }
+
+    .email-meta-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .email-meta-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .email-meta-label {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .email-meta-value {
+        color: #666;
+        word-break: break-word;
+    }
+
+    .email-preview-iframe {
+        width: 100%;
+        min-height: 600px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        background: #f5f5f5;
+        padding: 20px;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+    }
+
+    .email-preview-iframe img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .email-preview-iframe table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .email-preview-iframe th,
+    .email-preview-iframe td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    /* Mantener hover blanco en tablas del email PERO NO en los headers naranjas ni footer */
+    .email-preview-iframe table tr:hover td:not([bgcolor="#e67e22"]):not([bgcolor="#ff6f00"]):not([bgcolor="#2c3e50"]) {
+        background-color: white !important;
+    }
+
+    .email-preview-iframe table td:hover:not([bgcolor="#e67e22"]):not([bgcolor="#ff6f00"]):not([bgcolor="#2c3e50"]),
+    .email-preview-iframe table th:hover {
+        background-color: white !important;
+    }
+
+    /* Asegurar que los headers naranjas mantengan sus colores */
+    .email-preview-iframe table td[bgcolor="#e67e22"],
+    .email-preview-iframe table td[bgcolor="#e67e22"]:hover {
+        background-color: #e67e22 !important;
+    }
+
+    .email-preview-iframe table td[bgcolor="#ff6f00"],
+    .email-preview-iframe table td[bgcolor="#ff6f00"]:hover {
+        background-color: #ff6f00 !important;
+    }
+
+    /* Asegurar que el footer gris oscuro mantenga su color */
+    .email-preview-iframe table td[bgcolor="#2c3e50"],
+    .email-preview-iframe table td[bgcolor="#2c3e50"]:hover {
+        background-color: #2c3e50 !important;
+    }
+
+    .email-preview-iframe h2,
+    .email-preview-iframe h3 {
+        color: #d45b04;
+        margin-top: 20px;
+        margin-bottom: 10px;
+    }
+
+    .preview-footer {
+        padding: 20px 40px;
+        border-top: 1px solid #e0e0e0;
+        background: #f8f9fa;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #d45b04 0%, #f0832f 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(212, 91, 4, 0.3);
+    }
+
+    .btn-secondary {
+        background: #e9ecef;
+        color: #333;
+    }
+
+    .btn-secondary:hover {
+        background: #dee2e6;
+    }
+
+    .btn-danger {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .btn-danger:hover {
+        background: #f5c6cb;
+    }
+
+    .edit-comentario-section {
+        margin-top: 30px;
+        padding: 20px;
+        background: #f0f7ff;
+        border: 1px solid #b3d9ff;
+        border-radius: 8px;
+    }
+
+    .edit-comentario-section h3 {
+        margin-top: 0;
+        color: #0066cc;
+        font-size: 16px;
+    }
+
+    .edit-comentario-section textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 14px;
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    .edit-comentario-section textarea:focus {
+        outline: none;
+        border-color: #d45b04;
+        box-shadow: 0 0 0 3px rgba(212, 91, 4, 0.1);
+    }
+
+    .edit-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .btn-sm {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #d45b04;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+    .info-box {
+        background: #e7f3ff;
+        border-left: 4px solid #0066cc;
+        padding: 12px;
+        border-radius: 4px;
+        margin-top: 20px;
+        font-size: 13px;
+        color: #004399;
+    }
+
+    .warning-box {
+        background: #fff3cd;
+        border-left: 4px solid #ff9800;
+        padding: 12px;
+        border-radius: 4px;
+        margin-top: 20px;
+        font-size: 13px;
+        color: #856404;
+    }
+
+    /* ===== ESTILOS PARA SEARCHABLE SELECT ===== */
+    .searchable-select {
+        position: relative;
+        width: 100%;
+    }
+
+    .ss-control {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 13px;
+        cursor: text;
+    }
+
+    .ss-control:focus {
+        outline: none;
+        border-color: #d45b04;
+        box-shadow: 0 0 0 3px rgba(212, 91, 4, 0.1);
+    }
+
+    .ss-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 200px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #ccc;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+        z-index: 1000;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .searchable-select.open .ss-dropdown {
+        display: block;
+    }
+
+    .ss-option {
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: 13px;
+    }
+
+    .ss-option:hover {
+        background: #f0f0f0;
+    }
+
+    .ss-option.selected {
+        background: #d45b04;
+        color: white;
+    }
+
+    .ss-empty {
+        padding: 8px 12px;
+        color: #999;
+        font-size: 13px;
+        text-align: center;
+    }
+
+    .ss-hidden-select {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="preview-container">
+    <div class="preview-header">
+        <h1>Vista Previa del Correo</h1>
+        <p>Revisa cómo se verá la notificación que recibirá el trabajador</p>
+    </div>
+
+    <div class="preview-body">
+        <a href="{% url 'calidad:reporte_maestro_emos' %}" class="back-link">&larr; Volver a la lista</a>
+
+        <!-- METADATA DEL CORREO -->
+        <div class="email-preview-section">
+            <div class="email-meta">
+                <div class="email-meta-item">
+                    <span class="email-meta-label">Para:</span>
+                    <span class="email-meta-value">
+                        {% if preview_data.email_to %}
+                            {{ preview_data.email_to }}
+                        {% else %}
+                            <span style="color: #dc3545;">(Sin email registrado)</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="email-meta-item">
+                    <span class="email-meta-label">DNI:</span>
+                    <span class="email-meta-value">{{ trabajador.dni|default:"—" }}</span>
+                </div>
+                <div class="email-meta-item">
+                    <span class="email-meta-label">Nombre:</span>
+                    <span class="email-meta-value">{{ trabajador.nombres }} {{ trabajador.apellido_paterno }} {{ trabajador.apellido_materno }}</span>
+                </div>
+                <div class="email-meta-item">
+                    <span class="email-meta-label">Tipo de EMO:</span>
+                    <span class="email-meta-value">{{ preview_data.tipo_emo }}</span>
+                </div>
+            </div>
+
+            {% if not preview_data.can_send %}
+            <div class="warning-box">
+                ⚠️ <strong>Advertencia:</strong> El trabajador no tiene email registrado. No se podrá enviar el correo.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- PREVIEW DEL CORREO EN CONTENEDOR (NO IFRAME) -->
+        <div class="email-preview-section">
+            <h3 style="color: #333; margin-bottom: 15px;">📧 Contenido del Correo:</h3>
+            <div class="email-preview-iframe">
+                {{ preview_data.email_html|safe }}
+            </div>
+        </div>
+
+        <!-- EDITAR COMENTARIO -->
+        {% if not preview_data.can_send %}
+        <div class="info-box">
+            ℹ️ Para poder enviar este correo, primero debes asignar un email al trabajador en su perfil.
+        </div>
+        {% endif %}
+
+        <form method="POST" class="edit-comentario-section">
+            {% csrf_token %}
+            <h3>✏️ Editar Datos del EMO</h3>
+            <p style="color: #666; font-size: 13px; margin-top: 0;">
+                Modifica los datos que quieras. El correo se actualizará automáticamente:
+            </p>
+
+            <!-- SECCIÓN: DATOS DEL EMO -->
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #d45b04; font-size: 14px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #f0832f;">
+                    📋 Datos del Examen Médico
+                </h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                    <!-- Tipo de EMO -->
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px;">Tipo de EMO:</label>
+                        <select name="tipo_emo" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            {% for value, label in tipo_emo_choices %}
+                                <option value="{{ value }}" {% if preview_data.emo_data.tipo_emo == value %}selected{% elif emo.tipo_emo == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Fecha Programada -->
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px;">Fecha Programada:</label>
+                        <input
+                            type="date"
+                            name="fecha_programada"
+                            value="{% if preview_data.emo_data.fecha_programada %}{{ preview_data.emo_data.fecha_programada }}{% elif emo.fecha_programada %}{{ emo.fecha_programada|date:'Y-m-d' }}{% endif %}"
+                            style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+                        />
+                    </div>
+
+                    <!-- Hora del Examen -->
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px;">Hora del Examen:</label>
+                        <input
+                            type="time"
+                            name="hora_examen"
+                            value="{% if preview_data.emo_data.hora_examen %}{{ preview_data.emo_data.hora_examen }}{% elif emo.hora_examen %}{{ emo.hora_examen|time:'H:i' }}{% endif %}"
+                            style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: CLÍNICA -->
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #0066cc; font-size: 14px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #4da6ff;">
+                    🏥 Clínica / Lugar del Examen
+                </h4>
+                <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+                    <!-- Lugar del Examen (Clínica) -->
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px;">Clínica / Lugar:</label>
+                        <div class="searchable-select" id="clinica-ss">
+                            <input
+                                type="text"
+                                class="ss-control"
+                                id="clinica_ss_input"
+                                autocomplete="off"
+                                placeholder="Buscar clínica..."
+                                role="combobox"
+                                aria-expanded="false"
+                            />
+                            <div class="ss-dropdown" id="clinica_ss_dropdown" role="listbox"></div>
+                        </div>
+                        <select name="lugar_examen_id" id="clinica_select" class="ss-hidden-select">
+                            <option value="">-- Sin asignar --</option>
+                            {% for clinica in clinicas %}
+                                <option value="{{ clinica.id }}" {% if preview_data.emo_data.lugar_examen_id|stringformat:'s' == clinica.id|stringformat:'s' %}selected{% elif emo.lugar_examen_id == clinica.id %}selected{% endif %}>{{ clinica.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: DATOS DE ASIGNACIÓN -->
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #28a745; font-size: 14px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #5cb85c;">
+                    👤 Datos de Asignación del Trabajador
+                </h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <!-- Empresa -->
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px;">Empresa:</label>
+                        <select name="empresa_id" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">-- Sin asignar --</option>
+                            {% for empresa in empresas %}
+                                <option value="{{ empresa.id }}" {% if preview_data.emo_data.empresa_id|stringformat:'s' == empresa.id|stringformat:'s' %}selected{% elif emo.empresa_id == empresa.id %}selected{% endif %}>{{ empresa.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Proyecto -->
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px;">Proyecto:</label>
+                        <div class="searchable-select" id="proyecto-ss">
+                            <input
+                                type="text"
+                                class="ss-control"
+                                id="proyecto_ss_input"
+                                autocomplete="off"
+                                placeholder="Buscar proyecto..."
+                                role="combobox"
+                                aria-expanded="false"
+                            />
+                            <div class="ss-dropdown" id="proyecto_ss_dropdown" role="listbox"></div>
+                        </div>
+                        <select name="proyecto_id" id="proyecto_select" class="ss-hidden-select">
+                            <option value="">-- Sin asignar --</option>
+                            {% for proyecto in proyectos %}
+                                <option value="{{ proyecto.id }}" {% if preview_data.emo_data.proyecto_id|stringformat:'s' == proyecto.id|stringformat:'s' %}selected{% elif emo.proyecto_id == proyecto.id %}selected{% endif %}>{{ proyecto.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Subproyecto -->
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px;">Subproyecto/area:</label>
+                        <div class="searchable-select" id="subproyecto-ss">
+                            <input
+                                type="text"
+                                class="ss-control"
+                                id="subproyecto_ss_input"
+                                autocomplete="off"
+                                placeholder="Buscar subproyecto..."
+                                role="combobox"
+                                aria-expanded="false"
+                            />
+                            <div class="ss-dropdown" id="subproyecto_ss_dropdown" role="listbox"></div>
+                        </div>
+                        <select name="subproyecto_id" id="subproyecto_select" class="ss-hidden-select">
+                            <option value="">-- Sin asignar --</option>
+                            {% for subproyecto in subproyectos %}
+                                <option value="{{ subproyecto.id }}" {% if preview_data.emo_data.subproyecto_id|stringformat:'s' == subproyecto.id|stringformat:'s' %}selected{% elif emo.subproyecto_id == subproyecto.id %}selected{% endif %}>{{ subproyecto.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Cargo -->
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px;">Cargo / Puesto:</label>
+                        <div class="searchable-select" id="cargo-ss">
+                            <input
+                                type="text"
+                                class="ss-control"
+                                id="cargo_ss_input"
+                                autocomplete="off"
+                                placeholder="Buscar cargo..."
+                                role="combobox"
+                                aria-expanded="false"
+                            />
+                            <div class="ss-dropdown" id="cargo_ss_dropdown" role="listbox"></div>
+                        </div>
+                        <select name="cargo_id" id="cargo_select" class="ss-hidden-select">
+                            <option value="">-- Sin asignar --</option>
+                            {% for cargo in cargos %}
+                                <option value="{{ cargo.id }}" {% if preview_data.emo_data.cargo_id|stringformat:'s' == cargo.id|stringformat:'s' %}selected{% elif emo.cargo_id == cargo.id %}selected{% endif %}>{{ cargo.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: COMENTARIO -->
+            <div style="margin-bottom: 15px;">
+                <h4 style="color: #6c757d; font-size: 14px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #adb5bd;">
+                    💬 Comentario Adicional
+                </h4>
+                <textarea
+                    name="comentario_alerta"
+                    id="comentario_input"
+                    placeholder="Ej: Por favor, completar el examen antes del 31 de enero..."
+                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-height: 80px; font-family: inherit;"
+                >{{ preview_data.comentario_alerta }}</textarea>
+            </div>
+
+            <!-- SECCIÓN 5: OPCIONES DE NOTIFICACIÓN -->
+            <div class="form-section" style="margin-bottom: 25px;">
+                <div class="form-group full-width" style="background: #fff3cd; padding: 15px; border-radius: 6px; border: 1px solid #ffeeba;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; color: #856404; font-weight: bold; margin: 0;">
+                        <!-- Checkbox marcado por defecto -->
+                        <input type="checkbox" id="enviar_correo_checkbox" name="enviar_correo" 
+                            {% if preview_data.enviar_correo_pref != False %}checked{% endif %} 
+                            style="width: 18px; height: 18px;">
+                        <span>📧 Enviar correo de notificación al trabajador con los cambios</span>
+                    </label>
+                    <p style="margin: 5px 0 0 30px; font-size: 13px; color: #856404; opacity: 0.8;">
+                        Si desmarcas esta casilla, los cambios se guardarán pero el trabajador <strong>NO</strong> recibirá ningún correo.
+                    </p>
+                </div>
+            </div>
+
+            <div class="edit-buttons">
+                <button type="submit" name="accion" value="editar_datos" class="btn btn-primary btn-sm">
+                    ↻ Actualizar Correo
+                </button>
+                <span style="color: #666; font-size: 13px; margin-left: 10px;">
+                    Se mostrará abajo el correo con los cambios
+                </span>
+            </div>
+        </form>
+    </div>
+
+    <div class="preview-footer">
+        <form method="POST" style="display: contents;">
+            {% csrf_token %}
+            <!-- Campo oculto para transmitir el estado del checkbox -->
+            <input type="hidden" name="enviar_correo" id="enviar_correo_hidden" value="on">
+
+            <div class="action-buttons">
+                <button
+                    type="submit"
+                    name="accion"
+                    value="confirmar"
+                    class="btn btn-primary"
+                    {% if not preview_data.can_send %}disabled{% endif %}
+                >
+                    ✓ Confirmar y Enviar
+                </button>
+                <button type="submit" name="accion" value="cancelar" class="btn btn-secondary">
+                    ✕ Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // ===== FUNCIÓN GENÉRICA PARA SELECT BUSCABLE =====
+    function initSearchableSelect(config) {
+        const selectEl = document.getElementById(config.selectId);
+        const wrapperEl = document.getElementById(config.wrapperId);
+        const inputEl = document.getElementById(config.inputId);
+        const dropdownEl = document.getElementById(config.dropdownId);
+
+        if (!selectEl || !wrapperEl || !inputEl || !dropdownEl) return;
+
+        let allOptions = [];
+        
+        // Función para actualizar las opciones desde el select
+        function refreshOptions() {
+            allOptions = [];
+            for (let i = 0; i < selectEl.options.length; i++) {
+                const opt = selectEl.options[i];
+                allOptions.push({
+                    value: opt.value,
+                    text: opt.textContent.trim()
+                });
+            }
+        }
+        
+        refreshOptions(); // Cargar opciones inicialmente
+
+        function openDropdown() {
+            wrapperEl.classList.add('open');
+            inputEl.setAttribute('aria-expanded', 'true');
+        }
+
+        function closeDropdown() {
+            wrapperEl.classList.remove('open');
+            inputEl.setAttribute('aria-expanded', 'false');
+        }
+
+        function getFilteredOptions(query) {
+            const q = query.toLowerCase();
+            return allOptions.filter(opt => opt.text.toLowerCase().includes(q));
+        }
+
+        function renderDropdown(options) {
+            dropdownEl.innerHTML = '';
+            if (options.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'ss-empty';
+                empty.textContent = 'No se encontraron resultados';
+                dropdownEl.appendChild(empty);
+                return;
+            }
+
+            options.forEach((opt, index) => {
+                const div = document.createElement('div');
+                div.className = 'ss-option';
+                div.textContent = opt.text;
+                div.setAttribute('data-value', opt.value);
+                div.setAttribute('role', 'option');
+
+                if (opt.value === selectEl.value) {
+                    div.classList.add('selected');
+                }
+
+                div.addEventListener('click', function() {
+                    selectEl.value = opt.value;
+                    inputEl.value = opt.text;
+                    closeDropdown();
+                    selectEl.dispatchEvent(new Event('change'));
+                });
+
+                dropdownEl.appendChild(div);
+            });
+        }
+
+        function setControlValueFromSelect() {
+            const selected = selectEl.options[selectEl.selectedIndex];
+            inputEl.value = selected && selected.value ? selected.textContent.trim() : '';
+        }
+
+        setControlValueFromSelect();
+
+        inputEl.addEventListener('focus', function() {
+            // Al hacer focus, mostrar TODAS las opciones o vacío si no hay texto
+            const query = inputEl.value.trim() === '' ? '' : inputEl.value;
+            const current = getFilteredOptions(query);
+            renderDropdown(current.length > 0 ? current : allOptions);
+            openDropdown();
+        });
+
+        inputEl.addEventListener('input', function() {
+            const current = getFilteredOptions(inputEl.value);
+            renderDropdown(current);
+            openDropdown();
+        });
+
+        inputEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeDropdown();
+            }
+        });
+
+        document.addEventListener('mousedown', function(e) {
+            if (!wrapperEl.contains(e.target)) closeDropdown();
+        });
+
+        selectEl.addEventListener('change', function() {
+            setControlValueFromSelect();
+            const current = getFilteredOptions(inputEl.value);
+            renderDropdown(current);
+        });
+        
+        // Retornar objeto con método refresh
+        return {
+            refresh: function() {
+                refreshOptions();
+                setControlValueFromSelect();
+            }
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- Sincronizar checkbox de envío con input oculto ---
+        const checkboxEnvio = document.getElementById('enviar_correo_checkbox');
+        const hiddenEnvio = document.getElementById('enviar_correo_hidden');
+        
+        if (checkboxEnvio && hiddenEnvio) {
+            // Inicializar valor
+            hiddenEnvio.value = checkboxEnvio.checked ? 'on' : '';
+            
+            // Actualizar al cambiar
+            checkboxEnvio.addEventListener('change', function() {
+                hiddenEnvio.value = this.checked ? 'on' : '';
+            });
+        }
+
+        // Inicializar todos los searchable selects
+        initSearchableSelect({
+            selectId: 'clinica_select',
+            wrapperId: 'clinica-ss',
+            inputId: 'clinica_ss_input',
+            dropdownId: 'clinica_ss_dropdown'
+        });
+
+        initSearchableSelect({
+            selectId: 'proyecto_select',
+            wrapperId: 'proyecto-ss',
+            inputId: 'proyecto_ss_input',
+            dropdownId: 'proyecto_ss_dropdown'
+        });
+
+        // Inicializar subproyecto y guardar referencia para refrescar después
+        const subproyectoSS = initSearchableSelect({
+            selectId: 'subproyecto_select',
+            wrapperId: 'subproyecto-ss',
+            inputId: 'subproyecto_ss_input',
+            dropdownId: 'subproyecto_ss_dropdown'
+        });
+
+        initSearchableSelect({
+            selectId: 'cargo_select',
+            wrapperId: 'cargo-ss',
+            inputId: 'cargo_ss_input',
+            dropdownId: 'cargo_ss_dropdown'
+        });
+
+        // Lógica AJAX para subproyectos
+        const proyectoSelect = document.getElementById('proyecto_select');
+        const subproyectoSelect = document.getElementById('subproyecto_select');
+
+        if (proyectoSelect && subproyectoSelect) {
+            // Guardar el valor inicial del subproyecto
+            const subproyectoInicial = subproyectoSelect.value;
+            
+            // Función para actualizar subproyectos mediante AJAX
+            function actualizarSubproyectos(mantenerSeleccion = false) {
+                const proyectoId = proyectoSelect.value;
+                
+                // Guardar el valor actual si se solicita mantenerlo
+                const valorActual = mantenerSeleccion ? subproyectoSelect.value : '';
+                
+                // Limpiar opciones
+                subproyectoSelect.innerHTML = '<option value="">-- Sin asignar --</option>';
+                
+                // Si hay proyecto seleccionado, cargar sus subproyectos mediante AJAX
+                if (proyectoId) {
+                    fetch(`/calidad/get-subproyectos/?proyecto_id=${proyectoId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.subproyectos && data.subproyectos.length > 0) {
+                                data.subproyectos.forEach(sub => {
+                                    const option = document.createElement('option');
+                                    option.value = sub.id;
+                                    option.textContent = sub.nombre;
+                                    
+                                    // Si estamos manteniendo la selección y este es el valor guardado
+                                    if (valorActual && String(sub.id) === String(valorActual)) {
+                                        option.selected = true;
+                                    }
+                                    
+                                    subproyectoSelect.appendChild(option);
+                                });
+                            }
+                            
+                            // IMPORTANTE: Refrescar el componente searchable select después de actualizar opciones
+                            if (subproyectoSS && subproyectoSS.refresh) {
+                                subproyectoSS.refresh();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error al cargar subproyectos:', error);
+                        });
+                } else {
+                    // Si no hay proyecto, también refrescar para mostrar vacío
+                    if (subproyectoSS && subproyectoSS.refresh) {
+                        subproyectoSS.refresh();
+                    }
+                }
+            }
+
+            // Actualizar al cambiar proyecto
+            proyectoSelect.addEventListener('change', function() {
+                actualizarSubproyectos(false); // No mantener selección cuando el usuario cambia proyecto
+            });
+            
+            // Al cargar la página, si hay un proyecto seleccionado, cargar sus subproyectos
+            if (proyectoSelect.value && subproyectoInicial) {
+                actualizarSubproyectos(true); // Mantener selección al cargar
+            }
+        }
+    });
+</script>
+
+{% endblock %}

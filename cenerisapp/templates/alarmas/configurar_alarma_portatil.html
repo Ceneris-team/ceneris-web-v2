@@ -1,0 +1,23 @@
+{% extends 'app_base.html' %}
+{% block title %}Actualizar Alarma para {{ dispositivo.nomDisp }}{% endblock %}
+
+{% block main_content %}
+<div class="form-container">
+    <form method="post" class="form-card">
+        <h2>Alarma para Dispositivo Portátil</h2>
+        <p class="form-description">Dispositivo: <strong>{{ dispositivo }}</strong></p>
+        {% csrf_token %}
+        
+        <div class="form-group">
+            {{ form.alarmaPortatil.label_tag }}
+            {{ form.alarmaPortatil }}
+            {{ form.alarmaPortatil.errors }}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Actualizar Alarma</button>
+            <a href="{% url 'seleccionar_dispositivo_alarma' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

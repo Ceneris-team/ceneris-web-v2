@@ -1,0 +1,203 @@
+<!-- dashboard/templates/dashboard/ubicaciones/ubicacion_form_multistep.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ action }} Ubicación{% endblock %}
+
+{% block body_class %}form-background{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <style>
+        #progressbar.two-steps li { width: 50%; }
+        .back-button-container { max-width: 800px; width: 90%; margin: 30px auto 10px auto; text-align: left; }
+        .field-error { color: #dc3545; font-size: 0.8rem; font-weight: 600; text-align: left; margin-top: 5px; }
+        #map { height: 400px; width: 100%; border-radius: 5px; border: 1px solid #ccc; z-index: 1; margin-top: 15px; }
+        .radio-group { display: flex; gap: 20px; margin-bottom: 20px; justify-content: center; }
+
+        /* Clase para ocultar contenedores */
+        .geo-method-container.hidden {
+            display: none;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="back-button-container">
+        <a href="{% url 'recursoshumanos:gestion_ubicaciones' %}" class="btn-secondary">&larr; Volver</a>
+    </div>
+
+    <form id="msform" method="post" novalidate>
+        {% csrf_token %}
+
+        <ul id="progressbar" class="two-steps">
+            <li class="active">Información Básica</li>
+            <li>Definición Geográfica</li>
+        </ul>
+        
+        <!-- Fieldset 1: Información Básica -->
+        <fieldset>
+            <h2 class="fs-title">{{ action }} Ubicación</h2>
+            <h3 class="fs-subtitle">Nombre, tipo y horario de la zona de trabajo.</h3>
+            
+            <input type="text" name="{{ form.nombre.html_name }}" placeholder="Nombre de la Ubicación *" value="{{ form.nombre.value|default_if_none:'' }}" required>
+            {% if form.nombre.errors %}<div class="field-error">{{ form.nombre.errors }}</div>{% endif %}
+
+
+            {% if form.tipo.errors %}<div class="field-error">{{ form.tipo.errors }}</div>{% endif %}
+
+      
+
+            <input type="button" name="next" class="next action-button" value="Siguiente"/>
+        </fieldset>
+
+        <!-- Fieldset 2: Definición Geográfica -->
+        <fieldset>
+            <h2 class="fs-title">Definición Geográfica</h2>
+            <h3 class="fs-subtitle">Selecciona un método y define el área.</h3>
+            
+            <div class="radio-group">
+                <label><input type="radio" name="geo_method" value="manual" checked> Manual (Punto y Radio)</label>
+                <label><input type="radio" name="geo_method" value="mapa"> Mapa (Dibujar Polígono)</label>
+            </div>
+            <hr>
+
+            <!-- Contenedor para el método Manual -->
+            <div id="manual-geo-container" class="geo-method-container">
+                <p style="font-size: 0.9rem; color: #6c757d;">Ingresa las coordenadas del centro y el radio en metros.</p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div><input type="text" name="{{ form.latitud.html_name }}" placeholder="Latitud *" value="{{ form.latitud.value|default_if_none:'' }}"></div>
+                    <div><input type="text" name="{{ form.longitud.html_name }}" placeholder="Longitud *" value="{{ form.longitud.value|default_if_none:'' }}"></div>
+                </div>
+                <input type="number" name="{{ form.radio.html_name }}" placeholder="Radio en metros *" value="{{ form.radio.value|default_if_none:'' }}" style="margin-top: 10px;">
+            </div>
+            
+            <!-- Contenedor para el método de Mapa -->
+            <div id="map-geo-container" class="geo-method-container hidden">
+                <p style="font-size: 0.9rem; color: #6c757d;">Usa la herramienta de polígono para dibujar el área en el mapa.</p>
+                <div id="map"></div>
+                <input type="hidden" name="{{ form.limites_json.html_name }}" id="id_limites_json" value="{{ form.limites_json.value|default:'[]' }}">
+            </div>
+            
+            <input type="button" name="previous" class="previous action-button-previous" value="Anterior"/>
+            <input type="submit" name="submit" class="submit action-button" value="Guardar Ubicación"/>
+        </fieldset>
+    </form>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.3/jquery.easing.min.js"></script>
+    <script src="{% static 'js/multistep-form.js' %}"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script>
+        $(document).ready(function() {
+            var map; // Variable global del mapa
+            var mapInitialized = false; // Flag para saber si ya se inicializó
+
+            function initializeMap() {
+                if (mapInitialized) return; // Si ya está inicializado, no hacer nada
+
+                mapInitialized = true;
+                
+                map = L.map('map').setView([-12.046374, -77.042793], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                
+                const drawnItems = new L.FeatureGroup();
+                map.addLayer(drawnItems);
+                
+                const limitesField = document.getElementById('id_limites_json');
+                
+                // Cargar polígono existente si estamos editando
+                try {
+                    const limitesJsonString = '{{ limites_json|safe }}' || '[]';
+                    if (limitesJsonString && limitesJsonString !== '[]') {
+                        const limitesExistentes = JSON.parse(limitesJsonString);
+                        if (limitesExistentes && limitesExistentes.length > 0) {
+                            const latLngs = limitesExistentes.map(p => [p.lat, p.lng]);
+                            const polygon = L.polygon(latLngs).addTo(drawnItems);
+                            if (polygon.getBounds().isValid()) {
+                                map.fitBounds(polygon.getBounds());
+                            }
+                        }
+                    }
+                } catch (e) { console.error("Error al cargar polígono:", e); }
+
+                const drawControl = new L.Control.Draw({
+                    edit: { featureGroup: drawnItems },
+                    draw: { polygon: true, polyline: false, rectangle: false, circle: false, marker: false, circlemarker: false }
+                });
+                map.addControl(drawControl);
+
+                function updateHiddenField() {
+                    const layers = drawnItems.getLayers();
+                    if (layers.length > 0) {
+                        const polygon = layers[0];
+                        const latLngs = polygon.getLatLngs()[0];
+                        if (latLngs) {
+                            const coordinates = latLngs.map(latlng => ({ lat: latlng.lat, lng: latlng.lng }));
+                            limitesField.value = JSON.stringify(coordinates);
+                        }
+                    } else {
+                        limitesField.value = '[]';
+                    }
+                }
+                
+                map.on(L.Draw.Event.CREATED, function (event) {
+                    drawnItems.clearLayers();
+                    drawnItems.addLayer(event.layer);
+                    updateHiddenField();
+                });
+                map.on('draw:edited', updateHiddenField);
+                map.on('draw:deleted', updateHiddenField);
+            }
+            
+            // --- LÓGICA DE CONTROL ---
+
+            // Manejador para los radio buttons
+            $('input[name="geo_method"]').on('change', function() {
+                const selectedMethod = $(this).val();
+                
+                $('.geo-method-container').addClass('hidden'); // Oculta todos los contenedores
+                
+                if (selectedMethod === 'mapa') {
+                    $('#map-geo-container').removeClass('hidden'); // Muestra el del mapa
+                    initializeMap(); // Asegura que el mapa se inicialice
+                    // Forzamos al mapa a recalcular su tamaño después de un breve instante
+                    setTimeout(() => {
+                        if (map) map.invalidateSize();
+                    }, 10);
+                } else {
+                    $('#manual-geo-container').removeClass('hidden'); // Muestra el manual
+                }
+            });
+
+            // Lógica para inicializar el mapa al llegar al segundo paso
+            $('#msform .next').on('click', function() {
+                var current_fs = $(this).parent();
+                var next_fs = current_fs.next();
+                
+                if (next_fs.find('#map').length > 0) {
+                    // Si el método de mapa está seleccionado, inicializa y refresca
+                    if ($('input[name="geo_method"]:checked').val() === 'mapa') {
+                        setTimeout(function() {
+                            initializeMap();
+                            if (map) map.invalidateSize();
+                        }, 100); // Un delay mayor por la animación del multistep
+                    }
+                }
+            });
+
+            // Llamada inicial por si se recarga la página con 'mapa' ya seleccionado
+            if ($('input[name="geo_method"]:checked').val() === 'mapa') {
+                $('#manual-geo-container').addClass('hidden');
+                $('#map-geo-container').removeClass('hidden');
+                initializeMap();
+                setTimeout(() => { if (map) map.invalidateSize(); }, 10);
+            }
+        });
+    </script>
+{% endblock %}

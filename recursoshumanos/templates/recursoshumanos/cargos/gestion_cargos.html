@@ -1,0 +1,10 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Gestión de Cargos{% endblock %}
+{% block content %}
+    <h1>Gestión de Cargos</h1>
+    <p>Administra los puestos de trabajo disponibles en la organización.</p>
+    <div class="dashboard-grid">
+        <a href="{% url 'recursoshumanos:crear_cargo' %}" class="card"><div class="card__icon">🏷️</div><h2 class="card__title">Registrar Cargo</h2><p class="card__description">Añade un nuevo puesto de trabajo al sistema.</p><div class="card__footer">Registrar &rarr;</div></a>
+        <a href="{% url 'recursoshumanos:lista_cargos' %}" class="card"><div class="card__icon">📋</div><h2 class="card__title">Ver Cargos</h2><p class="card__description">Consulta y edita los cargos existentes.</p><div class="card__footer">Ver Listado &rarr;</div></a>
+    </div>
+{% endblock %}

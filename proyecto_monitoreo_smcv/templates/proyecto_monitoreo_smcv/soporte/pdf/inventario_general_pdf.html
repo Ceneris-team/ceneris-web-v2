@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* PÁGINA HORIZONTAL PARA QUE QUEPAN LAS COLUMNAS */
+        @page {
+            size: A4 landscape;
+            margin: 1cm;
+            @bottom-right {
+                content: "Página " counter(page) " de " counter(pages);
+                font-size: 9pt;
+            }
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 8pt; /* Letra pequeña para que entre todo */
+        }
+
+        /* --- BARRA AMARILLA SUPERIOR --- */
+        .barra-actualizado {
+            background-color: #ffff00; /* Amarillo intenso */
+            text-align: center;
+            font-weight: bold;
+            font-size: 14pt;
+            padding: 5px;
+            border: 1px solid #000;
+            margin-bottom: 0;
+            text-transform: uppercase;
+        }
+
+        /* --- ENCABEZADO CON LOGO --- */
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        .header-table td {
+            border: 1px solid #000;
+            padding: 5px;
+            vertical-align: middle;
+            text-align: center;
+        }
+        
+        .titulo-principal {
+            font-weight: bold;
+            font-size: 12pt;
+        }
+
+        /* --- TABLA DE DATOS (VERDE) --- */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #000;
+            padding: 4px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        
+        /* Estilo del encabezado verde */
+        .data-table th {
+            background-color: #d6e3bc; /* Verde suave excel */
+            font-weight: bold;
+            font-size: 7pt; /* Encabezados pequeños */
+            text-transform: uppercase;
+        }
+
+        .text-left { text-align: left !important; }
+        
+    </style>
+</head>
+<body>
+
+    <!-- 1. FECHA ACTUALIZADA -->
+    <div class="barra-actualizado">
+        ACTUALIZADO AL {{ fecha_actual|date:"d \d\e F \d\e\l Y"|upper }}
+    </div>
+
+    <!-- 2. LOGO Y TÍTULOS -->
+    <table class="header-table">
+        <tr>
+            <td width="15%">
+                <!-- Logo Ceneris -->
+                <img src="{{ logo_url }}" style="max-width: 120px; max-height: 50px;">
+            </td>
+            <td width="70%" class="titulo-principal">
+                PROGRAMA DE CALIBRACIÓN DE EQUIPOS DE MONITOREO PROYECTO CERRO VERDE
+            </td>
+            <td width="15%">
+                <div style="font-weight: bold;">CEN-PY-MCV-PR-08-PG-01</div>
+                <div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 2px;">01</div>
+                <div style="font-weight: bold;">10/01/2025</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- 3. TABLA DE INVENTARIO -->
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th width="5%">CÓDIGO INTERNO</th>
+                <th width="12%">EQUIPO</th>
+                <th width="8%">MARCA</th>
+                <th width="8%">MODELO</th>
+                <th width="8%">SERIE</th>
+                <th width="15%">ACCESORIOS</th>
+                <th width="5%">SERIE ACCESORIO</th>
+                <th width="5%">UBICACIÓN</th>
+                <th width="5%">ESTADO</th>
+                <th width="6%">FECHA DE BAJADA DE MINA</th>
+                <th width="6%">FECHA DE SUBIDA A MINA</th>
+                <th width="6%">TIEMPO DE RETORNO (CALIBRACIÓN)</th>
+                <th width="6%">FECHA DE CALIBRACION</th>
+                <th width="6%">FECHA PROX DE CALIBRACION</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in tabla_data %}
+            <tr>
+                <td>-</td> <!-- Código interno pendiente -->
+                <td class="text-left">{{ row.obj.nombre }}</td>
+                <td>{{ row.obj.marca }}</td>
+                <td>{{ row.obj.modelo }}</td>
+                <td>{{ row.obj.serie }}</td>
+                <td class="text-left" style="font-size: 7pt;">{{ row.accesorios_str }}</td>
+                <td>-</td>
+                <td>{{ row.obj.ubicacion|default:"-" }}</td>
+                <td>{{ row.obj.estado }}</td>
+                <td>{{ row.obj.fecha_bajada|date:"d/m/Y"|default:"-" }}</td>
+                <td>{{ row.obj.fecha_subida|date:"d/m/Y"|default:"-" }}</td>
+                <td>{{ row.tiempo_retorno }}</td>
+                <td>{{ row.fecha_cal|date:"d/m/Y" }}</td>
+                <td>{{ row.prox_cal|date:"d/m/Y" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>

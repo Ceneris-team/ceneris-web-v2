@@ -1,0 +1,48 @@
+<!-- dashboard/templates/dashboard/gestion_ubicaciones.html -->
+{% extends "dashboard/base_rrhh.html" %}
+{% block title %}Gestión de Ubicaciones{% endblock %}
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Listado de Ubicaciones y Áreas</h1>
+            <p style="margin: 0;">Aqui puedes ver la lista de ubicaciones registradas</p>
+        </div>
+        <div>
+            <!-- ¡BOTÓN CAMBIADO! Ahora vuelve al dashboard de tarjetas -->
+            <a href="{% url 'recursoshumanos:gestion_ubicaciones_asistencia' %}" class="btn-secondary">&larr; Volver</a>
+        </div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Coordenadas (Lat, Lon)</th>
+                <th>Radio (m)</th>
+                <th>Hora de Entrada</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ubicacion in ubicaciones %}
+            <tr>
+                <td>{{ ubicacion.nombre }}</td>
+                <td>{{ ubicacion.latitud }}, {{ ubicacion.longitud }}</td>
+                <td>{{ ubicacion.radio }}</td>
+                <td>{{ ubicacion.horaEntrada }}</td>
+                <td>
+                    <a href="{% url 'edit_ubicacion' doc_id=ubicacion.id %}">Editar</a> |
+                    <!-- Formulario para el botón de eliminar -->
+                    <form action="{% url 'recursoshumanos:gestion_ubicaciones' %}" method="post" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta ubicación?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="delete_id" value="{{ ubicacion.id }}">
+                        <button type="submit" style="background: none; border: none; color: red; cursor: pointer; padding: 0;">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">No hay ubicaciones registradas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

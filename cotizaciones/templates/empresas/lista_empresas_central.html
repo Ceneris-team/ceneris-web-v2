@@ -1,0 +1,50 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Lista de Empresas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="back-button-container">
+        <a href="{% url 'cotizaciones:centro_gestion_empresas' %}" class="btn btn-outline-secondary">
+            &larr; Volver a gestion
+        </a>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="mb-0">Lista Central de Empresas</h4>
+                <p class="text-muted mb-0">Consulta todas las empresas registradas en el sistema.</p>
+            </div>
+            <!-- BOTÓN DE ACCIÓN PRINCIPAL -->
+            <a href="{% url 'cotizaciones:registrar_empresa' %}" class="btn btn-primary">
+                <i data-feather="plus"></i> Registrar Nueva Empresa
+            </a>
+        </div>
+        <div class="card-body">
+            <!-- Barra de Búsqueda -->
+            <form method="get" class="mb-3">
+                <div class="input-group">
+                    <input type="text" class="form-control" name="q" placeholder="Buscar por Nombre o RUC..." value="{{ search_query }}">
+                    <button class="btn btn-outline-secondary" type="submit"><i data-feather="search"></i></button>
+                </div>
+            </form>
+
+            <!-- Lista de Empresas -->
+            <div class="list-group">
+                {% if empresas_list %}
+                    {% for empresa in empresas_list %}
+                        <div class="list-group-item list-group-item-action">
+                            <strong>{{ empresa.nombre }}</strong>
+                            <span class="badge bg-light text-dark float-end">RUC: {{ empresa.ruc }}</span>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="alert alert-light text-center">
+                        No se encontraron empresas. ¡Sé el primero en <a href="{% url 'cotizaciones:registrar_empresa' %}">registrar una</a>!
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

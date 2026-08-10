@@ -1,0 +1,42 @@
+<!-- metricas_ceneris/evaluaciones/mis_evaluaciones.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Mis Evaluaciones de Desempeño</h2>
+    <div class="card mt-3">
+        <div class="card-body">
+            <h4>Hola, {{ trabajador.nombres }}</h4>
+            <p>Área: {{ trabajador.area }}</p>
+            <h5 class="text-primary">Cumplimiento Total: {{ cumplimiento_total }}%</h5>
+        </div>
+    </div>
+
+    <h4 class="mt-4">Mis Indicadores</h4>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Indicador</th>
+                <th>Meta</th>
+                <th>Real</th>
+                <th>Cumplimiento</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ind in indicadores %}
+            <tr>
+                <td>{{ ind.nombre }}</td>
+                <td>{{ ind.meta }}</td>
+                <td>{{ ind.valor_real }}</td>
+                <td>{{ ind.porcentaje_cumplimiento }}%</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4">No tienes indicadores asignados todavía.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+</div>
+{% endblock %}

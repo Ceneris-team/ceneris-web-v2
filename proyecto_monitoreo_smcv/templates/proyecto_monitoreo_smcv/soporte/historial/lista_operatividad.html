@@ -1,0 +1,66 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block title %}Historial Operatividad{% endblock %}
+
+{% block content %}
+
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-4">
+        <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="inline-flex items-center text-gray-600 hover:text-blue-600 font-semibold transition-colors">
+            <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-2 shadow-sm group-hover:bg-blue-100">
+                <i class="fas fa-arrow-left text-sm"></i>
+            </div>
+            Volver al Panel
+        </a>
+    </div>
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Verificaciones de Operatividad</h1>
+            <p class="text-gray-500 text-sm">Checklists y pruebas de funcionamiento.</p>
+        </div>
+        <form method="get" class="w-full md:w-96 relative">
+            <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar equipo..." 
+                   class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-hidden flex flex-col h-[70vh]">
+        <div class="overflow-auto custom-scrollbar flex-grow">
+            <table class="min-w-full">
+                <thead class="bg-teal-50 sticky top-0 z-10">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-teal-800 uppercase">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-teal-800 uppercase">Fecha Verif.</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-teal-800 uppercase">Equipo</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-teal-800 uppercase">Serie</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-teal-800 uppercase">Estado Final</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-teal-800 uppercase">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for item in registros %}
+                    <tr class="hover:bg-teal-50 transition-colors">
+                        <td class="px-6 py-4 font-bold text-gray-700">#{{ item.id }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ item.fecha_operatividad|date:"d/m/Y" }}</td>
+                        <td class="px-6 py-4 text-sm font-medium text-gray-800">{{ item.dispositivo.nombre }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500 font-mono">{{ item.dispositivo.serie }}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-teal-100 text-teal-800">
+                                {{ item.estado_final }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <a href="{% url 'proyecto_monitoreo_smcv:pdf_operatividad' item.id %}" target="_blank" class="text-red-600 hover:text-red-900 font-bold">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center py-8 text-gray-500">No hay registros.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

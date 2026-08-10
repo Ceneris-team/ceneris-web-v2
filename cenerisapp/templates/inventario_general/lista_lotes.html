@@ -1,0 +1,97 @@
+{% extends 'app_base.html' %}
+{% load static query_filters %} <!-- Carga nuestro tag para la paginación -->
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="dashboard-container modern">
+    <div class="dashboard-header-modern">
+        <h1>{{ titulo }}</h1>
+        <p>Busca, filtra y gestiona todos los lotes de componentes registrados.</p>
+        <div>
+            <a href="{% url 'cenerisapp:crear_inventario_lote' %}" class="btn btn-primary" style="background-color: #d45b04;">Nuevo Lote</a>
+            <a href="{% url 'cenerisapp:vista_stock' %}" class="btn btn-secondary">Ver Stock Detallado</a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-container" style="max-width: 1100px;margin: 0 auto;">
+        <form method="GET" class="filter-form-grid">
+            <div class="form-group" style="grid-column: span 2;">
+                <label for="q">Buscar por Descripción</label>
+                <input type="text" name="q" id="q" value="{{ filtros_aplicados.q }}" class="form-control" placeholder="Ej: Lote de Sensores O2...">
+            </div>
+            <div class="form-group">
+                <label for="ubicacion">Ubicación</label>
+                <select name="ubicacion" id="ubicacion" class="form-select">
+                    <option value="">-- Todas --</option>
+                    {% for ubi in opciones_ubicaciones %}
+                        <option value="{{ ubi }}" {% if filtros_aplicados.ubicacion == ubi %}selected{% endif %}>{{ ubi }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="trabajador">Registrado por</label>
+                <select name="trabajador" id="trabajador" class="form-select">
+                    <option value="">-- Todos --</option>
+                    {% for emp in opciones_trabajadores %}
+                        <option value="{{ emp.pk }}" {% if filtros_aplicados.trabajador == emp.pk %}selected{% endif %}>{{ emp.nomEmpleado }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" style="background-color: #d45b04;">Filtrar</button>
+                <a href="{% url 'cenerisapp:lista_lotes' %}" class="btn btn-secondary">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- ANCLA para la paginación -->
+    <div id="lista-lotes">
+        <!-- Grid de Tarjetas de Lote -->
+        <div class="lote-card-grid">
+            {% for lote in page_obj %}
+                <div class="info-card modern lote-card">
+                    <div class="card-header">
+                        <i class="bi bi-box-seam card-icon"></i>
+                        <h4>Lote #{{ lote.id_inventario }}</h4>
+                        <span class="date">{{ lote.fecEntregaCeneris|date:"d M, Y" }}</span>
+                    </div>
+                    <div class="lote-details">
+                        <p class="lote-description">{{ lote.descripInv }}</p>
+                        <p><strong><i class="bi bi-geo-alt-fill"></i> Ubicación:</strong> {{ lote.ubiImv }}</p>
+                        <p><strong><i class="bi bi-stack"></i> N° Componentes:</strong> {{ lote.num_componentes }} / {{ lote.cantIngreso }}</p>
+                        <p><strong><i class="bi bi-person-fill"></i> Registrado por:</strong> {{ lote.id_trabajador.nomEmpleado }}</p>
+                    </div>
+                    <div class="card-footer-actions">
+                        <a href="{% url 'cenerisapp:lista_componentes' lote.id_inventario %}" class="btn btn-primary btn-sm" style="background-color: #d45b04;">Ver Componentes</a>
+                        <a href="#" class="btn btn-secondary btn-sm">Editar</a>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="info-card modern text-center" style="grid-column: 1 / -1;">
+                    <p class="no-data">No se encontraron lotes con los filtros aplicados.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Paginación -->
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="Navegación de páginas" class="pagination-container">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?{% url_replace page=1 %}#lista-lotes">&laquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.previous_page_number %}#lista-lotes">‹</a></li>
+                {% endif %}
+                <li class="page-item active"><span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.next_page_number %}#lista-lotes">›</a></li>
+                    <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.paginator.num_pages %}#lista-lotes">&raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+    
+{% endblock %}

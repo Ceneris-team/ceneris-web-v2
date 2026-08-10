@@ -1,0 +1,42 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-700">Historial de Importaciones</h1>
+        <a href="{% url 'proyecto_monitoreo_smcv:importar_plan' %}" class="bg-gray-800 text-white px-4 py-2 rounded shadow hover:bg-gray-900">
+            <i class="fas fa-file-upload mr-2"></i> Subir Excel
+        </a>
+    </div>
+
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Mes/Año Importado</th>
+                    <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Registros</th>
+                    <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Meta Total</th>
+                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for log in logs %}
+                <tr>
+                    <td class="px-6 py-4 font-medium text-gray-900">{{ log.mes }}/{{ log.anio }}</td>
+                    <td class="px-6 py-4 text-center">{{ log.total_items }} filas</td>
+                    <td class="px-6 py-4 text-center font-bold text-blue-600">{{ log.total_meta }}</td>
+                    <td class="px-6 py-4 text-right">
+                        <!-- Solo botón de borrar, no de gestionar -->
+                        <form action="{% url 'proyecto_monitoreo_smcv:eliminar_plan' log.anio log.mes %}" method="POST" onsubmit="return confirm('Borrar carga?');">
+                            {% csrf_token %}
+                            <button class="text-red-500 hover:text-red-700 font-bold text-xs uppercase">Eliminar Carga</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="p-6 text-center text-gray-500">No hay datos importados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

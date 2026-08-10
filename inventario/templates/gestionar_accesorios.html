@@ -1,0 +1,85 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block meta %}
+    {{ block.super }}    
+    <link rel="stylesheet" href="{% static 'inventario/css/style.css' %}">
+{% endblock %}
+{% block content %}
+<div class="content-area">
+    <div class="page-header">
+        <div class="header-text">
+            <div class="page-title">Gestionar Accesorios para {{ item_insumo.insumo_padre.nombre }}</div>
+            <div class="page-desc">Número de Serie del equipo: <strong>{{ item_insumo.numero_serie }}</strong></div>
+        </div>
+        <a href="{% url 'inventario:detalle_insumo' item_insumo.insumo_padre.pk %}" class="btn-secondary">Volver al Detalle</a>
+    </div>
+
+    <div class="details-grid">
+        <!-- Columna del Formulario para añadir -->
+        <div class="details-card">
+            <h3>Añadir Nuevo Accesorio</h3>
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Nombre del Accesorio</label>
+                    <input type="text" name="nombre" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Número de Serie (opcional)</label>
+                    <input type="text" name="numero_serie" class="form-control">
+                </div>
+                <div class="form-actions-footer">
+                    <button type="submit" class="btn-submit">Añadir Accesorio</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Columna del Historial -->
+        <div class="details-card">
+            <h3>Accesorios Registrados</h3>
+            <div class="table-container">
+                <div class="content-bar header accesorios">
+                    <div class="col-main">Nombre</div>
+                    <div class="col-secondary">Número de Serie</div>
+                    <div class="col-secondary">Ubicación</div>
+                    <div class="col-actions">Acciones</div>
+                </div>
+                {% for accesorio in accesorios %}
+                    <div class="content-bar accesorios">
+                        <div class="col-main">{{ accesorio.nombre }}</div>
+                        <div class="col-secondary">{{ accesorio.numero_serie|default_if_none:"N/A" }}</div>
+                        <div class="col-secondary">{{ accesorio.ubicacion }}</div>
+                        <div class="col-actions">
+                            <button type="button" class="btn-action btn-delete-accesorio" title="Eliminar Accesorio"
+                                    data-id="{{ accesorio.id }}"
+                                    data-nombre="{{ accesorio.nombre }}"
+                                    data-url="{% url 'inventario:api_delete_accesorio' accesorio.pk %}">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p>No hay accesorios registrados para este item.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE CONFIRMACIÓN PARA ELIMINAR ACCESORIO -->
+<div id="delete-accesorio-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content animate__animated animate__fadeInDown">
+        <h2>Confirmar Eliminación</h2>
+        <p id="delete-accesorio-text">¿Estás seguro de que quieres eliminar este accesorio?</p>
+        
+        <div id="delete-accesorio-error" class="error-list" style="display: none;"></div>
+
+        <div class="modal-actions">
+            <button id="cancel-delete-accesorio-btn" class="btn-secondary">Cancelar</button>
+            <button id="confirm-delete-accesorio-btn" class="btn-danger">Sí, Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'inventario/js/delete_accesorio_handler.js' %}"></script>
+{% endblock %}

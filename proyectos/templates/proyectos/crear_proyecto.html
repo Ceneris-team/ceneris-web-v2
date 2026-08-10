@@ -1,0 +1,53 @@
+{% extends 'index.html' %}
+
+{% block content %}
+<div class="split-screen-container">
+    
+    <!-- LADO DE LA IMAGEN -->
+    <div class="image-side animate__animated animate__fadeIn">
+        <!-- La imagen se aplica con CSS para un mejor control -->
+    </div>
+
+    <!-- LADO DEL FORMULARIO -->
+    <div class="form-side">
+        
+        <div class="form-container animate__animated animate__fadeInRight">
+            <form method="post">
+                <h2>Empieza un nuevo proyecto</h2>
+                <p>Completa los siguientes campos para registrar tu proyecto.</p>
+                {% csrf_token %}
+
+                <!-- Agrupamos cada campo para un mejor estilizado -->
+                <div class="form-group">
+                    {{ form.nombre.label_tag }}
+                    {{ form.nombre }}
+                    {% if form.nombre.errors %}
+                        <div class="error-list">{{ form.nombre.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.descripcion.label_tag }}
+                    {{ form.descripcion }}
+                    {% if form.descripcion.errors %}
+                        <div class="error-list">{{ form.descripcion.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <p>Las fechas se asignan en base a la sub-tareas.</p>
+                    
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn-submit">Crear proyecto</button>
+                </div>
+            </form>
+            
+        </div>
+        
+    </div>
+    
+</div>
+
+{% endblock %}

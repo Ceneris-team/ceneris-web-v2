@@ -1,0 +1,213 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block title %}Control de Bombas Gravimétricas{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-full h-screen flex flex-col">
+    <div class="mb-4">
+        <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="inline-flex items-center text-gray-600 hover:text-blue-600 font-semibold transition-colors">
+            <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-2 shadow-sm group-hover:bg-blue-100">
+                <i class="fas fa-arrow-left text-sm"></i>
+            </div>
+            Volver al Panel
+        </a>
+    </div>
+    <!-- 1. ENCABEZADO Y BOTONES -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Matriz de Modificaciones - Bombas</h1>
+            <p class="text-sm text-gray-500">Gestión de vida útil: Motor, Batería, Filtros y Diafragmas.</p>
+        </div>
+        
+        <div class="flex gap-3">
+            <!-- Botón Registrar Cambio -->
+            <a href="{% url 'proyecto_monitoreo_smcv:crear_cambio_bomba' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-md hover:-translate-y-0.5">
+                <i class="fas fa-plus-circle mr-2"></i> Registrar Cambio
+            </a>
+
+            <a href="{% url 'proyecto_monitoreo_smcv:historial_cambios_bombas' %}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition shadow-md hover:-translate-y-0.5 text-sm">
+                <i class="fas fa-history mr-2"></i> Ver Historial
+            </a>
+        </div>
+    </div>
+
+    <!-- 2. CONTENEDOR TABLA -->
+    <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col flex-grow">
+        <div class="overflow-auto custom-scrollbar flex-grow">
+            <table class="min-w-full border-collapse">
+                
+                <!-- ENCABEZADO STICKY -->
+                <thead class="sticky top-0 z-20 shadow-md text-xs uppercase text-gray-800 font-bold">
+                    <!-- Fila Superior: Agrupadores -->
+                    <tr>
+                        <th colspan="5" class="bg-[#d5e8d4] border-r border-b border-gray-300 px-3 py-2 min-w-[120px] text-center align-middle">Datos del Equipo</th>
+                        <th colspan="2" class="bg-[#9cc2e5] border-r border-b border-gray-300 px-2 py-2 min-w-[120px] text-center text-blue-900 align-middle">Motor (4 años)</th>
+                        <th colspan="2" class="bg-[#e6b8af] border-r border-b border-gray-300 px-2 py-2 min-w-[120px] text-center text-red-900 align-middle">Batería (2 años)</th>
+                        <th colspan="2" class="bg-[#9cc2e5] border-r border-b border-gray-300 px-2 py-2 min-w-[120px] text-center text-blue-900 align-middle">Filtro (1 año)</th>
+                        <th colspan="2" class="bg-[#9cc2e5] border-r border-b border-gray-300 px-2 py-2 min-w-[120px] text-center text-blue-900 align-middle">Diafragma (2 años)</th>
+                        <th colspan="2" class="bg-[#f4b084] border-b border-gray-300 px-2 py-2 min-w-[120px] text-center text-orange-900 align-middle">Teclado</th>
+                    </tr>
+                    
+                    <!-- Fila Inferior: Columnas Específicas -->
+                    <tr class="text-[10px]">
+                        <!-- Datos Fijos -->
+                        <th class="bg-[#d5e8d4] border-r border-b border-gray-300 px-3 py-2 w-40 text-left align-middle">Equipo</th>
+                        <th class="bg-[#d5e8d4] border-r border-b border-gray-300 px-2 py-2 w-24 text-center align-middle">Marca</th>
+                        <th class="bg-[#d5e8d4] border-r border-b border-gray-300 px-2 py-2 w-24 text-center align-middle">Modelo</th>
+                        <th class="bg-[#d5e8d4] border-r border-b border-gray-300 px-2 py-2 w-28 text-center align-middle">Serie</th>
+                        <th class="bg-[#d5e8d4] border-r border-b border-gray-300 px-2 py-2 min-w-[100px] text-center align-middle">Fecha<br>Manuf.</th>
+
+                        <!-- Motor -->
+                        <th class="bg-[#9cc2e5] border-r border-b border-gray-300 px-1 py-1 w-28 text-center align-middle">Fecha<br>Cambio</th>
+                        <th class="bg-[#9cc2e5] border-r border-b border-gray-300 px-1 py-1 w-28 text-center align-middle">Prox.<br>Cambio</th>
+
+                        <!-- Batería -->
+                        <th class="bg-[#e6b8af] border-r border-b border-gray-300 px-1 py-1 w-28 text-center align-middle">Fecha<br>Cambio</th>
+                        <th class="bg-[#e6b8af] border-r border-b border-gray-300 px-1 py-1 w-28 text-center align-middle">Prox.<br>Cambio</th>
+
+                        <!-- Filtro -->
+                        <th class="bg-[#9cc2e5] border-r border-b border-gray-300 px-1 py-1 w-28 text-center align-middle">Fecha<br>Cambio</th>
+                        <th class="bg-[#9cc2e5] border-r border-b border-gray-300 px-1 py-1 w-28 text-center align-middle">Prox.<br>Cambio</th>
+
+                        <!-- Diafragma -->
+                        <th class="bg-[#9cc2e5] border-r border-b border-gray-300 px-1 py-1 w-28 text-center align-middle">Fecha<br>Cambio</th>
+                        <th class="bg-[#9cc2e5] border-r border-b border-gray-300 px-1 py-1 w-28 text-center align-middle">Prox.<br>Cambio</th>
+
+                        <!-- Teclado -->
+                        <th class="bg-[#f4b084] border-r border-b border-gray-300 px-1 py-1 w-28 text-center align-middle">Fecha<br>Cambio</th>
+                        <th class="bg-[#f4b084] border-b border-gray-300 px-1 py-1 w-28 text-center align-middle">Prox.<br>Cambio</th>
+                    </tr>
+                </thead>
+                
+                <tbody class="text-sm text-gray-700 bg-white divide-y divide-gray-100">
+                    {% for item in bombas_data %}
+                    <tr class="hover:bg-blue-50 transition-colors">
+                        <!-- Datos Fijos -->
+                        <td class="border-r border-gray-200 px-3 py-2 font-bold text-gray-800">{{ item.dispositivo.nombre }}</td>
+                        <td class="border-r border-gray-200 px-2 py-2 text-center">{{ item.dispositivo.marca }}</td>
+                        <td class="border-r border-gray-200 px-2 py-2 text-center">{{ item.dispositivo.modelo }}</td>
+                        <td class="border-r border-gray-200 px-2 py-2 text-center font-mono text-xs text-gray-500 bg-gray-50">{{ item.dispositivo.serie }}</td>
+                        <td rowspan="{{ item.row_span }}" class="border-r border-gray-200 px-2 py-2 text-center bg-white align-middle text-xs">{{ item.dispositivo.diagnostico_set.first.fecha_manufactura|date:"d/m/Y"|default:"-" }}</td>
+
+                        <!-- MOTOR (Azulado) -->
+                        <td class="border-r border-gray-200 p-0 align-middle bg-[#f0f9ff]">
+                            <input type="date" value="{{ item.cambios.MOTOR|date:'Y-m-d' }}" 
+                                data-id="{{ item.dispositivo.id }}" data-model="cambio" data-field="MOTOR"
+                                class="editable-field w-full h-full bg-transparent border-none text-center text-xs text-blue-800 focus:ring-2 focus:ring-inset focus:ring-blue-500 cursor-pointer py-2">
+                        </td>
+                        <td class="border-r border-gray-200 p-0 align-middle text-center text-xs font-bold text-blue-700 bg-[#f0f9ff]">
+                            {{ item.prox.MOTOR|date:"d/m/Y"|default:"-" }}
+                        </td>
+
+                        <!-- BATERIA (Rojizo) -->
+                        <td class="border-r border-gray-200 p-0 align-middle bg-[#fff1f2]">
+                            <input type="date" value="{{ item.cambios.BATERIA_BOMBA|date:'Y-m-d' }}" 
+                                data-id="{{ item.dispositivo.id }}" data-model="cambio" data-field="BATERIA_BOMBA"
+                                class="editable-field w-full h-full bg-transparent border-none text-center text-xs text-red-800 focus:ring-2 focus:ring-inset focus:ring-red-500 cursor-pointer py-2">
+                        </td>
+                        <td class="border-r border-gray-200 p-0 align-middle text-center text-xs font-bold text-red-700 bg-[#fff1f2]">
+                            {{ item.prox.BATERIA|date:"d/m/Y"|default:"-" }}
+                        </td>
+
+                        <!-- FILTRO (Azulado) -->
+                        <td class="border-r border-gray-200 p-0 align-middle bg-[#f0f9ff]">
+                            <input type="date" value="{{ item.cambios.FILTRO|date:'Y-m-d' }}" 
+                                data-id="{{ item.dispositivo.id }}" data-model="cambio" data-field="FILTRO"
+                                class="editable-field w-full h-full bg-transparent border-none text-center text-xs text-blue-800 focus:ring-2 focus:ring-inset focus:ring-blue-500 cursor-pointer py-2">
+                        </td>
+                        <td class="border-r border-gray-200 p-0 align-middle text-center text-xs font-bold text-blue-700 bg-[#f0f9ff]">
+                            {{ item.prox.FILTRO|date:"d/m/Y"|default:"-" }}
+                        </td>
+
+                        <!-- DIAFRAGMA (Azulado) -->
+                        <td class="border-r border-gray-200 p-0 align-middle bg-[#f0f9ff]">
+                            <input type="date" value="{{ item.cambios.DIAFRAGMA|date:'Y-m-d' }}" 
+                                data-id="{{ item.dispositivo.id }}" data-model="cambio" data-field="DIAFRAGMA"
+                                class="editable-field w-full h-full bg-transparent border-none text-center text-xs text-blue-800 focus:ring-2 focus:ring-inset focus:ring-blue-500 cursor-pointer py-2">
+                        </td>
+                        <td class="border-r border-gray-200 p-0 align-middle text-center text-xs font-bold text-blue-700 bg-[#f0f9ff]">
+                            {{ item.prox.DIAFRAGMA|date:"d/m/Y"|default:"-" }}
+                        </td>
+
+                        <!-- TECLADO (Anaranjado) -->
+                        <td class="border-r border-gray-200 p-0 align-middle bg-[#fff7ed]">
+                            <input type="date" value="{{ item.cambios.TECLADO|date:'Y-m-d' }}" 
+                                data-id="{{ item.dispositivo.id }}" data-model="cambio" data-field="TECLADO"
+                                class="editable-field w-full h-full bg-transparent border-none text-center text-xs text-orange-800 focus:ring-2 focus:ring-inset focus:ring-orange-500 cursor-pointer py-2">
+                        </td>
+                        <td class="p-0 align-middle text-center text-xs text-gray-400 bg-[#fff7ed]">-</td>
+
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="14" class="text-center py-12 text-gray-400 italic">No hay bombas registradas en el sistema.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Footer -->
+        <div class="bg-gray-50 px-4 py-2 border-t text-xs text-gray-500 flex justify-between">
+            <span>Total: {{ bombas_data|length }} equipos</span>
+            <span>Edición habilitada en celdas</span>
+        </div>
+    </div>
+</div>
+
+<!-- SCRIPT JS DE AUTO-GUARDADO -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('.editable-field').forEach(input => {
+            input.addEventListener('change', function() {
+                const id = this.dataset.id;     // ID del Dispositivo
+                const field = this.dataset.field; // Ejemplo: 'MOTOR', 'FILTRO'
+                const value = this.value;       // La nueva fecha
+                const parentCell = this.parentElement;
+                
+                // Usamos la API de cambios que ya configuraste para "Corregir"
+                const urlAPI = "{% url 'proyecto_monitoreo_smcv:api_update_cambio' %}";
+
+                // 1. Feedback Visual: "Cargando" (Amarillo)
+                parentCell.style.backgroundColor = "#fff3cd";
+
+                fetch(urlAPI, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": "{{ csrf_token }}"
+                    },
+                    body: JSON.stringify({ 
+                        id: id, 
+                        campo: field, 
+                        valor: value 
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.status === 'success') {
+                        // 2. Feedback Visual: "Éxito" (Verde)
+                        parentCell.style.backgroundColor = "#d1e7dd";
+                        
+                        // 3. RECARGA AUTOMÁTICA (Necesaria para Bombas)
+                        // Como al cambiar la fecha del Motor debe cambiar la fecha de "Prox. Cambio" (+4 años),
+                        // recargamos la página para que Python haga el cálculo matemático de nuevo.
+                        setTimeout(() => window.location.reload(), 500); 
+                    } else {
+                        alert("Error al guardar: " + data.mensaje);
+                        parentCell.style.backgroundColor = "#f8d7da"; // Rojo
+                    }
+                })
+                .catch(e => {
+                    console.error(e);
+                    parentCell.style.backgroundColor = "#f8d7da";
+                });
+            });
+        });
+    });
+</script>
+
+<style>
+    .custom-scrollbar::-webkit-scrollbar { height: 10px; width: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f3f4f6; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>
+{% endblock %}

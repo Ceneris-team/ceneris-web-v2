@@ -1,0 +1,177 @@
+{% extends 'app_base.html' %}
+{% load static %}
+
+{% block title %}Registro de Flujo - Controlador{% endblock %}
+
+{% block main_content %}
+
+    
+
+    {# ¡NUEVO! Mostramos el resumen si existe #}
+    {% if ultimo_registro %}
+        <div class="info-card success-summary">
+            <h3>Último Registro Guardado</h3>
+            <p><strong>Tipo:</strong> {{ ultimo_registro.get_tipReg_display }}</p>
+            <p><strong>Dispositivo:</strong> {{ ultimo_registro.id_dispositivo }}</p>
+            <p><strong>Trabajador:</strong> {{ ultimo_registro.id_trabajador }}</p>
+            <p><strong>Fecha:</strong> {{ ultimo_registro.fecRegistro|date:"d/m/Y" }}</p>
+        </div>
+    {% endif %}
+    <div class="form-container">
+        <form method="post" action="{% url 'cenerisapp:flujo_registro' %}" class="form-card">
+            <h2>Registro de Prestamo de Dispositivos</h2>
+            <p class="form-description">Completa los datos para registrar un préstamo.</p>
+
+            {% csrf_token %}
+            
+            <div class="form-grid"> {# Usamos el grid para un mejor layout en desktop #}
+                <div class="form-group">
+                    {{ form.item_a_prestar.label_tag }}
+                    {{ form.item_a_prestar }}
+                    <!-- ¡PASO 2: MOSTRAR ERRORES DE ESTE CAMPO! -->
+                    {% if form.item_a_prestar.errors %}
+                        <div class="invalid-feedback" style="display: block;">
+                            {% for error in form.item_a_prestar.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.trabajador_receptor.label_tag }}
+                    {{ form.trabajador_receptor }}
+                    {% if form.trabajador_receptor.errors %}
+                        <div class="invalid-feedback" style="display: block;">
+                            {% for error in form.trabajador_receptor.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Repite el patrón para cada campo que muestras -->
+                <div class="form-group">
+                    {{ form.operador_responsable.label_tag }}
+                    {{ form.operador_responsable }}
+                    {% if form.operador_responsable.errors %}
+                        <div class="invalid-feedback" style="display: block;">
+                            {% for error in form.operador_responsable.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.turno.label_tag }}
+                    {{ form.turno }}
+                    {% if form.turno.errors %}
+                        <div class="invalid-feedback" style="display: block;">
+                            {% for error in form.turno.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    {{ form.area_trabajo_operacion.label_tag }}
+                    {{ form.area_trabajo_operacion }}
+                    {% if form.area_trabajo_operacion.errors %}
+                        <div class="invalid-feedback" style="display: block;">
+                            {% for error in form.area_trabajo_operacion.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.punto_exacto_operacion.label_tag }}
+                    {{ form.punto_exacto_operacion }}
+                    {% if form.punto_exacto_operacion.errors %}
+                        <div class="invalid-feedback" style="display: block;">
+                            {% for error in form.punto_exacto_operacion.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Guardar Registro</button>
+                <a href="{% url 'cenerisapp:lista_registros' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+
+            
+        <!-- Aquí se mostrará la información del empleado -->
+        <div id="empleado-info-box" class="info-card" style="display: none;">
+            <!-- El contenido se llenará con JavaScript -->
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // 1. Obtenemos los elementos del DOM
+    const areaSelect = document.getElementById('id_area_trabajo_operacion');
+    const puntoExactoSelect = document.getElementById('id_punto_exacto_operacion');
+
+    // 2. Comprobamos que ambos selects existan en la página
+    if (areaSelect && puntoExactoSelect) {
+        
+        // 3. Añadimos un 'listener' al select de Área
+        areaSelect.addEventListener('change', async () => {
+            const areaId = areaSelect.value; // Obtenemos el ID del área seleccionada
+
+            // Limpiamos y deshabilitamos el select de Punto Exacto mientras carga
+            puntoExactoSelect.innerHTML = '<option value="">Cargando...</option>';
+            puntoExactoSelect.disabled = true;
+
+            // Si el usuario deselecciona el área, dejamos el segundo select vacío
+            if (!areaId) {
+                puntoExactoSelect.innerHTML = '<option value="">Selecciona un área primero</option>';
+                return;
+            }
+
+            try {
+                // 4. Hacemos la llamada AJAX a nuestra API
+                const url = `{% url 'cenerisapp:api_get_puntos_por_area' %}?area_id=${areaId}`;
+                const response = await fetch(url);
+                const puntosExactos = await response.json();
+
+                // 5. Limpiamos el select y lo preparamos para las nuevas opciones
+                puntoExactoSelect.innerHTML = '<option value="">-- Selecciona un punto exacto --</option>';
+
+                if (puntosExactos.length > 0) {
+                    // 6. Añadimos cada punto exacto como una nueva opción
+                    puntosExactos.forEach(punto => {
+                        const option = document.createElement('option');
+                        option.value = punto.id;
+                        option.textContent = punto.nombre_punto;
+                        puntoExactoSelect.appendChild(option);
+                    });
+                    // Habilitamos el select ahora que tiene opciones
+                    puntoExactoSelect.disabled = false;
+                } else {
+                    // Si no hay puntos exactos, mostramos un mensaje
+                    puntoExactoSelect.innerHTML = '<option value="">No hay puntos exactos para esta área</option>';
+                }
+
+            } catch (error) {
+                console.error('Error al cargar los puntos exactos:', error);
+                puntoExactoSelect.innerHTML = '<option value="">Error al cargar</option>';
+            }
+        });
+    }
+
+});
+</script>
+{% endblock %}

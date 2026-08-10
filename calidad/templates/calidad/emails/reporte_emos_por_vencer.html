@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de EMOs por Vencer</title>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .container { padding: 20px; }
+        .header { background-color: #d45b04; color: white; padding: 10px; text-align: center; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .table th { background-color: #f2f2f2; }
+        .footer { margin-top: 20px; font-size: 0.8em; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Reporte de EMOs por Vencer</h2>
+        </div>
+        <p>Hola,</p>
+        <p>A continuación se presenta la lista de Exámenes Médicos Ocupacionales (EMOs) que vencerán en los próximos <strong>{{ dias_de_aviso }} días</strong>.</p>
+        
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Trabajador</th>
+                    <th>DNI</th>
+                    <th>Proyecto</th>
+                    <th>Clínica</th>
+                    <th>Fecha de Vencimiento</th>
+                    <th>Días Restantes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emo in emos_por_vencer %}
+                    <tr>
+                        <td>{{ emo.trabajador }}</td>
+                        <td>{{ emo.trabajador.dni }}</td>
+                        <td>{{ emo.proyecto.nombre|default:"N/A" }}</td>
+                        <td>{{ emo.lugar_examen.nombre|default:"N/A" }}</td>
+                        <td>{{ emo.fecha_vencimiento|date:"d/m/Y" }}</td>
+                        <td>{{ emo.dias_para_vencer }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <p class="footer">Este es un correo generado automáticamente. Por favor, no responder.</p>
+    </div>
+</body>
+</html>

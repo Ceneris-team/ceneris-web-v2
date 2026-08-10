@@ -1,0 +1,42 @@
+{% extends 'app_base.html' %}
+{% load static %} {# Es buena práctica tenerlo por si lo necesitas #}
+
+{% block title %}Opciones para {{ componente.nomComp }}{% endblock %}
+
+{% block main_content %}
+    
+    <div class="header-container">
+        <div>
+            <h1>Opciones para: {{ componente.nomComp }}</h1>
+            <p class="form-description">Número de Serie: <strong>{{ componente.nSerieActual }}</strong></p>
+        </div>
+    </div>
+
+    <!-- Usamos el 'card-deck' que ya tenemos estilizado -->
+    <div class="card-deck">
+        <!-- Tarjeta para Modificaciones -->
+    
+        </a>
+        <a href="{% url 'modificaciones_componente' componente.id_componente %}" class="card-link">
+            <div class="card">
+                <div class="card-icon">🛠️</div>
+                <h3 class="card-title">Modificaciones</h3>
+                <p class="card-description">Consulta la informacion de cada modificación realizada</p>
+            </div>
+        </a>
+
+        
+        <a href="{% url 'lista_certificados_componente' componente.id_componente %}" class="card-link">
+            <div class="card">
+                <div class="card-icon">🛠️</div>
+                <h3 class="card-title">Lista certificados</h3>
+                <p class="card-description">Consulta la informacion de cada certificado asociado a este componente</p>
+            </div>
+        </a>
+    </div>
+
+    <div class="form-actions" style="justify-content: flex-start; border-top: none; padding-top: 20px;">
+        <a href="{% url 'lista_sensores' %}" class="btn btn-secondary">Volver a la lista</a>
+    </div>
+
+{% endblock %}

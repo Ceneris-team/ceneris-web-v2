@@ -1,0 +1,338 @@
+{% load static %}   
+
+
+<nav class="sidebar">
+    <div class="sidebar__header">
+        <h1 class="sidebar__title">Gestor PG01 DEMO</h1>
+        <div class="sidebar__logo">
+            <a href="/">
+                <img src="{% static 'img/logoP.png' %}" alt="Logo de la empresa">
+            </a>
+        </div>
+        <button class="sidebar__toggle">
+            <i class="bi bi-caret-right"></i>
+        </button>
+    </div>
+    {% for group in user.groups.all %}
+        {% if group.name == 'Supervisor' %}
+            <ul class="sidebar__menu">
+                <li class="sidebar__item">
+                    <a href="/" class="sidebar__link">
+                        <i class="bi bi-house"></i>
+                        <span class="link__text">Inicio</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="/" class="sidebar__link">
+                        <i class="bi bi-bar-chart"></i>
+                        <span class="link__text">Estatus Detectores Portatiles</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="/" class="sidebar__link">
+                        <i class="bi bi-bar-chart"></i>
+                        <span class="link__text">Estatus Detectores Lixiviación</span>
+                    </a>
+                </li>
+                <!-- navbar.html -->
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:exportar_indice' %}" class="sidebar__link">
+                        <i class="bi bi-download"></i>
+                        <span class="link__text">Exportar Excel</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:vista_tabla_portatiles' %}" class="sidebar__link">
+                        <i class="bi bi-table"></i>
+                        <span class="link__text">Base de Datos Portatiles</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:vista_reporte_fijos' %}" class="sidebar__link">
+                        <i class="bi bi-table"></i>
+                        <span class="link__text">Base de Datos Fijos</span>
+                    </a>
+                </li>
+                <li class="sidebar__item has-submenu">
+    
+                    <!-- El enlace principal ahora es solo un "disparador". Su href es '#' -->
+                    <a href="#" class="sidebar__link">
+                        <i class="bi bi-device-ssd"></i>
+                        <span class="link__text">Gestión de Dispositivos</span>
+                        <!-- Añadimos una flecha para indicar que es desplegable -->
+                        <i class="bi bi-chevron-down submenu-arrow"></i> 
+                    </a>
+                    
+                    <!-- Aquí está la lista anidada con las subcategorías -->
+                    <ul class="submenu">
+                        <li class="submenu__item">
+                            <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="sidebar__link">
+                                <span class="link__text">Ver Dispositivos</span>
+                            </a>
+                        </li>
+                        <li class="submenu__item">
+                            <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="sidebar__link">
+                                <span class="link__text">Manteminiento portatiles</span>
+                            </a>
+                        </li>
+                        <li class="submenu__item">
+                            <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="sidebar__link">
+                                <span class="link__text">Cardex</span>
+                            </a>
+                        </li>
+                        <li class="submenu__item">
+                            <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="sidebar__link">
+                                <span class="link__text">Calibrar/Certificaciones</span>
+                            </a>
+                        </li>
+                    </ul>
+                    
+                </li>
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:dashboard_portatiles' %}" class="sidebar__link">
+                        <i class="bi bi-box-seam"></i>
+                        <span class="link__text">Inventario/stock Portatiles</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:dashboard_fijos' %}" class="sidebar__link">
+                        <i class="bi bi-box-seam"></i>
+                        <span class="link__text">Stock Fijos</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:registro_rapido_in_out' %}" class="sidebar__link">
+                        <i class="bi bi-calendar3"></i>
+                        <span class="link__text">Reporte Diario IN-OUT</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:gestionar_seguimiento_diario' %}" class="sidebar__link">
+                        <i class="fa-regular fa-eye"></i>
+                        <span class="link__text">Seguimiento Diario</span>
+                    </a>
+                </li>
+
+                
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:lista_modificaciones' %}" class="sidebar__link">
+                        <i class="bi bi-arrow-down-up"></i>
+                        <span class="link__text">Modificaciones de Equipos</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:lista_reportes' %}" class="sidebar__link">
+                        <i class="bi bi-calendar2-x"></i>
+                        <span class="link__text">Reportes de Perdida/Daño</span>
+                    </a>
+                </li>
+                <li class="sidebar__item has-submenu">
+    
+                    <a href="#" class="sidebar__link">
+                        <i class="bi bi-file-earmark-arrow-up"></i>
+                        <span class="link__text">Carga de Reportes</span>
+                        <i class="bi bi-chevron-down submenu-arrow"></i> 
+                    </a>
+                    
+                    <ul class="submenu">
+                        <li class="submenu__item">
+                            <!-- 
+                                Enlace al Gestor de Reportes IN-OUT.
+                                Llama a la URL 'cenerisapp:gestor_reportes' y le pasa 'IN_OUT' como el parámetro 'tipo_reporte'.
+                            -->
+                            <a href="{% url 'cenerisapp:gestor_reportes' tipo_reporte='ALARM' %}" class="sidebar__link">
+                                <span class="link__text">Reporte de alarmas</span>
+                            </a>
+                        </li>
+                        <li class="submenu__item">
+                            <!-- 
+                                Enlace al Gestor de Reportes GALAXY.
+                            -->
+                            <a href="{% url 'cenerisapp:gestor_reportes' tipo_reporte='GALAXY' %}" class="sidebar__link">
+                                <span class="link__text">Reporte Diario Galaxy</span>
+                            </a>
+                        </li>
+                        <li class="submenu__item">
+                            <!-- 
+                                Enlace al Gestor de Informes QUINCENALES.
+                            -->
+                            <a href="{% url 'cenerisapp:gestor_reportes' tipo_reporte='QUINCENAL' %}" class="sidebar__link">
+                                <span class="link__text">Informe Quincenal</span>
+                            </a>
+                        </li>
+                    </ul>
+                    
+                </li>
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:dashboard_garantias' %}" class="sidebar__link">
+                        <i class="bi bi-patch-check"></i>
+                        <span class="link__text">Garantias</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:vista_inoperativos' %}" class="sidebar__link">
+                        <i class="bi bi-ban"></i>
+                        <span class="link__text">Marcados como inoperativos</span>
+                    </a>
+                </li>
+                
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:lista_programas' %}" class="sidebar__link">
+                        <i class="bi bi-calendar3"></i>
+                        <span class="link__text">Programas de Calibración</span>
+                    </a>
+                </li>
+                
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:lista_lotes' %}" class="sidebar__link">
+                        <i class="bi bi-backpack4"></i>
+                        <span class="link__text">Inventario</span>
+                    </a>
+                </li>
+                
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:tecnicos_indice' %}" class="sidebar__link">
+                        <i class="bi bi-clipboard-data"></i>
+                        <span class="link__text">Datos Tecnicos</span>
+                    </a>
+                </li>
+                
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:lista_ventas' %}" class="sidebar__link">
+                        <i class="bi bi-cart"></i>
+                        <span class="link__text">Ventas</span>
+                    </a>
+                </li>
+                <li class="sidebar__item sidebar__item--logout">
+                        <form action="{% url 'logout' %}" method="post" class="logout-button sidebar__link">
+                            {% csrf_token %}    
+                            <button type="submit" class="logout-button">Cerrar Sesión</button>
+                        </form>
+                </li>
+                
+                
+            </ul>
+        {% elif group.name == 'Técnico' %}
+            <ul class="sidebar__menu">
+                <li class="sidebar__item">
+                    <a href="/" class="sidebar__link">
+                        <i class="bi bi-house"></i>
+                        <span class="link__text">Inicio</span>
+                    </a>
+                </li>
+                
+                <li class="sidebar__item has-submenu">
+    
+                    <!-- El enlace principal ahora es solo un "disparador". Su href es '#' -->
+                    <a href="#" class="sidebar__link">
+                        <i class="bi bi-device-ssd"></i>
+                        <span class="link__text">Gestión de Dispositivos</span>
+                        <!-- Añadimos una flecha para indicar que es desplegable -->
+                        <i class="bi bi-chevron-down submenu-arrow"></i> 
+                    </a>
+                    
+                    <!-- Aquí está la lista anidada con las subcategorías -->
+                    <ul class="submenu">
+                        <li class="submenu__item">
+                            <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="sidebar__link">
+                                <span class="link__text">Ver Dispositivos</span>
+                            </a>
+                        </li>
+                        <li class="submenu__item">
+                            <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="sidebar__link">
+                                <span class="link__text">Manteminiento portatiles</span>
+                            </a>
+                        </li>
+                        <li class="submenu__item">
+                            <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="sidebar__link">
+                                <span class="link__text">Cardex</span>
+                            </a>
+                        </li>
+                        <li class="submenu__item">
+                            <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="sidebar__link">
+                                <span class="link__text">Calibrar/Certificaciones</span>
+                            </a>
+                        </li>
+                    </ul>
+                    
+                </li>
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:lista_registros' %}" class="sidebar__link">
+                        <i class="fa-regular fa-address-card"></i>
+                        <span class="link__text">Reporte Diario IN-OUT</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:gestionar_seguimiento_diario' %}" class="sidebar__link">
+                        <i class="fa-regular fa-eye"></i>
+                        <span class="link__text">Seguimiento Diario</span>
+                    </a>
+                </li>
+
+                
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:lista_reportes' %}" class="sidebar__link">
+                        <i class="bi bi-calendar2-x"></i>
+                        <span class="link__text">Reportes de Perdida/Daño</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="{% url 'cenerisapp:muro_ocurrencias' %}" class="sidebar__link">
+                        <i class="bi bi-calendar2-x"></i>
+                        <span class="link__text">Cuadro de Ocurrencias</span>
+                    </a>
+                </li>
+                <li class="sidebar__item has-submenu">
+    
+                    <a href="#" class="sidebar__link">
+                        <i class="bi bi-file-earmark-arrow-up"></i>
+                        <span class="link__text">Carga de Reportes</span>
+                        <i class="bi bi-chevron-down submenu-arrow"></i> 
+                    </a>
+                    
+                    <ul class="submenu">
+                        <li class="submenu__item">
+                            <!-- 
+                                Enlace al Gestor de Reportes IN-OUT.
+                                Llama a la URL 'cenerisapp:gestor_reportes' y le pasa 'IN_OUT' como el parámetro 'tipo_reporte'.
+                            -->
+                            <a href="{% url 'cenerisapp:gestor_reportes' tipo_reporte='ALARM' %}" class="sidebar__link">
+                                <span class="link__text">Reporte de alarmas</span>
+                            </a>
+                        </li>
+                        <li class="submenu__item">
+                            <!-- 
+                                Enlace al Gestor de Reportes GALAXY.
+                            -->
+                            <a href="{% url 'cenerisapp:gestor_reportes' tipo_reporte='GALAXY' %}" class="sidebar__link">
+                                <span class="link__text">Reporte Diario Galaxy</span>
+                            </a>
+                        </li>
+                        <li class="submenu__item">
+                            <!-- 
+                                Enlace al Gestor de Informes QUINCENALES.
+                            -->
+                            <a href="{% url 'cenerisapp:gestor_reportes' tipo_reporte='QUINCENAL' %}" class="sidebar__link">
+                                <span class="link__text">Informe Quincenal</span>
+                            </a>
+                        </li>
+                    </ul>
+                    
+                </li>
+                  
+                
+                <li class="sidebar__item sidebar__item--logout">
+                        <form action="{% url 'logout' %}" method="post" class="logout-button sidebar__link">
+                            {% csrf_token %}
+                            <i class="bi bi-arrow-bar-left"></i>
+                            <button type="submit" class="logout-button">Cerrar Sesión</button>
+                        </form>
+                </li>
+            </ul>
+        {% endif %}
+    {% endfor %}
+</nav>
+
+
+
+<div class="overlay"></div>

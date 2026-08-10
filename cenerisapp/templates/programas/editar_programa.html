@@ -1,0 +1,64 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="form-container">
+        <form method="post" class="form-card">
+            <h2>{{ titulo }}</h2>
+            <p class="form-description">Actualiza el número de servicios ejecutados para este programa.</p>
+            {% csrf_token %}
+            
+            {{ form.non_field_errors }}
+
+            <!-- SECCIÓN DE INFORMACIÓN (no editable) -->
+            <div class="form-section">
+                <h3>Información del Programa</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Programa:</span>
+                        <span class="info-value">{{ programa.get_mes_display }} {{ programa.ano }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Tipo de Dispositivo:</span>
+                        <span class="info-value">{{ programa.get_tipo_dispositivo_display }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Total Programado:</span>
+                        <span class="info-value">{{ programa.totalPrograma }} servicios</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Progreso Actual:</span>
+                        <span class="info-value">{{ programa.porcentaje_progreso }}%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- SECCIÓN DE EDICIÓN (editable) -->
+            <div class="form-section">
+                <h3>Actualizar Progreso</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form.totalPrograma.label_tag }}
+                        {{ form.totalPrograma }}
+                        <div class="form-error">{{ form.totalPrograma.errors }}</div>
+                    </div>
+                    <div class="form-group">
+                        {{ form.totalEjecutado.label_tag }}
+                        {{ form.totalEjecutado }}
+                        <div class="form-error">{{ form.totalEjecutado.errors }}</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    {{ form.comentarios.label_tag }}
+                    {{ form.comentarios }}
+                    <div class="form-error">{{ form.comentarios.errors }}</div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                <a href="{% url 'cenerisapp:lista_programas' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

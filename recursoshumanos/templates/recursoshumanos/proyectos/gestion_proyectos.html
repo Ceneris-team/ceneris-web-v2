@@ -1,0 +1,10 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Gestión de Proyectos{% endblock %}
+{% block content %}
+    <h1>Gestión de Proyectos</h1>
+    <p>Administra los proyectos para la asignación de personal de asistencia.</p>
+    <div class="dashboard-grid">
+        <a href="{% url 'recursoshumanos:crear_proyecto' %}" class="card"><div class="card__icon">📂</div><h2 class="card__title">Registrar Proyecto</h2><p class="card__description">Añade un nuevo proyecto al sistema.</p><div class="card__footer">Registrar &rarr;</div></a>
+        <a href="{% url 'recursoshumanos:lista_proyectos' %}" class="card"><div class="card__icon">📋</div><h2 class="card__title">Ver Proyectos</h2><p class="card__description">Consulta, edita y gestiona los proyectos existentes.</p><div class="card__footer">Ver Listado &rarr;</div></a>
+    </div>
+{% endblock %}

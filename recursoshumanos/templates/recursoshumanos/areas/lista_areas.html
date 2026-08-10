@@ -1,0 +1,213 @@
+<!-- recursoshumanos/areas/lista_areas.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Listado de Áreas{% endblock %}
+
+{% block extra_head %}
+    <!-- Reutilizamos el CSS de tabla que te gustó -->
+    <link rel="stylesheet" href="{% static 'css/tabla_estados.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <style>
+        /* Ajustes específicos para Áreas */
+        .area-row {
+            transition: background-color 0.2s;
+        }
+        .area-row:hover {
+            background-color: #f8f9fa;
+        }
+        .codigo-badge {
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+        .search-container {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .search-input {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            font-size: 1rem;
+            background-image: none !important;
+        }
+        .search-input::before,
+        .search-input::after {
+            display: none !important;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1><i data-feather="layers" style="vertical-align: -3px; margin-right: 8px;"></i> Gestión de Áreas</h1>
+            <p style="margin: 0; color: #6c757d;">Administra los departamentos y códigos internos de la organización.</p>
+        </div>
+        <div class="header-actions">
+            <!-- BOTÓN VOLVER AGREGADO -->
+            <a href="{% url 'recursoshumanos:gestion_areas' %}" class="btn-secondary" style="margin-right: 10px;">
+                &larr; Volver al menu
+            </a>
+        </div>
+    </div>
+
+    <!-- Barra de Búsqueda -->
+    <div class="search-container">
+        <input type="text" id="searchInput" class="search-input" placeholder="Buscar por código, nombre o descripción...">
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align: center; width: 50px;">N°</th>
+                <th style="width: 10%;">Código</th>
+                <th style="width: 25%;">Nombre del Área</th>
+                <th style="width: 20%;">Jefatura</th> <th style="width: 25%;">Descripción</th>
+                <th style="width: 15%; text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="areasTableBody">
+            {% for area in areas %}
+                <tr class="area-row" data-search="{{ area.codigo|default:''|lower }} {{ area.nombre|lower }} {{ area.descripcion|default:''|lower }} {% for jefe in area.jefes_activos %}{{ jefe.nombres|lower }} {{ jefe.apellido_paterno|lower }} {% endfor %}">
+                    <td style="text-align: center; font-weight: bold;">{{ forloop.counter }}</td>
+                    
+                    <td>
+                        {% if area.codigo %}
+                            <span class="codigo-badge">{{ area.codigo }}</span>
+                        {% else %}
+                            <span class="text-muted" style="font-style: italic; font-size: 0.8rem;">S/C</span>
+                        {% endif %}
+                    </td>
+                    
+                    <td><strong>{{ area.nombre }}</strong></td>
+                    
+                    <td>
+                        {% if area.jefes_activos %}
+                            <ul style="list-style-type: none; padding: 0; margin: 0;">
+                                {% for jefe in area.jefes_activos %}
+                                    <li style="margin-bottom: 4px; font-size: 0.9rem;">
+                                        <i data-feather="user" style="width: 14px; height: 14px; color: #4F46E5; vertical-align: -2px;"></i>
+                                        {{ jefe.nombres }} {{ jefe.apellido_paterno }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <span class="text-muted" style="font-style: italic; font-size: 0.85rem;">Sin jefatura asignada</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted">{{ area.descripcion|default:"-"|truncatechars:60 }}</td>
+                    
+                    <td style="text-align: center;">
+                        <div class="table-actions-container">
+                            <a href="{% url 'recursoshumanos:editar_area' area.pk %}" class="btn-icon-action secondary" title="Editar Área">
+                                <i data-feather="edit-2"></i>
+                            </a>
+                            
+                            <a href="#" class="btn-icon-action danger" title="Eliminar Área" onclick="confirmDelete(event, 'form-delete-{{ area.pk }}', '{{ area.nombre }}')">
+                                <i data-feather="trash-2"></i>
+                            </a>
+                            
+                            <form id="form-delete-{{ area.pk }}" action="{% url 'recursoshumanos:eliminar_area' area.pk %}" method="post" style="display: none;">{% csrf_token %}</form>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" style="text-align: center; padding: 30px; color: #6c757d;">No hay áreas registradas aún.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- Mensaje No Resultados -->
+    <div id="noResults" style="display: none; text-align: center; padding: 40px; color: #adb5bd;">
+        <i data-feather="search" style="width: 40px; height: 40px; margin-bottom: 10px;"></i>
+        <p>No se encontraron resultados para tu búsqueda.</p>
+    </div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    // Inicializar Feather Icons
+    if (typeof feather !== 'undefined') feather.replace();
+
+    // --- 1. Lógica de Búsqueda en Tiempo Real ---
+    const searchInput = document.getElementById('searchInput');
+    const tableBody = document.getElementById('areasTableBody');
+    const noResults = document.getElementById('noResults');
+    const rows = document.querySelectorAll('.area-row');
+
+    searchInput.addEventListener('keyup', function(e) {
+        const term = e.target.value.toLowerCase();
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const searchData = row.getAttribute('data-search');
+            if (searchData.includes(term)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        if (visibleCount === 0 && rows.length > 0) {
+            tableBody.style.display = 'none'; // Ocultamos el cuerpo vacío para que no ocupe espacio raro
+            noResults.style.display = 'block';
+        } else {
+            tableBody.style.display = '';
+            noResults.style.display = 'none';
+        }
+    });
+
+    // --- 2. Confirmación de Eliminación con SweetAlert ---
+    function confirmDelete(event, formId, nombreArea) {
+        event.preventDefault(); 
+        
+        Swal.fire({
+            title: '¿Eliminar Área?',
+            html: `Vas a eliminar el área <b>${nombreArea}</b>.<br><small style="color:#d33">¡Cuidado! Si hay trabajadores asignados a esta área, quedarán sin asignación.</small>`,
+            icon: 'warning', 
+            showCancelButton: true, 
+            confirmButtonColor: '#d33', 
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById(formId).submit();
+            }
+        });
+    }
+
+    // --- 3. Mostrar mensajes Toasts (Igual que en proyectos) ---
+    {% if messages %}
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 4000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+
+        {% for message in messages %}
+            Toast.fire({
+                icon: '{{ message.tags }}' === 'error' ? 'error' : 'success', 
+                title: '{{ message }}'
+            });
+        {% endfor %}
+    {% endif %}
+</script>
+{% endblock %}

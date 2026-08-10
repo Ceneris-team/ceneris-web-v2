@@ -1,0 +1,48 @@
+<!-- dashboard/templates/dashboard/dashboards/gestion_empleados.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load custom_filters_rrhh %}
+
+{% block title %}Gestión de Empleados (Asistencia){% endblock %}
+
+{% block content %}
+    <h1>Gestión de Empleados</h1>
+    <p>Administra los trabajadores registrados en el sistema de control de asistencia.</p>
+    
+    <div class="dashboard-grid">
+        
+        <!-- 
+           CAMBIO CLAVE AQUÍ:
+           Agregamos ?next={% url 'calidad:lista_trabajadores' %} al final del href.
+           Esto le dice a la vista: "Cuando termines de guardar, mándame a la lista de Calidad".
+        -->
+        <a href="{% url 'recursoshumanos:crear_trabajador' %}?next={% url 'calidad:lista_trabajadores' %}" class="card">
+            <div class="card__icon">👤</div>
+            <h2 class="card__title">Registrar Empleado</h2>
+            <p class="card__description">Añade un nuevo trabajador al sistema y configura sus permisos de marcación.</p>
+            <div class="card__footer">Registrar Nuevo &rarr;</div>
+        </a>
+        
+        <a href="{% url 'calidad:lista_trabajadores' %}" class="card">
+            <div class="card__icon">📋</div>
+            <h2 class="card__title">Ver Empleados</h2>
+            <p class="card__description">Consulta, edita y gestiona la lista de todos los trabajadores de asistencia.</p>
+            <div class="card__footer">Ver Listado &rarr;</div>
+        </a>
+
+        <a href="{% url 'calidad:gestionar_jefaturas' %}" class="card">
+            <div class="card__icon">🧭</div>
+            <h2 class="card__title">Gestionar Jefaturas</h2>
+            <p class="card__description">Asigna o retira la jefatura de trabajadores segun su area.</p>
+            <div class="card__footer">Abrir Gestion &rarr;</div>
+        </a>
+
+        <a href="{% url 'calidad:gestionar_sedes_trabajadores' %}" class="card">
+            <div class="card__icon">📍</div>
+            <h2 class="card__title">Gestionar Sedes</h2>
+            <p class="card__description">Crea sedes y asigna la sede de cada trabajador desde un listado unificado.</p>
+            <div class="card__footer">Abrir Gestion &rarr;</div>
+        </a>
+        
+    </div>
+    
+{% endblock %}

@@ -1,0 +1,1748 @@
+{% extends 'metricas_ceneris/base.html' %}
+{% load metricas_custom_filters %}
+
+{% block content %}
+<style>
+    /* Efecto Glass Brillante */
+    .premium-glass {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.1); /* Sombra índigo suave */
+        border-radius: 2rem;
+    }
+
+    /* Gradientes de Texto de Lujo */
+    .text-gradient-gold {
+        background: linear-gradient(135deg, #d97706 0%, #fbbf24 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .text-gradient-indigo {
+        background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    /* Podio de Cristal */
+    .podium-bar {
+        transition: height 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        height: 0;
+        position: relative;
+        border-top: 1px solid rgba(255,255,255,0.8);
+    }
+    /* Sombra de contacto */
+    .podium-shadow {
+        position: absolute; bottom: 0; left: 10%; width: 80%; height: 20px;
+        background: radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, transparent 70%);
+        filter: blur(5px); z-index: -1;
+    }
+
+    /* Tabla Flotante Limpia */
+    .floating-table-row {
+        transition: background 0.2s, box-shadow 0.2s;
+        border-radius: 0.5rem;
+    }
+    .floating-table-row:hover {
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 4px 12px -2px rgba(0,0,0,0.08);
+    }
+
+    .carousel-slide {
+        animation: fadeSlideIn 0.35s ease;
+    }
+
+    @keyframes fadeSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .kpi-icon-float {
+        animation: iconFloat 3.2s ease-in-out infinite;
+    }
+
+    @keyframes iconFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+    }
+
+    /* Animaciones de confeti cayendo */
+    @keyframes confettiFall1 {
+        0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
+        10% { opacity: 1; }
+        100% { transform: translateY(280px) rotate(360deg); opacity: 0; }
+    }
+
+    @keyframes confettiFall2 {
+        0% { transform: translateY(-20px) translateX(0) rotate(0deg); opacity: 0; }
+        10% { opacity: 1; }
+        100% { transform: translateY(280px) translateX(30px) rotate(-180deg); opacity: 0; }
+    }
+
+    @keyframes confettiFall3 {
+        0% { transform: translateY(-20px) translateX(0) rotate(0deg); opacity: 0; }
+        10% { opacity: 1; }
+        100% { transform: translateY(280px) translateX(-30px) rotate(180deg); opacity: 0; }
+    }
+
+    @keyframes confettiFall4 {
+        0% { transform: translateY(-20px) scale(0.8) rotate(0deg); opacity: 0; }
+        10% { opacity: 1; }
+        100% { transform: translateY(280px) scale(1.2) rotate(-360deg); opacity: 0; }
+    }
+
+    .confetti-1 { animation: confettiFall1 4s ease-in infinite; }
+    .confetti-2 { animation: confettiFall2 5s ease-in infinite; }
+    .confetti-3 { animation: confettiFall3 4.5s ease-in infinite; }
+    .confetti-4 { animation: confettiFall4 5.5s ease-in infinite; }
+
+    /* Gradient Radial para fondo del podio */
+    .bg-gradient-radial {
+        background: radial-gradient(circle at center, var(--tw-gradient-stops));
+    }
+
+    /* Animación de flotación suave */
+    @keyframes float {
+        0%, 100% { 
+            transform: translateY(0px) rotate(0deg); 
+        }
+        50% { 
+            transform: translateY(-10px) rotate(2deg); 
+        }
+    }
+
+    .animate-float {
+        animation: float 6s ease-in-out infinite;
+    }
+
+    /* Animación de entrada fade */
+    @keyframes fadeIn {
+        from { 
+            opacity: 0; 
+            transform: translateY(-5px); 
+        }
+        to { 
+            opacity: 1; 
+            transform: translateY(0); 
+        }
+    }
+
+    .animate-fadeIn {
+        animation: fadeIn 0.6s ease-out;
+    }
+
+</style>
+
+<!-- Botón Flotante de Exportación -->
+<a href="{% url 'metricas_ceneris:exportacion_metricas' %}" 
+   class="fixed top-24 right-6 z-50 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-5 py-3 rounded-xl shadow-2xl hover:shadow-purple-500/50 flex items-center gap-3 font-semibold transition-all duration-300 hover:-translate-y-1 hover:scale-105 group border border-white/20">
+    <svg class="w-6 h-6 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    <span class="hidden lg:inline">Exportar Métricas</span>
+    <span class="lg:hidden">Exportar</span>
+</a>
+
+<div class="max-w-7xl mx-auto py-8">
+
+    <div class="flex flex-col md:flex-row justify-between items-end mb-12 gap-6 relative z-10">
+        <div>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/60 border border-white/80 text-slate-500 text-xs font-bold uppercase tracking-widest shadow-sm mb-3">
+                <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                {% if periodo_tabla_defecto == 'mes' %}
+                Reporte Mensual {{ anio }} - {{ mes_tabla_defecto }}
+                {% else %}
+                Reporte Semestral {{ anio }} - S{{ semestre_tabla_defecto }}
+                {% endif %}
+            </div>
+            <h1 class="text-5xl md:text-6xl font-display font-black text-slate-800 tracking-tighter leading-none">
+                Portal <span class="text-gradient-indigo">Gerencial</span>
+            </h1>
+            <p class="text-slate-500 mt-2 text-lg">Visión estratégica del talento Ceneris.</p>
+        </div>
+        
+        <div class="flex items-center gap-4 bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-white shadow-lg transform hover:-translate-y-1 transition-transform">
+            <div class="text-right">
+                <span class="block text-xs text-slate-400 uppercase font-bold tracking-widest">Gerente General</span>
+                <span class="text-lg font-bold text-slate-800">{{ usuario.nombres }} {{ usuario.apellidos }}</span>
+            </div>
+            <div class="w-14 h-14 rounded-xl bg-gradient-to-tr from-slate-800 to-slate-900 flex items-center justify-center text-white shadow-xl ring-4 ring-white">
+                <i class="ph ph-briefcase text-2xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12 relative z-10">
+        {% if mejor_area or mejor_area_mes %}
+        <div class="lg:col-span-4 lg:row-start-3 premium-glass p-6 relative overflow-hidden bg-gradient-to-br from-indigo-50/80 via-purple-50/60 to-pink-50/80 group self-start">
+            <!-- Partículas decorativas animadas -->
+            <div class="absolute top-[10%] right-[15%] w-2 h-2 bg-indigo-400/30 rounded-full animate-ping"></div>
+            <div class="absolute top-[30%] left-[10%] w-1.5 h-1.5 bg-purple-400/40 rounded-full animate-pulse"></div>
+            <div class="absolute bottom-[25%] right-[25%] w-2 h-2 bg-pink-400/30 rounded-full animate-ping" style="animation-delay: 0.5s;"></div>
+            <div class="absolute bottom-[40%] left-[20%] w-1 h-1 bg-indigo-300/40 rounded-full animate-pulse" style="animation-delay: 1s;"></div>
+            
+            <!-- Resplandor animado -->
+            <div class="absolute -top-20 -right-20 w-40 h-40 bg-gradient-radial from-indigo-300/20 via-purple-300/10 to-transparent rounded-full blur-3xl animate-pulse"></div>
+
+            <div class="relative z-10 flex flex-col">
+                <div class="mb-5">
+                    <h4 class="text-slate-800 font-black text-xl flex items-center gap-2.5 animate-fadeIn">
+                        <div class="relative">
+                            <i class="ph-fill ph-crown-simple text-2xl text-transparent bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 bg-clip-text drop-shadow-sm animate-pulse"></i>
+                            <div class="absolute inset-0 blur-sm">
+                                <i class="ph-fill ph-crown-simple text-2xl text-amber-400/30"></i>
+                            </div>
+                        </div>
+                        Área Líder
+                    </h4>
+                </div>
+
+                <div class="space-y-4">
+                    <div id="cardAreaLider" class="group/card relative rounded-2xl border-2 border-indigo-200/50 bg-gradient-to-br from-indigo-100/90 via-indigo-50/80 to-purple-50/70 p-5 flex flex-col justify-between min-h-[130px] shadow-lg shadow-indigo-200/30 hover:shadow-xl hover:shadow-indigo-300/40 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] cursor-pointer overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover/card:translate-x-full transition-transform duration-1000 z-10"></div>
+                        <i id="iconPeriodoArea" class="ph-fill ph-calendar-blank absolute -right-6 -bottom-6 text-8xl text-indigo-500 opacity-5 group-hover/card:opacity-10 group-hover/card:scale-110 transition-all duration-500 z-0"></i>
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-400/50 to-transparent z-10"></div>
+
+                        <div class="relative z-20">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="relative">
+                                        <div id="glowPeriodoArea" class="absolute inset-0 bg-indigo-500/20 rounded-lg blur-md"></div>
+                                        <span id="labelPeriodoArea" class="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-700 text-[10px] uppercase font-black tracking-wider text-white shadow-md">
+                                            <i id="iconBadgePeriodoArea" class="ph-fill ph-calendar-check text-sm animate-pulse"></i>
+                                            {% if periodo_tabla_defecto == 'mes' %}Mes{% else %}Semestre{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="relative">
+                                    <div id="haloScoreArea" class="absolute inset-0 bg-indigo-500/30 blur-xl rounded-full animate-pulse"></div>
+                                    <span id="scoreAreaLider" class="relative text-3xl font-black text-transparent bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-600 bg-clip-text drop-shadow-sm">
+                                        {{ mejor_area_mes.promedio|default:"0" }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <i id="iconBuildingArea" class="ph-fill ph-buildings text-indigo-600/60 text-lg mt-0.5 flex-shrink-0"></i>
+                                <p id="nombreAreaLider" class="text-sm font-bold text-slate-800 leading-tight drop-shadow-sm">{{ mejor_area_mes.nombre|default:"Sin datos" }}</p>
+                            </div>
+                            <p id="cartelPeriodoArea" class="mt-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                                {% if periodo_tabla_defecto == 'mes' %}
+                                Filtrando: Mes actual
+                                {% else %}
+                                Filtrando: Semestre actual
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="lg:col-span-12 lg:row-start-1 premium-glass p-8 flex flex-col items-center relative overflow-hidden w-full max-w-5xl mx-auto">
+            
+            <div class="w-full flex flex-col gap-3 mb-4 px-2">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-slate-700 text-lg flex items-center gap-2">
+                        <i class="ph ph-medal text-amber-500 text-xl"></i> Podio de Honor
+                    </h3>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <!-- Filtro 1: Sedes (Dropdown) -->
+                    <div class="relative flex-1">
+                        <select id="filtroSedePodio" class="w-full px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-br from-emerald-100 to-emerald-50 border-2 border-emerald-200 text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer shadow-sm hover:shadow-md">
+                            <option value="todas">
+                                🏢 Todas las Sedes
+                            </option>
+                            {% for sede in sedes %}
+                            <option value="{{ sede.id }}">
+                                📍 {{ sede.nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Filtro 2: Categoría -->
+                    <div class="flex bg-slate-100 rounded-lg p-1 flex-1">
+                        <button onclick="cambiarCategoriaPodio('trabajadores')" id="btnCategTrabajadores" class="px-3 py-1.5 rounded text-xs font-bold transition-all bg-white shadow text-amber-600 flex-1">
+                            <i class="ph ph-user-circle"></i> Trabajadores
+                        </button>
+                        <button onclick="cambiarCategoriaPodio('lideres')" id="btnCategSupervisores" class="px-3 py-1.5 rounded text-xs font-bold transition-all text-slate-500 hover:text-slate-700 flex-1">
+                            <i class="ph ph-briefcase"></i> Lideres
+                        </button>
+                    </div>
+                    
+                    <div class="flex gap-2 flex-1 min-w-[220px]">
+                        <select id="filtroPeriodoPodio" class="w-full px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-br from-indigo-100 to-indigo-50 border-2 border-indigo-200 text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="semestre" {% if periodo_tabla_defecto == 'semestre' %}selected{% endif %}>Semestre</option>
+                            <option value="mes" {% if periodo_tabla_defecto == 'mes' %}selected{% endif %}>Mes</option>
+                        </select>
+                        <div id="contenedorAnioPodio" class="w-full {% if periodo_tabla_defecto != 'mes' %}hidden{% endif %}">
+                            <select id="filtroAnioPodio" class="w-full px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-br from-slate-100 to-slate-50 border-2 border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                {% for anio_item in anios_disponibles %}
+                                <option value="{{ anio_item }}" {% if anio_item == anio_tabla_defecto %}selected{% endif %}>{{ anio_item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="contenedorMesPodio" class="w-full {% if periodo_tabla_defecto != 'mes' %}hidden{% endif %}">
+                            <select id="filtroMesPodio" class="w-full px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-br from-slate-100 to-slate-50 border-2 border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                {% for mes_num, mes_nombre in meses_disponibles %}
+                                <option value="{{ mes_num }}" {% if mes_num == mes_tabla_defecto %}selected{% endif %}>{{ mes_nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="contenedorSemestrePodio" class="w-full {% if periodo_tabla_defecto == 'mes' %}hidden{% endif %}">
+                            <select id="filtroSemestrePodio" class="w-full px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-br from-slate-100 to-slate-50 border-2 border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="1" {% if semestre_tabla_defecto == 1 %}selected{% endif %}>Semestre 1</option>
+                                <option value="2" {% if semestre_tabla_defecto == 2 %}selected{% endif %}>Semestre 2</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Contenedor con posicionamiento relativo para base anclada -->
+            <div class="relative w-full h-[340px] flex items-end justify-center">
+                
+                <!-- Capa de fondo y confeti con overflow-hidden para contener animaciones -->
+                <div class="absolute inset-0 overflow-hidden pointer-events-none z-0 rounded-2xl">
+                    
+                    <!-- Fondo con gradient radial -->
+                    <div class="absolute inset-0 bg-gradient-radial from-amber-50/30 via-transparent to-transparent pointer-events-none"></div>
+                
+                <!-- Resplandores de fondo para cada posición -->
+                <div class="absolute left-[25%] top-[20%] w-32 h-32 bg-slate-300/20 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute left-[50%] -translate-x-1/2 top-[10%] w-40 h-40 bg-amber-300/30 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute right-[25%] top-[20%] w-32 h-32 bg-orange-300/20 rounded-full blur-3xl pointer-events-none"></div>
+                
+                <!-- Confeti decorativo con animación de caída -->
+                <!-- Posición 2 (izquierda) - Plateado - LLUVIA DENSA -->
+                <div class="absolute left-[12%] top-[-20px] w-2 h-2 bg-slate-400/40 rounded-full pointer-events-none confetti-1"></div>
+                <div class="absolute left-[13%] top-[-20px] w-1 h-2 bg-slate-300/35 rounded pointer-events-none confetti-3" style="animation-delay: 0.2s;"></div>
+                <div class="absolute left-[14%] top-[-20px] w-1.5 h-1.5 bg-slate-500/30 pointer-events-none confetti-2" style="animation-delay: 0.4s;"></div>
+                <div class="absolute left-[15%] top-[-20px] w-1.5 h-1.5 bg-slate-300/35 pointer-events-none confetti-4" style="animation-delay: 0.5s;"></div>
+                <div class="absolute left-[16%] top-[-20px] w-2 h-2 bg-slate-400/40 rounded-full pointer-events-none confetti-1" style="animation-delay: 0.7s;"></div>
+                <div class="absolute left-[17%] top-[-20px] w-1 h-3 bg-slate-500/35 rounded pointer-events-none confetti-3" style="animation-delay: 0.9s;"></div>
+                <div class="absolute left-[18%] top-[-20px] w-1 h-3 bg-slate-400/30 rounded pointer-events-none confetti-2" style="animation-delay: 1s;"></div>
+                <div class="absolute left-[19%] top-[-20px] w-1.5 h-1.5 bg-slate-300/40 pointer-events-none confetti-4" style="animation-delay: 1.2s;"></div>
+                <div class="absolute left-[20%] top-[-20px] w-2 h-2 bg-slate-400/35 rounded-full pointer-events-none confetti-1" style="animation-delay: 1.4s;"></div>
+                <div class="absolute left-[21%] top-[-20px] w-1 h-2 bg-slate-500/30 rounded pointer-events-none confetti-3" style="animation-delay: 1.6s;"></div>
+                <div class="absolute left-[22%] top-[-20px] w-1.5 h-1.5 bg-slate-500/40 rounded-full pointer-events-none confetti-2" style="animation-delay: 1.8s;"></div>
+                <div class="absolute left-[23%] top-[-20px] w-2 h-2 bg-slate-300/40 pointer-events-none confetti-4" style="animation-delay: 2s;"></div>
+                <div class="absolute left-[24%] top-[-20px] w-1.5 h-1.5 bg-slate-400/35 rounded-full pointer-events-none confetti-1" style="animation-delay: 2.2s;"></div>
+                <div class="absolute left-[25%] top-[-20px] w-2 h-2 bg-slate-300/35 pointer-events-none confetti-3" style="animation-delay: 2.3s;"></div>
+                <div class="absolute left-[26%] top-[-20px] w-1 h-3 bg-slate-500/30 rounded pointer-events-none confetti-2" style="animation-delay: 2.5s;"></div>
+                <div class="absolute left-[27%] top-[-20px] w-1.5 h-1.5 bg-slate-400/40 pointer-events-none confetti-4" style="animation-delay: 2.7s;"></div>
+                <div class="absolute left-[28%] top-[-20px] w-1 h-2 bg-slate-400/30 rounded pointer-events-none confetti-1" style="animation-delay: 3s;"></div>
+                <div class="absolute left-[29%] top-[-20px] w-2 h-2 bg-slate-300/35 rounded-full pointer-events-none confetti-3" style="animation-delay: 3.2s;"></div>
+                <div class="absolute left-[30%] top-[-20px] w-1.5 h-1.5 bg-slate-500/40 pointer-events-none confetti-2" style="animation-delay: 3.4s;"></div>
+                <div class="absolute left-[31%] top-[-20px] w-1.5 h-1.5 bg-slate-500/35 pointer-events-none confetti-4" style="animation-delay: 0.3s;"></div>
+                
+                <!-- Posición 1 (centro) - Dorado - ¡LLUVIA ÉPICA PARA EL GANADOR! -->
+                <div class="absolute left-[38%] top-[-20px] w-2.5 h-2.5 bg-amber-400/50 rounded-full pointer-events-none confetti-1"></div>
+                <div class="absolute left-[39%] top-[-20px] w-2 h-2 bg-yellow-300/40 pointer-events-none confetti-2" style="animation-delay: 0.1s;"></div>
+                <div class="absolute left-[40%] top-[-20px] w-2.5 h-2.5 bg-amber-400/50 rounded-full pointer-events-none confetti-3" style="animation-delay: 0.3s;"></div>
+                <div class="absolute left-[41%] top-[-20px] w-1.5 h-1.5 bg-yellow-500/40 pointer-events-none confetti-4" style="animation-delay: 0.4s;"></div>
+                <div class="absolute left-[42%] top-[-20px] w-2 h-2 bg-amber-300/45 rounded-full pointer-events-none confetti-1" style="animation-delay: 0.6s;"></div>
+                <div class="absolute left-[43%] top-[-20px] w-2 h-2 bg-yellow-400/45 pointer-events-none confetti-2" style="animation-delay: 1.2s;"></div>
+                <div class="absolute left-[44%] top-[-20px] w-1 h-3 bg-amber-500/35 rounded pointer-events-none confetti-3" style="animation-delay: 0.7s;"></div>
+                <div class="absolute left-[45%] top-[-20px] w-1.5 h-1.5 bg-amber-500/40 rounded-full pointer-events-none confetti-4" style="animation-delay: 0.8s;"></div>
+                <div class="absolute left-[46%] top-[-20px] w-2.5 h-2.5 bg-yellow-400/45 rounded-full pointer-events-none confetti-1" style="animation-delay: 1s;"></div>
+                <div class="absolute left-[47%] top-[-20px] w-2 h-2 bg-amber-400/45 rounded-full pointer-events-none confetti-2" style="animation-delay: 1.9s;"></div>
+                <div class="absolute left-[48%] top-[-20px] w-2 h-2 bg-yellow-300/40 rounded-full pointer-events-none confetti-3" style="animation-delay: 2s;"></div>
+                <div class="absolute left-[49%] top-[-20px] w-1.5 h-1.5 bg-amber-400/40 pointer-events-none confetti-4" style="animation-delay: 1.3s;"></div>
+                <div class="absolute left-[50%] top-[-20px] w-2.5 h-2.5 bg-amber-400/50 pointer-events-none confetti-1" style="animation-delay: 3.2s;"></div>
+                <div class="absolute left-[51%] top-[-20px] w-2 h-2 bg-yellow-500/40 rounded-full pointer-events-none confetti-2" style="animation-delay: 1.4s;"></div>
+                <div class="absolute left-[52%] top-[-20px] w-1 h-3 bg-yellow-500/35 rounded pointer-events-none confetti-3" style="animation-delay: 1.5s;"></div>
+                <div class="absolute left-[53%] top-[-20px] w-1.5 h-1.5 bg-yellow-500/40 pointer-events-none confetti-4" style="animation-delay: 0.9s;"></div>
+                <div class="absolute left-[54%] top-[-20px] w-1.5 h-1.5 bg-amber-300/45 pointer-events-none confetti-1" style="animation-delay: 0.2s;"></div>
+                <div class="absolute left-[55%] top-[-20px] w-2 h-2 bg-yellow-400/40 rounded-full pointer-events-none confetti-2" style="animation-delay: 1.7s;"></div>
+                <div class="absolute left-[56%] top-[-20px] w-2 h-2 bg-yellow-400/40 rounded-full pointer-events-none confetti-3" style="animation-delay: 2.7s;"></div>
+                <div class="absolute left-[57%] top-[-20px] w-1 h-2 bg-amber-500/35 rounded pointer-events-none confetti-4" style="animation-delay: 2.2s;"></div>
+                <div class="absolute left-[58%] top-[-20px] w-1.5 h-1.5 bg-amber-500/40 pointer-events-none confetti-1" style="animation-delay: 0.6s;"></div>
+                <div class="absolute left-[59%] top-[-20px] w-2.5 h-2.5 bg-yellow-300/45 rounded-full pointer-events-none confetti-2" style="animation-delay: 2.9s;"></div>
+                <div class="absolute left-[60%] top-[-20px] w-1 h-2 bg-yellow-300/35 rounded pointer-events-none confetti-3" style="animation-delay: 3.5s;"></div>
+                <div class="absolute left-[61%] top-[-20px] w-1.5 h-1.5 bg-amber-400/40 pointer-events-none confetti-4" style="animation-delay: 2.5s;"></div>
+                <div class="absolute left-[62%] top-[-20px] w-2 h-2 bg-yellow-500/40 rounded-full pointer-events-none confetti-1" style="animation-delay: 3.7s;"></div>
+                <div class="absolute left-[44.5%] top-[-20px] w-1.5 h-1.5 bg-amber-300/40 pointer-events-none confetti-2" style="animation-delay: 1.1s;"></div>
+                <div class="absolute left-[49.5%] top-[-20px] w-2 h-2 bg-yellow-400/45 rounded-full pointer-events-none confetti-3" style="animation-delay: 2.4s;"></div>
+                <div class="absolute left-[54.5%] top-[-20px] w-1 h-3 bg-amber-500/35 rounded pointer-events-none confetti-4" style="animation-delay: 1.8s;"></div>
+                <div class="absolute left-[59.5%] top-[-20px] w-1.5 h-1.5 bg-yellow-300/40 pointer-events-none confetti-1" style="animation-delay: 3.1s;"></div>
+                
+                <!-- Posición 3 (derecha) - Naranja/Bronce - LLUVIA DENSA -->
+                <div class="absolute right-[8%] top-[-20px] w-2 h-2 bg-orange-300/40 rounded-full pointer-events-none confetti-1" style="animation-delay: 0.1s;"></div>
+                <div class="absolute right-[9%] top-[-20px] w-1.5 h-1.5 bg-orange-400/35 pointer-events-none confetti-3" style="animation-delay: 0.3s;"></div>
+                <div class="absolute right-[10%] top-[-20px] w-2 h-2 bg-orange-400/40 rounded-full pointer-events-none confetti-2" style="animation-delay: 0.7s;"></div>
+                <div class="absolute right-[11%] top-[-20px] w-1 h-2 bg-orange-500/30 rounded pointer-events-none confetti-4" style="animation-delay: 0.8s;"></div>
+                <div class="absolute right-[12%] top-[-20px] w-1.5 h-1.5 bg-orange-300/40 pointer-events-none confetti-1" style="animation-delay: 1.1s;"></div>
+                <div class="absolute right-[13%] top-[-20px] w-1.5 h-1.5 bg-orange-300/35 pointer-events-none confetti-3" style="animation-delay: 1.3s;"></div>
+                <div class="absolute right-[14%] top-[-20px] w-2 h-2 bg-orange-500/35 rounded-full pointer-events-none confetti-2" style="animation-delay: 1.5s;"></div>
+                <div class="absolute right-[15%] top-[-20px] w-1 h-3 bg-orange-400/30 rounded pointer-events-none confetti-4" style="animation-delay: 1.7s;"></div>
+                <div class="absolute right-[16%] top-[-20px] w-1 h-3 bg-orange-500/30 rounded pointer-events-none confetti-1" style="animation-delay: 0.9s;"></div>
+                <div class="absolute right-[17%] top-[-20px] w-1.5 h-1.5 bg-orange-400/40 pointer-events-none confetti-3" style="animation-delay: 1.9s;"></div>
+                <div class="absolute right-[18%] top-[-20px] w-2 h-2 bg-orange-300/35 rounded-full pointer-events-none confetti-2" style="animation-delay: 2.1s;"></div>
+                <div class="absolute right-[19%] top-[-20px] w-1 h-2 bg-orange-500/35 rounded pointer-events-none confetti-4" style="animation-delay: 0.5s;"></div>
+                <div class="absolute right-[20%] top-[-20px] w-2 h-2 bg-orange-400/40 rounded-full pointer-events-none confetti-1" style="animation-delay: 2.1s;"></div>
+                <div class="absolute right-[21%] top-[-20px] w-1.5 h-1.5 bg-orange-300/40 pointer-events-none confetti-3" style="animation-delay: 2.4s;"></div>
+                <div class="absolute right-[22%] top-[-20px] w-1 h-3 bg-orange-500/30 rounded pointer-events-none confetti-2" style="animation-delay: 2.6s;"></div>
+                <div class="absolute right-[23%] top-[-20px] w-1.5 h-1.5 bg-orange-300/35 pointer-events-none confetti-4" style="animation-delay: 2.8s;"></div>
+                <div class="absolute right-[24%] top-[-20px] w-2 h-2 bg-orange-400/40 rounded-full pointer-events-none confetti-1" style="animation-delay: 3s;"></div>
+                <div class="absolute right-[25%] top-[-20px] w-1 h-2 bg-orange-300/35 rounded pointer-events-none confetti-3" style="animation-delay: 3.2s;"></div>
+                <div class="absolute right-[26%] top-[-20px] w-1.5 h-1.5 bg-orange-500/40 pointer-events-none confetti-2" style="animation-delay: 0.2s;"></div>
+                <div class="absolute right-[27%] top-[-20px] w-1 h-2 bg-orange-500/30 rounded pointer-events-none confetti-4" style="animation-delay: 0.4s;"></div>
+                <div class="absolute right-[28%] top-[-20px] w-2 h-2 bg-orange-400/35 rounded-full pointer-events-none confetti-1" style="animation-delay: 3.6s;"></div>
+                <div class="absolute right-[29%] top-[-20px] w-1.5 h-1.5 bg-orange-300/40 pointer-events-none confetti-3" style="animation-delay: 1.2s;"></div>
+                <div class="absolute right-[30%] top-[-20px] w-1.5 h-1.5 bg-orange-400/35 pointer-events-none confetti-2" style="animation-delay: 3.3s;"></div>
+                </div>
+                <!-- Fin capa de confeti -->
+
+            <!-- Podio Trabajadores Mensual -->
+            <div id="contenedorPodioDinamico" class="flex items-end justify-center gap-6 w-full max-w-3xl h-80 px-4 pb-4 mt-0 mb-0 transition-opacity duration-300 relative z-10">
+                {% if podio_trabajadores_mes.1 %}
+                <div class="flex flex-col items-center flex-1 max-w-[140px] relative z-10">
+                    <!-- 🔧 POSICIÓN 2: Cambia 'mb-2' (mb-0, mb-1) o agrega 'mt-[-20px]' para subirlo -->
+                    <div class="mb-[100px] text-center transition-transform duration-300 group relative">
+                        <div class="group-hover:-translate-y-2 transition-transform duration-300">
+                            <div class="w-14 h-14 mx-auto rounded-full bg-white shadow-lg border-2 border-slate-300 flex items-center justify-center text-slate-600 font-bold text-base mb-1.5 cursor-pointer">
+                                {{ podio_trabajadores_mes.1.trabajador.nombres|slice:":2" }}
+                            </div>
+                            <span class="block text-xs font-bold text-slate-700 truncate max-w-full px-1 leading-tight cursor-pointer">{{ podio_trabajadores_mes.1.trabajador.nombres|slice:":8" }}</span>
+                            <span class="block text-lg font-black text-slate-500 mt-0.5">{{ podio_trabajadores_mes.1.score }}</span>
+                        </div>
+                        <!-- Tooltip mejorado -->
+                        <div class="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-200 w-48 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white text-xs rounded-xl p-0.5 shadow-2xl shadow-indigo-500/30 z-[9999]">
+                            <div class="bg-white/95 backdrop-blur-xl rounded-xl p-2 relative overflow-hidden">
+                                <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-50/50 via-purple-50/30 to-pink-50/50 pointer-events-none"></div>
+                                
+                                <div class="relative z-10">
+                                    <div class="font-bold mb-1 text-slate-800 text-xs break-words">{{ podio_trabajadores_mes.1.trabajador.nombres }} {{ podio_trabajadores_mes.1.trabajador.apellidos }}</div>
+                                    <div class="flex items-center gap-1 text-[9px] mb-2 text-indigo-600 font-semibold">
+                                        <i class="ph-fill ph-buildings text-xs"></i> 
+                                        <span class="break-words">{{ podio_trabajadores_mes.1.area_nombre }}</span>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-1.5 text-[9px]">
+                                        <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-lg p-1.5 shadow-sm">
+                                            <div class="text-indigo-600 font-semibold mb-0.5 flex items-center gap-0.5">
+                                                <i class="ph-fill ph-chart-line text-[10px]"></i> Desempeño
+                                            </div>
+                                            <div class="font-black text-xl text-transparent bg-gradient-to-br from-indigo-600 to-purple-600 bg-clip-text">{{ podio_trabajadores_mes.1.eval_avg }}</div>
+                                        </div>
+                                        <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-lg p-1.5 shadow-sm">
+                                            <div class="text-emerald-600 font-semibold mb-0.5 flex items-center gap-0.5">
+                                                <i class="ph-fill ph-check-circle text-[10px]"></i> Asistencia
+                                            </div>
+                                            <div class="font-black text-xl text-transparent bg-gradient-to-br from-emerald-600 to-teal-600 bg-clip-text">{{ podio_trabajadores_mes.1.asistencia_avg }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-2 h-2 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rotate-45"></div>
+                        </div>
+                    </div>
+                    <div class="podium-bar w-full bg-gradient-to-b from-slate-200 to-slate-300 rounded-t-2xl shadow-lg border-x-2 border-t-2 border-white relative" style="height: 55%">
+                        <!-- 🔧 NÚMERO 2: Cambia 'top-6' (top-4=sube | top-8=baja | top-[15px]=px exactos) -->
+                        <div class="absolute top-[-40px] w-full text-center font-black text-5xl text-slate-500/55">2</div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if podio_trabajadores_mes.0 %}
+                <div class="flex flex-col items-center flex-1 max-w-[160px] relative z-10">
+                    <!-- 🔧 CÍRCULO/NOMBRE/PUNTAJE: Cambia 'mb-2' para ajustar espacio (mb-0, mb-1) o agrega 'mt-[-20px]' para subirlo -->
+                    <div class="mb-[100px] text-center transition-transform duration-300 group relative">
+                        <div class="group-hover:-translate-y-2 transition-transform duration-300 cursor-pointer">
+                            <div class="w-20 h-20 mx-auto rounded-full bg-white shadow-2xl border-4 border-amber-400 flex items-center justify-center text-amber-600 font-bold text-xl mb-1.5 relative">
+                                <i class="ph-fill ph-crown-simple absolute -top-6 text-amber-400 text-3xl drop-shadow-lg animate-bounce"></i>
+                                {{ podio_trabajadores_mes.0.trabajador.nombres|slice:":2" }}
+                            </div>
+                            <span class="block text-xs font-bold text-amber-700 truncate max-w-full px-1 leading-tight">{{ podio_trabajadores_mes.0.trabajador.nombres|slice:":10" }}</span>
+                            <span class="block text-xl font-black text-amber-500 mt-0.5">{{ podio_trabajadores_mes.0.score }}</span>
+                        </div>
+                        <!-- Tooltip -->
+                        <div class="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-200 w-48 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white text-xs rounded-2xl p-0.5 shadow-2xl shadow-indigo-500/30 z-[9999]">
+                            <div class="bg-white/95 backdrop-blur-xl rounded-2xl p-2 relative overflow-hidden">
+                                <!-- Resplandor interno -->
+                                <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-50/50 via-purple-50/30 to-pink-50/50 pointer-events-none"></div>
+                                
+                                <div class="relative z-10">
+                                    <div class="font-black mb-1 text-slate-800 text-xs break-words">{{ podio_trabajadores_mes.0.trabajador.nombres }} {{ podio_trabajadores_mes.0.trabajador.apellidos }}</div>
+                                    <div class="flex items-center gap-1 text-[9px] mb-2 text-indigo-600 font-semibold">
+                                        <i class="ph-fill ph-buildings text-xs"></i> 
+                                        <span class="break-words">{{ podio_trabajadores_mes.0.area_nombre }}</span>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-1.5 text-[9px]">
+                                        <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-lg p-1.5 shadow-sm">
+                                            <div class="text-indigo-600 font-semibold mb-0.5 flex items-center gap-0.5">
+                                                <i class="ph-fill ph-chart-line text-[10px]"></i> Desempeño
+                                            </div>
+                                            <div class="font-black text-xl text-transparent bg-gradient-to-br from-indigo-600 to-purple-600 bg-clip-text">{{ podio_trabajadores_mes.0.eval_avg }}</div>
+                                        </div>
+                                        <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-lg p-1.5 shadow-sm">
+                                            <div class="text-emerald-600 font-semibold mb-0.5 flex items-center gap-0.5">
+                                                <i class="ph-fill ph-check-circle text-[10px]"></i> Asistencia
+                                            </div>
+                                            <div class="font-black text-xl text-transparent bg-gradient-to-br from-emerald-600 to-teal-600 bg-clip-text">{{ podio_trabajadores_mes.0.asistencia_avg }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rotate-45"></div>
+                        </div>
+                    </div>
+                    <div class="podium-bar w-full bg-gradient-to-b from-amber-300 to-amber-200 rounded-t-2xl shadow-2xl border-x-2 border-t-2 border-amber-100 relative" style="height: 85%">
+                        <!-- 🔧 AJUSTA AQUÍ: Cambia 'top-6' para mover el número verticalmente -->
+                        <!-- top-4 = sube | top-6 = actual | top-8 = baja | top-10 = baja más | top-[15px] = píxeles exactos -->
+                        <div class="absolute top-[-60px] w-full text-center font-black text-7xl text-amber-500/40">1</div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if podio_trabajadores_mes.2 %}
+                <div class="flex flex-col items-center flex-1 max-w-[140px] relative z-10">
+                    <!-- 🔧 POSICIÓN 3: Cambia 'mb-2' (mb-0, mb-1) o agrega 'mt-[-20px]' para subirlo -->
+                    <div class="mb-[100px] text-center transition-transform duration-300 group relative">
+                        <div class="group-hover:-translate-y-2 transition-transform duration-300 cursor-pointer">
+                            <div class="w-14 h-14 mx-auto rounded-full bg-white shadow-lg border-2 border-orange-300 flex items-center justify-center text-orange-600 font-bold text-base mb-1.5">
+                                {{ podio_trabajadores_mes.2.trabajador.nombres|slice:":2" }}
+                            </div>
+                            <span class="block text-xs font-bold text-slate-700 truncate max-w-full px-1 leading-tight">{{ podio_trabajadores_mes.2.trabajador.nombres|slice:":8" }}</span>
+                            <span class="block text-lg font-black text-orange-400 mt-0.5">{{ podio_trabajadores_mes.2.score }}</span>
+                        </div>
+                        <!-- Tooltip -->
+                        <div class="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-200 w-48 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white text-xs rounded-2xl p-0.5 shadow-2xl shadow-indigo-500/30 z-[9999]">
+                            <div class="bg-white/95 backdrop-blur-xl rounded-2xl p-2 relative overflow-hidden">
+                                <!-- Resplandor interno -->
+                                <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-50/50 via-purple-50/30 to-pink-50/50 pointer-events-none"></div>
+                                
+                                <div class="relative z-10">
+                                    <div class="font-black mb-1 text-slate-800 text-xs break-words">{{ podio_trabajadores_mes.2.trabajador.nombres }} {{ podio_trabajadores_mes.2.trabajador.apellidos }}</div>
+                                    <div class="flex items-center gap-1 text-[9px] mb-2 text-indigo-600 font-semibold">
+                                        <i class="ph-fill ph-buildings text-xs"></i> 
+                                        <span class="break-words">{{ podio_trabajadores_mes.2.area_nombre }}</span>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-1.5 text-[9px]">
+                                        <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-lg p-1.5 shadow-sm">
+                                            <div class="text-indigo-600 font-semibold mb-0.5 flex items-center gap-0.5">
+                                                <i class="ph-fill ph-chart-line text-[10px]"></i> Desempeño
+                                            </div>
+                                            <div class="font-black text-xl text-transparent bg-gradient-to-br from-indigo-600 to-purple-600 bg-clip-text">{{ podio_trabajadores_mes.2.eval_avg }}</div>
+                                        </div>
+                                        <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-lg p-1.5 shadow-sm">
+                                            <div class="text-emerald-600 font-semibold mb-0.5 flex items-center gap-0.5">
+                                                <i class="ph-fill ph-check-circle text-[10px]"></i> Asistencia
+                                            </div>
+                                            <div class="font-black text-xl text-transparent bg-gradient-to-br from-emerald-600 to-teal-600 bg-clip-text">{{ podio_trabajadores_mes.2.asistencia_avg }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rotate-45"></div>
+                        </div>
+                    </div>
+                    <div class="podium-bar w-full bg-gradient-to-b from-orange-200 to-orange-100 rounded-t-2xl shadow-lg border-x-2 border-t-2 border-white relative" style="height: 40%">
+                        <!-- 🔧 NÚMERO 3: Cambia 'top-6' (top-4=sube | top-8=baja | top-[15px]=px exactos) -->
+                        <div class="absolute top-[-40px] w-full text-center font-black text-4xl text-orange-500/50">3</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- 🔧 BASE PLATEADA: Cambia 'bottom-0' para moverla verticalmente -->
+            <!-- bottom-0 = pegada abajo | bottom-2 = sube 8px | bottom-4 = sube 16px | bottom-[12px] = píxeles exactos -->
+            <div class="absolute bottom-[80px] left-1/2 -translate-x-1/2 w-full max-w-3xl h-3 bg-gradient-to-r from-slate-200 via-white to-slate-200 rounded-full shadow-inner"></div>
+            
+            </div>
+            <!-- Fin contenedor relativo -->
+        </div>
+
+        <div class="lg:col-span-12 lg:row-start-2 premium-glass p-5 md:p-6 relative overflow-hidden">
+            <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+                <div class="flex items-center gap-2 text-slate-700 font-bold text-sm md:text-base">
+                    <i class="ph-fill ph-funnel text-indigo-600 text-lg"></i>
+                    Filtros de Áreas
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-2 flex-1">
+                    <div class="relative flex-1 min-w-[180px]">
+                        <select id="filtroSedeGlobalAreas" class="w-full px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-br from-emerald-100 to-emerald-50 border-2 border-emerald-200 text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer shadow-sm hover:shadow-md">
+                            <option value="todas">🏢 Todas las sedes</option>
+                            {% for sede in sedes %}
+                            <option value="{{ sede.id }}">📍 {{ sede.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="flex gap-2 flex-1 min-w-[220px]">
+                        <select id="filtroPeriodoAreas" class="w-full px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-br from-indigo-100 to-indigo-50 border-2 border-indigo-200 text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="semestre" {% if periodo_tabla_defecto == 'semestre' %}selected{% endif %}>Semestre</option>
+                            <option value="mes" {% if periodo_tabla_defecto == 'mes' %}selected{% endif %}>Mes</option>
+                        </select>
+                        <div id="contenedorAnioAreas" class="w-full {% if periodo_tabla_defecto != 'mes' %}hidden{% endif %}">
+                            <select id="filtroAnioAreas" class="w-full px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-br from-slate-100 to-slate-50 border-2 border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                {% for anio_item in anios_disponibles %}
+                                <option value="{{ anio_item }}" {% if anio_item == anio_tabla_defecto %}selected{% endif %}>{{ anio_item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="contenedorMesAreas" class="w-full {% if periodo_tabla_defecto != 'mes' %}hidden{% endif %}">
+                            <select id="filtroMesAreas" class="w-full px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-br from-slate-100 to-slate-50 border-2 border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                {% for mes_num, mes_nombre in meses_disponibles %}
+                                <option value="{{ mes_num }}" {% if mes_num == mes_tabla_defecto %}selected{% endif %}>{{ mes_nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="contenedorSemestreAreas" class="w-full {% if periodo_tabla_defecto == 'mes' %}hidden{% endif %}">
+                            <select id="filtroSemestreAreas" class="w-full px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-br from-slate-100 to-slate-50 border-2 border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="1" {% if semestre_tabla_defecto == 1 %}selected{% endif %}>Semestre 1</option>
+                                <option value="2" {% if semestre_tabla_defecto == 2 %}selected{% endif %}>Semestre 2</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-8 lg:row-start-3 premium-glass p-8 flex flex-col justify-center relative overflow-hidden group/chart">
+            <!-- Partículas decorativas -->
+            <div class="absolute top-4 right-8 w-2 h-2 bg-indigo-300/30 rounded-full animate-pulse"></div>
+            <div class="absolute bottom-6 right-12 w-1.5 h-1.5 bg-purple-300/40 rounded-full animate-ping" style="animation-delay: 0.5s;"></div>
+            
+            <!-- Resplandor de fondo -->
+            <div class="absolute -top-10 -right-10 w-32 h-32 bg-indigo-300/10 rounded-full blur-3xl"></div>
+            
+            <div class="flex flex-col gap-4 mb-6 relative z-10">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <div class="absolute inset-0 bg-indigo-500/20 rounded-xl blur-md"></div>
+                            <div class="relative p-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl shadow-lg">
+                                <i class="ph-fill ph-chart-bar text-xl"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-slate-800 font-black text-xl">Comparativa de Áreas</h3>
+                            <p class="text-xs text-slate-500 font-medium mt-0.5">Rendimiento promedio por departamento</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Indicador de scroll -->
+                    <div id="scrollIndicator" class="hidden items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold animate-pulse">
+                        <i class="ph ph-arrows-horizontal text-sm"></i>
+                        Desliza para ver más
+                    </div>
+                </div>
+                
+                
+            </div>
+            
+            <!-- Contenedor con scroll horizontal mejorado -->
+            <div class="relative">
+                <!-- Gradientes de borde para indicar scroll -->
+                <div id="gradientLeft" class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white/90 to-transparent z-10 pointer-events-none opacity-0 transition-opacity duration-300"></div>
+                <div id="gradientRight" class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white/90 to-transparent z-10 pointer-events-none opacity-0 transition-opacity duration-300"></div>
+                
+                <div id="chartContainer" class="h-80 w-full overflow-x-auto overflow-y-hidden scroll-smooth pb-2" style="scrollbar-width: thin; scrollbar-color: #c7d2fe #f1f5f9;">
+                    <div id="chartWrapper" style="min-width: 100%; height: 100%;">
+                        <canvas id="chartAreasLight"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Estilo del scrollbar personalizado para webkit -->
+            <style>
+                #chartContainer::-webkit-scrollbar {
+                    height: 8px;
+                }
+                #chartContainer::-webkit-scrollbar-track {
+                    background: #f1f5f9;
+                    border-radius: 10px;
+                }
+                #chartContainer::-webkit-scrollbar-thumb {
+                    background: linear-gradient(90deg, #c7d2fe 0%, #a5b4fc 100%);
+                    border-radius: 10px;
+                    transition: background 0.3s;
+                }
+                #chartContainer::-webkit-scrollbar-thumb:hover {
+                    background: linear-gradient(90deg, #a5b4fc 0%, #818cf8 100%);
+                }
+            </style>
+        </div>
+    </div>
+
+    
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Variables globales
+    let chartInstance = null;
+    const PERIODO_DEFECTO = '{{ periodo_tabla_defecto|default:"semestre" }}';
+    const ANIO_DEFECTO_RAW = Number('{{ anio_tabla_defecto|default:"0" }}');
+    const MES_DEFECTO_RAW = Number('{{ mes_tabla_defecto|default:"1" }}');
+    const SEMESTRE_DEFECTO_RAW = Number('{{ semestre_tabla_defecto|default:"1" }}');
+    const ANIO_DEFECTO = ANIO_DEFECTO_RAW > 0 ? ANIO_DEFECTO_RAW : new Date().getFullYear();
+    const MES_DEFECTO = (MES_DEFECTO_RAW >= 1 && MES_DEFECTO_RAW <= 12) ? MES_DEFECTO_RAW : 1;
+    const SEMESTRE_DEFECTO = (SEMESTRE_DEFECTO_RAW === 1 || SEMESTRE_DEFECTO_RAW === 2) ? SEMESTRE_DEFECTO_RAW : 1;
+    const NOMBRES_MESES = {
+        1: 'Enero',
+        2: 'Febrero',
+        3: 'Marzo',
+        4: 'Abril',
+        5: 'Mayo',
+        6: 'Junio',
+        7: 'Julio',
+        8: 'Agosto',
+        9: 'Septiembre',
+        10: 'Octubre',
+        11: 'Noviembre',
+        12: 'Diciembre'
+    };
+    
+    // Estados independientes para cada filtro
+    let graficoEstado = {
+        sede: 'todas',
+        periodo: PERIODO_DEFECTO,
+        anio: ANIO_DEFECTO,
+        mes: MES_DEFECTO,
+        semestre: SEMESTRE_DEFECTO
+    };
+
+    let podioEstado = {
+        categoria: 'trabajadores',
+        sede: 'todas',
+        periodo: PERIODO_DEFECTO,
+        anio: ANIO_DEFECTO,
+        mes: MES_DEFECTO,
+        semestre: SEMESTRE_DEFECTO
+    };
+
+    let podioAbortController = null;
+    let podioRequestId = 0;
+
+    // Estado compartido para ambas secciones de áreas
+    let areasGlobalEstado = {
+        sede: 'todas'
+    };
+
+    let rankingTablaDataActual = [];
+    let areaLabelsOriginal = [];
+    const RANKING_TABLA_POR_PAGINA = 15;
+    const RANKING_TABLA_PERIODO_DEFECTO = PERIODO_DEFECTO;
+    const RANKING_TABLA_ANIO_DEFECTO = ANIO_DEFECTO;
+    const RANKING_TABLA_MES_DEFECTO = MES_DEFECTO;
+    const RANKING_TABLA_SEMESTRE_DEFECTO = SEMESTRE_DEFECTO;
+
+    let rankingTablaEstado = {
+        periodo: RANKING_TABLA_PERIODO_DEFECTO,
+        anio: RANKING_TABLA_ANIO_DEFECTO,
+        mes: RANKING_TABLA_MES_DEFECTO,
+        semestre: RANKING_TABLA_SEMESTRE_DEFECTO,
+        tipo: 'todos',
+        sede: 'todas',
+        area: 'todas',
+        texto: '',
+        ordenCampo: 'score',
+        ordenDir: 'desc',
+        pagina: 1
+    };
+
+    function escaparHtml(valor) {
+        return String(valor || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function formatearEtiquetaArea(label, maxCharsPorLinea = 14, maxLineas = 2) {
+        const texto = String(label || '').trim();
+        if (!texto) return ['Sin área'];
+
+        const palabras = texto.split(/\s+/);
+        const lineas = [];
+        let lineaActual = '';
+
+        for (const palabra of palabras) {
+            const propuesta = lineaActual ? `${lineaActual} ${palabra}` : palabra;
+            if (propuesta.length <= maxCharsPorLinea) {
+                lineaActual = propuesta;
+                continue;
+            }
+
+            if (lineaActual) {
+                lineas.push(lineaActual);
+            }
+
+            if (lineas.length >= maxLineas - 1) {
+                lineas.push((palabra.length > maxCharsPorLinea ? palabra.slice(0, maxCharsPorLinea - 1) : palabra) + '...');
+                return lineas;
+            }
+
+            lineaActual = palabra.length > maxCharsPorLinea ? palabra.slice(0, maxCharsPorLinea - 1) + '...' : palabra;
+        }
+
+        if (lineaActual) {
+            lineas.push(lineaActual);
+        }
+
+        if (lineas.length > maxLineas) {
+            return [lineas[0], lineas.slice(1).join(' ').slice(0, maxCharsPorLinea - 1) + '...'];
+        }
+
+        return lineas;
+    }
+
+    function prepararEtiquetasAreas(labels) {
+        return (labels || []).map(label => formatearEtiquetaArea(label));
+    }
+
+    function aplicarParametrosPeriodo(params, estado) {
+        params.set('periodo', estado.periodo || 'semestre');
+        params.set('anio', String(estado.anio || new Date().getFullYear()));
+
+        if ((estado.periodo || 'semestre') === 'mes') {
+            params.set('mes', String(estado.mes || 1));
+            params.delete('semestre');
+        } else {
+            params.set('semestre', String(estado.semestre || 1));
+            params.delete('mes');
+        }
+    }
+
+    function actualizarControlesPeriodo(periodoSeleccionado, {
+        contenedorAnio = null,
+        contenedorMes = null,
+        contenedorSemestre = null,
+        selectAnio = null,
+        selectMes = null,
+        selectSemestre = null,
+    } = {}) {
+        const esMes = periodoSeleccionado === 'mes';
+
+        if (contenedorAnio) {
+            contenedorAnio.classList.toggle('hidden', !esMes);
+        }
+        if (contenedorMes) {
+            contenedorMes.classList.toggle('hidden', !esMes);
+        }
+        if (contenedorSemestre) {
+            contenedorSemestre.classList.toggle('hidden', esMes);
+        }
+
+        if (selectAnio) {
+            selectAnio.disabled = !esMes;
+            selectAnio.classList.toggle('opacity-50', !esMes);
+            selectAnio.classList.toggle('cursor-not-allowed', !esMes);
+        }
+        if (selectMes) {
+            selectMes.disabled = !esMes;
+            selectMes.classList.toggle('opacity-50', !esMes);
+            selectMes.classList.toggle('cursor-not-allowed', !esMes);
+        }
+        if (selectSemestre) {
+            selectSemestre.disabled = esMes;
+            selectSemestre.classList.toggle('opacity-50', esMes);
+            selectSemestre.classList.toggle('cursor-not-allowed', esMes);
+        }
+    }
+
+    function obtenerEtiquetaAreaCompleta(index) {
+        return areaLabelsOriginal[index] || 'Sin área';
+    }
+
+    function actualizarOpcionesAreaTabla() {
+        const selectArea = document.getElementById('filtroTablaArea');
+        if (!selectArea) return;
+
+        const dataPeriodo = rankingTablaDataActual || [];
+        const areas = Array.from(new Set(dataPeriodo.map(item => item.area_nombre || 'Sin Área'))).sort((a, b) => a.localeCompare(b));
+        const valorActual = rankingTablaEstado.area;
+
+        selectArea.innerHTML = '<option value="todas">Todas</option>' +
+            areas.map(area => `<option value="${escaparHtml(area.toLowerCase())}">${escaparHtml(area)}</option>`).join('');
+
+        const existe = areas.some(area => area.toLowerCase() === valorActual);
+        rankingTablaEstado.area = existe ? valorActual : 'todas';
+        selectArea.value = rankingTablaEstado.area;
+    }
+
+    function actualizarLabelPeriodoTabla() {
+        const label = document.getElementById('labelPeriodoTabla');
+        if (!label) return;
+        label.textContent = `Viendo período: ${obtenerTextoPeriodoFiltro(rankingTablaEstado.periodo, rankingTablaEstado.anio, rankingTablaEstado.mes, rankingTablaEstado.semestre)}`;
+    }
+
+    function cargarDatosTablaRanking() {
+        const params = new URLSearchParams();
+        aplicarParametrosPeriodo(params, rankingTablaEstado);
+
+        fetch(`{% url 'metricas_ceneris:ajax_datos_ranking' %}?${params.toString()}`)
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                rankingTablaDataActual = data.ranking || [];
+                actualizarOpcionesAreaTabla();
+                actualizarLabelPeriodoTabla();
+                renderTablaRanking();
+            })
+            .catch(error => {
+                console.error('Error al cargar ranking de tabla:', error);
+            });
+    }
+
+    function actualizarControlesPaginacionTabla(totalRegistros, totalPaginas) {
+        const paginacion = document.getElementById('rankingTablaPaginacion');
+        const resumen = document.getElementById('rankingTablaResumen');
+        const info = document.getElementById('rankingTablaInfo');
+        const prev = document.getElementById('rankingTablaPrev');
+        const next = document.getElementById('rankingTablaNext');
+
+        if (!paginacion || !resumen || !info || !prev || !next) return;
+
+        if (totalRegistros <= RANKING_TABLA_POR_PAGINA) {
+            paginacion.classList.add('hidden');
+            return;
+        }
+
+        paginacion.classList.remove('hidden');
+
+        const inicio = ((rankingTablaEstado.pagina - 1) * RANKING_TABLA_POR_PAGINA) + 1;
+        const fin = Math.min(rankingTablaEstado.pagina * RANKING_TABLA_POR_PAGINA, totalRegistros);
+
+        resumen.textContent = `Mostrando ${inicio} - ${fin} de ${totalRegistros} registros`;
+        info.textContent = `Pagina ${rankingTablaEstado.pagina} de ${totalPaginas}`;
+        prev.disabled = rankingTablaEstado.pagina <= 1;
+        next.disabled = rankingTablaEstado.pagina >= totalPaginas;
+    }
+
+    function renderTablaRanking() {
+        const tbody = document.getElementById('rankingTableBody');
+        const empty = document.getElementById('rankingTableEmpty');
+        if (!tbody || !empty) return;
+
+        const dataBase = rankingTablaDataActual || [];
+
+        const filtrados = dataBase.filter(item => {
+            let tipoOk = rankingTablaEstado.tipo === 'todos' || item.tipo_persona === rankingTablaEstado.tipo;
+            if (rankingTablaEstado.tipo === 'lider') {
+                tipoOk = item.tipo_persona === 'supervisor' || item.tipo_persona === 'responsable';
+            }
+            const sedeOk = rankingTablaEstado.sede === 'todas' || (item.sede_nombre || '').toLowerCase() === rankingTablaEstado.sede;
+            const areaOk = rankingTablaEstado.area === 'todas' || (item.area_nombre || '').toLowerCase() === rankingTablaEstado.area;
+
+            const texto = rankingTablaEstado.texto.trim().toLowerCase();
+            const nombreCompleto = (item.nombre_completo || '').toLowerCase();
+            const textoOk = !texto || nombreCompleto.includes(texto);
+
+            return tipoOk && sedeOk && areaOk && textoOk;
+        });
+
+        const ordenados = [...filtrados].sort((a, b) => {
+            const campo = rankingTablaEstado.ordenCampo;
+            const va = Number(a[campo] || 0);
+            const vb = Number(b[campo] || 0);
+            if (va === vb) return 0;
+            if (rankingTablaEstado.ordenDir === 'asc') {
+                return va - vb;
+            }
+            return vb - va;
+        });
+
+        const totalRegistros = ordenados.length;
+        const totalPaginas = Math.max(1, Math.ceil(totalRegistros / RANKING_TABLA_POR_PAGINA));
+
+        if (rankingTablaEstado.pagina > totalPaginas) {
+            rankingTablaEstado.pagina = totalPaginas;
+        }
+        if (rankingTablaEstado.pagina < 1) {
+            rankingTablaEstado.pagina = 1;
+        }
+
+        const inicio = (rankingTablaEstado.pagina - 1) * RANKING_TABLA_POR_PAGINA;
+        const paginaActualData = ordenados.slice(inicio, inicio + RANKING_TABLA_POR_PAGINA);
+
+        tbody.innerHTML = paginaActualData.map((item, index) => {
+            let tipoClase = 'bg-indigo-100 text-indigo-700';
+            let tipoTexto = 'Trabajador';
+            if (item.tipo_persona === 'supervisor') {
+                tipoClase = 'bg-purple-100 text-purple-700';
+                tipoTexto = 'Supervisor';
+            } else if (item.tipo_persona === 'responsable') {
+                tipoClase = 'bg-sky-100 text-sky-700';
+                tipoTexto = 'Responsable';
+            }
+            const asistenciaColor = Number(item.asistencia_avg) >= 9 ? 'bg-emerald-500' : 'bg-amber-500';
+            const semestral = Number(item.promedio_semestral || 0);
+            const semestralP = Number(item.promedio_semestral_porc || 0);
+            const score = Number(item.score || 0);
+            let clasifTexto = 'C';
+            let clasifClase = 'bg-red-50 text-red-700 border border-red-200';
+            if (score >= 9) {
+                clasifTexto = 'AD';
+                clasifClase = 'bg-indigo-50 text-indigo-700 border border-indigo-200';
+            } else if (score >= 7) {
+                clasifTexto = 'A';
+                clasifClase = 'bg-green-50 text-green-700 border border-green-200';
+            } else if (score >= 5) {
+                clasifTexto = 'B';
+                clasifClase = 'bg-amber-50 text-amber-700 border border-amber-200';
+            }
+
+            return `
+                <tr class="floating-table-row group border-b border-slate-100 last:border-0">
+                    <td class="py-4 pl-2 text-center align-middle">
+                        <div class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-indigo-100 transition-colors">
+                            <span class="font-black text-slate-600 group-hover:text-indigo-600 text-base">${inicio + index + 1}</span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-4 align-middle">
+                        <div class="font-bold text-slate-800 text-sm leading-tight">${escaparHtml(item.nombres)} ${escaparHtml(item.apellido_paterno)}</div>
+                        <div class="text-xs text-slate-400 mt-0.5">${escaparHtml(item.apellido_materno || '')}</div>
+                        <div class="text-[11px] text-slate-500 mt-1"><span class="font-semibold">Cargo:</span> ${escaparHtml(item.cargo || 'Sin cargo')}</div>
+                    </td>
+                    <td class="py-4 px-4 align-middle">
+                        <span class="inline-block px-3 py-1.5 rounded-lg text-xs font-bold ${tipoClase}">${tipoTexto}</span>
+                    </td>
+                    <td class="py-4 px-4 align-middle">
+                        <span class="inline-block px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold">${escaparHtml(item.area_nombre || 'Sin Área')}</span>
+                    </td>
+                    <td class="py-4 px-4 align-middle">
+                        <span class="inline-block px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold">${escaparHtml(item.sede_nombre || 'Sin sede')}</span>
+                    </td>
+                    <td class="py-4 px-4 text-center align-middle">
+                        <div class="flex flex-col items-center justify-center gap-1.5">
+                            <span class="font-extrabold text-indigo-600 text-base">${Number(item.promedio_mensual || 0).toFixed(2)}</span>
+                            <div class="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-indigo-500 rounded-full transition-all duration-500" style="width: ${Number(item.promedio_mensual_porc || 0)}%"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-4 px-4 text-center align-middle">
+                        <div class="flex flex-col items-center justify-center gap-1.5">
+                            ${semestral > 0
+                                ? `<span class="font-extrabold text-purple-600 text-base">${semestral.toFixed(2)}</span><div class="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-purple-500 rounded-full transition-all duration-500" style="width: ${semestralP}%"></div></div>`
+                                : `<span class="font-bold text-slate-400 text-xs uppercase tracking-wide">Pend.</span><div class="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-slate-300 rounded-full transition-all duration-500" style="width: 0%"></div></div>`}
+                        </div>
+                    </td>
+                    <td class="py-4 px-4 text-center align-middle">
+                        <div class="flex flex-col items-center justify-center gap-1.5">
+                            <span class="font-extrabold text-emerald-600 text-base">${Number(item.asistencia_avg || 0).toFixed(1)}</span>
+                            <div class="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-500 ${asistenciaColor}" style="width: ${Number(item.asistencia_avg || 0) * 10}%"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-4 px-4 text-center align-middle">
+                        <span class="inline-block px-3 py-1.5 rounded-lg text-xs font-black tracking-wide ${clasifClase}">${clasifTexto}</span>
+                    </td>
+                    <td class="py-4 pr-2 text-center align-middle">
+                        <span class="text-xl font-black text-indigo-600">${Number(item.score || 0).toFixed(2)}</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        if (filtrados.length === 0) {
+            empty.classList.remove('hidden');
+        } else {
+            empty.classList.add('hidden');
+        }
+
+        actualizarControlesPaginacionTabla(totalRegistros, totalPaginas);
+    }
+
+    function configurarFiltrosTablaRanking() {
+        const filtroPeriodo = document.getElementById('filtroTablaPeriodo');
+        const filtroAnio = document.getElementById('filtroTablaAnio');
+        const filtroMes = document.getElementById('filtroTablaMes');
+        const filtroSemestre = document.getElementById('filtroTablaSemestre');
+        const contenedorAnio = document.getElementById('contenedorTablaAnio');
+        const contenedorMes = document.getElementById('contenedorTablaMes');
+        const contenedorSemestre = document.getElementById('contenedorTablaSemestre');
+        const filtroTipo = document.getElementById('filtroTablaTipo');
+        const filtroSede = document.getElementById('filtroTablaSede');
+        const filtroArea = document.getElementById('filtroTablaArea');
+        const filtroTexto = document.getElementById('filtroTablaTexto');
+        const filtroOrdenCampo = document.getElementById('filtroTablaOrdenCampo');
+        const filtroOrdenDir = document.getElementById('filtroTablaOrdenDir');
+        const btnLimpiar = document.getElementById('btnLimpiarFiltrosTabla');
+        const pagPrev = document.getElementById('rankingTablaPrev');
+        const pagNext = document.getElementById('rankingTablaNext');
+
+        if (!filtroPeriodo || !filtroAnio || !filtroMes || !filtroSemestre || !filtroTipo || !filtroSede || !filtroArea || !filtroTexto || !filtroOrdenCampo || !filtroOrdenDir) return;
+
+        filtroPeriodo.value = rankingTablaEstado.periodo;
+        filtroAnio.value = String(rankingTablaEstado.anio);
+        filtroMes.value = String(rankingTablaEstado.mes);
+        filtroSemestre.value = String(rankingTablaEstado.semestre);
+        filtroTipo.value = rankingTablaEstado.tipo;
+        filtroSede.value = rankingTablaEstado.sede;
+        filtroOrdenCampo.value = rankingTablaEstado.ordenCampo;
+        filtroOrdenDir.value = rankingTablaEstado.ordenDir;
+        actualizarControlesPeriodo(rankingTablaEstado.periodo, {
+            contenedorAnio,
+            contenedorMes,
+            contenedorSemestre,
+            selectAnio: filtroAnio,
+            selectMes: filtroMes,
+            selectSemestre: filtroSemestre,
+        });
+
+        filtroPeriodo.addEventListener('change', function() {
+            rankingTablaEstado.periodo = this.value;
+            rankingTablaEstado.pagina = 1;
+            actualizarControlesPeriodo(rankingTablaEstado.periodo, {
+                contenedorAnio,
+                contenedorMes,
+                contenedorSemestre,
+                selectAnio: filtroAnio,
+                selectMes: filtroMes,
+                selectSemestre: filtroSemestre,
+            });
+            cargarDatosTablaRanking();
+        });
+
+        filtroAnio.addEventListener('change', function() {
+            rankingTablaEstado.anio = Number(this.value);
+            rankingTablaEstado.pagina = 1;
+            cargarDatosTablaRanking();
+        });
+
+        filtroMes.addEventListener('change', function() {
+            rankingTablaEstado.mes = Number(this.value);
+            rankingTablaEstado.pagina = 1;
+            if (rankingTablaEstado.periodo === 'mes') {
+                cargarDatosTablaRanking();
+            }
+        });
+
+        filtroSemestre.addEventListener('change', function() {
+            rankingTablaEstado.semestre = Number(this.value);
+            rankingTablaEstado.pagina = 1;
+            if (rankingTablaEstado.periodo === 'semestre') {
+                cargarDatosTablaRanking();
+            }
+        });
+
+        filtroTipo.addEventListener('change', function() {
+            rankingTablaEstado.tipo = this.value;
+            rankingTablaEstado.pagina = 1;
+            renderTablaRanking();
+        });
+
+        filtroSede.addEventListener('change', function() {
+            rankingTablaEstado.sede = this.value;
+            rankingTablaEstado.pagina = 1;
+            renderTablaRanking();
+        });
+
+        filtroArea.addEventListener('change', function() {
+            rankingTablaEstado.area = this.value;
+            rankingTablaEstado.pagina = 1;
+            renderTablaRanking();
+        });
+
+        filtroTexto.addEventListener('input', function() {
+            rankingTablaEstado.texto = this.value;
+            rankingTablaEstado.pagina = 1;
+            renderTablaRanking();
+        });
+
+        filtroOrdenCampo.addEventListener('change', function() {
+            rankingTablaEstado.ordenCampo = this.value;
+            rankingTablaEstado.pagina = 1;
+            renderTablaRanking();
+        });
+
+        filtroOrdenDir.addEventListener('change', function() {
+            rankingTablaEstado.ordenDir = this.value;
+            rankingTablaEstado.pagina = 1;
+            renderTablaRanking();
+        });
+
+        if (pagPrev) {
+            pagPrev.addEventListener('click', function() {
+                if (rankingTablaEstado.pagina > 1) {
+                    rankingTablaEstado.pagina -= 1;
+                    renderTablaRanking();
+                }
+            });
+        }
+
+        if (pagNext) {
+            pagNext.addEventListener('click', function() {
+                rankingTablaEstado.pagina += 1;
+                renderTablaRanking();
+            });
+        }
+
+        if (btnLimpiar) {
+            btnLimpiar.addEventListener('click', function() {
+                rankingTablaEstado = {
+                    periodo: RANKING_TABLA_PERIODO_DEFECTO,
+                    anio: RANKING_TABLA_ANIO_DEFECTO,
+                    mes: RANKING_TABLA_MES_DEFECTO,
+                    semestre: RANKING_TABLA_SEMESTRE_DEFECTO,
+                    tipo: 'todos',
+                    sede: 'todas',
+                    area: 'todas',
+                    texto: '',
+                    ordenCampo: 'score',
+                    ordenDir: 'desc',
+                    pagina: 1
+                };
+
+                filtroPeriodo.value = rankingTablaEstado.periodo;
+                filtroAnio.value = String(rankingTablaEstado.anio);
+                filtroMes.value = String(rankingTablaEstado.mes);
+                filtroSemestre.value = String(rankingTablaEstado.semestre);
+                filtroTipo.value = rankingTablaEstado.tipo;
+                filtroSede.value = rankingTablaEstado.sede;
+                filtroArea.value = rankingTablaEstado.area;
+                filtroTexto.value = '';
+                filtroOrdenCampo.value = rankingTablaEstado.ordenCampo;
+                filtroOrdenDir.value = rankingTablaEstado.ordenDir;
+                actualizarControlesPeriodo(rankingTablaEstado.periodo, {
+                    contenedorAnio,
+                    contenedorMes,
+                    contenedorSemestre,
+                    selectAnio: filtroAnio,
+                    selectMes: filtroMes,
+                    selectSemestre: filtroSemestre,
+                });
+
+                cargarDatosTablaRanking();
+            });
+        }
+
+        cargarDatosTablaRanking();
+    }
+
+    function obtenerTextoPeriodoFiltro(periodo, anio, mes, semestre) {
+        const anioTexto = anio || new Date().getFullYear();
+        if (periodo === 'mes') {
+            return `${NOMBRES_MESES[Number(mes) || 1] || 'Mes'} de ${anioTexto}`;
+        }
+        return `Semestre ${Number(semestre) || 1} de ${anioTexto}`;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Inicializar Chart.js defaults
+        Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+        Chart.defaults.color = '#64748b';
+
+        // Animación de Podio inicial
+        setTimeout(() => animarBarras('#contenedorPodioDinamico .podium-bar'), 300);
+
+        // Inicializar filtros + tabla de ranking (trabajadores y lideres)
+        configurarFiltrosTablaRanking();
+
+        // Inicializar gráfico
+        const ctx = document.getElementById('chartAreasLight').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, '#6366f1');
+        gradient.addColorStop(0.5, '#818cf8');
+        gradient.addColorStop(1, '#c7d2fe');
+
+        const labelsAreas = JSON.parse('{{ labels_areas_json|escapejs }}');
+        const dataAreas = JSON.parse('{{ data_areas_json|escapejs }}');
+        areaLabelsOriginal = labelsAreas;
+        const labelsAreasFormateadas = prepararEtiquetasAreas(labelsAreas);
+        
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labelsAreasFormateadas,
+                datasets: [{
+                    label: 'Score Promedio',
+                    data: dataAreas,
+                    backgroundColor: gradient,
+                    borderRadius: 12,
+                    borderWidth: 0,
+                    hoverBackgroundColor: '#4f46e5',
+                    hoverBorderColor: '#ffffff',
+                    hoverBorderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        borderColor: '#6366f1',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        padding: 12,
+                        displayColors: false,
+                        callbacks: {
+                            title: (context) => obtenerEtiquetaAreaCompleta(context[0].dataIndex),
+                            label: (context) => `Puntuación: ${context.parsed.y.toFixed(2)}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 10,
+                        ticks: {
+                            font: { size: 11, weight: '600' },
+                            color: '#64748b'
+                        },
+                        grid: {
+                            color: '#e2e8f0',
+                            lineWidth: 1
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: { size: 11, weight: '700' },
+                            color: '#475569',
+                            maxRotation: 0,
+                            minRotation: 0,
+                            autoSkip: false,
+                            padding: 8
+                        },
+                        grid: { display: false }
+                    }
+                },
+                animation: {
+                    duration: 1500,
+                    easing: 'easeInOutQuart'
+                }
+            }
+        });
+        
+        ajustarAnchoGrafico(labelsAreas.length);
+        
+        // Configurar event listener del FILTRO GLOBAL DE SEDE PARA ÁREAS
+        const filtroSedeGlobalAreas = document.getElementById('filtroSedeGlobalAreas');
+        if (filtroSedeGlobalAreas) {
+            filtroSedeGlobalAreas.value = areasGlobalEstado.sede;
+            filtroSedeGlobalAreas.addEventListener('change', function() {
+                areasGlobalEstado.sede = this.value;
+                // Actualizar ambas secciones simultáneamente
+                cargarDatosAreaLider();
+                actualizarGraficoAreas();
+            });
+        }
+
+        const filtroPeriodoAreas = document.getElementById('filtroPeriodoAreas');
+        const filtroAnioAreas = document.getElementById('filtroAnioAreas');
+        const filtroMesAreas = document.getElementById('filtroMesAreas');
+        const filtroSemestreAreas = document.getElementById('filtroSemestreAreas');
+        const contenedorAnioAreas = document.getElementById('contenedorAnioAreas');
+        const contenedorMesAreas = document.getElementById('contenedorMesAreas');
+        const contenedorSemestreAreas = document.getElementById('contenedorSemestreAreas');
+
+        if (filtroPeriodoAreas) {
+            filtroPeriodoAreas.value = graficoEstado.periodo;
+            actualizarControlesPeriodo(graficoEstado.periodo, {
+                contenedorAnio: contenedorAnioAreas,
+                contenedorMes: contenedorMesAreas,
+                contenedorSemestre: contenedorSemestreAreas,
+                selectAnio: filtroAnioAreas,
+                selectMes: filtroMesAreas,
+                selectSemestre: filtroSemestreAreas,
+            });
+            filtroPeriodoAreas.addEventListener('change', function() {
+                graficoEstado.periodo = this.value;
+                actualizarControlesPeriodo(graficoEstado.periodo, {
+                    contenedorAnio: contenedorAnioAreas,
+                    contenedorMes: contenedorMesAreas,
+                    contenedorSemestre: contenedorSemestreAreas,
+                    selectAnio: filtroAnioAreas,
+                    selectMes: filtroMesAreas,
+                    selectSemestre: filtroSemestreAreas,
+                });
+                cargarDatosAreaLider();
+                actualizarGraficoAreas();
+            });
+        }
+        if (filtroAnioAreas) {
+            filtroAnioAreas.value = String(graficoEstado.anio);
+            filtroAnioAreas.addEventListener('change', function() {
+                graficoEstado.anio = Number(this.value);
+                cargarDatosAreaLider();
+                actualizarGraficoAreas();
+            });
+        }
+        if (filtroMesAreas) {
+            filtroMesAreas.value = String(graficoEstado.mes);
+            filtroMesAreas.addEventListener('change', function() {
+                graficoEstado.mes = Number(this.value);
+                if (graficoEstado.periodo === 'mes') {
+                    cargarDatosAreaLider();
+                    actualizarGraficoAreas();
+                }
+            });
+        }
+        if (filtroSemestreAreas) {
+            filtroSemestreAreas.value = String(graficoEstado.semestre);
+            filtroSemestreAreas.addEventListener('change', function() {
+                graficoEstado.semestre = Number(this.value);
+                if (graficoEstado.periodo === 'semestre') {
+                    cargarDatosAreaLider();
+                    actualizarGraficoAreas();
+                }
+            });
+        }
+        
+        // Configurar event listeners de filtros del PODIO
+        const filtroSedePodio = document.getElementById('filtroSedePodio');
+        if (filtroSedePodio) {
+            filtroSedePodio.value = podioEstado.sede;
+            filtroSedePodio.addEventListener('change', function() {
+                podioEstado.sede = this.value;
+                cargarDatosPodio();
+            });
+        }
+
+        const filtroPeriodoPodio = document.getElementById('filtroPeriodoPodio');
+        const filtroAnioPodio = document.getElementById('filtroAnioPodio');
+        const filtroMesPodio = document.getElementById('filtroMesPodio');
+        const filtroSemestrePodio = document.getElementById('filtroSemestrePodio');
+        const contenedorAnioPodio = document.getElementById('contenedorAnioPodio');
+        const contenedorMesPodio = document.getElementById('contenedorMesPodio');
+        const contenedorSemestrePodio = document.getElementById('contenedorSemestrePodio');
+
+        if (filtroPeriodoPodio) {
+            filtroPeriodoPodio.value = podioEstado.periodo;
+            actualizarControlesPeriodo(podioEstado.periodo, {
+                contenedorAnio: contenedorAnioPodio,
+                contenedorMes: contenedorMesPodio,
+                contenedorSemestre: contenedorSemestrePodio,
+                selectAnio: filtroAnioPodio,
+                selectMes: filtroMesPodio,
+                selectSemestre: filtroSemestrePodio,
+            });
+            filtroPeriodoPodio.addEventListener('change', function() {
+                podioEstado.periodo = this.value;
+                actualizarControlesPeriodo(podioEstado.periodo, {
+                    contenedorAnio: contenedorAnioPodio,
+                    contenedorMes: contenedorMesPodio,
+                    contenedorSemestre: contenedorSemestrePodio,
+                    selectAnio: filtroAnioPodio,
+                    selectMes: filtroMesPodio,
+                    selectSemestre: filtroSemestrePodio,
+                });
+                cargarDatosPodio();
+            });
+        }
+        if (filtroAnioPodio) {
+            filtroAnioPodio.value = String(podioEstado.anio);
+            filtroAnioPodio.addEventListener('change', function() {
+                podioEstado.anio = Number(this.value);
+                cargarDatosPodio();
+            });
+        }
+        if (filtroMesPodio) {
+            filtroMesPodio.value = String(podioEstado.mes);
+            filtroMesPodio.addEventListener('change', function() {
+                podioEstado.mes = Number(this.value);
+                if (podioEstado.periodo === 'mes') {
+                    cargarDatosPodio();
+                }
+            });
+        }
+        if (filtroSemestrePodio) {
+            filtroSemestrePodio.value = String(podioEstado.semestre);
+            filtroSemestrePodio.addEventListener('change', function() {
+                podioEstado.semestre = Number(this.value);
+                if (podioEstado.periodo === 'semestre') {
+                    cargarDatosPodio();
+                }
+            });
+        }
+        
+        document.getElementById('btnCategTrabajadores').addEventListener('click', () => cambiarCategoriaPodio('trabajadores'));
+        document.getElementById('btnCategSupervisores').addEventListener('click', () => cambiarCategoriaPodio('lideres'));
+
+        // Configurar scroll indicators
+        setTimeout(updateScrollIndicators, 100);
+        document.getElementById('chartContainer').addEventListener('scroll', updateScrollIndicators);
+        window.addEventListener('resize', () => setTimeout(updateScrollIndicators, 100));
+
+        // Carga inicial de secciones por periodo
+        cargarDatosAreaLider();
+        actualizarGraficoAreas();
+        
+        // Cargar podio inicial
+        cargarDatosPodio();
+    });
+
+    // ============= FUNCIONES DEL PODIO (LÓGICA LIMPIA) =============
+
+    function cargarDatosPodio() {
+        const requestId = ++podioRequestId;
+        const contenedor = document.getElementById('contenedorPodioDinamico');
+        if (!contenedor) return;
+
+        if (podioAbortController) {
+            podioAbortController.abort();
+        }
+        podioAbortController = new AbortController();
+
+        contenedor.style.opacity = '0';
+
+        const params = new URLSearchParams({
+            sede: podioEstado.sede,
+            categoria: podioEstado.categoria
+        });
+        aplicarParametrosPeriodo(params, podioEstado);
+        
+        fetch(`{% url 'metricas_ceneris:ajax_datos_podio' %}?${params.toString()}`, { signal: podioAbortController.signal })
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                if (requestId !== podioRequestId) return;
+
+                actualizarPodioHTML(data.podio);
+
+                requestAnimationFrame(() => {
+                    contenedor.style.opacity = '1';
+                    animarBarras('#contenedorPodioDinamico .podium-bar');
+                });
+            })
+            .catch(error => {
+                if (error.name === 'AbortError') return;
+                console.error('Error al cargar datos del podio:', error);
+                contenedor.style.opacity = '1';
+            });
+    }
+
+    function actualizarPodioHTML(podio) {
+        const contenedor = document.getElementById('contenedorPodioDinamico');
+        if (!contenedor) return;
+        
+        contenedor.innerHTML = '';
+        
+        const colores = podioEstado.categoria === 'trabajadores' ? {
+            primero: { border: 'border-amber-400', text: 'text-amber-600', gradient: 'from-amber-300 to-amber-200' },
+            segundo: { border: 'border-slate-300', text: 'text-slate-600', textScore: 'text-slate-500', gradient: 'from-slate-200 to-slate-300' },
+            tercero: { border: 'border-orange-300', text: 'text-orange-600', textScore: 'text-orange-400', gradient: 'from-orange-200 to-orange-100' }
+        } : {
+            primero: { border: 'border-indigo-400', text: 'text-indigo-600', gradient: 'from-indigo-300 to-indigo-200' },
+            segundo: { border: 'border-slate-300', text: 'text-slate-600', textScore: 'text-slate-500', gradient: 'from-slate-200 to-slate-300' },
+            tercero: { border: 'border-purple-300', text: 'text-purple-600', textScore: 'text-purple-400', gradient: 'from-purple-200 to-purple-100' }
+        };
+        
+        const posiciones = [1, 0, 2];
+        const alturas = ['55%', '85%', '40%'];
+        const numeros = ['2', '1', '3'];
+        const numeroTop = ['-40px', '-60px', '-40px'];
+        const numeroSize = ['text-5xl', 'text-7xl', 'text-4xl'];
+        
+        posiciones.forEach((idx, i) => {
+            const persona = podio[idx];
+            if (!persona) {
+                contenedor.innerHTML += `<div class="flex-1 max-w-[140px]"></div>`;
+                return;
+            }
+            
+            const esGanador = idx === 0;
+            const color = idx === 0 ? colores.primero : (idx === 1 ? colores.segundo : colores.tercero);
+            const maxWidth = esGanador ? 'max-w-[160px]' : 'max-w-[140px]';
+            const circleSize = esGanador ? 'w-20 h-20' : 'w-14 h-14';
+            const textBase = esGanador ? 'text-xl' : 'text-base';
+            const scoreSize = esGanador ? 'text-xl' : 'text-lg';
+            
+            const html = `
+                <div class="flex flex-col items-center flex-1 ${maxWidth} relative z-10">
+                    <div class="mb-[100px] text-center transition-transform duration-300 group relative">
+                        <div class="group-hover:-translate-y-2 transition-transform duration-300 cursor-pointer">
+                            <div class="${circleSize} mx-auto rounded-full bg-white shadow-lg border-4 ${color.border} flex items-center justify-center ${color.text} font-bold ${textBase} mb-1.5 relative">
+                                ${esGanador ? '<i class="ph-fill ph-crown-simple absolute -top-6 text-amber-400 text-3xl drop-shadow-lg animate-bounce"></i>' : ''}
+                                ${persona.iniciales}
+                            </div>
+                            <span class="block text-xs font-bold ${color.text} truncate max-w-full px-1 leading-tight">${persona.nombre_corto}</span>
+                            <span class="block ${scoreSize} font-black ${color.text} mt-0.5">${persona.score}</span>
+                        </div>
+                        <div class="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-200 w-48 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white text-xs rounded-2xl p-0.5 shadow-2xl shadow-indigo-500/30 z-[9999]">
+                            <div class="bg-white/95 backdrop-blur-xl rounded-2xl p-2 relative overflow-hidden">
+                                <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-50/50 via-purple-50/30 to-pink-50/50 pointer-events-none"></div>
+                                <div class="relative z-10">
+                                    <div class="font-black mb-1 text-slate-800 text-xs break-words">${persona.nombres} ${persona.apellidos}</div>
+                                    <div class="flex items-center gap-1 text-[9px] mb-2 text-indigo-600 font-semibold">
+                                        <i class="ph-fill ph-buildings text-xs"></i> 
+                                        <span class="break-words">${persona.area_nombre}</span>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-1.5 text-[9px]">
+                                        <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-lg p-1.5 shadow-sm">
+                                            <div class="text-indigo-600 font-semibold mb-0.5 flex items-center gap-0.5">
+                                                <i class="ph-fill ph-chart-line text-[10px]"></i> Desempeño
+                                            </div>
+                                            <div class="font-black text-xl text-transparent bg-gradient-to-br from-indigo-600 to-purple-600 bg-clip-text">${persona.eval_avg}</div>
+                                        </div>
+                                        <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-lg p-1.5 shadow-sm">
+                                            <div class="text-emerald-600 font-semibold mb-0.5 flex items-center gap-0.5">
+                                                <i class="ph-fill ph-check-circle text-[10px]"></i> Asistencia
+                                            </div>
+                                            <div class="font-black text-xl text-transparent bg-gradient-to-br from-emerald-600 to-teal-600 bg-clip-text">${persona.asistencia_avg}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rotate-45"></div>
+                        </div>
+                    </div>
+                    <div class="podium-bar w-full bg-gradient-to-b ${color.gradient} rounded-t-2xl shadow-lg border-x-2 border-t-2 border-white relative" style="height: ${alturas[i]}">
+                        <div class="absolute top-[${numeroTop[i]}] w-full text-center font-black ${numeroSize[i]} ${color.textScore || color.text}/40">${numeros[i]}</div>
+                    </div>
+                </div>
+            `;
+            
+            contenedor.innerHTML += html;
+        });
+    }
+
+    function cambiarCategoriaPodio(categoria) {
+        podioEstado.categoria = categoria;
+        
+        const btnTrabajadores = document.getElementById('btnCategTrabajadores');
+        const btnSupervisores = document.getElementById('btnCategSupervisores');
+        
+        if (categoria === 'trabajadores') {
+            btnTrabajadores.className = "px-3 py-1.5 rounded text-xs font-bold transition-all bg-white shadow text-amber-600 flex-1";
+            btnSupervisores.className = "px-3 py-1.5 rounded text-xs font-bold transition-all text-slate-500 hover:text-slate-700 flex-1";
+        } else {
+            btnSupervisores.className = "px-3 py-1.5 rounded text-xs font-bold transition-all bg-white shadow text-indigo-600 flex-1";
+            btnTrabajadores.className = "px-3 py-1.5 rounded text-xs font-bold transition-all text-slate-500 hover:text-slate-700 flex-1";
+        }
+        
+        cargarDatosPodio();
+    }
+
+    function animarBarras(selector) {
+        const bars = document.querySelectorAll(selector);
+        bars.forEach((bar, index) => {
+            const h = bar.style.height;
+            bar.style.height = '0';
+            setTimeout(() => bar.style.height = h, 90 + (index * 80));
+        });
+    }
+
+    // ============= FUNCIONES DEL ÁREA LÍDER =============
+    
+    function cargarDatosAreaLider() {
+        const params = new URLSearchParams({
+            sede: areasGlobalEstado.sede
+        });
+        aplicarParametrosPeriodo(params, graficoEstado);
+        
+        fetch(`{% url 'metricas_ceneris:ajax_datos_area_lider' %}?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                const areaActual = data.mejor_area;
+
+                const card = document.getElementById('cardAreaLider');
+                const labelPeriodo = document.getElementById('labelPeriodoArea');
+                const scoreArea = document.getElementById('scoreAreaLider');
+                const nombreArea = document.getElementById('nombreAreaLider');
+                const cartelPeriodo = document.getElementById('cartelPeriodoArea');
+
+                if (!card || !labelPeriodo || !scoreArea || !nombreArea) return;
+
+                scoreArea.textContent = areaActual ? areaActual.promedio : '0';
+                nombreArea.textContent = areaActual ? areaActual.nombre : 'Sin datos';
+                if (cartelPeriodo) {
+                    cartelPeriodo.textContent = `Filtrando: ${obtenerTextoPeriodoFiltro(graficoEstado.periodo, graficoEstado.anio, graficoEstado.mes, graficoEstado.semestre)}`;
+                }
+
+                const etiquetaPeriodo = graficoEstado.periodo === 'mes' ? 'Mes' : 'Semestre';
+                labelPeriodo.innerHTML = `<i id="iconBadgePeriodoArea" class="ph-fill ph-calendar-check text-sm animate-pulse"></i> ${etiquetaPeriodo}`;
+
+                card.classList.add('animate-fadeIn');
+                setTimeout(() => card.classList.remove('animate-fadeIn'), 600);
+            })
+            .catch(error => {
+                console.error('Error al cargar datos del área líder:', error);
+            });
+    }
+
+    // ============= FUNCIONES DEL GRÁFICO =============
+
+    function actualizarGraficoAreas() {
+        const params = new URLSearchParams({
+            sede: areasGlobalEstado.sede
+        });
+        aplicarParametrosPeriodo(params, graficoEstado);
+        
+        fetch(`{% url 'metricas_ceneris:ajax_datos_grafico_areas' %}?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                areaLabelsOriginal = data.labels || [];
+                chartInstance.data.labels = prepararEtiquetasAreas(areaLabelsOriginal);
+                chartInstance.data.datasets[0].data = data.data;
+                chartInstance.update();
+                
+                ajustarAnchoGrafico(data.labels.length);
+                setTimeout(updateScrollIndicators, 100);
+            })
+            .catch(error => {
+                console.error('Error al cargar datos del gráfico:', error);
+            });
+    }
+
+    function ajustarAnchoGrafico(numAreas) {
+        const maxLongitudEtiqueta = (areaLabelsOriginal || []).reduce((maximo, etiqueta) => {
+            return Math.max(maximo, String(etiqueta || '').length);
+        }, 0);
+
+        const minBarWidth = Math.max(110, Math.min(180, maxLongitudEtiqueta * 7));
+        const chartContainer = document.getElementById('chartContainer');
+        const chartWrapper = document.getElementById('chartWrapper');
+        const containerWidth = chartContainer.offsetWidth;
+        const calculatedWidth = Math.max(containerWidth, numAreas * minBarWidth + 120);
+        
+        chartWrapper.style.width = calculatedWidth + 'px';
+    }
+
+    function updateScrollIndicators() {
+        const container = document.getElementById('chartContainer');
+        const scrollIndicator = document.getElementById('scrollIndicator');
+        const gradientLeft = document.getElementById('gradientLeft');
+        const gradientRight = document.getElementById('gradientRight');
+        
+        const hasScroll = container.scrollWidth > container.clientWidth;
+        
+        if (hasScroll) {
+            const scrollLeft = container.scrollLeft;
+            const maxScroll = container.scrollWidth - container.clientWidth;
+            
+            scrollIndicator.classList.remove('hidden');
+            scrollIndicator.classList.add('flex');
+            
+            if (scrollLeft > 10) {
+                gradientLeft.style.opacity = '1';
+            } else {
+                gradientLeft.style.opacity = '0';
+            }
+            
+            if (scrollLeft < maxScroll - 10) {
+                gradientRight.style.opacity = '1';
+            } else {
+                gradientRight.style.opacity = '0';
+            }
+        } else {
+            scrollIndicator.classList.add('hidden');
+            gradientLeft.style.opacity = '0';
+            gradientRight.style.opacity = '0';
+        }
+    }
+</script>
+{% endblock %}

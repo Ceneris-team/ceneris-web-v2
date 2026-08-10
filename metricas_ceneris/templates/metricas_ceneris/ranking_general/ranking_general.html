@@ -1,0 +1,348 @@
+{% extends 'metricas_ceneris/base.html' %}
+{% load metricas_custom_filters %}
+
+{% block content %}
+<style>
+    .premium-glass {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.1);
+        border-radius: 2rem;
+    }
+    .floating-table-row {
+        transition: background 0.2s, box-shadow 0.2s;
+        border-radius: 0.5rem;
+    }
+    .floating-table-row:hover {
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 4px 12px -2px rgba(0,0,0,0.08);
+    }
+    /* Spinner Animation */
+    .loader-ring {
+        border: 4px solid rgba(99, 102, 241, 0.1);
+        border-left-color: #4f46e5;
+        border-radius: 50%;
+        width: 48px;
+        height: 48px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+
+<div class="max-w-7xl mx-auto py-8 space-y-8">
+    
+    <div class="flex items-center justify-between relative z-10">
+        <div>
+            <h1 class="text-4xl font-display font-black text-slate-800 tracking-tighter">Consulta de Ranking</h1>
+            <p class="text-slate-500 mt-1">Busca y filtra el desempeño histórico de todo el personal.</p>
+        </div>
+        <a href="{% url 'metricas_ceneris:dashboard_gerente' %}" class="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition-colors">
+            &larr; Volver al Dashboard
+        </a>
+    </div>
+
+    <div class="premium-glass p-6 md:p-8 relative z-10">
+        <form id="formRanking" onsubmit="event.preventDefault(); cargarDatosTablaRanking();" class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4 items-end">
+            
+            <div class="lg:col-span-2">
+                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Buscar por Nombre/DNI</label>
+                <div class="relative">
+                    <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input id="filtroTexto" type="text" placeholder="Ej. Juan Pérez" class="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Sede</label>
+                <select id="filtroSede" class="w-full px-3 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-700 outline-none">
+                    <option value="todas">Todas</option>
+                    {% for sede in sedes %}<option value="{{ sede.nombre|lower }}">{{ sede.nombre }}</option>{% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Nivel</label>
+                <select id="filtroTipo" class="w-full px-3 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-700 outline-none">
+                    <option value="todos">Todos</option>
+                    <option value="trabajador">Colaboradores</option>
+                    <option value="jefe">Líderes (Jefes)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Período</label>
+                <select id="filtroPeriodo" onchange="toggleContenedoresTiempo()" class="w-full px-3 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-700 outline-none">
+                    <option value="mes">Mes</option>
+                    <option value="semestre">Semestre</option>
+                </select>
+            </div>
+
+            <div id="contMes">
+                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Mes - Año</label>
+                <div class="flex gap-2">
+                    <select id="filtroMes" class="w-full px-2 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-700 outline-none">
+                        {% for num, nom in meses_disponibles %}
+                        <option value="{{ num }}" {% if num == mes_actual %}selected{% endif %}>{{ nom }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="filtroAnio" class="w-full px-2 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-700 outline-none">
+                        {% for anio in anios_disponibles %}<option value="{{ anio }}">{{ anio }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div id="contSemestre" class="hidden">
+                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Semestre - Año</label>
+                <div class="flex gap-2">
+                    <select id="filtroSemestre" class="w-full px-2 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-700 outline-none">
+                        <option value="1">S1</option>
+                        <option value="2">S2</option>
+                    </select>
+                    <select id="filtroAnioSem" class="w-full px-2 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-700 outline-none">
+                        {% for anio in anios_disponibles %}<option value="{{ anio }}">{{ anio }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="lg:col-span-6 flex justify-end gap-3 mt-2 border-t border-slate-100 pt-4">
+                <button type="reset" class="px-5 py-2.5 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors">Limpiar</button>
+                <button type="submit" class="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center gap-2">
+                    <i class="ph ph-magnifying-glass"></i> Buscar Resultados
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden relative min-h-[400px]">
+        
+        <div id="estadoInicial" class="absolute inset-0 flex flex-col items-center justify-center text-center p-8 bg-slate-50 z-20">
+            <div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-300 mb-4">
+                <i class="ph ph-funnel text-4xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-700 mb-2">Listo para buscar</h3>
+            <p class="text-slate-500 max-w-md">Ajusta los filtros en el panel superior y haz clic en <b>Buscar Resultados</b> para generar el ranking.</p>
+        </div>
+
+        <div id="estadoCarga" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-8 bg-white/90 backdrop-blur-sm z-30">
+            <div class="loader-ring mb-4"></div>
+            <h3 class="text-lg font-bold text-indigo-600 mb-1">Calculando ranking...</h3>
+            <p class="text-sm text-slate-500">Analizando métricas y evaluaciones.</p>
+        </div>
+
+        <div class="overflow-x-auto p-4 hidden" id="contenedorTabla">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-2 mb-4">
+                <div class="flex flex-col gap-2">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Resultados Obtenidos</p>
+                    <div class="flex flex-wrap gap-2">
+                        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span class="text-xs"><span class="font-black text-emerald-700">AD</span> <span class="text-emerald-600">Alto Desempeño</span> <span class="text-emerald-500">· 9 – 10</span></span>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                            <span class="text-xs"><span class="font-black text-indigo-700">A</span> <span class="text-indigo-600">Desempeño Esperado</span> <span class="text-indigo-500">· 7 – 8.9</span></span>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-100">
+                            <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                            <span class="text-xs"><span class="font-black text-amber-700">B</span> <span class="text-amber-600">En Proceso de Mejora</span> <span class="text-amber-500">· 5 – 6.9</span></span>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-100">
+                            <span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+                            <span class="text-xs"><span class="font-black text-rose-700">C</span> <span class="text-rose-600">Desempeño Deficiente</span> <span class="text-rose-500">· Menor a 5</span></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <select id="ordenCampo" onchange="renderTablaRanking()" class="text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none text-slate-600">
+                        <option value="score">Ordenar por Score</option>
+                        <option value="promedio_mensual">Ordenar por Desempeño</option>
+                        <option value="asistencia_avg">Ordenar por Asistencia</option>
+                    </select>
+                </div>
+            </div>
+
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="text-[11px] font-black text-slate-400 uppercase tracking-wider border-b-2 border-slate-100">
+                        <th class="pb-3 pl-2 text-center w-12">#</th>
+                        <th class="pb-3 px-4 w-72">Colaborador</th>
+                        <th class="pb-3 px-4 w-32">Nivel</th>
+                        <th class="pb-3 px-4 w-40">Área</th>
+                        <th class="pb-3 px-4 text-center w-32">Desempeño</th>
+                        <th class="pb-3 px-4 text-center w-32">Asistencia</th>
+                        <th class="pb-3 pr-2 text-center w-28">Score Final</th>
+                        <th class="pb-3 px-4 w-44">Clasificación</th>
+                    </tr>
+                </thead>
+                <tbody id="rankingTableBody" class="text-sm"></tbody>
+            </table>
+            
+            <div id="paginacion" class="mt-6 flex justify-between items-center border-t border-slate-100 pt-4 px-2">
+                <span id="txtPaginacion" class="text-xs font-bold text-slate-500"></span>
+                <div class="flex gap-2">
+                    <button onclick="cambiarPagina(-1)" id="btnPrev" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Anterior</button>
+                    <button onclick="cambiarPagina(1)" id="btnNext" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Siguiente</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="estadoVacio" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-8 bg-white z-20">
+            <i class="ph ph-magnifying-glass-minus text-5xl text-slate-300 mb-3"></i>
+            <h3 class="text-lg font-bold text-slate-600 mb-1">No hay resultados</h3>
+            <p class="text-sm text-slate-400">Intenta cambiar los filtros de búsqueda.</p>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    let dataRanking = [];
+    let paginaActual = 1;
+    const ITEMS_POR_PAGINA = 15;
+
+    function toggleContenedoresTiempo() {
+        const val = document.getElementById('filtroPeriodo').value;
+        document.getElementById('contMes').style.display = val === 'mes' ? 'block' : 'none';
+        document.getElementById('contSemestre').style.display = val === 'semestre' ? 'block' : 'none';
+    }
+
+    function escaparHtml(str) {
+        return String(str).replace(/[&<>'"]/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[match]));
+    }
+
+    function scoreColorClass(v) {
+        if (v >= 9) return 'text-emerald-600';
+        if (v >= 7) return 'text-indigo-600';
+        if (v >= 5) return 'text-amber-600';
+        return 'text-rose-600';
+    }
+    function scoreLetter(v) {
+        if (v >= 9) return 'AD';
+        if (v >= 7) return 'A';
+        if (v >= 5) return 'B';
+        return 'C';
+    }
+    function scoreBadgeClasses(v) {
+        if (v >= 9) return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+        if (v >= 7) return 'bg-indigo-50 text-indigo-700 border-indigo-100';
+        if (v >= 5) return 'bg-amber-50 text-amber-700 border-amber-100';
+        return 'bg-rose-50 text-rose-700 border-rose-100';
+    }
+    function scoreDescription(v) {
+        if (v >= 9) return { text: 'Alto Desempeño', cls: 'text-emerald-700' };
+        if (v >= 7) return { text: 'Desempeño Esperado', cls: 'text-indigo-700' };
+        if (v >= 5) return { text: 'En Proceso de Mejora', cls: 'text-amber-700' };
+        return { text: 'Desempeño Deficiente', cls: 'text-rose-700' };
+    }
+
+    function cargarDatosTablaRanking() {
+        // Mostrar Loading, Ocultar resto
+        document.getElementById('estadoInicial').classList.add('hidden');
+        document.getElementById('estadoVacio').classList.add('hidden');
+        document.getElementById('contenedorTabla').classList.add('hidden');
+        document.getElementById('estadoCarga').classList.remove('hidden');
+
+        const params = new URLSearchParams();
+        const periodo = document.getElementById('filtroPeriodo').value;
+        
+        params.set('periodo', periodo);
+        if(periodo === 'mes') {
+            params.set('mes', document.getElementById('filtroMes').value);
+            params.set('anio', document.getElementById('filtroAnio').value);
+        } else {
+            params.set('semestre', document.getElementById('filtroSemestre').value);
+            params.set('anio', document.getElementById('filtroAnioSem').value);
+        }
+
+        // Fetch AJAX hacia la ruta que ya tienes creada (ajax_datos_ranking)
+        fetch(`{% url 'metricas_ceneris:ajax_datos_ranking' %}?${params.toString()}`)
+            .then(res => res.json())
+            .then(data => {
+                // Filtrado frontend para Sede, Nivel y Texto
+                const sedeF = document.getElementById('filtroSede').value;
+                const tipoF = document.getElementById('filtroTipo').value;
+                const textoF = document.getElementById('filtroTexto').value.toLowerCase().trim();
+
+                dataRanking = data.ranking.filter(item => {
+                    const okSede = (sedeF === 'todas') || ((item.sede_nombre||'').toLowerCase() === sedeF);
+                    const okTipo = (tipoF === 'todos') || (item.tipo_persona === tipoF);
+                    const okTexto = !textoF || (item.nombre_completo||'').toLowerCase().includes(textoF);
+                    return okSede && okTipo && okTexto;
+                });
+
+                document.getElementById('estadoCarga').classList.add('hidden');
+                paginaActual = 1;
+
+                if (dataRanking.length === 0) {
+                    document.getElementById('estadoVacio').classList.remove('hidden');
+                } else {
+                    document.getElementById('contenedorTabla').classList.remove('hidden');
+                    renderTablaRanking();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('estadoCarga').classList.add('hidden');
+                alert("Ocurrió un error al cargar los datos.");
+            });
+    }
+
+    function renderTablaRanking() {
+        const tbody = document.getElementById('rankingTableBody');
+        const campoOrden = document.getElementById('ordenCampo').value;
+        
+        // Ordenar la data (siempre descendente: los mejores arriba)
+        dataRanking.sort((a, b) => Number(b[campoOrden] || 0) - Number(a[campoOrden] || 0));
+
+        // Paginar
+        const total = dataRanking.length;
+        const totalPags = Math.ceil(total / ITEMS_POR_PAGINA);
+        const inicio = (paginaActual - 1) * ITEMS_POR_PAGINA;
+        const porcion = dataRanking.slice(inicio, inicio + ITEMS_POR_PAGINA);
+
+        tbody.innerHTML = porcion.map((item, index) => {
+            const num = inicio + index + 1;
+            const esJefe = item.tipo_persona === 'jefe';
+            const badgeTipo = esJefe ? '<span class="px-2.5 py-1 bg-purple-100 text-purple-700 text-[10px] font-bold rounded-lg">Líder</span>' : '<span class="px-2.5 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-lg">Colaborador</span>';
+            const valEval = Number(document.getElementById('filtroPeriodo').value === 'mes' ? item.promedio_mensual : item.promedio_semestral).toFixed(2);
+            
+            const desc = scoreDescription(parseFloat(item.score));
+            return `
+                <tr class="floating-table-row border-b border-slate-50 last:border-0">
+                    <td class="py-3 pl-2 text-center align-middle font-black text-slate-400">${num}</td>
+                    <td class="py-3 px-4 align-middle">
+                        <div class="font-bold text-slate-800 text-sm leading-tight">${escaparHtml(item.nombres)} ${escaparHtml(item.apellido_paterno)}</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5 truncate max-w-[200px]">${escaparHtml(item.cargo || 'Sin cargo')}</div>
+                    </td>
+                    <td class="py-3 px-4 align-middle">${badgeTipo}</td>
+                    <td class="py-3 px-4 align-middle">
+                        <span class="text-xs font-semibold text-slate-600 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">${escaparHtml(item.area_nombre || '--')}</span>
+                    </td>
+                    <td class="py-3 px-4 text-center align-middle">
+                        <span class="inline-flex items-baseline gap-1 font-bold ${scoreColorClass(parseFloat(valEval))}"><span class="text-xs font-black">${scoreLetter(parseFloat(valEval))}</span> ${valEval}</span>
+                    </td>
+                    <td class="py-3 px-4 text-center align-middle">
+                        <span class="inline-flex items-baseline gap-1 font-bold ${scoreColorClass(parseFloat(Number(item.asistencia_avg).toFixed(1)))}"><span class="text-xs font-black">${scoreLetter(parseFloat(Number(item.asistencia_avg).toFixed(1)))}</span> ${Number(item.asistencia_avg).toFixed(1)}</span>
+                    </td>
+                    <td class="py-3 pr-2 text-center align-middle">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-sm font-black border ${scoreBadgeClasses(parseFloat(item.score))}"><span class="text-xs">${scoreLetter(parseFloat(item.score))}</span> ${Number(item.score).toFixed(2)}</span>
+                    </td>
+                    <td class="py-3 px-4 align-middle">
+                        <span class="text-xs font-semibold ${desc.cls}">${desc.text}</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        document.getElementById('txtPaginacion').innerText = `Mostrando ${inicio + 1} - ${Math.min(inicio + ITEMS_POR_PAGINA, total)} de ${total}`;
+        document.getElementById('btnPrev').disabled = paginaActual === 1;
+        document.getElementById('btnNext').disabled = paginaActual === totalPags || totalPags === 0;
+    }
+
+    function cambiarPagina(dir) {
+        paginaActual += dir;
+        renderTablaRanking();
+    }
+</script>
+{% endblock %}

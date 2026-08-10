@@ -1,0 +1,56 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="header-container">
+    <h1>{{ titulo }}</h1>
+</div>
+
+<div class="card-deck">
+    <div class="card">
+        <div class="card-icon">🔩</div>
+        <h3 class="card-title text-primary">Generar Reporte de Mantenimiento</h3>
+        <p class="card-description">Selecciona un modelo de dispositivo para generar el reporte consolidado de mantenimiento de todos los equipos de ese tipo.</p>
+
+        <div class="filter-form">
+            <div class="form-group">
+                <label for="select-modelo">Modelo de Dispositivo:</label>
+                <select id="select-modelo" class="form-select">
+                    <option value="">-- Selecciona un modelo --</option>
+                    {% for modelo in modelos_disponibles %}
+                    <option value="{{ modelo }}">{{ modelo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="card-action">
+            <button id="btn-exportar-mantenimiento" class="btn btn-primary">Descargar Excel</button>
+        </div>
+    </div>
+</div>
+
+<div class="form-actions">
+            <a href="{% url 'cenerisapp:exportar_indice' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const exportBtn = document.getElementById('btn-exportar-mantenimiento');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', () => {
+            const selectModelo = document.getElementById('select-modelo');
+            const modelo = selectModelo.value;
+            if (!modelo) {
+                alert("Por favor, selecciona un modelo de dispositivo.");
+                return;
+            }
+            const url = `{% url 'cenerisapp:exportar_mantenimiento_excel' %}?modelo=${encodeURIComponent(modelo)}`;
+            window.location.href = url;
+        });
+    }
+});
+</script>
+{% endblock %}

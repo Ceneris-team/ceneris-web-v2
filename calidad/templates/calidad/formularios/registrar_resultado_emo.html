@@ -1,0 +1,13 @@
+<!-- calidad/templates/calidad/registrar_resultado_emo.html -->
+{% extends "dashboard/base_rrhh.html" %}
+{% block content %}
+    <h1>Registrar Resultados de EMO para: {{ trabajador }}</h1>
+    <p>Completa la información del examen médico realizado.</p>
+    <div class="form-container">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="button--primary">Guardar Resultados</button>
+        </form>
+    </div>
+{% endblock %}

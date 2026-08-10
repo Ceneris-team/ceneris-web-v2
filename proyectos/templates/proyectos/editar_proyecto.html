@@ -1,0 +1,44 @@
+{% extends 'index.html' %}
+
+{% block content %}
+<div class="split-screen-container">
+    
+    <div class="image-side animate__animated animate__fadeIn">
+        <!-- Lado de la imagen -->
+    </div>
+
+    <div class="form-side">
+        <div class="form-container">
+            <!-- El 'action' vacío enviará el formulario a la URL actual -->
+            <form method="post">
+                <h2>Editar Proyecto: "{{ proyecto.nombre }}"</h2>
+                {% csrf_token %}
+
+                <div class="form-group">
+                    {{ form.nombre.label_tag }}
+                    {{ form.nombre }}
+                    {% if form.nombre.errors %}<div class="error-list">{{ form.nombre.errors }}</div>{% endif %}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.descripcion.label_tag }}
+                    {{ form.descripcion }}
+                    {% if form.descripcion.errors %}<div class="error-list">{{ form.descripcion.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <h5 class="form-label-style">Fechas en base a sub-tareas:</h5>
+                    <span class="date-edit">Inicio: {{ proyecto.fecha_inicio_calculada|date:"d M Y" }}</span>
+                    <span class="date-edit">Fin: {{ proyecto.fecha_fin_calculada|date:"d M Y" }}</span>
+                </div>
+                
+                <div class="form-actions" style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <a href="{% url 'proyectos:lista_proyectos' %}" class="btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn-submit">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

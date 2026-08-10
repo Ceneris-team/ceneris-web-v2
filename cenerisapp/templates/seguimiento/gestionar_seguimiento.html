@@ -1,0 +1,267 @@
+{% extends 'app_base.html' %}
+{% load ceneris_tags query_filters %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="dashboard-container modern">
+    
+    <!-- === ENCABEZADO MODERNO === -->
+    <div class="dashboard-header-modern">
+        <h1>{{ titulo }}</h1>
+        <p>Actualiza el estado diario de los dispositivos y consulta el historial de cambios.</p>
+    </div>  
+
+    <!-- FORMULARIO DE FILTROS -->
+    <div class="info-card modern" style="max-width: 700px; margin: 0 auto; margin-bottom: 20px;">
+        <form method="get" class="filter-form-grid">
+            <div class="form-grid" style="align-items: center; ">
+                <div class="form-group">
+                    <label for="select-ano">Año:</label>
+                    <select id="select-ano" name="ano" class="form-select">
+                        {% for ano in anos_disponibles %}
+                        <option value="{{ ano }}" {% if ano == ano_seleccionado %}selected{% endif %}>
+                            {{ ano }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group ">
+                    <label for="select-mes">Mes:</label>
+                    <select id="select-mes" name="mes" class="form-select">
+                        {% for num, nombre in meses_disponibles %}
+                        <option value="{{ num }}" {% if num == mes_seleccionado %}selected{% endif %}>
+                            {{ nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                    <label for="select-area-general">Área General:</label>
+                    <select id="select-area-general" name="area_general" class="form-select">
+                        {% for area in areas_generales_disponibles %}
+                        <option value="{{ area }}" {% if area == area_general_seleccionada %}selected{% endif %}>
+                            {{ area }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            <div class="form-actions" style="align-self: flex-start; justify-self: auto;">
+                <button type="submit" class="btn btn-primary" style="background-color: #d45b04;">Cargar / Actualizar Matriz</button>
+            </div>
+        </form>
+    </div>
+
+    {% if area_general_seleccionada %}
+        <div class="section-title modern" style="margin-top: 2.5rem;">
+            <i class="bi bi-calendar"></i> Matriz de Seguimiento para <strong>{{ area_general_seleccionada }}</strong>
+        </div>
+
+        <form method="post" class="info-card modern">
+            {% csrf_token %}
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th >N°</th>
+                            <th >Modelo</th>
+                            <th >Serie</th>
+                            <th >Ubicación</th>
+                            {% for dia in dias_del_mes %}
+                                <th>{{ dia|date:"d" }}</th> {# Muestra solo el número del día #}
+                            {% endfor %}
+                            
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dispositivo in matriz_page_obj %}
+                        <tr>
+                            <td >{{ forloop.counter }}</td>
+                            <td >{{ dispositivo.nomDisp }}</td>
+                            <td >{{ dispositivo.num_serie }}</td>
+                            <td >{{ dispositivo.area_general }}</td>
+                            <!-- Celdas de estado dinámicas -->
+                            {% for dia in dias_del_mes %}
+                                <td>
+                                    {% with estado_actual=matriz_seguimiento|get_item:dispositivo.id_dispositivo|get_item:dia %}
+                                    <select name="estado_D{{ dispositivo.pk }}_F{{ dia|date:'Y-m-d' }}">
+                                        {% for value, text in opciones_estado %}
+                                            <option value="{{ value }}" {% if estado_actual == value %}selected{% endif %}>
+                                                {{ text }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    {% endwith %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-actions" style="justify-content: flex-end; border-top: 1px solid #ecf0f1; padding-top: 1rem;">
+                <button type="submit" class="btn btn-success" style="background-color: #d45b04;">Guardar Cambios del Mes</button>
+            </div>
+        </form>
+        {% if matriz_page_obj.has_other_pages %}
+            <nav aria-label="Navegación de la matriz" class="pagination-container">
+                <ul class="pagination">
+                    {% if matriz_page_obj.has_previous %}
+                        <li class="page-item">
+                            {# ¡CORREGIDO! Usa page_matriz #}
+                            <a class="page-link" href="?{% url_replace page_matriz=1 %}">&laquo; Primera</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% url_replace page_matriz=matriz_page_obj.previous_page_number %}">Anterior</a>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item active"><span class="page-link">Página {{ matriz_page_obj.number }} de {{ matriz_page_obj.paginator.num_pages }}</span></li>
+
+                    {% if matriz_page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% url_replace page_matriz=matriz_page_obj.next_page_number %}">Siguiente</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% url_replace page_matriz=matriz_page_obj.paginator.num_pages %}">Última &raquo;</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% endif %}
+
+    <div class="history-section-modern">
+        <div class="section-title modern">
+            <i class="bi bi-clock-history"></i> Historial de Cambios de Estado
+        </div>
+
+        <!-- Filtros para el Historial -->
+        <div class="info-card modern">
+            <form method="GET" class="filter-form-grid">
+                <!-- Pasamos los filtros de la matriz para no perderlos al buscar en el historial -->
+                <input type="hidden" name="ano" value="{{ ano_seleccionado }}">
+                <input type="hidden" name="mes" value="{{ mes_seleccionado }}">
+                <input type="hidden" name="area_general" value="{{ area_general_seleccionada }}">
+                
+                <div class="form-group">
+                    <label>Buscar por Dispositivo</label>
+                    <input type="text" name="historial_q" value="{{ filtros_historial_aplicados.q }}" class="form-control" placeholder="Nombre del dispositivo...">
+                </div>
+                <div class="form-group">
+                    <label>Desde Fecha</label>
+                    <input type="date" name="historial_fecha_desde" value="{{ filtros_historial_aplicados.fecha_desde }}" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Hasta Fecha</label>
+                    <input type="date" name="historial_fecha_hasta" value="{{ filtros_historial_aplicados.fecha_hasta }}" class="form-control">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" style="background-color: #d45b04;">Filtrar Historial</button>
+                    <a href="{% url 'cenerisapp:gestionar_seguimiento_diario' %}" class="btn btn-secondary">Limpiar</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tabla de Historial -->
+        <div class="table-container" style="margin-top: 1.5rem;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Dispositivo</th>
+                        <th>Estado Asignado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in historial_page_obj %}
+                        <tr>
+                            <td>{{ item.fecha|date:"d M, Y" }}</td>
+                            <td>{{ item.dispositivo }}</td>
+                            <td><span class="status-badge" style="background-color: #3498db;">{{ item.estado_texto }}</span></td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="3" class="no-data">No se encontraron registros en el historial.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación para el Historial -->
+        {% if historial_page_obj.has_other_pages %}
+            <nav aria-label="Navegación del historial" class="pagination-container">
+                <ul class="pagination">
+                    {% if historial_page_obj.has_previous %}
+                        <li class="page-item">
+                            {# ¡CORREGIDO! Usa page_historial #}
+                            <a class="page-link" href="?{% url_replace page_historial=1 %}">&laquo; Primera</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% url_replace page=historial_page_obj.previous_page_number %}">Anterior</a>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item active"><span class="page-link">Página {{ historial_page_obj.number }} de {{ historial_page_obj.paginator.num_pages }}</span></li>
+
+                    {% if historial_page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% url_replace page_historial=historial_page_obj.next_page_number %}">Siguiente</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% url_replace page_historial=historial_page_obj.paginator.num_pages %}">Última &raquo;</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    </div>
+</div>
+<style>
+    /* Contenedor scrollable */
+.table-container {
+  width: 100%;
+  max-width: 1400px;   /* 🔹 ajusta aquí el límite visible */
+  overflow-x: auto;   /* aparece scroll solo cuando es necesario */
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin: 0 auto;     /* centra el bloque */
+  padding-bottom: 5px;
+  background: #fff;
+  display: block;
+  scrollbar-width: thin; /* Ancho del scrollbar */
+  scrollbar-color: #d45b04 #f5f5f5; 
+}
+
+/* Tabla adaptable */
+.table-container table {
+  border-collapse: collapse;
+  width: max-content;   /* 🔹 ocupa lo necesario */
+  min-width: 100%;
+}
+
+/* Encabezados y celdas */
+.table-container th,
+.table-container td {
+  padding: 8px;
+  border: 1px solid #ddd;
+  text-align: center;
+  white-space: nowrap;
+  min-width: 90px;
+  background-color: #fff;
+}
+
+/* Select responsive dentro de celdas */
+.table-container select {
+  width: 100%;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: #fff;
+  font-size: 14px;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,635 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/tabla_estados.css' %}">
+    <link rel="stylesheet" href="{% static 'css/filtros_maestros.css' %}">
+    <style>
+        /* --- 1. ESTILOS PARA OCUPAR TODO EL ANCHO --- */
+        /* Forzamos al contenedor principal (asumiendo Bootstrap o similar) a usar el 100% */
+        .main-container {
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 1rem !important;
+            margin: 0 !important;
+        }
+        /* Un poco menos de “aire” en el bloque de filtros */
+        .master-filter-bar {
+            padding: 1rem;
+            margin-bottom: 1.25rem;
+        }
+        .form-filters-master {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 0.9rem;
+            align-items: end;
+            grid-auto-flow: row dense;
+        }
+        .filter-group { min-width: 0; }
+        .filter-group--search {
+            grid-column: span 1;
+            min-width: 0;
+            max-width: 100%;
+            justify-self: stretch;
+        }
+        .form-actions {
+            display: flex;
+            gap: 0.5rem;
+            padding-bottom: 2px;
+            align-items: end;
+            justify-content: flex-end;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
+        /* Fecha Hasta + botones siempre “en pareja” cuando entra */
+        .filter-end-group {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.9rem;
+            align-items: end;
+            grid-column: span 2;
+        }
+        .filter-end-group .form-actions {
+            justify-self: end;
+        }
+        .master-filter-bar .filter-group input[type="text"],
+        .master-filter-bar .filter-group input[type="date"],
+        .master-filter-bar .filter-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            background-color: #f8f9fa;
+            font-size: 1rem;
+            height: 42px;
+            box-sizing: border-box;
+        }
+        .form-actions .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem; /* separa un poco más ícono y texto */
+            padding: 0 0.95rem;
+            height: 42px; /* mismo alto que inputs/selects */
+            font-weight: 600;
+            border-radius: 6px;
+            white-space: nowrap;
+            border: none;
+            transition: background-color 0.2s ease;
+            font-size: 0.95rem;
+            text-decoration: none;
+            line-height: 1;
+        }
+        .form-actions .btn-primary { background-color: #d45b04; color: #ffffff; }
+        .form-actions .btn-primary:hover { background-color: #b04a03; }
+        .form-actions .btn-secondary { background-color: #6c757d; color: #ffffff; }
+        .form-actions .btn-secondary:hover { background-color: #5a6268; }
+        .form-actions i { width: 16px; height: 16px; }
+        .form-actions svg { width: 16px; height: 16px; }
+        .form-actions .btn,
+        .form-actions .btn-secondary {
+            white-space: nowrap;
+        }
+        @media (max-width: 1200px) {
+            .form-filters-master { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+            .filter-group--search { max-width: 100%; }
+        }
+        @media (max-width: 900px) {
+            /* En zoom/ventanas medianas: apila mejor como el resto (2 columnas) */
+            .form-filters-master { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .filter-end-group { grid-column: 1 / -1; }
+        }
+        @media (max-width: 600px) {
+            /* En zoom extremo/móvil: una sola columna */
+            .form-filters-master { grid-template-columns: 1fr; }
+            /* Ya no entra lado a lado: apila Fecha Hasta arriba y botones abajo */
+            .filter-end-group {
+                grid-template-columns: 1fr;
+                grid-column: 1 / -1;
+            }
+            .filter-end-group .form-actions {
+                justify-self: stretch;
+            }
+        }
+        
+        /* Colores de filas */
+        .emo-vencido { background-color: rgba(220, 53, 69, 0.1) !important; }
+        .emo-por-vencer { background-color: rgba(255, 193, 7, 0.1) !important; }
+        .emo-sin-registro { background-color: rgba(108, 117, 125, 0.05) !important; }
+        .emo-vencido:hover { background-color: rgba(220, 53, 69, 0.2) !important; }
+        .emo-por-vencer:hover { background-color: rgba(255, 193, 7, 0.2) !important; }
+        .emo-sin-registro:hover { background-color: rgba(108, 117, 125, 0.1) !important; }
+        
+        .proyecto-badge {
+            display: block;
+            font-size: 0.85em;
+            margin: 2px 0;
+            color: #333;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+        /* Separación cuando hay múltiples proyectos en una misma celda */
+        .proyecto-badge + .proyecto-badge {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed rgba(0,0,0,0.15);
+        }
+        /* Subproyecto entre paréntesis: más “secundario”, pero legible */
+        .subproyecto-paren {
+            font-weight: 600;
+            color: #6b7280;
+            margin-left: 4px;
+            white-space: nowrap;
+        }
+        .badge-status { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
+        .status-activo { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+        .status-cesado, .status-inactivo { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+        
+        /* Ajuste de la tabla para ancho completo (sticky header funciona mejor sin collapse)
+           Importante: anula el overflow global del proyecto para que el sticky tome como scroll a .table-wrapper */
+        table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .table-wrapper table {
+            margin-top: 0;
+            border-radius: 0;
+            overflow: visible !important;
+        }
+        
+        /* --- CONTENEDOR CON SCROLL SIEMPRE VISIBLE --- */
+        .table-wrapper {
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 600px; /* Altura fija para que la barra horizontal siempre esté visible */
+            margin-top: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        /* SOLO barra horizontal visible y destacada */
+        .table-wrapper::-webkit-scrollbar {
+            height: 12px;
+            width: 8px; /* Barra vertical más delgada */
+        }
+        
+        .table-wrapper::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 6px;
+        }
+        
+        /* Barra horizontal naranja y visible */
+        .table-wrapper::-webkit-scrollbar-thumb:horizontal {
+            background: #d45b04;
+            border-radius: 6px;
+        }
+        
+        .table-wrapper::-webkit-scrollbar-thumb:horizontal:hover {
+            background: #b04a03;
+        }
+        
+        /* Barra vertical también naranja */
+        .table-wrapper::-webkit-scrollbar-thumb:vertical {
+            background: #d45b04;
+            border-radius: 4px;
+        }
+        
+        .table-wrapper::-webkit-scrollbar-thumb:vertical:hover {
+            background: #b04a03;
+        }
+        
+        /* Header sticky dentro del contenedor (mantiene visible qué es cada columna al hacer scroll) */
+        .table-wrapper thead th {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #f8f9fa;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <h1>{{ titulo }}</h1>
+    <p>Usa los filtros para segmentar y analizar el estado actual de los EMOs de la plantilla.</p>
+
+    <div class="master-filter-bar">
+        <!-- Formulario de filtros (Sin cambios lógicos) -->
+        <form method="get" class="form-filters-master">
+            <div class="filter-group filter-group--search">
+                <label for="apellidos-input">Buscar Trabajador</label>
+                <input type="text" name="apellidos" id="apellidos-input" value="{{ filtro_activo_apellidos }}" placeholder="Nombre, apellido o DNI...">
+            </div>
+            <div class="filter-group">
+                <label for="estado">Estado de Vigencia</label>
+                <select name="estado" id="estado">
+                    <option value="" {% if not filtro_activo_estado %}selected{% endif %}>Todos</option>
+                    <option value="sin_emo" {% if filtro_activo_estado == 'sin_emo' %}selected{% endif %}>Sin EMO</option>
+                    <option value="vigente" {% if filtro_activo_estado == 'vigente' %}selected{% endif %}>Vigente</option>
+                    <option value="por_vencer" {% if filtro_activo_estado == 'por_vencer' %}selected{% endif %}>Por Vencer</option>
+                    <option value="vencido" {% if filtro_activo_estado == 'vencido' %}selected{% endif %}>Vencido</option>
+                    <option value="programado" {% if filtro_activo_estado == 'programado' %}selected{% endif %}>Programado</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="aptitud">Aptitud Médica</label>
+                <select name="aptitud" id="aptitud">
+                    <option value="">Todas</option>
+                    {% for value, text in opciones_aptitud %}<option value="{{ value }}" {% if filtro_activo_aptitud == value %}selected{% endif %}>{{ text }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="empresa">Empresa</label>
+                <select name="empresa" id="empresa">
+                    <option value="">Todas</option>
+                    {% for emp in opciones_empresas %}<option value="{{ emp.pk }}" {% if filtro_activo_empresa == emp.pk %}selected{% endif %}>{{ emp.nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="estado_laboral">Estado Laboral</label>
+                <select name="estado_laboral" id="estado_laboral">
+                    <option value="" {% if not filtro_activo_estado_laboral %}selected{% endif %}>Todos</option>
+                    <option value="activo" {% if filtro_activo_estado_laboral == 'activo' %}selected{% endif %}>Activo</option>
+                    <option value="inactivo" {% if filtro_activo_estado_laboral == 'inactivo' %}selected{% endif %}>Inactivo</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="proyecto_padre">Proyecto</label>
+                <select name="proyecto_padre" id="proyecto_padre">
+                    <option value="">Todos</option>
+                    {% for proy in opciones_proyectos_padre %}
+                        <option value="{{ proy.pk }}" {% if filtro_activo_proyecto_padre == proy.pk %}selected{% endif %}>
+                            {{ proy.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="subproyecto">Codigo de Proyecto</label>
+                <select name="subproyecto" id="subproyecto" {% if not filtro_activo_proyecto_padre %}disabled{% endif %}>
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="hospital">Clínica</label>
+                <select name="hospital" id="hospital">
+                    <option value="">Todas</option>
+                    {% for clinica in opciones_clinicas %}<option value="{{ clinica.pk }}" {% if filtro_activo_hospital == clinica.pk %}selected{% endif %}>{{ clinica.nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="cargo">Cargos</label>
+                <select name="cargo" id="cargo">
+                    <option value="">Todos</option>
+                    {% for cargo in opciones_cargos %}<option value="{{ cargo.pk }}" {% if filtro_activo_cargo == cargo.pk %}selected{% endif %}>{{ cargo.nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="lectura">Lectura</label>
+                <select name="lectura" id="lectura">
+                    <option value="">Todos</option>
+                    <option value="confirmado" {% if filtro_activo_lectura == 'confirmado' %}selected{% endif %}>Confirmado</option>
+                    <option value="pendiente" {% if filtro_activo_lectura == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                </select>
+            </div>
+            
+            <!-- FILTROS DE FECHA COMPACTOS -->
+            <div class="filter-group">
+                <label for="fecha_realizacion_desde">F. Realización (Desde)</label>
+                <input type="date" name="fecha_realizacion_desde" id="fecha_realizacion_desde" value="{{ filtro_activo_fecha_realizacion_desde }}">
+            </div>
+            
+            <div class="filter-end-group">
+                <div class="filter-group">
+                    <label for="fecha_realizacion_hasta">F. Realización (Hasta)</label>
+                    <input type="date" name="fecha_realizacion_hasta" id="fecha_realizacion_hasta" value="{{ filtro_activo_fecha_realizacion_hasta }}">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary"><i data-feather="filter"></i><span>Buscar</span></button>
+                    <a href="{% url 'calidad:reporte_maestro_emos' %}" class="btn btn-secondary"><i data-feather="refresh-cw"></i><span>Limpiar</span></a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Contenedor con scroll horizontal para la tabla -->
+    <div class="table-wrapper">
+    <table style="width: 100%; min-width: 1400px;">
+        <thead>
+            <tr>
+                <th style="text-align: center; width: 50px;">N°</th>
+                <th>Trabajador</th>
+                <!-- COLUMNA NUEVA 1 -->
+                <th style="text-align: center;">Estado Lab.</th> 
+                <th>Empresa</th>
+                <th>Proyecto</th>
+                <th>Subproyecto/Area</th>
+                <th>Cargos</th>
+                <th>Tipo EMO</th>
+                <th>Aptitud</th>
+                <th>Clínica</th>
+                <th>Fecha Programación</th>
+                <th>Fecha Realización</th>
+                <th>Fecha Vencimiento</th>
+                <th>Fecha Lectura</th>
+                <th>Lectura Cargada</th>
+                <th>CAMO CARGADO</th>
+                <th>Estado EMO</th>
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody> 
+            {% for emo in emos %}
+                <tr class="{% if emo.esta_vencido %}emo-vencido{% elif emo.esta_por_vencer %}emo-por-vencer{% endif %}">
+                    <!-- Número -->
+                    <td style="text-align: center; font-weight: bold;">{{ forloop.counter }}</td>
+                    <!-- Trabajador -->
+                    <td>
+                        <strong>{{ emo.trabajador }}</strong>
+                        <br><small>{{ emo.trabajador.dni }}</small>
+                    </td>
+
+                    <!-- NUEVA COLUMNA: ESTADO TRABAJADOR -->
+                    <td style="text-align: center;">
+                        {% if emo.trabajador.activo %}<span class="badge-status status-activo">ACTIVO</span>
+                        {% else %}<span class="badge-status status-inactivo">INACTIVO</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if emo.empresa %}{{ emo.empresa.nombre }}{% else %}<span class="text-muted">--</span>{% endif %}
+                    </td>
+
+                    <!-- En reporte de EMOs: cada fila es un EMO, así que mostramos SOLO su empresa/proyecto/cargo -->
+                    <td>
+                        {% if emo.proyecto %}
+                            <div class="proyecto-badge">{{ emo.proyecto.codigo|default:emo.proyecto.nombre|default:"--" }}</div>
+                        {% elif emo.subproyecto %}
+                            <div class="proyecto-badge">
+                                {% if emo.subproyecto.parent %}
+                                    {{ emo.subproyecto.parent.codigo|default:emo.subproyecto.parent.nombre|default:"--" }}
+                                {% else %}
+                                    {{ emo.subproyecto.codigo|default:emo.subproyecto.nombre|default:"--" }}
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <span class="text-muted">Sin proyecto</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if emo.subproyecto %}
+                            <div class="proyecto-badge">{{ emo.subproyecto.codigo|default:"--" }}</div>
+                        {% elif emo.proyecto %}
+                            <div class="proyecto-badge">{{ emo.proyecto.codigo|default:"--" }}</div>
+                        {% else %}
+                            <span class="text-muted">--</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if emo.cargo %}
+                            <div class="proyecto-badge">{{ emo.cargo.nombre }}</div>
+                        {% else %}
+                            <span class="text-muted">--</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ emo.get_tipo_emo_display|default:"--" }}
+                    </td>
+                    <td><span class="aptitud-{{ emo.aptitud|slugify }}">{{ emo.get_aptitud_display }}</span></td>
+                    <td>{{ emo.lugar_examen.nombre|default:"--" }}</td>
+                                        <!-- COLUMNA: FECHA PROGRAMACION -->
+                    <td>
+                        {% if emo.fecha_programada %}
+                            {{ emo.fecha_programada|date:"d/m/Y" }}
+                        {% else %}
+                            <span class="text-muted">--</span>
+                        {% endif %}
+                    </td>
+                    <!-- COLUMNA: FECHA DE REALIZACI\u00d3N -->
+                    <td>
+                        {% if emo.fecha_realizacion %}
+                            {{ emo.fecha_realizacion|date:"d/m/Y" }}
+                        {% else %}
+                            <span class="text-muted">--</span>
+                        {% endif %}
+                    </td>
+
+                    <td>{{ emo.fecha_vencimiento|date:"d/m/Y"|default:"--" }}</td>
+
+                    <!-- NUEVA COLUMNA: FECHA DE LECTURA -->
+                    <td>
+                        {% if emo.fecha_confirmacion %}
+                            {{ emo.fecha_confirmacion|date:"d/m/Y" }}
+                        {% else %}
+                            <span class="text-muted">--</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- NUEVA COLUMNA: LECTURA CARGADA (ARCHIVO PDF) -->
+                    <td style="text-align: center;">
+                        {% if emo.archivo_confirmacion %}
+                            <a href="{{ emo.archivo_confirmacion.url }}" target="_blank" title="Ver Documento" style="color: #28a745; font-weight: bold;">
+                                <i data-feather="file-text"></i> Sí
+                            </a>
+                        {% else %}
+                            <span class="text-muted">No</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- NUEVA COLUMNA: CAMO CARGADO (ARCHIVO PDF PRINCIPAL) -->
+                    <td style="text-align: center;">
+                        {% if emo.archivo_pdf %}
+                            <a href="{{ emo.archivo_pdf.url }}" target="_blank" title="Ver CAMO" style="color: #28a745; font-weight: bold;">
+                                <i data-feather="file-text"></i> Sí
+                            </a>
+                        {% else %}
+                            <span class="text-muted">No</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if emo.estado == 'Programado' %}Programado
+                        {% elif emo.esta_vencido %}Vencido
+                        {% elif emo.esta_por_vencer %}Por Vencer
+                        {% elif emo.esta_vigente %}Vigente
+                        {% else %}-{% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        <div class="table-actions-container">
+                            <a href="{% url 'calidad:ver_documentos_emo' emo.id %}" class="btn-icon-action" title="Ver Documentos" style="color: #17a2b8;">
+                                <i data-feather="folder"></i>
+                            </a>
+                            <a href="{% url 'calidad:buscar_trabajador_info' %}?dni={{ emo.trabajador.dni }}" class="btn-icon-action view" title="Ver Historial"><i data-feather="eye"></i></a>
+                            <a href="{% url 'calidad:programar_emo' %}?dni={{ emo.trabajador.dni }}" class="btn-icon-action secondary" title="Programar EMO"><i data-feather="calendar"></i></a>
+                            {% if emo.estado == 'Programado' %}
+                                <a href="{% url 'calidad:editar_emo_programado' emo.id %}" class="btn-icon-action primary" title="Editar EMO Programado" style="color: #28a745;">
+                                    <i data-feather="edit-2"></i>
+                                </a>
+                            {% else %}
+                                <a href="{% url 'calidad:seleccionar_edicion_emo' emo.id %}" class="btn-icon-action primary" title="Gestionar / Editar" style="color: #d45b04;">
+                                    <i data-feather="edit"></i>
+                                </a>
+                            {% endif %}
+                            <a href="{% url 'calidad:eliminar_emo' emo.id %}" class="btn-icon-action" title="Eliminar Registro" style="color: #dc3545;">
+                                <i data-feather="trash-2"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+
+            {% for trabajador in trabajadores_sin_emo %}
+                <tr class="emo-sin-registro">
+                    <td style="text-align: center; font-weight: bold;">{{ emos|length|add:forloop.counter }}</td>
+                    <td>
+                        <strong>{{ trabajador }}</strong>
+                        <br><small>{{ trabajador.dni }}</small>
+                    </td>
+
+                    <!-- NUEVA COLUMNA: ESTADO TRABAJADOR -->
+                    <td style="text-align: center;">
+                        {% if trabajador.activo %}
+                            <span class="badge-status status-activo">ACTIVO</span>
+                        {% else %}
+                            <span class="badge-status status-inactivo">INACTIVO</span>
+                        {% endif %}
+                    </td>
+
+                    <td>{{ trabajador.empresa.nombre|default:"--" }}</td>
+                    
+                    <!-- Proyectos del trabajador -->
+                    <td>
+                        {% for asignacion in trabajador.asignaciones.all %}
+                            {% if filtro_activo_subproyecto %}
+                                {% if asignacion.proyecto.pk == filtro_activo_subproyecto %}
+                                    <div class="proyecto-badge">
+                                        {% if asignacion.proyecto.parent %}
+                                            {{ asignacion.proyecto.parent.codigo|default:asignacion.proyecto.parent.nombre|default:"--" }}
+                                        {% else %}
+                                            {{ asignacion.proyecto.codigo|default:asignacion.proyecto.nombre|default:"--" }}
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            {% elif filtro_activo_proyecto_padre %}
+                                {% if asignacion.proyecto.pk == filtro_activo_proyecto_padre or asignacion.proyecto.parent.pk == filtro_activo_proyecto_padre %}
+                                    <div class="proyecto-badge">
+                                        {% if asignacion.proyecto.parent %}
+                                            {{ asignacion.proyecto.parent.codigo|default:asignacion.proyecto.parent.nombre|default:"--" }}
+                                        {% else %}
+                                            {{ asignacion.proyecto.codigo|default:asignacion.proyecto.nombre|default:"--" }}
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <div class="proyecto-badge">
+                                    {% if asignacion.proyecto.parent %}
+                                        {{ asignacion.proyecto.parent.codigo|default:asignacion.proyecto.parent.nombre|default:"--" }}
+                                    {% else %}
+                                        {{ asignacion.proyecto.codigo|default:asignacion.proyecto.nombre|default:"--" }}
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        {% empty %}
+                            <span class="text-muted">--</span>
+                        {% endfor %}
+                    </td>
+                    
+                    <!-- Codigo Proyecto (Subproyecto) del trabajador -->
+                    <td>
+                        {% for asignacion in trabajador.asignaciones.all %}
+                            {% if filtro_activo_subproyecto %}
+                                {% if asignacion.proyecto.pk == filtro_activo_subproyecto %}
+                                     <div class="proyecto-badge">{{ asignacion.proyecto.codigo|default:"--" }}</div>
+                                {% endif %}
+                            {% elif filtro_activo_proyecto_padre %}
+                                {% if asignacion.proyecto.pk == filtro_activo_proyecto_padre or asignacion.proyecto.parent.pk == filtro_activo_proyecto_padre %}
+                                     <div class="proyecto-badge">{{ asignacion.proyecto.codigo|default:"--" }}</div>
+                                {% endif %}
+                            {% else %}
+                                <div class="proyecto-badge">{{ asignacion.proyecto.codigo|default:"--" }}</div>
+                            {% endif %}
+                        {% empty %}
+                            <span class="text-muted">--</span>
+                        {% endfor %}
+                    </td>
+                    
+                    <!-- Cargos del trabajador -->
+                    <td>
+                        {% for asignacion in trabajador.asignaciones.all %}
+                            {% if filtro_activo_subproyecto %}
+                                {% if asignacion.proyecto.pk == filtro_activo_subproyecto %}
+                                    <div class="proyecto-badge">{{ asignacion.cargo.nombre|default:"--" }}</div>
+                                {% endif %}
+                            {% elif filtro_activo_proyecto_padre %}
+                                {% if asignacion.proyecto.pk == filtro_activo_proyecto_padre or asignacion.proyecto.parent.pk == filtro_activo_proyecto_padre %}
+                                    <div class="proyecto-badge">{{ asignacion.cargo.nombre|default:"--" }}</div>
+                                {% endif %}
+                            {% else %}
+                                <div class="proyecto-badge">{{ asignacion.cargo.nombre|default:"--" }}</div>
+                            {% endif %}
+                        {% empty %}
+                            <span class="text-muted">--</span>
+                        {% endfor %}
+                    </td>
+                    
+                    <td colspan="6" class="text-muted" style="font-style: italic;">Sin registro de EMO</td>
+                    <td>--</td> <!-- Fecha Lectura -->
+                    <td>--</td> <!-- Lectura Cargada -->
+                    <td>--</td> <!-- CAMO Cargado -->
+                    <td>Sin EMO</td>
+                    <td style="text-align: center;">
+                        <div class="table-actions-container">
+                            <a href="{% url 'calidad:buscar_trabajador_info' %}?dni={{ trabajador.dni }}" class="btn-icon-action view" title="Ver Historial"><i data-feather="eye"></i></a>
+                            <a href="{% url 'calidad:programar_emo' %}?dni={{ trabajador.dni }}" class="btn-icon-action secondary" title="Programar EMO"><i data-feather="calendar"></i></a>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+
+            {% if not emos and not trabajadores_sin_emo %}
+                <tr><td colspan="18" style="text-align: center;">No hay registros que coincidan con los filtros aplicados.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+    </div> <!-- Cierra table-wrapper -->
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const proyectoPadreSelect = document.getElementById('proyecto_padre');
+    const subproyectoSelect = document.getElementById('subproyecto');
+    const subproyectosMap = {{ subproyectos_map_json|safe }};
+
+    function updateSubproyectos() {
+        const padreId = proyectoPadreSelect.value;
+        subproyectoSelect.innerHTML = '<option value="">Todos</option>';
+        if (padreId && subproyectosMap[padreId]) {
+            subproyectoSelect.disabled = false;
+            subproyectosMap[padreId].forEach(function(sub) {
+                const option = document.createElement('option');
+                option.value = sub.id;
+                option.textContent = `${sub.nombre} (${sub.codigo})`;
+                
+                if(sub.id == "{{ filtro_activo_subproyecto }}") {
+                    option.selected = true;
+                }
+                
+                subproyectoSelect.appendChild(option);
+            });
+        } else {
+            subproyectoSelect.disabled = true;
+        }
+    }
+
+    proyectoPadreSelect.addEventListener('change', updateSubproyectos);
+    
+    updateSubproyectos(); 
+});
+</script>
+{% endblock %}

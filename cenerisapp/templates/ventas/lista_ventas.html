@@ -1,0 +1,56 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="header-container">
+        <h1>{{ titulo }}</h1>
+        <a href="{% url 'cenerisapp:crear_venta' %}" class="btn btn-primary">Nueva Venta</a>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID Venta</th>
+                    <th>Componente</th>
+                    <th>N/S</th>
+                    <th>Fecha de Venta</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for venta in ventas %}
+                <tr>
+                    <td data-label="ID Venta">#{{ venta.id_ventas }}</td>
+                    {% if venta.id_componente %}
+                        <td data-label="Componente">{{ venta.id_componente.nomComp }}</td>
+                        <td data-label="N/S">{{ venta.id_componente.nSerieActual }}</td>
+                    {% else %}
+                        <td data-label="Componente"><em>(Componente eliminado)</em></td>
+                        <td data-label="N/S"><em>N/A</em></td>
+                    {% endif %}
+                    <td data-label="Fecha">{{ venta.fecVenta|date:"d/m/Y" }}</td>
+                    <td data-label="Estado">
+                        <!-- Mostramos el estado con un badge de color -->
+                        <span class="status-badge {% if venta.estado == 'Pendiente' %}status-pending{% else %}status-completed{% endif %}">
+                            {{ venta.estado }}
+                        </span>
+                    </td>
+                    <td data-label="Acciones">
+                        <!-- El botón solo aparece si la venta está pendiente -->
+                        {% if venta.estado == 'Pendiente' %}
+                            <form action="{% url 'cenerisapp:completar_venta' venta.id_ventas %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm">Marcar como Completado</button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="no-data">No hay ventas registradas.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

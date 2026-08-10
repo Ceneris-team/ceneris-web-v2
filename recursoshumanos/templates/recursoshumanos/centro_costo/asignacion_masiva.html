@@ -1,0 +1,159 @@
+<!-- calidad/templates/calidad/centro_costo/asignacion_masiva.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+{% block title %}Asignación a Centros de Costo{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/custom-select.css' %}">
+    <style>
+        .assignment-board { display: flex; gap: 2rem; margin-top: 2rem; }
+        .assignment-column { flex: 1; background: #f4f7f9; padding: 1.5rem; border-radius: 10px; }
+        .assignment-column h3 { margin-top: 0; border-bottom: 2px solid #ddd; padding-bottom: 1rem; font-size: 1.2rem; }
+        .worker-list { min-height: 400px; }
+        .worker-card { background: white; padding: 1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; cursor: grab; }
+        .worker-card:active { cursor: grabbing; }
+        .worker-card strong { display: block; color: #333; }
+        .worker-card span { font-size: 0.85rem; color: #888; }
+        .sortable-ghost { background: #d4edda; border: 2px dashed #155724; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>Asignación de Trabajadores a Centros de Costo</h1>
+        <a href="{% url 'recursoshumanos:gestion_centro_costo' %}" class="btn-secondary">&larr; Volver a Tarjetas</a>
+    </div>
+
+    <!-- Barra de Selección con el nuevo estilo -->
+    <div class="master-filter-bar">
+        <form method="get" id="cc-select-form">
+            <div class="custom-select-wrapper">
+                <div class="custom-select">
+                    <div class="custom-select__trigger">
+                        <span id="selected-value">
+                            {% if selected_cc %}{{ selected_cc }}{% else %}-- Selecciona un Centro de Costo --{% endif %}
+                        </span>
+                    </div>
+                    <select name="cc_id" id="cc-selector">
+                        <option value="">-- Selecciona un Centro de Costo --</option>
+                        {% for centro in todos_los_centros %}
+                            <option value="{{ centro.pk }}" {% if selected_cc and selected_cc.pk == centro.pk %}selected{% endif %}>
+                                {{ centro }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if selected_cc %}
+        <div class="assignment-board">
+            <!-- Columna de Disponibles -->
+            <div class="assignment-column">
+                <h3>Trabajadores Disponibles ({{ trabajadores_disponibles.count }})</h3>
+                <input type="text" id="disponibles-search" class="search-input" placeholder="Buscar trabajador..." style="margin-bottom: 1rem;">
+                <div id="disponibles-list" class="worker-list">
+                    {% for trabajador in trabajadores_disponibles %}
+                    <div class="worker-card" data-id="{{ trabajador.dni }}">
+                        <strong>{{ trabajador }}</strong>
+                        <span>{{ trabajador.cargo.nombre|default:"Sin Cargo" }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Columna de Asignados -->
+            <div class="assignment-column">
+                <h3>Asignados a {{ selected_cc.nombre }} ({{ trabajadores_asignados.count }})</h3>
+                <input type="text" id="asignados-search" class="search-input" placeholder="Buscar trabajador..." style="margin-bottom: 1rem;">
+                <div id="asignados-list" class="worker-list" data-cc-id="{{ selected_cc.pk }}">
+                    {% for trabajador in trabajadores_asignados %}
+                    <div class="worker-card" data-id="{{ trabajador.dni }}">
+                        <strong>{{ trabajador }}</strong>
+                        <span>{{ trabajador.cargo.nombre|default:"Sin Cargo" }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info">Selecciona un centro de costo para empezar a asignar personal.</div>
+    {% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- LÓGICA DEL SELECTOR PERSONALIZADO ---
+        const selectWrapper = document.querySelector('.custom-select-wrapper');
+        const select = document.getElementById('cc-selector');
+        
+        if (selectWrapper && select) {
+            selectWrapper.addEventListener('click', function(event) {
+                if (event.target.tagName !== 'SELECT') { this.classList.toggle('open'); }
+            });
+            select.addEventListener('change', function() { this.form.submit(); });
+            document.addEventListener('click', function(event) {
+                if (!selectWrapper.contains(event.target)) { selectWrapper.classList.remove('open'); }
+            });
+        }
+
+        // --- LÓGICA DE DRAG AND DROP (CORREGIDA) ---
+        const disponiblesList = document.getElementById('disponibles-list');
+        const asignadosList = document.getElementById('asignados-list');
+        
+        if (disponiblesList && asignadosList) {
+            const csrfToken = '{{ csrf_token }}';
+            const updateUrl = `{% url 'recursoshumanos:actualizar_asignacion_trabajador' %}`;
+
+            function updateAssignment(workerDni, newCcId) {
+                fetch(updateUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                    body: JSON.stringify({ worker_dni: workerDni, new_cc_id: newCcId })
+                });
+            }
+
+            // Cuando una tarjeta ENTRA en la lista de DISPONIBLES, se desasigna.
+            new Sortable(disponiblesList, {
+                group: 'shared-cc',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onAdd: function (evt) {
+                    const workerDni = evt.item.dataset.id;
+                    updateAssignment(workerDni, null); // Desasignar
+                }
+            });
+            
+            // Cuando una tarjeta ENTRA en la lista de ASIGNADOS, se asigna.
+            new Sortable(asignadosList, {
+                group: 'shared-cc',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onAdd: function (evt) {
+                    const workerDni = evt.item.dataset.id;
+                    const newCcId = evt.to.dataset.ccId; // Lee el ID del centro de costo
+                    updateAssignment(workerDni, newCcId); // Asignar
+                }
+            });
+            
+            // --- LÓGICA DEL BUSCADOR ---
+            function setupSearch(inputId, listId) {
+                $('#' + inputId).on('keyup', function() {
+                    var value = $(this).val().toLowerCase();
+                    $('#' + listId + ' .worker-card').filter(function() {
+                        $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                    });
+                });
+            }
+            setupSearch('disponibles-search', 'disponibles-list');
+            setupSearch('asignados-search', 'asignados-list');
+        }
+    });
+    </script>
+{% endblock %}

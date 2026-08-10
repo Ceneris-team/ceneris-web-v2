@@ -1,0 +1,367 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Justificaciones RRHH{% endblock %}
+
+{% block extra_head %}
+<style>
+    .main-container {
+        max-width: none !important;
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
+    .report-section {
+        background-color: #ffffff;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e9ecef;
+        margin-bottom: 1.25rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 0.8rem;
+    }
+
+    .stats-card {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 0.8rem 1rem;
+        background: #f8fafc;
+    }
+
+    .stats-card .label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-bottom: 0.2rem;
+    }
+
+    .stats-card .value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .filters-form {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0.8rem;
+        align-items: end;
+    }
+
+    .table td,
+    .table th {
+        vertical-align: middle;
+    }
+
+    .badge-estado {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.45rem 0.65rem;
+    }
+
+    .badge-pendiente {
+        background: #fff7ed;
+        color: #b45309;
+        border: 1px solid #fed7aa;
+    }
+
+    .badge-aprobado {
+        background: #ecfdf5;
+        color: #047857;
+        border: 1px solid #a7f3d0;
+    }
+
+    .badge-rechazado {
+        background: #fef2f2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+    }
+
+    .detalle-resumen {
+        display: inline-block;
+        max-width: 280px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+    }
+
+    .acciones-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+
+    .modal .detalle-completo {
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Justificaciones por Trabajador</h1>
+<p>Vista de RRHH para revisar solicitudes enviadas desde la app móvil, su estado y acciones de aprobación.</p>
+
+<div class="alert alert-info" role="alert">
+    Mostrando solo justificaciones registradas desde la app móvil (se excluyen importaciones ERP).
+</div>
+
+<div class="report-section">
+    <form method="get" class="filters-form">
+        <div>
+            <label for="mes" class="form-label">Mes</label>
+            <input id="mes" name="mes" type="month" class="form-control" value="{{ mes_param }}">
+        </div>
+        <div>
+            <label for="estado" class="form-label">Estado</label>
+            <select id="estado" name="estado" class="form-select">
+                <option value="todos" {% if estado_param == 'TODOS' %}selected{% endif %}>Todos</option>
+                <option value="PENDIENTE" {% if estado_param == 'PENDIENTE' %}selected{% endif %}>Pendiente</option>
+                <option value="APROBADO" {% if estado_param == 'APROBADO' %}selected{% endif %}>Aprobado</option>
+                <option value="RECHAZADO" {% if estado_param == 'RECHAZADO' %}selected{% endif %}>Rechazado</option>
+            </select>
+        </div>
+        <div>
+            <label for="q" class="form-label">Buscar</label>
+            <input id="q" name="q" type="text" class="form-control" placeholder="DNI o nombre" value="{{ busqueda }}">
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary w-100">Aplicar</button>
+            <a href="{% url 'recursoshumanos:reporte_justificaciones_rrhh' %}" class="btn btn-outline-secondary w-100">Limpiar</a>
+        </div>
+    </form>
+</div>
+
+<div class="report-section">
+    <div class="stats-grid">
+        <div class="stats-card">
+            <div class="label">Total</div>
+            <div class="value">{{ resumen.TOTAL }}</div>
+        </div>
+        <div class="stats-card">
+            <div class="label">Pendientes</div>
+            <div class="value">{{ resumen.PENDIENTE }}</div>
+        </div>
+        <div class="stats-card">
+            <div class="label">Aprobadas</div>
+            <div class="value">{{ resumen.APROBADO }}</div>
+        </div>
+        <div class="stats-card">
+            <div class="label">Rechazadas</div>
+            <div class="value">{{ resumen.RECHAZADO }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="report-section">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Trabajador</th>
+                    <th>DNI</th>
+                    <th>Fecha Emitida</th>
+                    <th>Fecha a Justificar</th>
+                    <th>Motivo</th>
+                    <th>Detalle</th>
+                    <th>Estado</th>
+                    <th>Motivo de Rechazo</th>
+                    <th>Acciones RRHH</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in justificaciones %}
+                <tr>
+                    <td>{{ item.tareo.trabajador.nombres }} {{ item.tareo.trabajador.apellido_paterno }} {{ item.tareo.trabajador.apellido_materno }}</td>
+                    <td>{{ item.tareo.trabajador.dni }}</td>
+                    <td>{% if item.creado_en %}{{ item.creado_en|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td>
+                    <td>{{ item.tareo.fecha|date:"d/m/Y" }}</td>
+                    <td>{{ item.get_motivo_display }}</td>
+                    <td>
+                        {% if item.descripcion %}
+                            <span class="detalle-resumen">{{ item.descripcion|truncatechars:80 }}</span>
+                            {% if item.descripcion|length > 80 %}
+                            <button type="button" class="btn btn-link btn-sm p-0 ms-1" data-bs-toggle="modal" data-bs-target="#detalleModal{{ item.id }}">
+                                Ver detalle
+                            </button>
+                            {% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.estado_solicitud == 'APROBADO' %}
+                        <span class="badge rounded-pill badge-estado badge-aprobado">Aprobado</span>
+                        {% elif item.estado_solicitud == 'RECHAZADO' %}
+                        <span class="badge rounded-pill badge-estado badge-rechazado">Rechazado</span>
+                        {% else %}
+                        <span class="badge rounded-pill badge-estado badge-pendiente">Pendiente</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.motivo_rechazo %}
+                            <span class="detalle-resumen">{{ item.motivo_rechazo|truncatechars:60 }}</span>
+                            {% if item.motivo_rechazo|length > 60 %}
+                            <button type="button" class="btn btn-link btn-sm p-0 ms-1" data-bs-toggle="modal" data-bs-target="#rechazoDetalleModal{{ item.id }}">
+                                Ver
+                            </button>
+                            {% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="acciones-grid">
+                            <form method="post" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="justificacion_id" value="{{ item.id }}">
+                                <button type="submit" name="accion" value="aprobar" class="btn btn-sm btn-success">Aceptar</button>
+                            </form>
+                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rechazarModal{{ item.id }}">
+                                Rechazar
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editarModal{{ item.id }}">
+                                Editar
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">No se encontraron justificaciones para los filtros seleccionados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% for item in justificaciones %}
+<div class="modal fade" id="detalleModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalle de Justificación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2"><strong>Trabajador:</strong> {{ item.tareo.trabajador.nombres }} {{ item.tareo.trabajador.apellido_paterno }} {{ item.tareo.trabajador.apellido_materno }}</p>
+                <p class="mb-2"><strong>Fecha emitida:</strong> {% if item.creado_en %}{{ item.creado_en|date:"d/m/Y H:i" }}{% else %}-{% endif %}</p>
+                <p class="mb-2"><strong>Fecha a justificar:</strong> {{ item.tareo.fecha|date:"d/m/Y" }}</p>
+                <p class="mb-0"><strong>Detalle:</strong></p>
+                <div class="detalle-completo mt-1">{{ item.descripcion|default:"-" }}</div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between flex-wrap gap-2">
+                <div class="d-flex flex-wrap gap-2">
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="justificacion_id" value="{{ item.id }}">
+                        <button type="submit" name="accion" value="aprobar" class="btn btn-success btn-sm">Aceptar</button>
+                    </form>
+                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rechazarModal{{ item.id }}" data-bs-dismiss="modal">
+                        Rechazar
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editarModal{{ item.id }}" data-bs-dismiss="modal">
+                        Editar
+                    </button>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="rechazoDetalleModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Motivo de Rechazo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="detalle-completo">{{ item.motivo_rechazo|default:"-" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="rechazarModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="justificacion_id" value="{{ item.id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Rechazar Justificación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="motivo_rechazo_{{ item.id }}" class="form-label">Motivo de rechazo</label>
+                    <textarea id="motivo_rechazo_{{ item.id }}" name="motivo_rechazo" rows="4" class="form-control" required>{{ item.motivo_rechazo }}</textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="accion" value="rechazar" class="btn btn-danger">Guardar rechazo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editarModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="justificacion_id" value="{{ item.id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Justificación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="motivo_{{ item.id }}" class="form-label">Motivo</label>
+                        <select id="motivo_{{ item.id }}" name="motivo" class="form-select" required>
+                            {% for codigo, etiqueta in motivos_disponibles %}
+                            <option value="{{ codigo }}" {% if item.motivo == codigo %}selected{% endif %}>{{ etiqueta }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="descripcion_{{ item.id }}" class="form-label">Detalle</label>
+                        <textarea id="descripcion_{{ item.id }}" name="descripcion" rows="5" class="form-control" required>{{ item.descripcion }}</textarea>
+                    </div>
+                    {% if item.estado_solicitud == 'RECHAZADO' %}
+                    <div class="mb-0">
+                        <label for="motivo_rechazo_edit_{{ item.id }}" class="form-label">Editar motivo de rechazo</label>
+                        <textarea id="motivo_rechazo_edit_{{ item.id }}" name="motivo_rechazo" rows="3" class="form-control">{{ item.motivo_rechazo }}</textarea>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" name="accion" value="editar" class="btn btn-primary">Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('hidden.bs.modal', function () {
+    const hasVisibleModal = document.querySelectorAll('.modal.show').length > 0;
+    if (!hasVisibleModal) {
+        document.body.classList.remove('modal-open');
+        document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
+    }
+});
+</script>
+{% endblock %}

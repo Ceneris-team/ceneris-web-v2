@@ -1,0 +1,151 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    
+    <!-- Encabezado -->
+    <div class="text-center mb-10">
+        <h2 class="text-4xl font-extrabold text-gray-800 tracking-tight">
+            Panel de Gestión</span>
+        </h2>
+        <p class="text-gray-500 mt-3 text-lg">Seleccione un módulo para comenzar a trabajar.</p>
+    </div>
+
+    <!-- Mensajes de Alerta -->
+    {% if messages %}
+        <div class="max-w-4xl mx-auto mb-8">
+            {% for message in messages %}
+                <div class="flex items-center p-4 mb-4 text-sm text-red-800 border border-red-300 rounded-lg bg-red-50" role="alert">
+                    <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                    </svg>
+                    <span class="sr-only">Info</span>
+                    <div><span class="font-medium">Atención:</span> {{ message }}</div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- CONTENEDOR FLEXBOX (Centra automáticamente la última fila) -->
+    <div class="flex flex-wrap justify-center gap-8 max-w-7xl mx-auto">
+
+        <!-- 1. SOPORTE TÉCNICO -->
+        <!-- w-full en móvil, 45% en tablet, 30% en escritorio para que quepan 3 -->
+        <div class="w-full md:w-[45%] lg:w-[30%] bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden transform transition duration-300 hover:-translate-y-2 hover:shadow-2xl flex flex-col">
+            <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="block overflow-hidden relative group">
+                <img class="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-105" 
+                     src="{% static 'proyecto_monitoreo_smcv/img/soporte.jpg' %}" 
+                     alt="Soporte Técnico" />
+            </a>
+            <div class="p-6 text-center flex-grow flex flex-col justify-between">
+                <div>
+                    <span class="inline-flex items-center text-orange-600 bg-orange-100 border border-orange-200 text-xs font-bold px-2.5 py-1 rounded-full mb-4">
+                        <svg class="w-3 h-3 me-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Mantenimiento
+                    </span>
+                    <h5 class="mb-4 text-2xl font-bold tracking-tight text-gray-900">Soporte Técnico</h5>
+                    <p class="text-gray-600 mb-6 text-sm">Gestión de incidencias, tickets de soporte y mantenimiento de equipos.</p>
+                </div>
+                <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-center border rounded-lg focus:ring-4 focus:outline-none transition-all duration-300" style="color: #EF6C00; border-color: #EF6C00; background-color: transparent;" onmouseover="this.style.backgroundColor='#EF6C00'; this.style.color='white';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#EF6C00';">
+                    Acceder ahora
+                    <svg class="w-4 h-4 ms-2 rtl:rotate-180" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/></svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- 2. PROGRAMACIÓN -->
+        <div class="w-full md:w-[45%] lg:w-[30%] bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden transform transition duration-300 hover:-translate-y-2 hover:shadow-2xl flex flex-col">
+            <a href="{% url 'proyecto_monitoreo_smcv:programacion' %}" class="block overflow-hidden relative group">
+                <img class="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-105" 
+                     src="{% static 'proyecto_monitoreo_smcv/img/programacion.jpg' %}" 
+                     alt="Programación" />
+            </a>
+            <div class="p-6 text-center flex-grow flex flex-col justify-between">
+                <div>
+                    <span class="inline-flex items-center text-blue-600 bg-blue-100 border border-blue-200 text-xs font-bold px-2.5 py-1 rounded-full mb-4">
+                        <svg class="w-3 h-3 me-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        Planificación
+                    </span>
+                    <h5 class="mb-4 text-2xl font-bold tracking-tight text-gray-900">Programación</h5>
+                    <p class="text-gray-600 mb-6 text-sm">Cronogramas de obra, hitos del proyecto y asignación de recursos.</p>
+                </div>
+                <a href="{% url 'proyecto_monitoreo_smcv:programacion' %}" class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-center border rounded-lg focus:ring-4 focus:outline-none transition-all duration-300" style="color: #EF6C00; border-color: #EF6C00; background-color: transparent;" onmouseover="this.style.backgroundColor='#EF6C00'; this.style.color='white';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#EF6C00';">
+                    Acceder ahora
+                    <svg class="w-4 h-4 ms-2 rtl:rotate-180" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/></svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- 3. EVALUACIÓN -->
+        <div class="w-full md:w-[45%] lg:w-[30%] bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden transform transition duration-300 hover:-translate-y-2 hover:shadow-2xl flex flex-col">
+            <a href="{% url 'proyecto_monitoreo_smcv:evaluacion' %}" class="block overflow-hidden relative group">
+                <img class="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-105" 
+                     src="{% static 'proyecto_monitoreo_smcv/img/evaluacion.jpg' %}" 
+                     alt="Evaluación" />
+            </a>
+            <div class="p-6 text-center flex-grow flex flex-col justify-between">
+                <div>
+                    <span class="inline-flex items-center text-green-600 bg-green-100 border border-green-200 text-xs font-bold px-2.5 py-1 rounded-full mb-4">
+                        <svg class="w-3 h-3 me-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        Métricas & KPIs
+                    </span>
+                    <h5 class="mb-4 text-2xl font-bold tracking-tight text-gray-900">Evaluación</h5>
+                    <p class="text-gray-600 mb-6 text-sm">Análisis de desempeño, calidad y reportes estadísticos.</p>
+                </div>
+                <a href="{% url 'proyecto_monitoreo_smcv:evaluacion' %}" class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-center border rounded-lg focus:ring-4 focus:outline-none transition-all duration-300" style="color: #EF6C00; border-color: #EF6C00; background-color: transparent;" onmouseover="this.style.backgroundColor='#EF6C00'; this.style.color='white';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#EF6C00';">
+                    Acceder ahora
+                    <svg class="w-4 h-4 ms-2 rtl:rotate-180" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/></svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- 4. CAPACITACIÓN -->
+        <div class="w-full md:w-[45%] lg:w-[30%] bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden transform transition duration-300 hover:-translate-y-2 hover:shadow-2xl flex flex-col">
+            <a href="{% url 'proyecto_monitoreo_smcv:capacitacion' %}" class="block overflow-hidden relative group">
+                <img class="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-105" 
+                     src="{% static 'proyecto_monitoreo_smcv/img/capacitacion.jpg' %}" 
+                     alt="Capacitación" />
+            </a>
+            <div class="p-6 text-center flex-grow flex flex-col justify-between">
+                <div>
+                    <span class="inline-flex items-center text-purple-600 bg-purple-100 border border-purple-200 text-xs font-bold px-2.5 py-1 rounded-full mb-4">
+                        <svg class="w-3 h-3 me-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                        Aprendizaje
+                    </span>
+                    <h5 class="mb-4 text-2xl font-bold tracking-tight text-gray-900">Capacitación</h5>
+                    <p class="text-gray-600 mb-6 text-sm">Material educativo, cursos obligatorios y certificaciones.</p>
+                </div>
+                <a href="{% url 'proyecto_monitoreo_smcv:capacitacion' %}" class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-center border rounded-lg focus:ring-4 focus:outline-none transition-all duration-300" style="color: #EF6C00; border-color: #EF6C00; background-color: transparent;" onmouseover="this.style.backgroundColor='#EF6C00'; this.style.color='white';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#EF6C00';">
+                    Acceder ahora
+                    <svg class="w-4 h-4 ms-2 rtl:rotate-180" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/></svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- 5. SUPERVISOR -->
+        <div class="w-full md:w-[45%] lg:w-[30%] bg-white border-2 border-red-100 rounded-xl shadow-lg overflow-hidden transform transition duration-300 hover:-translate-y-2 hover:shadow-2xl flex flex-col">
+            <a href="{% url 'proyecto_monitoreo_smcv:supervisor' %}" class="block overflow-hidden relative group">
+                <img class="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-105" 
+                     src="{% static 'proyecto_monitoreo_smcv/img/supervisor.jpg' %}" 
+                     alt="Supervisor" />
+            </a>
+            <div class="p-6 text-center flex-grow flex flex-col justify-between">
+                <div>
+                    <span class="inline-flex items-center text-red-600 bg-red-100 border border-red-200 text-xs font-bold px-2.5 py-1 rounded-full mb-4">
+                        <svg class="w-3 h-3 me-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        Área Restringida
+                    </span>
+                    <h5 class="mb-4 text-2xl font-bold tracking-tight text-gray-900">Supervisor</h5>
+                    <p class="text-gray-600 mb-6 text-sm">Control de gestión, aprobación de solicitudes y reportes gerenciales.</p>
+                </div>
+                <a href="{% url 'proyecto_monitoreo_smcv:supervisor' %}" class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-center border rounded-lg focus:ring-4 focus:outline-none transition-all duration-300" style="color: #C2410C; border-color: #C2410C; background-color: transparent;" onmouseover="this.style.backgroundColor='#C2410C'; this.style.color='white';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#C2410C';">
+                    Acceder ahora
+                    <svg class="w-4 h-4 ms-2 rtl:rotate-180" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/></svg>
+                </a>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,257 @@
+{% extends 'index.html' %}
+{% load static %} 
+
+{% block content %}
+<section id="conference-timeline">
+    <div class="header-container timeline" data-personal-search-url="{% url 'personal:api_search_personal' %}" data-insumo-search-url="{% url 'inventario:search_insumos' %}">
+        <!-- Contenedor para el título y el nuevo botón -->
+        <div class="title-wrapper">
+            <h1>Línea de Tiempo: {{ proyecto.nombre }}</h1>
+            <a href="{% url 'proyectos:editar_proyecto' pk=proyecto.pk %}" class="btn-edit-header" title="Editar Nombre/Descripción del Proyecto">
+                <i class="fa fa-pencil"></i>
+            </a>
+        </div>
+        <!-- ¡EL BOTÓN CLAVE DE ACCIÓN! -->
+        <div>
+            <a href="{% url 'proyectos:anadir_tareas' proyecto.pk %}" class="btn-create">
+                <i class="fa fa-plus"></i> Añadir Tareas
+            </a>
+            <a href="{% url 'proyectos:exportar_proyecto_excel' proyecto.pk %}" class="btn-secondary">
+                <i class="fa fa-download"></i> Exportar a Excel
+            </a>
+        </div>
+        
+    </div>
+    <div class="filters-container">
+        <form method="get" class="filter-form">
+            <!-- Filtro por Tarea Principal -->
+             <div class="filter-group text-search">
+                <i class="fa fa-search"></i>
+                <input type="text" name="q_subtarea" placeholder="Buscar por nombre de subtarea..." value="{{ filtros_aplicados.q_subtarea|default_if_none:'' }}">
+            </div>
+            <div class="filter-group">
+                <select name="tarea_p" onchange="this.form.submit()">
+                    <option value="">Todas las Tareas Principales</option>
+                    {% for tarea in tareas_principales_opciones %}
+                        <option value="{{ tarea.id }}" {% if filtros_aplicados.tarea_p == tarea.id|stringformat:"s" %}selected{% endif %}>
+                            {{ tarea.titulo }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Filtro por Personal -->
+            <div class="filter-group">
+                <select name="personal" onchange="this.form.submit()">
+                    <option value="">Todo el Personal</option>
+                    {% for persona in personal_opciones %}
+                        <option value="{{ persona.id }}" {% if filtros_aplicados.personal == persona.id|stringformat:"s" %}selected{% endif %}>
+                            {{ persona.nombre }} {{ persona.apellido }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Filtro por Estado -->
+            <div class="filter-group">
+                <select name="status" onchange="this.form.submit()">
+                    <option value="">Cualquier Estado</option>
+                    <option value="pendiente" {% if filtros_aplicados.status == 'pendiente' %}selected{% endif %}>Pendientes</option>
+                    <option value="completada" {% if filtros_aplicados.status == 'completada' %}selected{% endif %}>Completadas</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Desde:</label>
+                <input type="date" name="start_date" value="{{ filtros_aplicados.start_date|default_if_none:'' }}">
+            </div>
+            <div class="filter-group">
+                <label>Hasta:</label>
+                <input type="date" name="end_date" value="{{ filtros_aplicados.end_date|default_if_none:'' }}">
+            </div>
+            <!-- Botón para limpiar -->
+            <a href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}" class="btn-clear-filters">Limpiar Filtros</a>
+        </form>
+    </div>
+
+    <div class="timeline-start">Inicio del Proyecto</div>
+    <div class="conference-center-line"></div>
+    <div class="conference-timeline-content">
+
+        {% if not timeline_items %}
+            <p style="text-align: center;">Este proyecto aún no tiene subtareas asignadas.</p>
+        {% else %}
+            {% for item in timeline_items %}
+                <!--
+                    CAMBIOS IMPORTANTES:
+                    1. Quitamos 'animate__animated animate__zoomIn'.
+                    2. Añadimos la clase 'animate-on-scroll' para que nuestro JS la encuentre.
+                    3. El delay ahora se aplica como una variable CSS, más moderno.
+                -->
+                <div class="timeline-article animate-on-scroll" style="--animation-delay: {{ item.delay }}s;">
+                    
+                    {% for subtarea in item.subtareas %}
+                        {% cycle 'left' 'right' as side silent %}
+
+                        {% if side == 'left' %}
+                            <div class="content-left-container">
+                                
+                                <div class="content-left {% if subtarea.completada %}is-completed{% endif %}">
+                                    <div class="card-header-actions"> <!-- ¡NUEVO CONTENEDOR! -->
+                                        <div class="timeline-date">{{ subtarea.fecha_inicio|date:"d M Y" }}</div>
+                                        <div class="card-actions">
+                                            <!-- ¡NUEVOS ICONOS DE ACCIÓN! -->
+                                            <a href="{% url 'proyectos:detalle_subtarea' subtarea.id %}" class="btn-action" title="Ver Detalles de la Subtarea">
+                                                <i class="fa fa-eye"></i>
+                                            </a>
+                                            <a href="#" class="btn-edit-header js-edit-subtask-trigger" title="Editar Subtarea"
+                                            data-id="{{ subtarea.id }}"
+                                            data-get-url="{% url 'proyectos:api_get_subtarea_data' subtarea.id %}"
+                                            data-update-url="{% url 'proyectos:api_update_subtarea' subtarea.id %}">
+                                                <i class="fa fa-pencil"></i>
+                                            </a>
+                                            <a href="#" class="btn-action btn-delete-subtask" title="Eliminar Subtarea"
+                                            data-id="{{ subtarea.id }}"
+                                            data-nombre="{{ subtarea.titulo }}"
+                                            data-url="{% url 'proyectos:api_delete_subtarea' subtarea.id %}">
+                                                <i class="fa fa-trash"></i>
+                                            </a>
+                                            <button class="btn-action btn-toggle-complete" title="Marcar como completada"
+                                                    data-url="{% url 'proyectos:api_toggle_complete_subtarea' subtarea.id %}"
+                                                    data-id="{{ subtarea.id }}">
+                                                <i class="fa fa-check"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <h3>{{ subtarea.tarea.titulo }}</h3>
+                                    <p>{{ subtarea.titulo }}</p>
+                                    <div class="task-end-date">Fin: {{ subtarea.fecha_fin|date:"d M Y" }}</div>
+                                </div>
+                                <span class="timeline-author">{{ subtarea.dia_semana }}</span>
+                            </div>
+                        {% endif %}
+
+                        {% if side == 'right' %}
+                            <div class="content-right-container">
+                                
+                                <div class="content-right {% if subtarea.completada %}is-completed{% endif %}">
+                                    <div class="card-header-actions"> <!-- ¡NUEVO CONTENEDOR! -->
+                                        <div class="timeline-date">{{ subtarea.fecha_inicio|date:"d M Y" }}</div>
+                                        <div class="card-actions">
+                                            <!-- ¡NUEVOS ICONOS DE ACCIÓN! -->
+                                             <a href="{% url 'proyectos:detalle_subtarea' subtarea.id %}" class="btn-action" title="Ver Detalles de la Subtarea">
+                                                <i class="fa fa-eye"></i>
+                                            </a>
+                                            <a href="#" class="btn-edit-header js-edit-subtask-trigger" title="Editar Subtarea"
+                                            data-id="{{ subtarea.id }}"
+                                            data-get-url="{% url 'proyectos:api_get_subtarea_data' subtarea.id %}"
+                                            data-update-url="{% url 'proyectos:api_update_subtarea' subtarea.id %}">
+                                                <i class="fa fa-pencil"></i>
+                                            </a>
+                                            <a href="#" class="btn-action btn-delete-subtask" title="Eliminar Subtarea"
+                                            data-id="{{ subtarea.id }}"
+                                            data-nombre="{{ subtarea.titulo }}"
+                                            data-url="{% url 'proyectos:api_delete_subtarea' subtarea.id %}">
+                                                <i class="fa fa-trash"></i>
+                                            </a>
+                                            <button class="btn-action btn-toggle-complete" title="Marcar como completada"
+                                                    data-url="{% url 'proyectos:api_toggle_complete_subtarea' subtarea.id %}"
+                                                    data-id="{{ subtarea.id }}">
+                                                <i class="fa fa-check"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <h3>{{ subtarea.tarea.titulo }}</h3>
+                                    <p>{{ subtarea.titulo }}</p>
+                                    <div class="task-end-date">Fin: {{ subtarea.fecha_fin|date:"d M Y" }}</div>
+                                </div>
+                                <span class="timeline-author" style="text-align: left;">{{ subtarea.dia_semana }}</span>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+
+                    <div class="meta-date">
+                        <span class="date">{{ item.fecha|date:"d" }}</span>
+                        <span class="month">{{ item.fecha|date:"M"|upper }}</span>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+    </div>
+    <div class="timeline-end">Fin del Proyecto</div>
+</section>
+
+<div id="edit-subtask-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content animate__animated animate__fadeInDown">
+        <button id="close-subtask-modal-btn" class="modal-close-btn">&times;</button>
+        <h2>Editar Subtarea</h2>
+        
+        <!-- El 'action' será establecido por JavaScript -->
+        <form id="edit-subtask-form">
+            <input type="hidden" id="edit-subtask-id" name="id">
+            
+            <div class="form-group">
+                <label for="edit-subtask-titulo">Título de la Subtarea</label>
+                <input type="text" id="edit-subtask-titulo" name="titulo" required>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="edit-subtask-inicio">Fecha de Inicio</label>
+                    <input type="date" id="edit-subtask-inicio" name="fecha_inicio" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-subtask-fin">Fecha de Fin</label>
+                    <input type="date" id="edit-subtask-fin" name="fecha_fin" required>
+                </div>
+            </div>
+
+            <div class="personal-scroll">
+                <div class="form-group">
+                    <label>Personal Ya Asignado:</label>
+                    <div id="personal-asignado-lista" class="asignados-container">
+                        <!-- El JS rellenará esto -->
+                    </div>
+                </div>
+
+                <!-- El selector de Select2 ahora es para AÑADIR -->
+                <div class="form-group">
+                    <label for="edit-subtask-personal">Añadir Personal:</label>
+                    <select id="edit-subtask-personal" name="personal_asignado" multiple="multiple" style="width: 100%;"></select>
+                </div>
+            </div>
+            
+
+            <hr class="modal-divider">
+
+            <div id="insumo-adder-container">
+                <!-- El JS para añadir insumos irá aquí -->
+            </div>
+            <button type="button" id="btn-add-insumo-row" class="btn-add-small">
+                <i class="fa fa-plus"></i> Añadir Insumo
+            </button>
+            
+            <div id="edit-subtask-errors" class="error-list" style="display: none;"></div>
+
+            <div class="form-group">
+                <button type="submit" class="btn-submit">Guardar Cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN DE SUBTAREA -->
+<div id="delete-subtask-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content animate__animated animate__fadeInDown">
+        <h2>Confirmar Eliminación</h2>
+        <p id="delete-subtask-text">¿Estás seguro de que quieres eliminar esta subtarea? Los insumos asignados volverán al inventario. Esta acción no se puede deshacer.</p>
+        
+        <div class="modal-actions">
+            <button id="cancel-delete-subtask-btn" class="btn-secondary">Cancelar</button>
+            <button id="confirm-delete-subtask-btn" class="btn-danger">Sí, Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Enlazamos un nuevo script para manejar la lógica -->
+<script src="{% static 'js/subtask_editor.js' %}"></script>
+<script src="{% static 'js/timeline_animation.js' %}"></script>
+<script src="{% static 'js/toggle_complete.js' %}"></script>
+{% endblock %}

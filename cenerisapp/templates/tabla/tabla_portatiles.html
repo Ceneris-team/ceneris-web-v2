@@ -1,0 +1,555 @@
+<!-- en templates/tu_app/tabla_portatiles.html -->
+{% extends 'app_base.html' %}
+{% load query_filters %} 
+{% load ceneris_tags %}
+{% block extra_css %} <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">{% endblock %}
+{% block main_content %}
+<div class="container-general">
+    <div class="dashboard-header-modern">
+        <h1>{{ titulo }}</h1>
+        <p>Vista detallada de todos los dispositivos portátiles y sus componentes.</p>
+    </div>
+    <div class="filter-container" style="margin-top: 30px;">
+        <h5 class="filter-section-title" style="text-align: center; margin-bottom: 20px;">Filtros por Dispositivo</h5>
+        <form method="GET" action="" class="filter-form-grid">
+            <!-- Fila 1 de filtros -->
+            <div class="form-group">
+                <label for="modelo">Modelo</label>
+                <select name="modelo" id="modelo" class="form-select">
+                    <option value="">-- Todos los Modelos --</option>
+                    {% for modelo in opciones_modelos %}
+                        <option value="{{ modelo }}" {% if filtros_aplicados.modelo == modelo %}selected{% endif %}>{{ modelo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="serie">N° Serie</label>
+                <input type="text" name="serie" id="serie" value="{{ filtros_aplicados.serie }}" class="form-control" placeholder="Buscar por N° Serie...">
+            </div>
+            <div class="form-group">
+                <label for="estado">Estado del Equipo</label>
+                <select name="estado" id="estado" class="form-select">
+                    <option value="">-- Todos los Estados --</option>
+                    {% for estado in opciones_estados %}
+                        <option value="{{ estado }}" {% if filtros_aplicados.estado == estado %}selected{% endif %}>{{ estado }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="area">Ubicación (Área General)</label>
+                <select name="area" id="area" class="form-select">
+                    <option value="">-- Todas las Áreas --</option>
+                    {% for area in opciones_areas %}
+                        <option value="{{ area }}" {% if filtros_aplicados.area == area %}selected{% endif %}>{{ area }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- NUEVOS FILTROS -->
+            <div class="form-group">
+                <label for="garantia">Estatus Garantía Equipo</label>
+                <select name="garantia" id="garantia" class="form-select">
+                    <option value="">-- Ambos --</option>
+                    {% for valor, texto in opciones_garantia %}
+                        <option value="{{ valor }}" {% if filtros_aplicados.garantia == valor %}selected{% endif %}>{{ texto }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="observaciones">Observaciones</label>
+                <select name="observaciones" id="observaciones" class="form-select">
+                    <option value="">-- Todos --</option>
+                    {% for valor, texto in opciones_observaciones %}
+                        <option value="{{ valor }}" {% if filtros_aplicados.observaciones == valor %}selected{% endif %}>{{ texto }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="ingreso_desde">Fecha Ingreso (Desde)</label>
+                <input type="date" name="ingreso_desde" id="ingreso_desde" value="{{ filtros_aplicados.ingreso_desde }}" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="ingreso_hasta">Fecha Ingreso (Hasta)</label>
+                <input type="date" name="ingreso_hasta" id="ingreso_hasta" value="{{ filtros_aplicados.ingreso_hasta }}" class="form-control">
+            </div>
+
+            <!-- RANGO DE VENCIMIENTO DE GARANTÍA -->
+            <div class="form-group">
+                <label for="vencimiento_desde">Venc. Garantía (Desde)</label>
+                <input type="date" name="vencimiento_desde" id="vencimiento_desde" value="{{ filtros_aplicados.vencimiento_desde }}" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="vencimiento_hasta">Venc. Garantía (Hasta)</label>
+                <input type="date" name="vencimiento_hasta" id="vencimiento_hasta" value="{{ filtros_aplicados.vencimiento_hasta }}" class="form-control">
+            </div>
+                
+            <!-- FILTROS DE FECHA -->
+            <div class="form-group">
+                <label for="modificacion_desde">Últ. Modificación desde</label>
+                <input type="date" name="modificacion_desde" id="modificacion_desde" value="{{ filtros_aplicados.modificacion_desde }}" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="mantenimiento_desde">Últ. Mantenimiento desde</label>
+                <input type="date" name="mantenimiento_desde" id="mantenimiento_desde" value="{{ filtros_aplicados.mantenimiento_desde }}" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="irreparable_desde">Irreparable desde</label>
+                <input type="date" name="irreparable_desde" id="irreparable_desde" value="{{ filtros_aplicados.irreparable_desde }}" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="inoperativo_desde">Inoperativo desde</label>
+                <input type="date" name="inoperativo_desde" id="inoperativo_desde" value="{{ filtros_aplicados.inoperativo_desde }}" class="form-control">
+            </div>
+
+            <h5 class="filter-section-title sensor-title-fullwidth" style="text-align: center;">Filtros por Sensor:</h5>
+            
+            <div class="form-group">
+                <label for="sensor_gas">Tipo de Gas</label>
+                <select name="sensor_gas" id="sensor_gas" class="form-select">
+                    <option value="">-- Todos --</option>
+                    {% for gas in opciones_tipo_gas %}
+                        <option value="{{ gas }}" {% if filtros_aplicados.sensor_gas == gas %}selected{% endif %}>{{ gas }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="sensor_serie">N° Serie del Sensor</label>
+                <input type="text" name="sensor_serie" id="sensor_serie" value="{{ filtros_aplicados.sensor_serie }}" class="form-control" placeholder="Buscar por N/S de sensor...">
+            </div>
+
+            <div class="form-group">
+                <label for="sensor_estado">Estado del Sensor</label>
+                <select name="sensor_estado" id="sensor_estado" class="form-select">
+                    <option value="">-- Todos --</option>
+                    {% for estado in opciones_estado_sensor %}
+                        <option value="{{ estado }}" {% if filtros_aplicados.sensor_estado == estado %}selected{% endif %}>{{ estado }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="sensor_garantia">Garantía del Sensor</label>
+                <select name="sensor_garantia" id="sensor_garantia" class="form-select">
+                    <option value="">-- Ambos --</option>
+                    {% for valor, texto in opciones_garantia_sensor %}
+                        <option value="{{ valor }}" {% if filtros_aplicados.sensor_garantia == valor %}selected{% endif %}>{{ texto }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="sensor_instalacion_desde">Instalación Sensor (Desde)</label>
+                <input type="date" name="sensor_instalacion_desde" id="sensor_instalacion_desde" value="{{ filtros_aplicados.sensor_instalacion_desde }}" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="sensor_instalacion_hasta">Instalación Sensor (Hasta)</label>
+                <input type="date" name="sensor_instalacion_hasta" id="sensor_instalacion_hasta" value="{{ filtros_aplicados.sensor_instalacion_hasta }}" class="form-control">
+            </div>
+
+            <!-- Botones -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" style="background-color: #d45b04;">Filtrar</button>
+                <a href="{% url 'cenerisapp:vista_tabla_portatiles' %}" class="btn btn-secondary">Limpiar</a>
+            </div>
+        </form>
+    </div>
+    <div id="scroll-wrapper-top" style="overflow-x: auto; overflow-y: hidden; height: 20px; margin-bottom: -20px;">
+        <div id="scroll-content-top" style="height: 20px;"></div>
+    </div>
+    <div class="table-container" id="main-table-container" style="overflow-x: auto; margin-top: 30px;">
+        <table>
+            <thead style="position: sticky; top: 0; z-index: 1;">
+                <!-- Fila 1: Super Cabeceras (con colspan) -->
+                <tr>
+                    <!-- Colspan calculado para el primer bloque fijo -->
+                    <th colspan="{{ headers_fijos_inicio|length }}" 
+                        style="background-color: #FFDAB9; font-weight: bold; text-align: center; border: 1px solid #ddd;">
+                        INFORMACIÓN DEL EQUIPO
+                    </th>
+                    
+                    <!-- Colspan para el bloque de estatus de sensores -->
+                    {% if tipos_de_sensor_unicos %}
+                        <th colspan="{{ tipos_de_sensor_unicos|length }}"
+                            style="background-color: #FFDAB9; font-weight: bold; text-align: center; border: 1px solid #ddd;">
+                            ESTATUS GARANTÍA DE SENSORES
+                        </th>
+                    {% endif %}
+
+                    <!-- Colspan para el segundo bloque fijo -->
+                    <th colspan="{{ headers_fijos_finales|length }}"
+                        style="background-color: #FFDAB9; font-weight: bold; text-align: center; border: 1px solid #ddd;">
+                    </th>
+                    
+                    <!-- Bloques dinámicos para detalles de cada sensor -->
+                    {% for tipo in tipos_de_sensor_unicos %}
+                        <th colspan="{{ CAMPOS_POR_SENSOR_DETALLES|length }}"
+                            style="background-color: #FFDAB9; font-weight: bold; text-align: center; border: 1px solid #ddd;">
+                            {{ SENSOR_HEADER_CONFIG|get_item:tipo }}
+                        </th>
+                    {% endfor %}
+
+                    <!-- Colspan para el bloque final -->
+                    <th colspan="{{ headers_fijos_finales_finales|length }}"
+                        style="background-color: #FFDAB9; font-weight: bold; text-align: center; border: 1px solid #ddd;">
+                    </th>
+                </tr>
+
+                <!-- Fila 2: Cabeceras de columnas individuales (Naranja oscuro) -->
+                <tr>
+                    {% for header in headers_completos %}
+                        <th style="background-color: #C55A11; color: white; font-weight: bold; text-align: center; border: 1px solid #ddd;">
+                            {{ header }}
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% if datos_tabla %}
+                    {% for fila in datos_tabla %}
+                        <tr>
+                            {% for dato in fila %}
+                                <td>{{ dato|safe|default_if_none:"" }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="{{ headers_completos|length }}" class="no-data">
+                            No se encontraron dispositivos portátiles para mostrar.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="Navegación de páginas" class="pagination-container">
+            <ul class="pagination">
+                <!-- Primera y Anterior -->
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% url_replace page=1 %}">&laquo; Primera</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?{% url_replace page=page_obj.previous_page_number %}">Anterior</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo; Primera</span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">Anterior</span>
+                    </li>
+                {% endif %}
+
+                <!-- Rango de páginas -->
+                {% with ''|center:page_obj.paginator.num_pages as range %}
+                    {% for i in range %}
+                        {% if forloop.counter >= page_obj.number|add:'-2' and forloop.counter <= page_obj.number|add:'2' %}
+                            {% if forloop.counter == page_obj.number %}
+                                <li class="page-item active" aria-current="page">
+                                    <span class="page-link">{{ forloop.counter }}</span>
+                                </li>
+                            {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% url_replace page=forloop.counter %}">{{ forloop.counter }}</a>
+                                </li>
+                            {% endif %}
+                        {% elif forloop.counter == 1 and page_obj.number > 3 %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% url_replace page=1 %}">1</a>
+                            </li>
+                            {% if page_obj.number > 4 %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% elif forloop.counter == page_obj.paginator.num_pages and page_obj.number < page_obj.paginator.num_pages|add:'-2' %}
+                            {% if page_obj.number < page_obj.paginator.num_pages|add:'-3' %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% url_replace page=page_obj.paginator.num_pages %}">{{ page_obj.paginator.num_pages }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                {% endwith %}
+
+                <!-- Siguiente y Última -->
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% url_replace page=page_obj.next_page_number %}">Siguiente</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?{% url_replace page=page_obj.paginator.num_pages %}">Última &raquo;</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Siguiente</span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">Última &raquo;</span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+
+<!-- ============================================= -->
+<!--     MODAL PARA VER Y AÑADIR OBSERVACIONES     -->
+<!-- (Pon esto al final del archivo, fuera de otros contenedores) -->
+<!-- ============================================= -->
+<div class="modal fade" id="observacionesModal" tabindex="-1" aria-labelledby="observacionesModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="observacionesModalLabel">Observaciones para Dispositivo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- El historial de comentarios se cargará aquí -->
+        <div id="historialObservaciones" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+            <p class="text-center">Cargando historial...</p>
+        </div>
+        
+        <!-- Formulario para añadir un nuevo comentario -->
+        <div>
+            <h6>Añadir Nueva Observación</h6>
+            <textarea id="nuevaObservacionText" class="form-control" rows="3" placeholder="Escribe tu comentario aquí..."></textarea>
+            <div id="observacionError" class="text-danger mt-1" style="display: none;"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-primary" id="guardarObservacionBtn">Guardar Observación</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% block extra_js %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    function setupDoubleScroll() {
+        const topWrapper = document.getElementById('scroll-wrapper-top');
+        const topContent = document.getElementById('scroll-content-top');
+        const tableContainer = document.getElementById('main-table-container');
+        
+        if (!topWrapper || !tableContainer) return;
+
+        const table = tableContainer.querySelector('table');
+
+        const syncWidths = () => {
+            const tableWidth = table.scrollWidth;
+            topContent.style.width = tableWidth + 'px';
+        };
+
+        topWrapper.onscroll = function() {
+            tableContainer.scrollLeft = topWrapper.scrollLeft;
+        };
+
+        tableContainer.onscroll = function() {
+            topWrapper.scrollLeft = tableContainer.scrollLeft;
+        };
+
+        syncWidths();
+        window.addEventListener('resize', syncWidths);
+        
+        const observer = new ResizeObserver(() => syncWidths());
+        observer.observe(table);
+    }
+
+
+    function inicializarModalObservaciones() {
+        const modalElement = document.getElementById('observacionesModal');
+        
+        // Si no encontramos el modal, o Bootstrap no está cargado, o ya lo inicializamos, no hacemos nada.
+        if (!modalElement || typeof bootstrap === 'undefined' || modalElement.dataset.initialized === 'true') {
+            return;
+        }
+        // Marcamos el modal como inicializado para prevenir ejecuciones futuras.
+        modalElement.dataset.initialized = 'true';
+
+        const modal = new bootstrap.Modal(modalElement);
+        const guardarBtn = document.getElementById('guardarObservacionBtn');
+        let currentDeviceId = null;
+        let isSubmitting = false;
+        let lastFocusedButton = null;
+
+        // --- 1. Definimos las funciones de manejo de eventos por separado ---
+
+        // Función para cuando se ABRE el modal
+        function handleModalShow(event) {
+            lastFocusedButton = event.relatedTarget;
+            currentDeviceId = lastFocusedButton.getAttribute('data-device-id');
+            
+            document.getElementById('observacionesModalLabel').textContent = `Observaciones para ${lastFocusedButton.getAttribute('data-device-name')}`;
+            document.getElementById('historialObservaciones').innerHTML = '<p class="text-center">Cargando...</p>';
+            document.getElementById('nuevaObservacionText').value = '';
+            document.getElementById('observacionError').style.display = 'none';
+
+            isSubmitting = false; // Reseteamos la bandera de envío
+            guardarBtn.disabled = false;
+            guardarBtn.textContent = 'Guardar Observación';
+            
+            // Hacemos la petición fetch para cargar el historial
+            fetch(`/gases/dispositivo/${currentDeviceId}/observaciones/`)
+                .then(response => response.json())
+                .then(data => {
+                    const historialDiv = document.getElementById('historialObservaciones');
+                    historialDiv.innerHTML = '';
+                    if (data.length > 0) {
+                        data.forEach(obs => {
+                            const obsDate = new Date(obs.fecha_creacion).toLocaleString('es-ES');
+                            const obsElement = document.createElement('div');
+                            obsElement.classList.add('mb-2', 'p-2', 'bg-light', 'rounded');
+                            obsElement.innerHTML = `<p class="mb-0">${obs.comentario}</p><small class="text-muted">Por: <strong>${obs.autor__username || 'N/A'}</strong> el ${obsDate}</small>`;
+                            historialDiv.appendChild(obsElement);
+                        });
+                    } else {
+                        historialDiv.innerHTML = '<p class="text-muted text-center">No hay observaciones previas.</p>';
+                    }
+                });
+        }
+
+        // Función para cuando se CIERRA el modal (para accesibilidad)
+        function handleModalHide() {
+            if (lastFocusedButton) {
+                lastFocusedButton.focus();
+            }
+        }
+        
+        // Función para cuando se GUARDA
+        function handleGuardarClick() {
+            if (isSubmitting) return;
+
+            const comentarioTexto = document.getElementById('nuevaObservacionText').value.trim();
+            if (!comentarioTexto) { /* ... manejo de error ... */ return; }
+
+            isSubmitting = true;
+            guardarBtn.disabled = true;
+            guardarBtn.textContent = 'Guardando...';
+
+            fetch(`/gases/dispositivo/${currentDeviceId}/observaciones/add/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ comentario: comentarioTexto })
+            })
+            .then(response => response.json())
+            .then(data => { if (data.status === 'success') modal.hide(); else { /* ... manejo de error ... */ }})
+            .catch(error => { /* ... manejo de error de red ... */ })
+            .finally(() => { isSubmitting = false; });
+        }
+
+        // --- 2. Aplicamos el patrón "Limpiar y Añadir" para TODOS los listeners ---
+        
+        // Evento de APERTURA del modal
+        modalElement.removeEventListener('show.bs.modal', handleModalShow);
+        modalElement.addEventListener('show.bs.modal', handleModalShow);
+
+        // Evento de CIERRE del modal
+        modalElement.removeEventListener('hide.bs.modal', handleModalHide);
+        modalElement.addEventListener('hide.bs.modal', handleModalHide);
+
+        // Evento de CLIC en el botón de guardar
+        guardarBtn.removeEventListener('click', handleGuardarClick);
+        guardarBtn.addEventListener('click', handleGuardarClick);
+    }
+
+    // Llamamos a la función de inicialización al cargar la página.
+    inicializarModalObservaciones();
+    setupDoubleScroll();
+});
+</script>
+{% endblock %}
+<style>
+    .filter-container {
+        background-color: var(--bg_color, #fff);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    .filter-form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        align-items: end;
+    }
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        /* Esto hará que los botones se alineen con los otros campos */
+        padding-bottom: 5px; 
+    }
+    .table-container {
+        text-align: center;
+    }
+    .filter-form-grid {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    #scroll-wrapper-top {
+    /* Oculta la barra si el contenido no desborda */
+    display: block; 
+    /* Estilo opcional para que la barra se parezca a la del sistema */
+    scrollbar-width: thin; 
+    }
+    #scroll-wrapper-top::-webkit-scrollbar {
+        height: 8px;
+    }
+    #scroll-wrapper-top::-webkit-scrollbar-thumb {
+        background: #C55A11; /* Color naranja como tus cabeceras */
+        border-radius: 10px;
+    }
+    
+    /* Estilos para la paginación mejorada */
+    .pagination-container {
+        margin-top: 20px;
+        display: flex;
+        justify-content: center;
+    }
+    .pagination {
+        display: flex;
+        list-style: none;
+        padding: 0;
+        gap: 5px;
+    }
+    .pagination .page-item {
+        display: inline-block;
+    }
+    .pagination .page-link {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        color: #C55A11;
+        text-decoration: none;
+        transition: all 0.3s;
+    }
+    .pagination .page-link:hover {
+        background-color: #C55A11;
+        color: white;
+        border-color: #C55A11;
+    }
+    .pagination .page-item.active .page-link {
+        background-color: #C55A11;
+        color: white;
+        border-color: #C55A11;
+        font-weight: bold;
+    }
+    .pagination .page-item.disabled .page-link {
+        color: #999;
+        pointer-events: none;
+        background-color: #f5f5f5;
+    }
+</style>
+
+{% endblock %}

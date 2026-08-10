@@ -1,0 +1,27 @@
+<!-- recursoshumanos/templates/recursoshumanos/dispositivos/gestion_dispositivos_panel.html -->
+
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Gestión de Dispositivos{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>Gestión de Dispositivos</h1>
+        <p>Administra los dispositivos de marcación y los permisos de los trabajadores.</p>
+    </div>
+    
+    <div class="dashboard-grid">
+        <a href="{% url 'recursoshumanos:lista_dispositivos' %}" class="card">
+            <div class="card__icon">📱</div>
+            <h2 class="card__title">Ver Dispositivos Registrados</h2>
+            <p class="card__description">Consulta la lista de todos los dispositivos que se han conectado a la aplicación.</p>
+            <div class="card__footer">Ver Listado &rarr;</div>
+        </a>
+        <a href="{% url 'recursoshumanos:gestion_dispositivos' %}" class="card">
+            <div class="card__icon">↔️</div>
+            <h2 class="card__title">Asignar por Dispositivo</h2>
+            <p class="card__description">Arrastra y suelta trabajadores para asignarles permisos en un dispositivo específico.</p>
+            <div class="card__footer">Asignar &rarr;</div>
+        </a>
+    
+    </div>
+{% endblock %}

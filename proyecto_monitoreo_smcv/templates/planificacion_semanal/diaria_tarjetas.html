@@ -1,0 +1,64 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    
+    <!-- Navegación Mes -->
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-2xl font-bold text-gray-800">Programación Semanal</h1>
+        <div class="flex items-center bg-white rounded shadow">
+            <a href="?mes={{ prev_mes }}&anio={{ prev_anio }}" class="px-4 py-2 hover:bg-gray-100 border-r"><i class="fas fa-chevron-left"></i></a>
+            <span class="px-6 font-bold text-gray-700 capitalize">{{ nombre_mes }} {{ anio }}</span>
+            <a href="?mes={{ next_mes }}&anio={{ next_anio }}" class="px-4 py-2 hover:bg-gray-100 border-l"><i class="fas fa-chevron-right"></i></a>
+        </div>
+    </div>
+
+    <!-- GRID DE TARJETAS -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {% for sem in semanas %}
+        <div class="bg-white rounded-xl shadow-md border border-gray-200 hover:shadow-xl transition-all duration-300 group flex flex-col">
+            
+            <!-- Cabecera -->
+            <div class="p-6 border-b border-gray-100 flex-grow">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">Semana {{ sem.numero }}</h3>
+                    <span class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-100 font-medium whitespace-nowrap">
+                        {{ sem.inicio|date:"d M" }} - {{ sem.fin|date:"d M" }}
+                    </span>
+                </div>
+                
+                <!-- Barra 1: ASIGNACIÓN (Lo que has programado en el calendario) -->
+                <div class="mb-4">
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="font-bold text-blue-600 uppercase">Asignado</span>
+                        <span class="font-bold text-gray-700">{{ sem.asignado }} / {{ sem.meta }}</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2">
+                        <div class="h-2 rounded-full {% if sem.pct_asignado >= 100 %}bg-blue-600{% else %}bg-blue-400{% endif %}" 
+                             style="width: {{ sem.pct_asignado }}%"></div>
+                    </div>
+                </div>
+
+                <!-- Barra 2: EJECUCIÓN (Lo que ya se hizo realmente) -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="font-bold text-gray-500 uppercase">Ejecutado</span>
+                        <span class="font-bold text-gray-700">{{ sem.real }}</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2">
+                        <div class="h-2 rounded-full {% if sem.pct_real >= 100 %}bg-green-500{% else %}bg-orange-400{% endif %}" 
+                             style="width: {{ sem.pct_real }}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botón Grande -->
+            <a href="{% url 'proyecto_monitoreo_smcv:vista_semana_operativa' anio mes sem.numero %}" class="block p-4 text-center bg-gray-50 hover:bg-brand-50 transition rounded-b-xl group-hover:text-brand-700">
+                <span class="font-bold text-sm flex justify-center items-center">
+                    Gestionar Días <i class="fas fa-arrow-right ml-2"></i>
+                </span>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

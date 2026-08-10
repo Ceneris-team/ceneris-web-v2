@@ -1,0 +1,80 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Detalle del Proceso - {{ proceso.empresa.nombre }}{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Proceso para: {{ proceso.empresa.nombre }}</h1>
+
+<div class="row">
+  <!-- Columna de Etapas -->
+  <div class="col-md-8">
+    <!-- ETAPA 1: CITACIÓN -->
+    <div class="card">
+      <div class="card-header fw-bold">Etapa 1: Citación Agendada</div>
+      <div class="card-body">
+        <p><strong>Fecha de Citación:</strong> {{ proceso.fecha_citacion|date:"d F Y, H:i" }}</p>
+        <p><strong>Agendado por:</strong> {{ proceso.usuario_agenda.username|default:"Sistema" }}</p>
+      </div>
+    </div>
+
+    <!-- ETAPA 2: ENCUENTRO -->
+    <div class="card">
+      <div class="card-header fw-bold">Etapa 2: Encuentro con Cliente</div>
+      <div class="card-body">
+        {% if proceso.fecha_encuentro %}
+          <p><strong>Fecha de Encuentro:</strong> {{ proceso.fecha_encuentro|date:"d F Y, H:i" }}</p>
+          <p><strong>Registrado por:</strong> {{ proceso.usuario_encuentro.username|default:"Sistema" }}</p>
+        {% else %}
+          <div class="alert alert-warning">Encuentro pendiente de registro.</div>
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="id_fecha_encuentro" class="form-label">Registrar Fecha y Hora del Encuentro</label>
+                {{ encuentro_form.fecha_encuentro }}
+            </div>
+            <button type="submit" name="registrar_encuentro" class="btn btn-success">Guardar Encuentro</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+    
+    <!-- ETAPA 3: COTIZACIÓN -->
+    <div class="card">
+      <div class="card-header fw-bold">Etapa 3: Cotización Final</div>
+      <div class="card-body">
+        {% if proceso.cotizacion_final %}
+          <p><strong>Descripción:</strong> {{ proceso.cotizacion_final.descripcion_pedido }}</p>
+          <p><strong>Tipo de Servicio:</strong> {{ proceso.cotizacion_final.tipo_servicio_producto }}</p>
+          <p><strong>Estado:</strong> <span class="badge bg-primary">{{ proceso.cotizacion_final.get_estado_display }}</span></p>
+          <p><strong>Creado por:</strong> {{ proceso.cotizacion_final.usuario_creador.username }}</p>
+        {% else %}
+          {% if proceso.fecha_encuentro %}
+            <div class="alert alert-info">El encuentro ha sido registrado. Ya puedes crear la cotización.</div>
+            <a href="{% url 'cotizaciones:crear_cotizacion' proceso_pk=proceso.pk %}" class="btn btn-primary">Crear Cotización Final</a>
+          {% else %}
+            <div class="alert alert-secondary">Debes registrar el encuentro con el cliente antes de poder crear una cotización.</div>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Columna de Información Adicional -->
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">Información del Cliente</div>
+      <div class="card-body">
+        <h5>{{ proceso.empresa.nombre }}</h5>
+        <p><strong>RUC:</strong> {{ proceso.empresa.ruc }}</p>
+        <p><strong>Ubicación:</strong> {{ proceso.empresa.ubicacion }}</p>
+        <hr>
+        <h6>Contacto</h6>
+        <p><strong>Nombre:</strong> {{ proceso.contacto.nombre }}</p>
+        <p><strong>Correo:</strong> {{ proceso.contacto.correo }}</p>
+        <p><strong>Teléfono:</strong> {{ proceso.contacto.telefono }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+<a href="{% url 'cotizaciones:lista_procesos' %}" class="btn btn-secondary mt-3">Volver a la lista</a>
+{% endblock %}

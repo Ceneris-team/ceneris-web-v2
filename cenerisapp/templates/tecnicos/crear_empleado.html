@@ -1,0 +1,141 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="form-container">
+    <form method="post" class="form-card">
+        <h2>{{ titulo }}</h2>
+        {% csrf_token %}
+
+        <!-- DATOS PERSONALES -->
+        <div class="form-section">
+            <h3>Datos Personales</h3>
+            <div class="form-grid">
+                {% for field in form %}<div class="form-group">{{ field.label_tag }} {{ field }} {{ field.errors }}</div>{% endfor %}
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Correos de Contacto</h3>
+            {{ correo_formset.management_form }}
+            {{ correo_formset.non_form_errors }}
+            <div id="correo-form-list">
+                {% for correo_form in correo_formset %}
+                    <div class="inline-form-group">
+                        <!-- VAMOS A RENDERIZAR CADA CAMPO DENTRO DE SU PROPIO DIV -->
+                        <div class="form-group">
+                            {{ correo_form.direccion_correo.label_tag }}
+                            {{ correo_form.direccion_correo }}
+                            {{ correo_form.direccion_correo.errors }}
+                        </div>
+                        {% if correo_form.instance.pk and correo_formset.can_delete %}
+                            <div class="form-group checkbox-group">
+                                {{ correo_form.DELETE.label_tag }}
+                                {{ correo_form.DELETE }}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="button" id="add-correo-form" class="btn btn-secondary btn-sm">Añadir Correo</button>
+        </div>
+
+        <!-- Formset de Teléfonos -->
+        <div class="form-section">
+            <h3>Teléfonos de Contacto</h3>
+            {{ telefono_formset.management_form }}
+            {{ telefono_formset.non_form_errors }}
+            <div id="telefono-form-list">
+                {% for telefono_form in telefono_formset %}
+                    <div class="inline-form-group">
+                        <div class="form-group">
+                            {{ telefono_form.numero.label_tag }}
+                            {{ telefono_form.numero }}
+                            {{ telefono_form.numero.errors }}
+                        </div>
+                        {% if telefono_form.instance.pk and telefono_formset.can_delete %}
+                            <div class="form-group checkbox-group">
+                                {{ telefono_form.DELETE.label_tag }}
+                                {{ telefono_form.DELETE }}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="button" id="add-telefono-form" class="btn btn-secondary btn-sm">Añadir Teléfono</button>
+        </div>
+
+        <div class="form-actions"><button type="submit" class="btn btn-primary">Guardar Empleado</button></div>
+    </form>
+</div>
+
+<!-- PLANTILLAS VACÍAS PARA JAVASCRIPT -->
+<div id="correo-empty-form" style="display:none;">
+    <div classs="inline-form-group">
+        <div class="form-group">
+            {{ correo_formset.empty_form.direccion_correo.label_tag }}
+            {{ correo_formset.empty_form.direccion_correo }}
+        </div>
+    </div>
+</div>
+<div id="telefono-empty-form" style="display:none;">
+     <div classs="inline-form-group">
+        <div class="form-group">
+            {{ telefono_formset.empty_form.numero.label_tag }}
+            {{ telefono_formset.empty_form.numero }}
+        </div>
+    </div>
+</div>
+
+<!-- TU SCRIPT CORREGIDO (COPIADO AQUÍ PARA FACILIDAD) -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM cargado. Iniciando script de formsets.");
+
+    function setupInlineFormset(prefix) {
+        console.log(`--- Configurando formset para: ${prefix} ---`);
+        
+        const addBtn = document.getElementById(`add-${prefix}-form`);
+        const formList = document.getElementById(`${prefix}-form-list`);
+        const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+        const emptyFormTemplateEl = document.getElementById(`${prefix}-empty-form`);
+
+        // --- LÍNEAS DE DEPURACIÓN CLAVE ---
+        console.log(`Botón 'Añadir':`, addBtn);
+        console.log(`Lista de formularios:`, formList);
+        console.log(`Input TOTAL_FORMS:`, totalFormsInput);
+        console.log(`Plantilla vacía:`, emptyFormTemplateEl);
+        
+        // Comprobación de seguridad
+        if (!addBtn || !formList || !totalFormsInput || !emptyFormTemplateEl) {
+            console.error(`ERROR: Faltan elementos para el formset '${prefix}'. El script no continuará.`);
+            return; 
+        }
+
+        const emptyFormTemplate = emptyFormTemplateEl.innerHTML;
+        console.log(`HTML de la plantilla vacía:`, emptyFormTemplate);
+
+        addBtn.addEventListener('click', () => {
+            console.log(`Clic en el botón 'Añadir' para ${prefix}`);
+            
+            const formIndex = parseInt(totalFormsInput.value);
+            console.log(`Índice actual del formulario: ${formIndex}`);
+            
+            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, formIndex);
+            console.log(`HTML del nuevo formulario a insertar:`, newFormHtml);
+            
+            // Usamos un método de inserción más robusto
+            formList.insertAdjacentHTML('beforeend', newFormHtml);
+            
+            totalFormsInput.value = formIndex + 1;
+            console.log(`Nuevo total de formularios: ${totalFormsInput.value}`);
+        });
+        
+        console.log(`¡Listener añadido correctamente al botón de ${prefix}!`);
+    }
+    
+    setupInlineFormset('correo');
+    setupInlineFormset('telefono');
+});
+</script>
+{% endblock %}

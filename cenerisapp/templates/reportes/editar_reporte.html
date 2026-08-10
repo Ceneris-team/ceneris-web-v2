@@ -1,0 +1,52 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="form-container">
+        <form method="post" class="form-card">
+            <h2>{{ titulo }}</h2>
+            <p class="form-description">Modifica los detalles del reporte para el dispositivo: <strong>{{ reporte.id_dispositivo.nomDisp }}</strong>.</p>
+            
+            {% csrf_token %}
+
+            {{ form.non_field_errors }}
+
+            <div class="form-grid">
+                <div class="form-group">
+                    {{ form.id_dispositivo.label_tag }}
+                    {{ form.id_dispositivo }}
+                    {{ form.id_dispositivo.errors }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.id_trabajador.label_tag }}
+                    {{ form.id_trabajador }}
+                    {{ form.id_trabajador.errors }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.fecReport.label_tag }}
+                    {{ form.fecReport }}
+                    {{ form.fecReport.errors }}
+                </div>
+            </div>
+
+            <div class="form-group">
+                {{ form.razRetiro.label_tag }}
+                {{ form.razRetiro }}
+                {{ form.razRetiro.errors }}
+            </div>
+
+            <div class="form-group">
+                {{ form.especRetiro.label_tag }}
+                {{ form.especRetiro }}
+                {{ form.especRetiro.errors }}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                <a href="{% url 'cenerisapp:lista_reportes' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

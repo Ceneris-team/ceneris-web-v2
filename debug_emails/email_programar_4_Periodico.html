@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programación de EMO</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; line-height: 1.6; }
+        .container { max-width: 700px; margin: 0 auto; background: white; }
+        
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .header p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        /* CONTENIDO */
+        .content {
+            padding: 30px;
+        }
+
+        .greeting {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #e67e22;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 25px 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e67e22;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-item {
+            padding: 12px;
+            background: #f9f9f9;
+            border-left: 3px solid #e67e22;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: #999;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            color: #333;
+            font-weight: 600;
+            word-break: break-word;
+        }
+
+        .info-value a {
+            color: #e67e22;
+            text-decoration: none;
+        }
+
+        .info-value a:hover {
+            text-decoration: underline;
+        }
+
+        /* IMAGEN DE CLÍNICA */
+        .clinica-image {
+            width: 100%;
+            max-height: 250px;
+            object-fit: cover;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        /* RECOMENDACIONES */
+        .recommendations {
+            background: #fff8f0;
+            border-left: 4px solid #e67e22;
+            padding: 15px;
+            margin: 25px 0;
+            border-radius: 2px;
+        }
+
+        .recommendations h3 {
+            font-size: 12px;
+            color: #e67e22;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .recommendations ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .recommendations li {
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 6px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .recommendations li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #e67e22;
+            font-weight: bold;
+        }
+
+        /* COMENTARIO */
+        .comment-section {
+            background: #f0f8ff;
+            border-left: 4px solid #3498db;
+            padding: 12px;
+            margin: 20px 0;
+            border-radius: 2px;
+            font-size: 13px;
+            color: #555;
+        }
+
+        /* FOOTER */
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+            font-size: 11px;
+        }
+
+        .footer p {
+            margin: 3px 0;
+            opacity: 0.8;
+        }
+
+        .footer strong {
+            color: #e67e22;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 600px) {
+            .info-grid { grid-template-columns: 1fr; }
+            .header { padding: 25px 20px; }
+            .header h1 { font-size: 20px; }
+            .content { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>📋 ¡TU CITA ESTÁ CONFIRMADA!</h1>
+            <p>Examen Médico Ocupacional Programado</p>
+        </div>
+        
+        <!-- CONTENIDO PRINCIPAL -->
+        <div class="content">
+            <div class="greeting">
+                ¡Hola JORGE ENRIQUE! 👋
+            </div>
+
+            <!-- TU INFORMACIÓN -->
+            <div class="section-title">👤 Tu Información</div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Nombre Completo</span>
+                    <div class="info-value">JORGE ENRIQUE CORDOVA ZEVALLOS</div>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">DNI</span>
+                    <div class="info-value">74043790</div>
+                </div>
+                
+                
+                <div class="info-item">
+                    <span class="info-label">Cargo</span>
+                    <div class="info-value">ASISTENTE TÉCNICO</div>
+                </div>
+                
+                
+                <div class="info-item">
+                    <span class="info-label">Empresa</span>
+                    <div class="info-value">METRALAB S.A.C.</div>
+                </div>
+                
+                
+                <div class="info-item">
+                    <span class="info-label">Proyecto</span>
+                    <div class="info-value">CAPACITACIÓN</div>
+                </div>
+                
+                
+                <div class="info-item">
+                    <span class="info-label">Subproyecto</span>
+                    <div class="info-value">PRO - AAQ - CAP</div>
+                </div>
+                
+            </div>
+
+            <!-- DETALLES DE LA CITA -->
+            
+            <div class="section-title">🏥 Detalles de tu Cita</div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Clínica</span>
+                    <div class="info-value">HOLOMEDIC</div>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">📅 Fecha</span>
+                    <div class="info-value">12/12/2025</div>
+                </div>
+                
+                
+                <div class="info-item">
+                    <span class="info-label">⏰ Hora</span>
+                    <div class="info-value">12:34</div>
+                </div>
+                
+                
+                
+                <div class="info-item">
+                    <span class="info-label">📍 Dirección</span>
+                    <div class="info-value">
+                        Sin registrar
+                        
+                    </div>
+                </div>
+                
+            </div>
+
+            <!-- IMAGEN DE LA CLÍNICA -->
+            
+            
+
+            <!-- COMENTARIO PERSONALIZADO -->
+            
+            <div class="section-title">💬 Comentario</div>
+            <div class="comment-section">
+                addada
+            </div>
+            
+
+            <!-- RECOMENDACIONES -->
+            <div class="recommendations">
+                <h3>⚡ Recomendaciones Importantes</h3>
+                <ul>
+                    <li>Trae tu <strong>DNI original</strong> el día de la cita</li>
+                    <li>Llega <strong>10 minutos antes</strong> de la hora programada</li>
+                    <li>Si requiere ayuno, asiste en <strong>ayunas</strong></li>
+                    <li>Revisa los archivos adjuntos con instrucciones especiales</li>
+                    <li>Usa ropa cómoda y sin accesorios metálicos</li>
+                </ul>
+            </div>
+
+            <!-- MENSAJE DE CIERRE -->
+            <p style="color: #666; font-size: 13px; line-height: 1.6; margin: 20px 0;">
+                <strong>¿Preguntas o necesitas cambiar tu cita?</strong><br>
+                Responde este correo o contacta con el área de Calidad. ¡Esperamos tu asistencia puntual!
+            </p>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <p><strong>✓ ASSISTCENERIS</strong></p>
+            <p>Personnel & Safety Solutions</p>
+            <p style="margin-top: 10px; color: #888888; font-size: 10px;">Este es un correo automático. Por favor, no responder si no es para cambios de cita.</p>
+        </div>
+    </div>
+</body>
+</html>

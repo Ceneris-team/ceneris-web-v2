@@ -1,0 +1,204 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block meta %}
+    {{ block.super }}    
+    <link rel="stylesheet" href="{% static 'inventario/css/style.css' %}">
+{% endblock %}
+{% block content %}
+<div class="content-area">
+    <div class="page-header">
+        <div class="header-text">
+            <div class="page-title"><h2>Items de: {{ insumo.nombre }}</h2></div>
+            <div class="page-desc">Stock disponible: {{ insumo.items.count }} items totales.</div>
+        </div>
+        <!-- El botón "Añadir Item" ahora está en el encabezado -->
+        <div class="header-actions" style="margin-top: 15px;">
+            <a href="{% url 'inventario:lista_insumos' %}" class="btn-secondary" style="margin-right: 15px;">Volver al Resumen</a>
+            <button id="open-add-item-modal-btn" class="btn-create">
+                <i class="fa fa-plus"></i> Añadir Item
+            </button>
+        </div>
+    </div>
+
+    <div class="filters-container detalle">
+        <form method="get" class="advanced-filter-form">
+            <!-- Buscadores por texto -->
+            <div class="filter-group">
+                <input type="text" name="q_codigo" placeholder="Código Interno..." value="{{ filtros_aplicados.q_codigo|default_if_none:'' }}">
+            </div>
+            <div class="filter-group">
+                <input type="text" name="q_marca" placeholder="Marca..." value="{{ filtros_aplicados.q_marca|default_if_none:'' }}">
+            </div>
+            <div class="filter-group">
+                <input type="text" name="q_modelo" placeholder="Modelo..." value="{{ filtros_aplicados.q_modelo|default_if_none:'' }}">
+            </div>
+            <div class="filter-group">
+                <input type="text" name="q_serie" placeholder="Número de Serie..." value="{{ filtros_aplicados.q_serie|default_if_none:'' }}">
+            </div>
+            
+            <!-- Filtro de Calibración -->
+            <div class="filter-group">
+                <select name="prox_calibracion" onchange="this.form.submit()">
+                    <option value="">Cualquier Fecha de Calibración</option>
+                    <option value="proximo_mes" {% if filtros_aplicados.prox_calibracion == 'proximo_mes' %}selected{% endif %}>Vence en los próximos 30 días</option>
+                    <option value="vencido" {% if filtros_aplicados.prox_calibracion == 'vencido' %}selected{% endif %}>Vencido</option>
+                </select>
+            </div>
+            
+            <!-- Botones -->
+            <div class="filter-actions">
+                <button type="submit" class="btn-create">Buscar</button>
+                <a href="{% url 'inventario:detalle_insumo' insumo.pk %}" class="btn-clear-filters">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLA DE ITEMS INDIVIDUALES -->
+    <div class="table-container-full" style="margin-top: 30px;">
+        <div class="scrollable-table">
+            
+            <!-- ENCABEZADO CORREGIDO CON 12 COLUMNAS -->
+            <div class="item-list-header-full">
+                <div>Código Int.</div>
+                <div>Equipo</div>
+                <div>Marca</div>
+                <div>Modelo</div>
+                <div>Serie Equipo</div>
+                <div>Estado</div>
+                <div>Últ. Calibración</div>
+                <div>Próx. Calibración</div>
+                <div class="header-actions" style="text-align: center;">Acciones</div>
+            </div>
+
+            {% for item in items_individuales %}
+                <!-- FILA CORREGIDA CON 12 CELDAS -->
+                <div class="item-row-full" id="item-row-{{ item.id }}">
+                    <div>{{ item.codigo_interno|default_if_none:"-" }}</div>
+                    <div>{{ item.insumo_padre.nombre }}</div>
+                    <div>{{ item.marca|default_if_none:"-" }}</div>
+                    <div>{{ item.modelo|default_if_none:"-" }}</div>
+                    <div>{{ item.numero_serie }}</div>
+                    <div><span class="status-badge status-{{ item.estado|slugify }}">{{ item.get_estado_display }}</span></div>
+                    <div>{% if item.fecha_calibracion %}{{ item.fecha_calibracion|date:"d M Y" }}{% else %}-{% endif %}</div>
+                    <div>{% if item.fecha_prox_calibracion %}{{ item.fecha_prox_calibracion|date:"d M Y" }}{% else %}-{% endif %}</div>
+                    <div class="col-acciones">
+                        <!-- ¡NUEVO BOTÓN DE OPCIONES CON SU MENÚ! -->
+                        <div class="options-container">
+                            <button type="button" class="cbbtn btn-options" title="Opciones">
+                                <i class="fa fa-ellipsis-v"></i>
+                            </button>
+                            <!-- Menú desplegable, oculto por defecto -->
+                            <div class="options-menu">
+                                <a href="{% url 'inventario:registrar_reparacion' item.pk %}">
+                                    <i class="fa fa-wrench"></i> Ver/Registrar Reparación
+                                </a>
+                                <!-- Nuevo enlace a la gestión de accesorios -->
+                                <a href="{% url 'inventario:gestionar_accesorios' item.pk %}">
+                                    <i class="fa fa-puzzle-piece"></i> Gestionar Accesorios
+                                </a>
+                                <a href="#" class="delete-option"
+                                data-id="{{ item.id }}"
+                                data-nombre="{{ item.numero_serie }}"
+                                data-url="{% url 'inventario:api_delete_item_insumo' item.pk %}">
+                                    <i class="fa fa-trash"></i> Eliminar Item
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="item-row-empty"><p>No hay items individuales registrados.</p></div>
+            {% endfor %}
+            
+        </div>
+    </div>
+</div>
+
+
+<!-- === ¡NUEVO! MODAL PARA AÑADIR ITEM === -->
+<div id="add-item-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content animate__animated animate__fadeInDown">
+        <button id="close-add-item-modal-btn" class="modal-close-btn">&times;</button>
+        <h2>Añadir Nuevo Item a "{{ insumo.nombre }}"</h2>
+        
+        <form method="post" class="add-item-form-expanded">
+            {% csrf_token %}
+            <div class="form-grid">
+                <div class="form-row">
+                    <div class="form-group">
+                        {{ form.codigo_interno.label_tag }}
+                        {{ form.codigo_interno }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.marca.label_tag }}
+                        {{ form.marca }}
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        {{ form.modelo.label_tag }}
+                        {{ form.modelo }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.numero_serie.label_tag }}
+                        {{ form.numero_serie }}
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        {{ form.fecha_calibracion.label_tag }}
+                        {{ form.fecha_calibracion }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.fecha_prox_calibracion.label_tag }}
+                        {{ form.fecha_prox_calibracion }}
+                    </div>
+                </div>
+
+                
+                <div class="form-group">
+                    {{ form.ubicacion.label_tag }}
+                    {{ form.ubicacion }}
+                </div>
+                
+            </div>
+            <!-- Renderizar errores del formulario -->
+            {% if form.errors %}
+                <div class="error-list">
+                    {% for field, error_list in form.errors.items %}
+                        {% for error in error_list %}
+                            <p>{{ form.fields.field.label }}: {{ error }}</p>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            <div class="form-actions-footer">
+                <button type="button" class="btn-secondary" id="cancel-add-item-btn">Cancelar</button>
+                <button type="submit" name="anadir_item" class="btn-submit">Guardar Item</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="delete-confirm-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content animate__animated animate__fadeInDown">
+        <h2 id="delete-modal-title">Confirmar Eliminación</h2>
+        <p id="delete-modal-text">¿Estás seguro de que quieres eliminar este insumo? Esta acción no se puede deshacer.</p>
+        
+        <div id="delete-modal-error" class="error-list" style="display: none; color: #e74c3c;"></div>
+
+        <div class="modal-actions">
+            <button id="cancel-delete-btn" class="btn-secondary">Cancelar</button>
+            <button id="confirm-delete-btn" class="btn-danger">Sí, Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'inventario/js/add_item_modal.js' %}"></script>
+<script src="{% static 'inventario/js/options_menu.js' %}"></script>
+<script src="{% static 'inventario/js/delete_item_handler.js' %}"></script>
+
+
+{% endblock %}

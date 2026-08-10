@@ -1,0 +1,508 @@
+:root {
+    --bg_color: #ffffff;
+    --title_color: #d45b04;
+    --text_color: #222222;
+    --dark_color: #864415;
+    --second_color: #f5f5f5;  
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* --- ESTILOS PARA FILTROS --- */
+.filters-container {
+    background: #fff;
+    padding: 15px 20px;
+    border-radius: 12px;
+    margin: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+.filter-form {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.filter-group label {
+    font-weight: 500;
+    margin-bottom: 0;
+}
+.filter-group select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+.btn-clear-filters {
+    margin-left: auto; /* Empuja el botón a la derecha */
+    color: #3498db;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* --- ESTILOS PARA LA TABLA DE PERSONAL --- */
+.page-header {
+    display: flex; /* La magia de Flexbox */
+    justify-content: space-between; /* Empuja los elementos a los extremos */
+    align-items: center; /* Centra verticalmente */
+    padding: 20px; /* Espaciado interno, ajusta según necesites */
+    flex-wrap: wrap; /* Permite que el botón se mueva abajo en pantallas pequeñas */
+    gap: 20px; /* Espacio entre el texto y el botón si se envuelven */
+}
+
+.header-text {
+    /* No necesita estilos especiales, Flexbox lo maneja */
+    flex-grow: 1; /* Permite que ocupe el espacio disponible */
+}
+
+.page-title {
+    padding: 0; /* Anulamos el padding anterior para un mejor control */
+    margin: 0;
+}
+.page-desc {
+    padding: 0; /* Anulamos el padding anterior */
+    margin-top: 5px;
+}
+
+.table-container {
+    margin: 20px;
+}
+/* Reutilizamos .content-bar de la lista de insumos */
+.content-bar {
+  width: 100%;
+  margin-bottom: 10px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  border-radius: 12px;
+  display: grid;
+  align-items: center;
+  gap: 15px;
+  padding: 5px 15px; /* Padding ajustado para la tabla */
+  /* Nueva definición de columnas para la tabla de personal */
+  grid-template-columns: 60px 2fr 1.5fr 1fr 80px;
+}
+
+
+.content-area {
+    background-color: #f6f6fc;
+    
+}
+
+.item-foto img {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%; /* Foto circular */
+    object-fit: cover;
+}
+/* New CSS for the initials placeholder */
+.initials-placeholder {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background-color: #ddd; /* Example background color */
+    color: #333; /* Example text color */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+/* Clases para las celdas (la mayoría pueden compartir estilos) */
+.item-nombre, .item-cargo, .item-area, .item-contacto, .item-acciones {
+    font-size: 0.9rem;
+}
+.item-nombre { font-weight: 500; }
+.item-area { color: #555; }
+.item-acciones { text-align: right; width: 90px;display: flex; justify-content: space-between;}
+.row {
+  margin: 0;
+}
+.col-12.col-sm-6.col-md-4.col-lg-3 {
+    display: flex;
+}
+/* --- ESTILOS MEJORADOS PARA LA TARJETA DE PERSONAL --- */
+
+/* La librería imagehover.css se encarga de la animación. */
+
+figure.imghvr-slide-up {
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    overflow: hidden;
+    /* Aseguramos que la tarjeta tenga una altura fija para la grilla */
+    height: 300px; /* Ajusta este valor según tus preferencias */
+}
+
+figure.imghvr-slide-up img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+figure.imghvr-slide-up figcaption {
+    background-color: rgba(255, 255, 255, 0.95); /* Ligeramente más opaco para legibilidad */
+    color: #333;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.figcaption-content {
+    width: 100%;
+}
+
+.figcaption-content h3 {
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-bottom: 5px;
+    word-break: break-word; /* Evita que nombres largos rompan el layout */
+}
+
+.figcaption-content p.cargo {
+    font-size: 0.9rem;
+    color: #555;
+    margin-bottom: 1.5rem; /* Más espacio antes de los datos de contacto */
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* --- ¡NUEVOS ESTILOS PARA LOS DATOS DE CONTACTO! --- */
+.contact-info {
+    text-align: left; /* Alineamos el texto a la izquierda para un look más ordenado */
+    font-size: 0.85rem;
+    width: 100%;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.info-item i.fa {
+    /* Estilo para los iconos (email, teléfono) */
+    width: 25px; /* Espacio fijo para el icono */
+    color: #3498db; /* Color de acento */
+    font-size: 1rem;
+}
+
+.info-item span {
+    /* Para que el texto largo se corte con puntos suspensivos */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* --- Estilos Adicionales para el Modal de Personal --- */
+/* Contenedor para poner dos campos en la misma fila */
+.form-row {
+    display: flex;
+    gap: 1.5rem; /* Espacio entre los campos */
+    margin-bottom: 1.5rem;
+}
+
+
+
+/* Hacemos que cada .form-group dentro de un .form-row ocupe el espacio disponible */
+.form-row .form-group {
+    flex: 1;
+    margin-bottom: 0; /* Quitamos el margen inferior porque ya lo tiene el .form-row */
+}
+
+/* Estilo específico para el campo de subida de archivos */
+.form-group input[type="file"] {
+    padding: 10px;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* Oculta el texto "Actualmente:" que Django pone para los archivos */
+.form-group input[type="file"] ~ a {
+    display: none;
+}
+.form-group br {
+    display: none;
+}
+
+/* Estilo para que los <select> se vean consistentes */
+.form-group select {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: white;
+}
+
+/* --- ESTILOS MEJORADOS PARA EL MODAL DE PERFIL --- */
+
+.modal-content {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+    border-bottom: 1px solid #e9ecef;
+    padding: 1.5rem;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+/* El contenedor principal del layout de dos columnas */
+.profile-container {
+    display: flex;
+    align-items: flex-start; /* Alinea los items al principio */
+    gap: 20px; /* Espacio entre la foto y el texto */
+}
+
+/* La columna de la foto */
+.profile-avatar img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%; /* ¡La clave para la foto circular! */
+    object-fit: cover; /* Asegura que la imagen no se deforme */
+    border: 3px solid #f0f0f0;
+}
+
+/* La columna de los detalles */
+.profile-details {
+    flex: 1; /* Ocupa el espacio restante */
+}
+
+.profile-details h5 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.profile-details p {
+    margin-bottom: 0.5rem;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.profile-details p strong {
+    color: #333;
+    min-width: 70px; /* Asegura que los dos puntos ":" se alineen */
+    display: inline-block;
+}
+
+.modal-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: flex-end; /* Alinea el botón a la derecha */
+}
+
+/* Estilo para el único botón de cerrar */
+.btn-modal-close {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+    font-weight: 500;
+    padding: 8px 20px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-modal-close:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+    color: white;
+}
+
+/* --- ESTILOS PARA EL BUSCADOR DE PROYECTOS Y LA VISTA DE TAREAS --- */
+
+.project-finder-container {
+    background: #fff;
+    padding: 20px;
+    margin: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.project-finder-container h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.project-filter-form {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.project-filter-form select {
+    flex-grow: 1;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.project-tasks-view {
+    padding: 20px;
+}
+
+.task-group {
+    margin-bottom: 2.5rem;
+}
+
+.task-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #3498db;
+    display: inline-block;
+}
+
+/* --- ESTILO PARA EL BOTÓN DE DESASIGNACIÓN --- */
+.btn-unassign-personal {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10; /* Para que esté por encima del efecto hover */
+    background-color: rgba(255, 255, 255, 0.8);
+    color: #555;
+    border: 1px solid #ddd;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-unassign-personal:hover {
+    background-color: #e74c3c; /* Rojo al pasar el cursor */
+    color: white;
+    transform: scale(1.1);
+}
+
+
+/* --- ESTILOS PARA LA LISTA DE PERSONAL ASIGNADO POR PROYECTO --- */
+
+.project-tasks-view {
+    padding: 0 20px 20px 20px;
+}
+
+.task-group {
+    margin-bottom: 2.5rem;
+}
+
+.task-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #3498db;
+    display: inline-block;
+}
+
+.assigned-personnel-list {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Espacio entre cada tarjeta de persona */
+}
+
+/* Tarjeta individual de información de la persona */
+.person-info-card {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transition: all 0.2s ease-in-out;
+}
+.person-info-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.person-details {
+    flex-grow: 1; /* Ocupa el espacio disponible */
+}
+
+.person-details .person-name {
+    display: block;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.person-details .person-role {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+}
+
+/* Contexto de la subtarea a la que está asignado */
+.subtask-context {
+    font-size: 0.9rem;
+    color: #555;
+    padding-right: 15px;
+    border-right: 1px solid #eee;
+    margin-right: 15px;
+}
+.subtask-context em {
+    font-style: normal;
+    font-weight: 500;
+}
+
+
+/* Botón pequeño y sutil para desasignar */
+.btn-unassign-personal-small {
+    background: none;
+    border: 1px solid transparent;
+    color: #bdc3c7;
+    font-size: 1rem;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-unassign-personal-small:hover {
+    color: #e74c3c;
+    background-color: #fbecec;
+    border-color: #e74c3c;
+}
+
+.no-personnel-assigned {
+    color: #6c757d;
+    font-style: italic;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.filter-group.text-search.persona{
+    width: 30%;
+}

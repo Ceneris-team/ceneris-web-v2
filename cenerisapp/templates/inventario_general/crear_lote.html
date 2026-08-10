@@ -1,0 +1,78 @@
+{% extends 'app_base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="form-container">
+        <form method="post" class="form-card">
+            <h2>{{ titulo }}</h2>
+            <p class="form-description">Completa los datos generales para el nuevo lote de ingreso.</p>
+            
+            {% csrf_token %}
+
+            <!-- Mostramos errores generales si los hay -->
+            {{ form.non_field_errors }}
+
+            <div class="form-group">
+                {{ form.descripInv.label_tag }}
+                {{ form.descripInv }}
+                {{ form.descripInv.errors }}
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    {{ form.id_trabajador.label_tag }}
+                    {{ form.id_trabajador }}
+                    {{ form.id_trabajador.errors }}
+                </div>
+
+                <div class="form-group">
+                    {{ form.ubiImv.label_tag }}
+                    {{ form.ubiImv }}
+                    {{ form.ubiImv.errors }}
+                </div>
+
+                <div class="form-group">
+                    {{ form.tipInv.label_tag }}
+                    {{ form.tipInv }}
+                    {{ form.tipInv.errors }}
+                </div>
+
+                <div class="form-group">
+                    {{ form.estadInv.label_tag }}
+                    {{ form.estadInv }}
+                    {{ form.estadInv.errors }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="id_cantIngreso">Cantidad de Componentes</label>
+                    <div class="quantity-stepper">
+                        <button type="button" class="stepper-btn stepper-btn--minus">-</button>
+                        <!-- El id y name vienen del ModelForm de Django -->
+                        {{ form.cantIngreso }} 
+                        <button type="button" class="stepper-btn stepper-btn--plus">+</button>
+                    </div>
+                    {{ form.cantIngreso.errors }}
+                </div>
+
+                <div class="form-group">
+                    {{ form.fecEntregaCeneris.label_tag }}
+                    {{ form.fecEntregaCeneris }}
+                    {{ form.fecEntregaCeneris.errors }}
+                </div>
+            </div>
+
+            <div class="form-group">
+                {{ form.comentInv.label_tag }}
+                {{ form.comentInv }}
+                {{ form.comentInv.errors }}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Siguiente: Añadir Componentes</button>
+                <a href="{% url 'cenerisapp:lista_lotes' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

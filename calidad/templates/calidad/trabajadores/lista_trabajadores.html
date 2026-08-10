@@ -1,0 +1,441 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Listado de Empleados{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/tabla_estados.css' %}">
+    <link rel="stylesheet" href="{% static 'css/filtros_maestros.css' %}">
+    <style>
+        /* --- ESTILO PARA OCUPAR TODO EL ANCHO --- */
+        .main-container {
+            max-width: 100% !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
+        }
+
+        .status-active { color: #198754; font-weight: bold; background-color: #d1e7dd; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+        .status-inactive { color: #dc3545; font-weight: bold; background-color: #f8d7da; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+        
+        .form-filters-master { display: flex; flex-wrap: wrap; gap: 1.5rem 1rem; align-items: flex-end; }
+        .filter-group { flex: 1 1 180px; min-width: 180px; max-width: 300px; }
+        
+        #trabajador-input { position: relative !important; opacity: 1 !important; height: auto !important; z-index: 1 !important; width: 100%; padding: 0.6rem 1rem; border: 1px solid #ced4da; border-radius: 6px; }
+        #trabajador-input:focus { border-color: #86b7fe; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); outline: none; }
+        
+        .form-actions { display: flex; gap: 0.75rem; padding-bottom: 2px; flex-grow: 0; }
+        .form-actions .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; font-weight: 500; border-radius: 6px; white-space: nowrap; border: none; transition: background-color 0.2s ease; cursor: pointer; }
+        .form-actions .btn-primary { background-color: #d45b04; color: #ffffff; }
+        .form-actions .btn-primary:hover { background-color: #b04a03; }
+        .form-actions .btn-secondary { background-color: #6c757d; color: #ffffff; }
+        .form-actions .btn-secondary:hover { background-color: #5a6268; }
+        .form-actions .btn-success { background-color: #198754; color: #ffffff; }
+        .form-actions .btn-success:hover { background-color: #146c43; }
+        .form-actions i { width: 16px; height: 16px; }
+
+        .export-notice {
+            width: 100%;
+            margin-top: 0.5rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .export-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(20, 28, 37, 0.5);
+            backdrop-filter: blur(2px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            padding: 1rem;
+        }
+
+        .export-modal-overlay.show {
+            display: flex;
+        }
+
+        .export-modal {
+            width: min(560px, 100%);
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            border: 1px solid #e9ecef;
+        }
+
+        .export-modal-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 1rem 1.25rem;
+            background: linear-gradient(135deg, #146c43, #198754);
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .export-modal-header i {
+            width: 18px;
+            height: 18px;
+        }
+
+        .export-modal-body {
+            padding: 1rem 1.25rem;
+        }
+
+        .export-summary {
+            margin: 0.75rem 0 1rem;
+            padding: 0.75rem;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            background: #f8f9fa;
+            line-height: 1.6;
+            color: #495057;
+            font-size: 0.95rem;
+        }
+
+        .export-confirm-check {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            margin-top: 0.4rem;
+            color: #343a40;
+        }
+
+        .export-confirm-check input {
+            margin-top: 0.2rem;
+            width: 1rem;
+            height: 1rem;
+            cursor: pointer;
+        }
+
+        .export-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.6rem;
+            padding: 0.95rem 1.25rem 1.1rem;
+            border-top: 1px solid #e9ecef;
+            background: #fcfcfd;
+        }
+
+        .export-modal-actions .btn {
+            border: none;
+            border-radius: 8px;
+            padding: 0.55rem 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .export-modal-actions .btn-cancel {
+            background: #6c757d;
+            color: #fff;
+        }
+
+        .export-modal-actions .btn-confirm {
+            background: #198754;
+            color: #fff;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .export-modal-actions .btn-confirm.enabled {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        /* Acciones de tabla */
+        .table-actions-container { display: flex; gap: 5px; justify-content: center; }
+
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Lista de Trabajadores</h1>
+            <p style="margin: 0;">Gestión general de personal y asignaciones.</p>
+        </div>
+        <div>
+            <a href="{% url 'calidad:gestion_empleados' %}" class="btn-secondary">&larr; Volver a panel</a>
+        </div>
+    </div>
+
+    <div class="master-filter-bar">
+        <form method="get" class="form-filters-master" action="">
+            <!-- Buscador -->
+            <div class="filter-group" style="flex-grow: 2; min-width: 300px;">
+                <label for="trabajador-input">Buscar Trabajador</label>
+                <input type="text" name="search" id="trabajador-input" placeholder="Nombre, apellido o DNI..." value="{{ filtro_busqueda }}">
+            </div>
+            
+            <!-- Filtro Empresa -->
+            <div class="filter-group">
+                <label for="empresa">Empresa</label>
+                <select name="empresa" id="empresa">
+                    <option value="">Todas</option>
+                    {% for empresa in opciones_empresas %}
+                        <option value="{{ empresa.pk }}" {% if filtro_activo_empresa == empresa.pk %}selected{% endif %}>{{ empresa.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Filtro Area -->
+            <div class="filter-group">
+                <label for="area">Área</label>
+                <select name="area" id="area">
+                    <option value="">Todas</option>
+                    {% for area in opciones_areas %}
+                        <option value="{{ area.pk }}" {% if filtro_activo_area == area.pk %}selected{% endif %}>{{ area.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- NUEVO FILTRO: CHECKBOX INACTIVOS -->
+            <div class="filter-group" style="display: flex; align-items: center; padding-bottom: 0.8rem;">
+                <input type="checkbox" name="ver_inactivos" id="ver_inactivos" {% if ver_inactivos %}checked{% endif %} style="width: 1.2rem; height: 1.2rem; margin-right: 0.5rem; cursor: pointer;">
+                <label for="ver_inactivos" style="margin-bottom: 0; cursor: pointer;">Mostrar Inactivos</label>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary"><i data-feather="filter"></i><span>Buscar</span></button>
+                <a href="{{ request.path }}" class="btn btn-secondary">
+                    <i data-feather="refresh-cw"></i><span>Limpiar</span>
+                </a>
+                <button
+                    type="button"
+                    id="exportExcelBtn"
+                    class="btn btn-success"
+                >
+                    <i data-feather="download"></i><span>Exportar Excel</span>
+                </button>
+            </div>
+            <div class="export-notice">
+                Aviso: la exportación respeta los filtros aplicados en esta búsqueda.
+            </div>
+        </form>
+    </div>
+
+    <div class="export-modal-overlay" id="exportModalOverlay" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
+        <div class="export-modal">
+            <div class="export-modal-header">
+                <i data-feather="shield"></i>
+                <span id="exportModalTitle">Confirmar exportación de trabajadores</span>
+            </div>
+            <div class="export-modal-body">
+                <p style="margin: 0; color: #495057;">
+                    Vas a exportar un Excel con la información filtrada en esta pantalla.
+                </p>
+                <div class="export-summary" id="exportSummary"></div>
+                <label class="export-confirm-check" for="exportConfirmCheck">
+                    <input type="checkbox" id="exportConfirmCheck">
+                    <span>Confirmo que revisé los filtros y deseo continuar con la descarga.</span>
+                </label>
+            </div>
+            <div class="export-modal-actions">
+                <button type="button" class="btn btn-cancel" id="cancelExportBtn">Cancelar</button>
+                <button type="button" class="btn btn-confirm" id="confirmExportBtn">Exportar ahora</button>
+            </div>
+        </div>
+    </div>
+
+    <table style="margin-top: 2rem;">
+        <thead>
+            <tr>
+                <th style="text-align: center; width: 50px;">N°</th>
+                <th>DNI</th>
+                <th>Nombre Completo</th>
+                <th>Empresa</th>
+                <th>Área de trabajo</th>
+                <th>Sede</th>
+                <th>Fecha de nacimiento</th>
+                <th>Fecha de Ingreso</th>
+                <th>Estado</th>
+                <th>Teléfono</th>
+                <th>Correo Electrónico</th> <!-- NUEVA COLUMNA -->
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for trabajador in trabajadores %}
+            <tr>
+                <td style="text-align: center; font-weight: bold;">{{ forloop.counter }}</td>
+                <td><strong>{{ trabajador.dni }}</strong></td>
+                <td>{{ trabajador }}</td>
+                
+                <!-- Columna Empresa -->
+                <td>{{ trabajador.empresa.nombre|default:"--" }}</td>
+                
+                <!-- Columna Area -->
+                <td>{{ trabajador.area.nombre|default:"--" }}</td>
+
+                <!-- Columna Sede -->
+                <td>{{ trabajador.sede.nombre|default:"--" }}</td>
+
+                <!-- Columna Cumpleaños -->
+                <td>{{ trabajador.fecha_nacimiento|date:"d/m/Y"|default:"--" }}</td>
+                
+                <!-- Columna Fecha de Ingreso -->
+                <td>{{ trabajador.fecha_ingreso|date:"d/m/Y"|default:"--" }}</td>
+                
+                <!-- Estado -->
+                <td>
+                    {% if trabajador.activo %}
+                        <span class="status-active">Activo</span>
+                    {% else %}
+                        <span class="status-inactive">Inactivo</span>
+                    {% endif %}
+                </td>
+                
+                <!-- Columna Teléfono -->
+                <td>{{ trabajador.telefono|default:"--" }}</td>
+
+                <!-- NUEVA COLUMNA: CORREO -->
+                <td>
+                    {% if trabajador.email %}
+                        <div style="font-size: 0.9em;">
+                            <a href="mailto:{{ trabajador.email }}" style="color: #0d6efd; text-decoration: none;">
+                                {{ trabajador.email }}
+                            </a>
+                        </div>
+                    {% else %}
+                        <span class="text-muted">--</span>
+                    {% endif %}
+                </td>
+                
+                
+                <!-- Acciones -->
+                <td style="text-align: center;">
+                    <div class="table-actions-container">
+                        <!-- 1. Ver Información -->
+                        <a href="{% url 'calidad:buscar_trabajador_info' %}?dni={{ trabajador.dni }}" class="btn-icon-action view" title="Ver Info Completa">
+                            <i data-feather="user"></i>
+                        </a>
+                        
+                        <!-- 2. Programar EMO -->
+                        <a href="{% url 'calidad:programar_emo' %}?dni={{ trabajador.dni }}" class="btn-icon-action secondary" title="Programar EMO">
+                            <i data-feather="calendar"></i>
+                        </a>
+
+                        <!-- 3. Editar Trabajador -->
+                        <a href="{% url 'recursoshumanos:editar_trabajador' pk=trabajador.pk %}?next={% url 'calidad:lista_trabajadores' %}" class="btn-icon-action secondary" title="Editar Datos">
+                            <i data-feather="edit-2"></i>
+                        </a>
+
+                        <!-- 4. Eliminar -->
+                        <form action="{% url 'recursoshumanos:eliminar_trabajador' pk=trabajador.pk %}" method="post" onsubmit="return confirm('¿Estás seguro de que deseas eliminar a este trabajador? Esta acción no se puede deshacer.');" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-icon-action reject" title="Eliminar Trabajador">
+                                <i data-feather="trash-2"></i>
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="12" style="text-align: center; padding: 2rem;">
+                    No se encontraron trabajadores con los filtros aplicados.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Inicializar iconos Feather
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+
+    const workersForm = document.querySelector('.form-filters-master');
+    const exportBtn = document.getElementById('exportExcelBtn');
+    const exportModal = document.getElementById('exportModalOverlay');
+    const cancelExportBtn = document.getElementById('cancelExportBtn');
+    const confirmExportBtn = document.getElementById('confirmExportBtn');
+    const exportConfirmCheck = document.getElementById('exportConfirmCheck');
+    const exportSummary = document.getElementById('exportSummary');
+
+    function getSelectedText(selectId, fallback) {
+        const select = document.getElementById(selectId);
+        if (!select) return fallback;
+        const option = select.options[select.selectedIndex];
+        return option && option.textContent ? option.textContent.trim() : fallback;
+    }
+
+    function buildExportSummary() {
+        const buscador = (document.getElementById('trabajador-input')?.value || '').trim() || 'Todos';
+        const empresa = getSelectedText('empresa', 'Todas');
+        const area = getSelectedText('area', 'Todas');
+        const estado = document.getElementById('ver_inactivos')?.checked ? 'Inactivos' : 'Activos';
+
+        exportSummary.innerHTML =
+            '<strong>Filtros a exportar:</strong><br>' +
+            'Busqueda: ' + buscador + '<br>' +
+            'Empresa: ' + empresa + '<br>' +
+            'Area: ' + area + '<br>' +
+            'Estado: ' + estado;
+    }
+
+    function openExportModal() {
+        buildExportSummary();
+        exportConfirmCheck.checked = false;
+        confirmExportBtn.classList.remove('enabled');
+        exportModal.classList.add('show');
+    }
+
+    function closeExportModal() {
+        exportModal.classList.remove('show');
+    }
+
+    if (exportBtn) {
+        exportBtn.addEventListener('click', openExportModal);
+    }
+
+    if (cancelExportBtn) {
+        cancelExportBtn.addEventListener('click', closeExportModal);
+    }
+
+    if (exportModal) {
+        exportModal.addEventListener('click', function (event) {
+            if (event.target === exportModal) {
+                closeExportModal();
+            }
+        });
+    }
+
+    if (exportConfirmCheck) {
+        exportConfirmCheck.addEventListener('change', function () {
+            if (this.checked) {
+                confirmExportBtn.classList.add('enabled');
+            } else {
+                confirmExportBtn.classList.remove('enabled');
+            }
+        });
+    }
+
+    if (confirmExportBtn && workersForm) {
+        confirmExportBtn.addEventListener('click', function () {
+            if (!exportConfirmCheck.checked) return;
+
+            // Cierra el modal para no dejar la pantalla bloqueada durante la descarga.
+            closeExportModal();
+            confirmExportBtn.classList.remove('enabled');
+            confirmExportBtn.disabled = true;
+
+            const hiddenExport = document.createElement('input');
+            hiddenExport.type = 'hidden';
+            hiddenExport.name = 'exportar';
+            hiddenExport.value = 'excel';
+            workersForm.appendChild(hiddenExport);
+
+            // Pequeño delay para permitir que el cierre del modal se pinte antes del submit.
+            setTimeout(function () {
+                workersForm.submit();
+                confirmExportBtn.disabled = false;
+            }, 80);
+        });
+    }
+</script>
+{% endblock %}

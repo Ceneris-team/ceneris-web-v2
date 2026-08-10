@@ -1,0 +1,35 @@
+<!-- recursoshumanos/templates/recursoshumanos/horarios/gestion_horarios.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Gestión de Horarios{% endblock %}
+{% block content %}
+    <h1>Gestión de Horarios</h1>
+    <p>Administra los horarios de trabajo y turnos del personal.</p>
+    
+    <div class="dashboard-grid">
+            <!-- Tarjeta para Gestión de Tareo -->
+            <a href="{% url 'recursoshumanos:gestion_tareo' %}" class="card">
+                <div class="card__icon">🗓️</div>
+                <h2 class="card__title">Seleccion de Horarios </h2>
+                <p class="card__description">
+                    Asigna el horario, estado y ubicación de trabajo para cada
+                    empleado, día por día, para todo el mes.
+                </p>
+                <div class="card__footer">
+                    Ir a Tareo &rarr;
+                </div> 
+            </a>
+            <!-- Tarjeta para el Reporte Mensual -->
+            <a href="{% url 'recursoshumanos:reporte_mensual' %}" class="card">
+                <div class="card__icon">📅</div>
+                <h2 class="card__title">Reporte Mensual por trabajador</h2>
+                <p class="card__description">
+                    Genera un calendario visual de asistencias y faltas
+                    para un trabajador y mes específicos
+                </p>
+                <div class="card__footer">
+                    Generar Reporte &rarr;
+                </div> 
+            </a>
+    </div>
+    
+{% endblock %}

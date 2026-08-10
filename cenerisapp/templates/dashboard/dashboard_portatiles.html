@@ -1,0 +1,278 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="dashboard-container modern">
+    
+    <!-- ============================================= -->
+    <!--          ENCABEZADO Y BUSCADOR MODERNO        -->
+    <!-- ============================================= -->
+    <div class="dashboard-header-modern">
+        <h1>Dashboard de Portátiles</h1>
+        <p>Visión general y estado detallado de los equipos.</p>
+    </div>
+
+    <div class="general-stats-grid modern arriba">
+        <div class="info-card modern-t stat-card derecha">
+            <div class="card-header">
+                <i class="bi bi-box-seam card-icon"></i>
+                <h3>Total de Equipos</h3>
+            </div>
+            <p class="stat-number">{{ total_portatiles }}</p>
+        </div>
+        <div class="info-card modern-t stat-card">
+            <div class="card-header">
+                <i class="bi bi-journal-x card-icon"></i>
+                <h3>Cardex Pendientes <span style="font-weight: 200;">(por revisar)</span></h3>
+            </div>
+            <p class="stat-number">{{ pendientes_cardex }}</p>
+        </div>
+    </div>
+    
+
+    <div class="search-container-modern">
+        <form method="GET" class="search-form-modern">
+            <i class="bi bi-search search-icon"></i>
+            <input type="search" name="query" list="dispositivos-list" value="{{ query_busqueda }}" 
+                   placeholder="Escribe el N° de Serie del dispositivo y presiona Enter..." class="search-input">
+            <!-- Datalist para autocompletado nativo del navegador -->
+            <datalist id="dispositivos-list">
+                {% for disp in todos_los_portatiles_para_busqueda %}
+                    <option value="{{ disp.num_serie }}">{{ disp.nomDisp }}</option>
+                {% endfor %}
+            </datalist>
+        </form>
+    </div>
+
+    <!-- ============================================= -->
+    <!--     SECCIÓN ESPECÍFICA (SI HAY BÚSQUEDA)      -->
+    <!-- ============================================= -->
+    {% if dispositivo_seleccionado %}
+        <div class="section-title modern">
+            <i class="bi bi-display"></i> Detalles para: <strong>{{ dispositivo_seleccionado }}</strong>
+        </div>
+        <div class="device-details-grid modern">
+            <!-- Tarjeta de Estado -->
+            <div class="info-card modern">
+                <div class="card-header">
+                    <i class="bi bi-shield-check card-icon"></i>
+                    <h4>Estado Actual</h4>
+                </div>
+                <p class="status-badge status-{{ dispositivo_seleccionado.estadoD|lower }}">{{ dispositivo_seleccionado.estadoD }}</p>
+                <hr style="margin-top: 20px;">
+                <p><strong>Revisado en Cardex:</strong> 
+                    {% if dispositivo_seleccionado.cardex_revisado %}
+                        <span class="status-badge status-operativo">Sí</span>
+                    {% else %}
+                        <span class="status-badge status-inoperativo">No</span>
+                    {% endif %}
+                </p>
+            </div>
+            <!-- Tarjeta Última Modificación -->
+            <div class="info-card modern">
+                 <div class="card-header">
+                    <i class="bi bi-tools card-icon"></i>
+                    <h4>Última Modificación</h4>
+                </div>
+                {% if ultima_modificacion %}
+                    <p><strong><i class="bi bi-calendar-event"></i> Fecha:</strong> {{ ultima_modificacion.fecInstalacionMod|date:"d/m/Y" }}</p>
+                    <p><strong>Motivo:</strong> {{ ultima_modificacion.MotivoCambio }}</p>
+                    <div class="component-swap">
+                        {% if ultima_modificacion.sensor_saliente or ultima_modificacion.parte_saliente %}
+                            <p><span class="out"><i class="bi bi-arrow-down-circle"></i> Salió:</span> {{ ultima_modificacion.sensor_saliente|default:ultima_modificacion.parte_saliente }}</p>
+                        {% endif %}
+                        {% if ultima_modificacion.componente_entrante %}
+                            <p><span class="in"><i class="bi bi-arrow-up-circle"></i> Entró:</span> {{ ultima_modificacion.componente_entrante }}</p>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <p class="no-data">Sin modificaciones registradas.</p>
+                {% endif %}
+            </div>
+            <!-- ... (Otras tarjetas de detalles si quieres añadir) ... -->
+        </div>
+        
+        <div class="history-grid modern">
+            <div class="info-card modern">
+                <h4><i class="bi bi-clock-history"></i> Historial de Préstamos</h4>
+                <ul class="history-list">
+                    {% for reg in registros_recientes %}
+                    <li>
+                        <span class="date">{{ reg.fecRegistro|date:"d M, Y" }}</span>
+                        Prestado a: <strong>{{ reg.trabajador_receptor.nomEmpleado }}</strong>
+                    </li>
+                    {% empty %}
+                        <li class="no-data">Sin registros de préstamos.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="info-card modern">
+                <h4><i class="bi bi-patch-check"></i> Historial de Certificados</h4>
+                <ul class="history-list">
+                    {% for cert in certificados_recientes %}
+                    <li>
+                        <span class="date">{{ cert.fechCertificado|date:"d M, Y" }}</span>
+                        N° Certificado: <strong>{{ cert.nro_certificado }}</strong>
+                    </li>
+                     {% empty %}
+                        <li class="no-data">Sin certificados registrados.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- ============================================= -->
+    <!--          SECCIÓN GENERAL (ESTADÍSTICAS)       -->
+    <!-- ============================================= -->
+    <div class="section-title modern"><i class="bi bi-bar-chart-line"></i> Estadísticas Generales</div>
+    <div class="general-stats-grid modern">
+        <div class="info-card modern list-card">
+            <div class="card-header">
+                <i class="bi bi-tools card-icon"></i>
+                <h4>Últimas Modificaciones</h4>
+            </div>
+            <ul class="activity-list">
+                {% for mod in ultimas_modificaciones %}
+                    <li>
+                        <div class="activity-header">
+                            <strong>{{ mod.id_dispositivo.nomDisp }}</strong>
+                            <span class="date">{{ mod.fecInstalacionMod|date:"d M, Y" }}</span>
+                        </div>
+                        <div class="activity-body">
+                            {{ mod.MotivoCambio }}
+                            <small class="meta">Por: {{ mod.id_trabajador.nomEmpleado }}</small>
+                        </div>
+                    </li>
+                {% empty %}
+                    <li class="no-data">No hay modificaciones recientes.</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- ============================================= -->
+        <!--        NUEVA TARJETA: ÚLTIMOS MANTENIMIENTOS    -->
+        <!-- ============================================= -->
+        <div class="info-card modern list-card">
+            <div class="card-header">
+                <i class="bi bi-wrench-adjustable-circle card-icon"></i>
+                <h4>Últimos Mantenimientos</h4>
+            </div>
+            <ul class="activity-list">
+                {% for mant in ultimos_mantenimientos %}
+                    <li>
+                        <div class="activity-header">
+                            <strong>{{ mant.dispositivo.nomDisp }}</strong>
+                            <span class="date">{{ mant.fecha_intervencion|date:"d M, Y" }}</span>
+                        </div>
+                        <div class="activity-body">
+                            Estado Final: <strong>{{ mant.estado_final_equipo }}</strong>
+                            <small class="meta">Por: {{ mant.tecnico_a_cargo.nomEmpleado|default:"N/A" }}</small>
+                        </div>
+                    </li>
+                {% empty %}
+                     <li class="no-data">No hay mantenimientos recientes.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="info-card modern chart-card-c">
+            <h4>Dispositivos por Estado</h4>
+            <!-- NUEVO CONTENEDOR CON POSICIÓN RELATIVA -->
+            <div class="chart-wrapper">
+                <canvas id="estadoChart"></canvas>
+            </div>
+        </div>
+        <div class="info-card modern chart-card full-width-chart">
+            <h4>Modificaciones por Mes</h4>
+            <!-- NUEVO CONTENEDOR CON POSICIÓN RELATIVA -->
+            <div class="chart-wrapper modi">
+                <canvas id="modificacionesChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Incluye Chart.js desde un CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gráfico de Estados (Dona)
+    const estadoCtx = document.getElementById('estadoChart');
+    if (estadoCtx) {
+        const estadoData = JSON.parse('{{ conteo_por_estado_json|safe }}');
+        new Chart(estadoCtx, {
+            type: 'doughnut',
+            data: {
+                labels: estadoData.map(d => d.estadoD),
+                datasets: [{
+                    label: 'N° de Dispositivos',
+                    data: estadoData.map(d => d.total),
+                    backgroundColor: ['#2ecc71', '#e74c3c', '#f1c40f', '#3498db']
+                }]
+            },
+            options: { 
+                responsive: true,
+                maintainAspectRatio: false, // ¡MUY IMPORTANTE! Permite que el gráfico llene el contenedor.
+                plugins: {
+                    legend: {
+                        position: 'top', // O 'bottom', 'left', 'right'
+                    }
+                }
+            }
+        });
+    }
+
+    // Gráfico de Modificaciones (Barras)
+    const modCtx = document.getElementById('modificacionesChart');
+    if (modCtx) {
+        const modData = JSON.parse('{{ modificaciones_por_mes_json|safe }}');
+        new Chart(modCtx, {
+            type: 'bar',
+            data: {
+                labels: modData.map(d => d.mes),
+                datasets: [{
+                    label: 'N° de Modificaciones',
+                    data: modData.map(d => d.total),
+                    backgroundColor: [
+                        '#3498db',  // Azul Claro (Similar al original)
+                        '#2ecc71',  // Verde Esmeralda (Similar al original)
+                        '#e74c3c',  // Rojo Ladrillo (Similar al original)
+                        '#f1c40f',  // Amarillo/Dorado (Similar al original)
+                        '#9b59b6',  // Violeta Suave
+                        '#e67e22',  // Naranja Calabaza
+                        '#1abc9c',  // Turquesa
+                        '#34495e',  // Gris Azulado Oscuro
+                        '#95a5a6',  // Gris Suave
+                        '#d35400',  // Terracota
+                        '#27ae60',  // Verde Bosque
+                        '#bdc3c7'   // Plata Claro
+                    ]
+                }]
+            },
+            options: { 
+                responsive: true,
+                maintainAspectRatio: false, // ¡MUY IMPORTANTE!
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            // Esto asegura que el eje Y solo muestre números enteros (1, 2, 3 en lugar de 1.5, 2.5)
+                            precision: 0
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false // Ocultamos la leyenda si solo hay una barra
+                    }
+                }
+             }
+        });
+    }
+});
+</script>
+{% endblock %}

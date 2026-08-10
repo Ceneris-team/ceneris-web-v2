@@ -1,0 +1,127 @@
+<!-- dashboard/templates/dashboard/reporte_mensual.html -->
+
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load custom_filters %} {# Asegúrate de tener esta línea para el filtro get_item #}
+
+{% block title %}Reporte Mensual de Asistencias{% endblock %}
+
+{% block content %}
+    <h1>Reporte Mensual de Asistencias</h1>
+    <p><a href="{% url 'recursoshumanos:main_dashboard' %}">&larr; Volver al Dashboard Principal</a></p>
+
+    <!-- Formulario para seleccionar mes y trabajador -->
+    <form method="get" class="filter-form">
+        <label for="mes">Seleccionar Mes:</label>
+        <input type="month" id="mes" name="mes" value="{{ mes_seleccionado }}">
+        
+        <label for="dni">Seleccionar Trabajador:</label>
+        <select name="dni" id="dni">
+            <option value="">-- Elija un trabajador --</option>
+            {% for trabajador in trabajadores %}
+            <option value="{{ trabajador.dni }}" {% if trabajador.dni == dni_seleccionado %}selected{% endif %}>
+                {{ trabajador.nombre }}
+            </option>
+            {% endfor %}
+        </select>
+        <button type="submit">Generar Reporte</button>
+    </form>
+    <hr>
+    
+    <!-- ========================================================== -->
+    <!-- ESTE BLOQUE 'IF' CONTROLA TODO EL CONTENIDO DEL REPORTE -->
+    <!-- ========================================================== -->
+    {% if dni_seleccionado %}
+        <h2>Reporte para {{ mes_nombre }}</h2>
+        
+        <!-- Tarjetas de Resumen -->
+        <div class="summary-cards">
+            <div class="metric-card">
+                <div class="card__icon" style="color: #198754;">✔</div>
+                <h2>{{ total_asistencias }}</h2>
+                <p>Días Asistidos</p>
+            </div>
+            
+            <div class="metric-card">
+                <div class="card__icon" style="color: #ffc107;">⏱️</div>
+                <h2>{{ total_tardanzas }}</h2>
+                <p>Total de Tardanzas</p>
+            </div>
+            
+            <div class="metric-card">
+                <div class="card__icon" style="color: #dc3545;">✖</div>
+                <h2>{{ total_faltas }}</h2>
+                <p>Total de Faltas</p>
+            </div>
+
+            <div class="metric-card">
+                <div class="icon icon--info">📄</div>
+                <h2>{{ total_justificados }}</h2>
+                <p>Días Justificados</p>
+            </div>
+
+        </div>
+        <hr>
+
+        <!-- Estilos para el Calendario -->
+        <style>
+            .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+            .calendar-day { border: 1px solid #dee2e6; padding: 10px; min-height: 80px; border-radius: 8px; }
+            .day-number { font-weight: bold; font-size: 1.2em; display: block; margin-bottom: 10px; }
+            .asistio { background-color: #d1e7dd; color: #0f5132; }
+            .tardanza { background-color: #fff3cd; color: #664d03; }
+            .falta { background-color: #f8d7da; color: #842029; }
+            .domingo { background-color: #f8f9fa; color: #6c757d; }
+            .futuro { background-color: #ffffff; border-style: dashed; } /* Estilo para días futuros */
+
+        </style>
+
+        <!-- Cuadrícula del Calendario -->
+        <div class="calendar-grid">
+            {% for dia in dias_del_mes %}
+                {% with dia_reporte=reporte_dias|get_item:dia %}
+                    {% if dia_reporte.estado == 'Futuro' %}
+                        <div class="calendar-day futuro">
+                            <span class="day-number">{{ dia }}</span>
+                            <span>{{ dia_reporte.texto }}</span>
+                        </div>
+                    {% elif dia_reporte.estado == 'Domingo' %}
+                        <div class="calendar-day domingo">
+                            <span class="day-number">{{ dia }}</span>
+                            <span>{{ dia_reporte.texto }}</span>
+                        </div>
+                    
+                    {% elif dia_reporte.estado == 'Justificado' %}
+                        <div class="calendar-day justificado">
+                            <span class="day-number">{{ dia }}</span>
+                            <span>{{ dia_reporte.texto }}</span>
+                        </div>
+                    {% elif dia_reporte.estado == 'Tardanza' %}
+                        <div class="calendar-day tardanza">
+                            <span class="day-number">{{ dia }}</span>
+                            <span>{{ dia_reporte.texto }}</span>
+                        </div>
+                    {% elif dia_reporte.estado == 'Asistio' %}
+                        <div class="calendar-day asistio">
+                            <span class="day-number">{{ dia }}</span>
+                            <span>{{ dia_reporte.texto }}</span>
+                        </div>
+                    {% elif dia_reporte.estado == 'Falta' %}
+                        <div class="calendar-day falta">
+                            <span class="day-number">{{ dia }}</span>
+                            <span>{{ dia_reporte.texto }}</span>
+                        </div>
+                    {% else %}
+                        <div class="calendar-day">
+                            <span class="day-number">{{ dia }}</span>
+                        </div>
+                    {% endif %}
+                {% endwith %}
+            {% endfor %}
+        </div>
+        
+    {% else %}
+        <!-- Mensaje que se muestra si no se ha seleccionado un trabajador -->
+        <p style="text-align: center; margin-top: 2rem; font-style: italic;">Por favor, seleccione un trabajador y un mes para generar el reporte.</p>
+    {% endif %}
+
+{% endblock %}

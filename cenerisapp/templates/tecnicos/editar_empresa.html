@@ -1,0 +1,44 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-warning text-dark">
+            <h4>Editar Empresa</h4>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="abreviacion" class="form-label">Abreviación</label>
+                    <input type="text" name="abreviacion" id="abreviacion" class="form-control" maxlength="20" required value="{{ empresa.abreviacion }}">
+                </div>
+                <div class="mb-3">
+                    <label for="nombreE" class="form-label">Nombre</label>
+                    <input type="text" name="nombreE" id="nombreE" class="form-control" maxlength="100" required value="{{ empresa.nombreE }}">
+                </div>
+                <div class="mb-3">
+                    <label for="direccion" class="form-label">Dirección</label>
+                    <input type="text" name="direccion" id="direccion" class="form-control" maxlength="255" required value="{{ empresa.direccion }}">
+                </div>
+                <div class="mb-3">
+                    <label for="departamento" class="form-label">Departamento</label>
+                    <input type="text" name="departamento" id="departamento" class="form-control" maxlength="50" required value="{{ empresa.departamento }}">
+                </div>
+                <div class="mb-3">
+                    <label for="telefono" class="form-label">Teléfono</label>
+                    <input type="text" name="telefono" id="telefono" class="form-control" maxlength="20" required value="{{ empresa.telefono }}">
+                </div>
+                <div class="mb-3">
+                    <label for="ruc" class="form-label">RUC</label>
+                    <input type="text" name="ruc" id="ruc" class="form-control" maxlength="11" required value="{{ empresa.ruc }}">
+                </div>
+                <button type="submit" class="btn btn-success">Guardar Cambios</button>
+                <a href="{% url 'cenerisapp:lista_empresas' %}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

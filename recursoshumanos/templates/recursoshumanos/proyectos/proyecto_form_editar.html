@@ -1,0 +1,85 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block body_class %}form-background{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        .back-button-container { max-width: 800px; margin: 30px auto 10px; text-align: left; }
+        .field-error { color: #dc3545; font-size: 0.8rem; font-weight: 600; text-align: left; margin-top: 5px; }
+        .form-group { text-align: left; margin-bottom: 20px; } /* Corregido #msform .form-group */
+        label { margin-bottom: 5px; font-weight: 500; color: #555; display: block; }
+        .readonly-field { background-color: #e9ecef; color: #6c757d; cursor: not-allowed; border: 1px solid #ccc; padding: 10px; width: 100%; border-radius: 4px;}
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="back-button-container">
+        <a href="{% url 'recursoshumanos:lista_proyectos' %}" class="btn-secondary">&larr; Volver al Listado</a>
+    </div>
+
+    <form id="msform" method="post" novalidate>
+        {% csrf_token %}
+        
+        <fieldset>
+            <h2 class="fs-title">{{ form_title }}</h2>
+            {% if is_subproyecto %}
+                <h3 class="fs-subtitle">Editando subproyecto de: <strong>{{ proyecto.parent.nombre }}</strong></h3>
+            {% else %}
+                <h3 class="fs-subtitle">Editando proyecto principal: <strong>{{ proyecto.nombre }}</strong></h3>
+            {% endif %}
+            
+            <hr>
+
+            {# --- CAMPO DE PROYECTO PADRE (SOLO LECTURA) --- #}
+            {% if is_subproyecto %}
+                <div class="form-group">
+                    <label>Proyecto Principal</label>
+                    <input type="text" value="{{ proyecto.parent.nombre }}" class="readonly-field" readonly>
+                </div>
+            {% endif %}
+
+            {# --- CAMPO NOMBRE (AHORA SIEMPRE VISIBLE) --- #}
+            <div class="form-group">
+                <label for="{{ form.nombre.id_for_label }}">
+                    {% if is_subproyecto %}Descripcion del Subproyecto{% else %}Descripcion del Proyecto{% endif %} *
+                </label>
+                {{ form.nombre }}
+                {% if form.nombre.errors %}<div class="field-error">{{ form.nombre.errors }}</div>{% endif %}
+            </div>
+
+            {# --- CAMPO CÓDIGO --- #}
+            <div class="form-group">
+                {{ form.codigo.label_tag }} {{ form.codigo }}
+                {% if form.codigo.errors %}<div class="field-error">{{ form.codigo.errors }}</div>{% endif %}
+            </div>
+
+            {# --- CAMPO EMPRESA (SOLO SI ES PADRE) --- #}
+            {% if not is_subproyecto %}
+                <div class="form-group">
+                    {{ form.empresa.label_tag }} {{ form.empresa }}
+                    {% if form.empresa.errors %}<div class="field-error">{{ form.empresa.errors }}</div>{% endif %}
+                </div>
+            {% endif %}
+
+            {# --- CAMPOS COMUNES --- #}
+            <div class="form-group">
+                {{ form.cliente.label_tag }} {{ form.cliente }}
+                {% if form.cliente.errors %}<div class="field-error">{{ form.cliente.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                {{ form.fecha_inicio.label_tag }} {{ form.fecha_inicio }}
+                {% if form.fecha_inicio.errors %}<div class="field-error">{{ form.fecha_inicio.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                {{ form.activo }}
+                <label for="{{ form.activo.id_for_label }}" style="margin: 0; display: inline;">¿Proyecto Activo?</label>
+            </div>
+
+            <input type="submit" name="submit" class="submit action-button" value="Guardar Cambios"/>
+        </fieldset>
+    </form>
+{% endblock %}

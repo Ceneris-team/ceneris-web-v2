@@ -1,0 +1,36 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="header-container">
+        <h1>{{ titulo }}</h1>
+    </div>
+
+    <div class="card-deck">
+        <!-- Tarjeta para Técnicos -->
+        <a href="{% url 'cenerisapp:lista_empresas' %}" class="card-link">
+            <div class="card">
+                <div class="card-icon">🛠️</div>
+                <h3 class="card-title">Empresas</h3>
+                <p class="card-description">Consulta la informacion de cada empresa</p>
+            </div>
+        </a>
+
+        <a href="{% url 'cenerisapp:lista_areas' %}" class="card-link">
+            <div class="card">
+                <div class="card-icon">🛠️</div>
+                <h3 class="card-title">Áreas de Trabajo</h3>
+                <p class="card-description">Consulta la informacion de cada área de trabajo</p>
+            </div>
+        </a>
+
+        <a href="{% url 'cenerisapp:lista_empleados' %}" class="card-link">
+            <div class="card">
+                <div class="card-icon">🛠️</div>
+                <h3 class="card-title">Empleados</h3>
+                <p class="card-description">Consulta la informacion de cada empleado</p>
+            </div>
+        </a>
+    </div>
+{% endblock %}

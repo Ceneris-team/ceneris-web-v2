@@ -1,0 +1,130 @@
+{% extends "administracion/base_administracion.html" %}
+{% load humanize format_filters %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h3><i data-feather="target" class="me-2"></i>Reporte de Avance Anual</h3>
+        </div>
+        <div class="card-body">
+            <style>
+                /* Color morado para barras que exceden 100% */
+                .bg-purple { background-color: #6f42c1 !important; }
+            </style>
+            
+            <!-- === INICIO: PANEL DE FILTROS INTELIGENTES === -->
+            <form method="get" class="p-3 mb-4 bg-light border rounded">
+                <div class="row g-3 align-items-end">
+                    <!-- Filtro de Búsqueda -->
+                    <div class="col-md-4">
+                        <label for="q" class="form-label">Buscar Agente/Producto</label>
+                        <select name="q" id="q" class="form-select">
+                            {% for value, label in agentes_choices %}
+                                <option value="{{ value }}" {% if value == current_filters.q %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <!-- Filtro por Tipo de Monitoreo -->
+                    <div class="col-md-3">
+                        <label for="tipo" class="form-label">Tipo de Monitoreo</label>
+                        <select name="tipo" id="tipo" class="form-select">
+                            <option value="">Todos</option>
+                            {% for value, text in tipos_monitoreo %}
+                                <option value="{{ value }}" {% if value == current_filters.tipo %}selected{% endif %}>{{ text }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <!-- Selector de Año -->
+                    <div class="col-md-3">
+                        <label for="year" class="form-label">Año de Reporte</label>
+                        <select name="year" id="year" class="form-select">
+                            {% for year in available_years %}
+                                <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <!-- Botón de Acción -->
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i data-feather="filter" class="me-1" style="width:16px; height:16px;"></i>Filtrar
+                        </button>
+                    </div>
+                </div>
+            </form>
+            <!-- === FIN: PANEL DE FILTROS INTELIGENTES === -->
+
+            <div class="row">
+                {% for data in report_data %}
+                <div class="col-xl-4 col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">{{ data.requerimiento.agente }}</h5>
+                            <small class="text-muted">{{ data.requerimiento.get_tipo_monitoreo_display }}</small>
+                        </div>
+                        <div class="card-body">
+                            <h4 class="card-title">{{ data.porcentaje }}% completado</h4>
+                            
+                            {% with porcentaje_int=data.porcentaje|floatformat:0 %}
+                                {% if data.porcentaje > 100 %}
+                                    {% with color='success' %}
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar progress-bar-striped bg-{{ color }}" role="progressbar" style="width: {{ porcentaje_int }}%;" aria-valuenow="{{ porcentaje_int }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    {% endwith %}
+                                {% elif data.porcentaje >= 91 %}
+                                    {% with color='success' %}
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar progress-bar-striped bg-{{ color }}" role="progressbar" style="width: {{ porcentaje_int }}%;" aria-valuenow="{{ porcentaje_int }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    {% endwith %}
+                                {% elif data.porcentaje >= 61 %}
+                                    {% with color='green-light' %}
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar progress-bar-striped bg-{{ color }}" role="progressbar" style="width: {{ porcentaje_int }}%;" aria-valuenow="{{ porcentaje_int }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    {% endwith %}
+                                {% elif data.porcentaje >= 31 %}
+                                    {% with color='orange' %}
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar progress-bar-striped bg-{{ color }}" role="progressbar" style="width: {{ porcentaje_int }}%;" aria-valuenow="{{ porcentaje_int }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    {% endwith %}
+                                {% else %}
+                                    {% with color='danger' %}
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar progress-bar-striped bg-{{ color }}" role="progressbar" style="width: {{ porcentaje_int }}%;" aria-valuenow="{{ porcentaje_int }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    {% endwith %}
+                                {% endif %}
+                            {% endwith %}
+
+                            <div class="d-flex justify-content-between mt-3">
+                                <span>Consumido: <strong>{{ data.total_consumido|euro }}</strong></span>
+                                <span>Meta: <strong>{{ data.meta_anual|euro }}</strong></span>
+                            </div>
+                             <div class="text-center mt-2">
+                                <span>Restante: <strong class="text-primary">{{ data.restante|euro }}</strong></span>
+                            </div>
+                        </div>
+                        <div class="card-footer text-center">
+                            <a href="{% url 'administracion:registrar_avance' data.requerimiento.id %}" class="btn btn-outline-primary btn-sm">Ver Detalle Mensual</a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="text-center p-5">
+                        <i data-feather="info" style="width:48px; height:48px;" class="text-muted mb-2"></i>
+                        <h5 class="mt-3">No se encontraron resultados</h5>
+                        <p class="text-muted">Intenta ajustar los filtros de búsqueda o seleccionar un año diferente.</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

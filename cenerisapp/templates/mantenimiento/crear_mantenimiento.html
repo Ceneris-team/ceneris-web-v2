@@ -1,0 +1,83 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="form-container">
+    <form method="post" class="form-card">
+        <h2>{{ titulo }}</h2>
+        <p class="form-description">Dispositivo: <strong>{{ dispositivo }}</strong></p>
+        {% csrf_token %}
+        
+        <!-- PRIMERA PARTE: Formulario Principal de Django -->
+        <div class="form-section">
+            <h3>Datos de la Intervención</h3>
+            <div class="form-grid">
+                <div class="form-group">{{ form.tecnico_a_cargo.label_tag }} {{ form.tecnico_a_cargo }}</div>
+                <div class="form-group">{{ form.estado_inicial_equipo.label_tag }} {{ form.estado_inicial_equipo }}</div>
+                <div class="form-group">{{ form.estado_final_equipo.label_tag }} {{ form.estado_final_equipo }}</div>
+            </div>
+        </div>
+
+        <!-- SEGUNDA PARTE: Checklist de Componentes y Partes -->
+        <div class="form-section">
+            <h3>Checklist de Componentes</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Componente / Parte</th>
+                            <th style="width: 150px;">Estado</th>
+                            <th>Comentario / Observación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Bucle para generar las filas del checklist -->
+                        {% for item in checklist_items %}
+                        <tr>
+                            <td><strong>{{ item }}</strong></td>
+                            <td>
+                                <!-- El 'name' debe ser único para cada item -->
+                                <select name="checklist_estado_{{ item }}">
+                                    <option value="">-- Selecciona --</option>
+                                    <option value="Bueno">Bueno</option>
+                                    <option value="Regular">Regular</option>
+                                    <option value="Malo">Malo</option>
+                                    <option value="Cambiado">Cambiado</option>
+                                    <option value="N/A">No Aplica</option>
+                                </select>
+                            </td>
+                            <td>
+                                <!-- El 'name' también debe ser único -->
+                                <input type="text" name="checklist_comentario_{{ item }}" placeholder="Ej: Sin deformación">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TERCERA PARTE: Resumen del Trabajo -->
+        <div class="form-section">
+            <h3>Resumen y Cambios</h3>
+            <div class="form-group">{{ form.observacion_msa.label_tag }} {{ form.observacion_msa }}</div>
+            <div class="form-group">{{ form.componentes_mal_estado.label_tag }} {{ form.componentes_mal_estado }}</div>
+            <div class="form-group">{{ form.componentes_estado_regular.label_tag }} {{ form.componentes_estado_regular }}</div>
+            <div class="form-group">{{ form.cambios_realizados.label_tag }} {{ form.cambios_realizados }}</div>
+            <div class="form-group">{{ form.comentario.label_tag }} {{ form.comentario }}</div>
+            {% if dispositivo.tipoDisp == 'Portatil' %}
+                <h4>Actualizar Estado del Dispositivo</h4>
+                <div class="form-grid">
+                    <div class="form-group">{{ form.actualizar_fec_inoperativo.label_tag }} {{ form.actualizar_fec_inoperativo }}</div>
+                    <div class="form-group">{{ form.actualizar_fec_irreparable.label_tag }} {{ form.actualizar_fec_irreparable }}</div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Guardar Mantenimiento</button>
+            <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

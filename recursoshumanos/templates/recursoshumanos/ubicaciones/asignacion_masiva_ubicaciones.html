@@ -1,0 +1,171 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+{% block title %}Asignación de Ubicaciones{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/custom-select.css' %}">
+    <style>
+        .assignment-board { display: flex; gap: 2rem; margin-top: 2rem; }
+        .assignment-column { flex: 1; background: #f4f7f9; padding: 1.5rem; border-radius: 10px; }
+        .assignment-column h3 { margin-top: 0; border-bottom: 2px solid #ddd; padding-bottom: 1rem; font-size: 1.2rem; }
+        .worker-list { min-height: 400px; max-height: 60vh; overflow-y: auto; padding: 5px; } /* Añadido max-height y overflow */
+        .worker-card { background: white; padding: 1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; cursor: grab; }
+        .worker-card:active { cursor: grabbing; }
+        .worker-card strong { display: block; color: #333; }
+        .worker-card span { font-size: 0.85rem; color: #888; }
+        .sortable-ghost { background: #d4edda; border: 2px dashed #155724; opacity: 0.6; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>Asignación de Ubicaciones</h1>
+        <a href="{% url 'recursoshumanos:gestion_ubicaciones' %}" class="btn-secondary">&larr; Volver a Tarjetas</a>
+    </div>
+
+    <div class="master-filter-bar">
+        <form method="get">
+            <div class="custom-select-wrapper">
+                <div class="custom-select">
+                    <div class="custom-select__trigger">
+                        <span id="selected-value">
+                            {% if selected_ubicacion %}{{ selected_ubicacion.nombre }}{% else %}-- Selecciona una Ubicación --{% endif %}
+                        </span>
+                    </div>
+                    <!-- ¡CAMBIO! Añadido onchange="this.form.submit()" para que el formulario se envíe -->
+                    <select name="ubicacion_id" id="ubicacion-selector" onchange="this.form.submit()">
+                        <option value="">-- Selecciona una Ubicación --</option>
+                        {% for ubicacion in todas_las_ubicaciones %}
+                            <option value="{{ ubicacion.id }}" {% if selected_ubicacion and selected_ubicacion.id == ubicacion.id %}selected{% endif %}>
+                                {{ ubicacion.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if selected_ubicacion %}
+        <div class="assignment-board">
+            <div class="assignment-column">
+                <h3>No Asignados a esta Ubicación ({{ trabajadores_disponibles|length }})</h3>
+                <input type="text" id="disponibles-search" class="form-control" placeholder="Buscar trabajador..." style="margin-bottom: 1rem;">
+                <div id="disponibles-list" class="worker-list">
+                    {% for trabajador in trabajadores_disponibles %}
+                    <!-- ¡CORRECCIÓN! Usamos la PK del trabajador -->
+                    <div class="worker-card" data-pk="{{ trabajador.pk }}">
+                        <strong>{{ trabajador.nombre_completo }}</strong>
+                        <span>DNI: {{ trabajador.dni }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="assignment-column">
+                <h3>Asignados a {{ selected_ubicacion.nombre }} ({{ trabajadores_asignados|length }})</h3>
+                <input type="text" id="asignados-search" class="form-control" placeholder="Buscar trabajador..." style="margin-bottom: 1rem;">
+                <!-- ¡CORRECCIÓN! El ID debe ser 'asignados-list' -->
+                <div id="asignados-list" class="worker-list" data-ubicacion-id="{{ selected_ubicacion.id }}">
+                    {% for trabajador in trabajadores_asignados %}
+                    <!-- ¡CORRECCIÓN! Usamos la PK del trabajador -->
+                    <div class="worker-card" data-pk="{{ trabajador.pk }}">
+                        <strong>{{ trabajador.nombre_completo }}</strong>
+                        <span>DNI: {{ trabajador.dni }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info" style="margin-top: 2rem;">Selecciona una ubicación para empezar a asignar permisos.</div>
+    {% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+    <!-- Carga de librerías -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    
+    <!-- Script personalizado completo y corregido -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- ¡LÓGICA DEL SELECTOR RESTAURADA! ---
+        // Este bloque es para el efecto visual de la flecha y el texto.
+        // La funcionalidad principal la da el onchange="this.form.submit()" en el HTML.
+        const selectWrapper = document.querySelector('.custom-select-wrapper');
+        if (selectWrapper) {
+            selectWrapper.addEventListener('click', function(event) {
+                if (event.target.tagName !== 'SELECT') { this.classList.toggle('open'); }
+            });
+            document.addEventListener('click', function(event) {
+                if (!selectWrapper.contains(event.target)) { selectWrapper.classList.remove('open'); }
+            });
+        }
+
+        // --- LÓGICA DE DRAG AND DROP (CORREGIDA) ---
+        const disponiblesList = document.getElementById('disponibles-list');
+        const asignadosList = document.getElementById('asignados-list');
+        
+        if (disponiblesList && asignadosList) {
+            const csrfToken = '{{ csrf_token }}';
+            const updateUrl = "{% url 'recursoshumanos:actualizar_asignacion_ubicacion' %}";
+            const ubicacionId = asignadosList.dataset.ubicacionId;
+
+            function updateAssignment(workerPk, action) {
+                fetch(updateUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                    body: JSON.stringify({ worker_pk: workerPk, ubicacion_id: ubicacionId, action: action })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status !== 'ok') {
+                        console.error("Error del servidor:", data.message);
+                        alert('Hubo un error al guardar el cambio. La página se recargará.');
+                        window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error("Error de red:", error);
+                    alert('Hubo un error de red. La página se recargará.');
+                    window.location.reload();
+                });
+            }
+
+            // --- INICIALIZACIÓN DE SORTABLEJS ---
+            new Sortable(disponiblesList, {
+                group: 'shared-locations',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onAdd: function (evt) {
+                    updateAssignment(evt.item.dataset.pk, 'remove');
+                }
+            });
+            
+            new Sortable(asignadosList, {
+                group: 'shared-locations',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onAdd: function (evt) {
+                    updateAssignment(evt.item.dataset.pk, 'add');
+                }
+            });
+
+            // --- LÓGICA DEL BUSCADOR (CON JQUERY) ---
+            function setupSearch(inputId, listId) {
+                $('#' + inputId).on('keyup', function() {
+                    var value = $(this).val().toLowerCase();
+                    $('#' + listId + ' .worker-card').filter(function() {
+                        $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                    });
+                });
+            }
+            setupSearch('disponibles-search', 'disponibles-list');
+            setupSearch('asignados-search', 'asignados-list'); // Corregido 'asignadas' a 'asignados'
+        }
+    });
+    </script>
+{% endblock %}

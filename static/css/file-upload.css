@@ -1,0 +1,147 @@
+/* static/css/file-upload.css */
+@import url(https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css);
+@import url('https://fonts.googleapis.com/css?family=Roboto');
+
+/* --- Estilo Principal del Componente de Subida --- */
+.file-upload-wrapper {
+    font-family: "Roboto", sans-serif;
+    font-size: 16px;
+    margin: 30px auto;
+    max-width: 600px; /* Ajusta el ancho máximo según necesites */
+}
+
+/* --- Fondo (solo página subsanación) --- */
+body.subsana-upload-page {
+    background-image: url("../img/clinic_background.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    position: relative;
+}
+
+body.subsana-upload-page::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(8, 16, 24, 0.65), rgba(8, 16, 24, 0.35));
+    pointer-events: none;
+    z-index: 0;
+}
+
+body.subsana-upload-page .back-button-container,
+body.subsana-upload-page .file-upload-wrapper {
+    position: relative;
+    z-index: 1;
+}
+
+.file-upload-wrapper h2 {
+    font-size: 26px;
+    line-height: 1;
+    color: var(--title_color, #d45b04); /* Tu color de marca */
+    margin-bottom: 0;
+}
+
+.file-upload-wrapper p {
+    font-size: 18px;
+    color: #5f6982;
+}
+
+.file-upload-form {
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 0 15px 1px rgba(0, 0, 0, 0.4);
+    padding: 20px 30px;
+    text-align: center;
+}
+
+/* Oculta el botón nativo "Elegir archivo" sin romper el click del label ni el submit */
+#file-upload-wrapper {
+    position: relative;
+}
+
+#file-upload-wrapper input[type="file"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+    opacity: 0;
+}
+
+#file-drag {
+    border: 3px dashed #ccc;
+    border-radius: 7px;
+    padding: 3rem 1.5rem;
+    text-align: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    user-select: none;
+    width: 100%;
+}
+
+#file-drag:hover,
+#file-drag.hover {
+    border-color: var(--title_color, #d45b04);
+}
+
+#file-drag.hover {
+    border-style: solid;
+    box-shadow: inset 0 0 0 6px #f0f2f5;
+}
+
+#start {
+    transition: all 0.2s ease-in-out;
+}
+
+#file-drag.hover #start i.fa {
+    transform: scale(0.8);
+    opacity: 0.3;
+}
+
+#start i.fa {
+    font-size: 50px;
+    margin-bottom: 1rem;
+    color: var(--title_color, #d45b04);
+}
+
+#response { display: none; }
+#response #messages { margin-bottom: 0.5rem; font-weight: bold; }
+
+#file-image {
+    display: none; /* No mostraremos previsualización para PDFs */
+}
+
+#notimage { display: none; }
+
+#file-upload { display: none; }
+
+#file-upload-wrapper div {
+    margin: 0 0 0.5rem 0;
+    color: #5f6982;
+}
+
+.submit-button {
+    display: inline-block;
+    margin: 1.5rem 0.5rem 1rem 0.5rem;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 14px;
+    text-decoration: none;
+    border: none;
+    border-radius: 0.3rem;
+    padding: 0 1.5rem;
+    height: 40px;
+    line-height: 40px;
+    color: #fff;
+    background: var(--title_color, #d45b04);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+.submit-button:hover {
+    opacity: 0.85;
+}

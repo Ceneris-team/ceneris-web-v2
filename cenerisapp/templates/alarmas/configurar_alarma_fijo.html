@@ -1,0 +1,27 @@
+{% extends 'app_base.html' %}
+{% block title %}Configurar Alarma para {{ dispositivo.nomDisp }}{% endblock %}
+
+{% block main_content %}
+<div class="form-container">
+    <form method="post" class="form-card">
+        <h2>Alarma para Dispositivo Fijo</h2>
+        <p class="form-description">Dispositivo: <strong>{{ dispositivo }}</strong></p>
+        {% csrf_token %}
+        
+        <div class="form-grid">
+            {% for field in form %}
+                <div class="form-group">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Guardar Configuración</button>
+            <a href="{% url 'seleccionar_dispositivo_alarma' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

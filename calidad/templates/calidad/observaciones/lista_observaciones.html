@@ -1,0 +1,348 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Gestión de Observaciones{% endblock %} 
+
+{% block extra_head %}
+    {# Estilos de tabla base #}
+    <link rel="stylesheet" href="{% static 'css/tabla_estados.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
+    <style>
+        /* Forzar ancho completo */
+        .main-container {
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 1rem !important;
+            margin: 0 !important;
+        }
+        table { width: 100%; }
+
+        /* --- ESTILOS DE FILTROS --- */
+        .master-filter-bar {
+            background-color: #fff; padding: 1.5rem; border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 2rem; border: 1px solid #eee;
+        }
+        .form-filters-master { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+        .filter-group { flex: 1 1 200px; display: flex; flex-direction: column; gap: 5px; }
+        .filter-group label { font-size: 0.85rem; font-weight: 600; color: #555; }
+        .filter-group input, .filter-group select { padding: 8px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 0.9rem; width: 100%; }
+        .form-actions { display: flex; gap: 10px; padding-bottom: 2px; }
+
+        /* --- ESTILOS DE SEMÁFORO (Antigüedad) --- */
+        /* Crítico (> 30 días) */
+        tr.obs-critica { background-color: rgba(220, 53, 69, 0.08) !important; }
+        tr.obs-critica:hover { background-color: rgba(220, 53, 69, 0.15) !important; }
+        
+        /* Alerta (> 15 días) */
+        tr.obs-alerta { background-color: rgba(255, 193, 7, 0.1) !important; }
+        tr.obs-alerta:hover { background-color: rgba(255, 193, 7, 0.2) !important; }
+
+        /* Badges */
+        .status-badge { font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; white-space: nowrap; }
+        .badge-observado { color: #b04a03; background: #ffe0b2; border: 1px solid #ffcc80; }
+        .badge-restriccion { color: #856404; background: #fff3cd; border: 1px solid #ffeeba; }
+        .badge-noapto { color: #721c24; background: #f8d7da; border: 1px solid #f5c6cb; }
+
+        .time-badge { font-size: 0.75rem; font-weight: 600; color: #666; display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>EMOs con observaciones</h1> 
+            <p style="margin: 0;">EMOs pendientes de subsanación. <span style="color:#dc3545; font-weight:bold;">Rojo:</span> +30 días sin resolver.</p>
+        </div>
+    </div>
+
+    <!-- SECCIÓN DE FILTROS -->
+    <div class="master-filter-bar">
+        <form method="get" class="form-filters-master">
+            <div class="filter-group" style="flex-grow: 2;">
+                <label>Buscar Trabajador</label>
+                <input type="text" name="apellidos" value="{{ filtro_activo_apellidos }}" placeholder="DNI, Nombre o Apellidos...">
+            </div>
+
+            <div class="filter-group">
+                <label>Empresa</label>
+                <select name="empresa">
+                    <option value="">Todas</option>
+                    {% for emp in opciones_empresas %}
+                        <option value="{{ emp.pk }}" {% if filtro_activo_empresa == emp.pk %}selected{% endif %}>{{ emp.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Aptitud</label>
+                <select name="aptitud">
+                    <option value="">Todas</option>
+                    {% for val, text in opciones_aptitud %}
+                        {% if val == 'Observado' or val == 'Apto con Restricción' or val == 'No Apto' %}
+                        <option value="{{ val }}" {% if filtro_activo_aptitud == val %}selected{% endif %}>{{ text }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Clínica</label>
+                <select name="clinica">
+                    <option value="">Todas</option>
+                    {% for clinica in opciones_clinicas %}
+                        <option value="{{ clinica.pk }}" {% if filtro_activo_clinica == clinica.pk %}selected{% endif %}>{{ clinica.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Cargo</label>
+                <select name="cargo">
+                    <option value="">Todos</option>
+                    {% for cargo in opciones_cargos %}
+                        <option value="{{ cargo.pk }}" {% if filtro_activo_cargo == cargo.pk %}selected{% endif %}>{{ cargo.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Proyecto</label>
+                <select name="proyecto_padre" id="proyecto_padre">
+                    <option value="">Todos</option>
+                    {% for proy in opciones_proyectos_padre %}
+                        <option value="{{ proy.pk }}" {% if filtro_activo_proyecto_padre == proy.pk %}selected{% endif %}>{{ proy.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Código Proyecto</label>
+                <select name="subproyecto" id="subproyecto" {% if not filtro_activo_proyecto_padre %}disabled{% endif %}>
+                    <option value="">Todos</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Realizado Desde</label>
+                <input type="date" name="fecha_desde" value="{{ filtro_activo_fecha_desde }}">
+            </div>
+            <div class="filter-group">
+                <label>Hasta</label>
+                <input type="date" name="fecha_hasta" value="{{ filtro_activo_fecha_hasta }}">
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary" style="padding: 8px 16px; border-radius: 6px; border:none; cursor:pointer;">
+                    <i data-feather="filter" style="width:14px;"></i> Filtrar
+                </button>
+                <a href="{% url 'calidad:lista_observaciones' %}" class="btn-secondary" style="padding: 8px 16px; border-radius: 6px; text-decoration:none; display:flex; align-items:center; gap:5px;">
+                    <i data-feather="refresh-cw" style="width:14px;"></i> Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLA -->
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align: center; width: 50px;">N°</th>
+                <th>Trabajador</th>
+                <th>Empresa</th>
+                <th>Proyecto</th>
+                <th>Código de Proyecto</th>
+                <th>Cargo</th>
+                <th>Clínica</th>
+                <th>Aptitud</th>
+                <th>Detalle Observación</th>
+                <th>Fecha EMO</th>
+                <th style="text-align: center;">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emo in emos_para_subsanar %}
+            <!-- LÓGICA DE COLORES POR ANTIGÜEDAD -->
+            <tr class="{% if emo.fecha_realizacion < limite_critico %}obs-critica{% elif emo.fecha_realizacion < limite_alerta %}obs-alerta{% endif %}">
+                
+                <td style="text-align: center; font-weight: bold;">{{ forloop.counter }}</td>
+                
+                <td>
+                    <strong>{{ emo.trabajador }}</strong>
+                    <br><small style="color: #666;">{{ emo.trabajador.dni }}</small>
+                </td>
+                
+                <td>
+                    {% if emo.empresa %}
+                        {{ emo.empresa.nombre }}
+                    {% elif emo.trabajador.empresa %}
+                        {{ emo.trabajador.empresa.nombre }}
+                    {% else %}
+                        --
+                    {% endif %}
+                </td>
+                
+                <td>
+                    {% if emo.subproyecto %}
+                        {% if emo.subproyecto.parent %}
+                            {{ emo.subproyecto.parent.nombre }}
+                        {% else %}
+                            {{ emo.subproyecto.nombre }}
+                        {% endif %}
+                    {% elif emo.proyecto %}
+                        {% if emo.proyecto.parent %}
+                            {{ emo.proyecto.parent.nombre }}
+                        {% else %}
+                            {{ emo.proyecto.nombre }}
+                        {% endif %}
+                    {% else %}
+                        {% with emo.trabajador.asignaciones.first as asignacion %}
+                            {% if asignacion %}
+                                {% if asignacion.proyecto.parent %}
+                                    {{ asignacion.proyecto.parent.nombre }}
+                                {% else %}
+                                    {{ asignacion.proyecto.nombre }}
+                                {% endif %}
+                            {% else %}
+                                --
+                            {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                </td>
+                
+                <td>
+                    {% if emo.subproyecto %}
+                        {{ emo.subproyecto.codigo|default:"--" }}
+                    {% elif emo.proyecto %}
+                        {{ emo.proyecto.codigo|default:"--" }}
+                    {% else %}
+                        {% with emo.trabajador.asignaciones.first as asignacion %}
+                            {% if asignacion %}
+                                {{ asignacion.proyecto.codigo|default:"--" }}
+                            {% else %}
+                                --
+                            {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                </td>
+                
+                <td>
+                    {% if emo.cargo %}
+                        {{ emo.cargo.nombre }}
+                    {% else %}
+                        {% with emo.trabajador.asignaciones.first as asignacion %}
+                            {% if asignacion and asignacion.cargo %}
+                                {{ asignacion.cargo.nombre }}
+                            {% else %}
+                                --
+                            {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                </td>
+                
+                <td>{{ emo.lugar_examen.nombre|default:"--" }}</td>
+                
+                <td>
+                    {% if emo.aptitud == 'Observado' %}
+                        <span class="status-badge badge-observado">Observado</span>
+                    {% elif emo.aptitud == 'Apto con Restricción' %}
+                        <span class="status-badge badge-restriccion">Restricción</span>
+                    {% elif emo.aptitud == 'No Apto' %}
+                        <span class="status-badge badge-noapto">No Apto</span>
+                    {% else %}
+                        {{ emo.get_aptitud_display }}
+                    {% endif %}
+                </td>
+                
+                <td style="max-width: 300px;">
+                    {{ emo.restriccion|default:emo.comentario|truncatechars:80|default:"<span class='text-muted'>Sin detalle registrado</span>" }}
+                </td>
+                
+                <td>
+                    <div style="font-weight: 500;">{{ emo.fecha_realizacion|date:"d/m/Y" }}</div>
+                    
+                    <!-- Alerta visual de tiempo -->
+                    {% if emo.fecha_realizacion < limite_critico %}
+                        <div class="time-badge" style="color: #dc3545;">
+                            <i data-feather="clock" style="width:10px;"></i> +30 días
+                        </div>
+                    {% elif emo.fecha_realizacion < limite_alerta %}
+                        <div class="time-badge" style="color: #856404;">
+                            <i data-feather="clock" style="width:10px;"></i> +15 días
+                        </div>
+                    {% endif %}
+                </td>
+
+                <td style="text-align: center;">
+                    <div class="table-actions-container">
+                        <!-- Botón para Subsanar -->
+                        <a href="{% url 'calidad:subir_subsana_emo' emo.id %}" class="btn-icon-action primary" title="Subsanar / Levantar">
+                            <i data-feather="upload-cloud"></i>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="11" style="text-align: center; padding: 3rem;">
+                    <i data-feather="check-circle" style="width: 40px; height: 40px; color: #ccc; margin-bottom: 10px;"></i>
+                    <p style="color: #666;">No hay observaciones pendientes con los filtros actuales.</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script>
+        feather.replace();
+        // Notificaciones standard
+        document.addEventListener('DOMContentLoaded', function() {
+            {% if messages %}
+                const Toast = Swal.mixin({
+                    toast: true, position: 'top-end', showConfirmButton: false,
+                    timer: 5000, timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+                {% for message in messages %}
+                    Toast.fire({ icon: '{{ message.tags }}', title: '{{ message }}' });
+                {% endfor %}
+            {% endif %}
+            
+            // Lógica de subproyectos
+            const proyectoPadreSelect = document.getElementById('proyecto_padre');
+            const subproyectoSelect = document.getElementById('subproyecto');
+            const subproyectosMap = {{ subproyectos_map_json|safe }};
+
+            function updateSubproyectos() {
+                const padreId = proyectoPadreSelect.value;
+                subproyectoSelect.innerHTML = '<option value="">Todos</option>';
+                if (padreId && subproyectosMap[padreId]) {
+                    subproyectoSelect.disabled = false;
+                    subproyectosMap[padreId].forEach(function(sub) {
+                        const option = document.createElement('option');
+                        option.value = sub.id;
+                        option.textContent = `${sub.nombre} (${sub.codigo})`;
+                        
+                        if(sub.id == "{{ filtro_activo_subproyecto }}") {
+                            option.selected = true;
+                        }
+                        
+                        subproyectoSelect.appendChild(option);
+                    });
+                } else {
+                    subproyectoSelect.disabled = true;
+                }
+            }
+
+            proyectoPadreSelect.addEventListener('change', updateSubproyectos);
+            updateSubproyectos();
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,235 @@
+{% extends 'app_base.html' %}
+{% load query_filters %} 
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<style>
+    /* --- LA MAGIA PARA EL SCROLL HORIZONTAL --- */
+    .table-container-horizontal {
+        width: 100%;
+        overflow-x: auto; /* ¡Esta es la propiedad clave! */
+        border: 1px solid #ddd;
+        border-radius: 8px;
+    }
+    .report-table {
+        width: 100%;
+        min-width: 2800px; /* Ancho mínimo para forzar el scroll, ajusta según necesites */
+        border-collapse: collapse;
+        white-space: nowrap; /* Evita que el texto se parta en varias líneas */
+    }
+    .report-table th, .report-table td {
+        border: 1px solid #ddd;
+        padding: 8px 12px;
+        text-align: center;
+        vertical-align: middle;
+    }
+    .report-table thead th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+        position: sticky; /* Fija los encabezados en la parte superior al hacer scroll vertical */
+        top: 0;
+        z-index: 1;
+    }
+    .report-table .super-header {
+        background-color: #FFDAB9; /* Naranja claro como en tu Excel */
+        font-weight: bold;
+    }
+    .report-table .main-header {
+        background-color: #C55A11; /* Naranja oscuro */
+        color: white;
+    }
+</style>
+
+<div class="container-general">
+    <div class="dashboard-header-modern">
+        <h1>{{ titulo }}</h1>
+        <p>Vista detallada de todos los dispositivos fijos y sus componentes.</p>
+        <a href="{{ url_exportacion_excel }}" class="btn btn-success">
+            <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+        </a>
+    </div>
+
+    <div class="filter-container">
+        <form method="GET" action="" class="filter-form-grid">
+            
+            <!-- Búsqueda por texto -->
+            <div class="form-group full-width">
+                <label for="q">Buscar por Nombre, TAG o Modelo de Sensor</label>
+                <input type="text" name="q" id="q" value="{{ filtros_aplicados.q }}" class="form-control" placeholder="Escribe aquí para buscar...">
+            </div>
+            
+            <!-- Filtro por Área -->
+            <div class="form-group">
+                <label for="area">Área de Trabajo</label>
+                <select name="area" id="area" class="form-select">
+                    <option value="">-- Todas --</option>
+                    {% for area in opciones_areas %}
+                        <option value="{{ area.pk }}" {% if filtros_aplicados.area == area.pk %}selected{% endif %}>{{ area.nombreA }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Filtro por Estado de Calibración -->
+            <div class="form-group">
+                <label for="estado_cal">Estado de Calibración</label>
+                <select name="estado_cal" id="estado_cal" class="form-select">
+                    <option value="">-- Todos --</option>
+                    {% for val, text in opciones_estado_cal %}
+                        <option value="{{ val }}" {% if filtros_aplicados.estado_cal == val %}selected{% endif %}>{{ text }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Filtro por Sensor Cambiado -->
+            <div class="form-group">
+                <label for="sensor_cambiado">Sensor Cambiado</label>
+                <select name="sensor_cambiado" id="sensor_cambiado" class="form-select">
+                    <option value="">-- Ambos --</option>
+                    <option value="Si" {% if filtros_aplicados.sensor_cambiado == 'Si' %}selected{% endif %}>Sí</option>
+                    <option value="No" {% if filtros_aplicados.sensor_cambiado == 'No' %}selected{% endif %}>No</option>
+                </select>
+            </div>
+
+            <!-- Filtros de Fecha -->
+            <div class="form-group">
+                <label for="venc_desde">Venc. Garantía (Desde)</label>
+                <input type="date" name="venc_desde" id="venc_desde" value="{{ filtros_aplicados.venc_desde }}" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="venc_hasta">Venc. Garantía (Hasta)</label>
+                <input type="date" name="venc_hasta" id="venc_hasta" value="{{ filtros_aplicados.venc_hasta }}" class="form-control">
+            </div>
+
+            <!-- Botones -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" style="background-color: #d45b04;">Filtrar</button>
+                <a href="{% url 'cenerisapp:vista_reporte_fijos' %}" class="btn btn-secondary">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-container-horizontal">
+        <table class="report-table">
+            <thead>
+                <!-- Fila de Super-Headers (combinados) -->
+                <tr>
+                    <th rowspan="2" class="main-header">N°</th>
+                    <th rowspan="2" class="main-header">NOMBRE DEL DISPOSITIVO</th>
+                    <th rowspan="2" class="main-header">MODELO DE SENSOR</th>
+                    <th rowspan="2" class="main-header">ÁREA</th>
+                    <th rowspan="2" class="main-header">UBICACIÓN EN ÁREA</th>
+                    <th rowspan="2" class="main-header">TAG</th>
+                    <th rowspan="2" class="main-header">UBICACIÓN DEL SENSOR EN EL DETECTOR</th>
+                    <th rowspan="2" class="main-header">TIPO DE GAS</th>
+                    
+                    <th colspan="3" class="super-header">CALIBRACIÓN ENCONTRADA</th>
+                    <th colspan="2" class="super-header">FECHA DE VENCIMIENTO DEL SENSOR ACTUAL</th>
+                    <th colspan="2" class="super-header">INFO INFORME</th>
+                    <th colspan="3" class="super-header">ALARMAS</th>
+                    <th colspan="3" class="super-header">VALOR SPAM</th>
+
+                    <th rowspan="2" class="main-header">OBSERVACION</th>
+                    <th rowspan="2" class="main-header">ESTADO DE CALIBRACIÓN</th>
+                    <th rowspan="2" class="main-header">NRO DE CERTIFICADO</th>
+                    <th rowspan="2" class="main-header">FECHA DE CALIBRACIÓN POR CENERIS</th>
+                </tr>
+                <!-- Fila de Headers Principales -->
+                <tr>
+                    <th class="main-header">INFORME</th>
+                    <th class="main-header">ENCONTRADO</th>
+                    <th class="main-header">SENSOR CAMBIADO</th>
+                    <th class="main-header">MES</th>
+                    <th class="main-header">AÑO</th>
+                    <th class="main-header">FECHA</th>
+                    <th class="main-header">REALIZADA POR</th>
+                    <th class="main-header">1RA</th>
+                    <th class="main-header">2DA</th>
+                    <th class="main-header">3RA</th>
+                    <th class="main-header">EQUIPO</th>
+                    <th class="main-header">CILINDRO</th>
+                    <th class="main-header">UND</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for fila_dispositivo in datos_tabla %}
+                {% for sensor_data in fila_dispositivo.datos_sensores %}
+                    <tr>
+                        {# --- CELDAS COMUNES (Solo se muestran en la primera fila de cada dispositivo) --- #}
+                        {% if forloop.first %}
+                            <td rowspan="{{ fila_dispositivo.num_sensores }}">{{ fila_dispositivo.numero }}</td>
+                            <td rowspan="{{ fila_dispositivo.num_sensores }}">{{ fila_dispositivo.datos_comunes.nombre_dispositivo }}</td>
+                        {% endif %}
+
+                        {# --- CELDAS POR SENSOR (Siempre se muestran) --- #}
+                        <td>{{ sensor_data.modelo_sensor|default:"" }}</td>
+
+                        {# --- MÁS CELDAS COMUNES --- #}
+                        {% if forloop.first %}
+                            <td rowspan="{{ fila_dispositivo.num_sensores }}">{{ fila_dispositivo.datos_comunes.area }}</td>
+                            <td rowspan="{{ fila_dispositivo.num_sensores }}">{{ fila_dispositivo.datos_comunes.ubicacion_area }}</td>
+                            <td rowspan="{{ fila_dispositivo.num_sensores }}">{{ fila_dispositivo.datos_comunes.tag }}</td>
+                            <td rowspan="{{ fila_dispositivo.num_sensores }}">{{ fila_dispositivo.datos_comunes.ubicacion_sensor }}</td>
+                        {% endif %}
+                        
+                        {# --- MÁS CELDAS POR SENSOR --- #}
+                        <td>{{ sensor_data.tipo_gas|default:"" }}</td>
+                        <td>{{ sensor_data.informe|default:"" }}</td>
+                        <td>{{ sensor_data.encontrado_calibracion|default:"" }}</td>
+                        <td>{{ sensor_data.sensor_cambiado|default:"" }}</td>
+                        <td>{{ sensor_data.mes_vencimiento|default:"" }}</td>
+                        <td>{{ sensor_data.anio_vencimiento|default:"" }}</td>
+                        <td>{{ sensor_data.fecha_informe|default:"" }}</td>
+                        <td>{{ sensor_data.realizada_por|default:"" }}</td>
+                        
+                        
+                        <td>{{ sensor_data.alarma_1ra }}</td>
+                        <td>{{ sensor_data.alarma_2da }}</td>
+                        <td>{{ sensor_data.alarma_3ra }}</td>
+                        <td>{{ sensor_data.valor_spam_equipo }}</td>
+                        <td>{{ sensor_data.valor_spam_cilindro }}</td>
+                        <td>{{ sensor_data.valor_spam_und }}</td>
+                        
+                        
+                        {# --- ÚLTIMAS CELDAS POR SENSOR --- #}
+                        <td>{{ sensor_data.observacion|default:"" }}</td>
+                        <td>{{ sensor_data.estado_calibracion|default:"" }}</td>
+                        <td>{{ sensor_data.nro_certificado|default:"" }}</td>
+                        <td>{{ sensor_data.fecha_calibracion_ceneris|default:"" }}</td>
+                    </tr>
+                {% endfor %}
+            {% endfor %}
+        </tbody>
+        </table>
+    </div>
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="Navegación de páginas" class="pagination-container">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% url_replace page=1 %}">&laquo; Primera</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?{% url_replace page=page_obj.previous_page_number %}">Anterior</a>
+                    </li>
+                {% endif %}
+
+                <li class="page-item active" aria-current="page">
+                    <span class="page-link">
+                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% url_replace page=page_obj.next_page_number %}">Siguiente</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?{% url_replace page=page_obj.paginator.num_pages %}">Última &raquo;</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+{% endblock %}

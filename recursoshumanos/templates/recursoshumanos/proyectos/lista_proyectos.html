@@ -1,0 +1,196 @@
+<!-- recursoshumanos/templates/recursoshumanos/proyectos/lista_proyectos.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Listado de Proyectos{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/tabla_estados.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <style>
+        /* Estilo para las filas de proyectos padres que son expandibles */
+        .parent-row {
+            cursor: pointer;
+            background-color: #f8f9fa;
+        }
+        .parent-row:hover {
+            background-color: #e9ecef;
+        }
+        
+        /* Estilo para las filas de subproyectos */
+        .subproject-row {
+            background-color: #ffffff;
+        }
+
+        /* Estilo para el nombre del subproyecto, con sangría */
+        .subproject-name {
+            padding-left: 2.5rem !important;
+        }
+        .subproject-name::before {
+            content: '↳';
+            margin-right: 0.75rem;
+            color: #6c757d;
+        }
+
+        /* Ocultar subproyectos por defecto */
+        .hidden {
+            display: none;
+        }
+
+        /* Estilo para el ícono de expandir/contraer */
+        .subprojects-toggler {
+            display: inline-block;
+            transition: transform 0.3s ease;
+            margin-right: 0.5rem;
+        }
+        .subprojects-toggler.expanded {
+            transform: rotate(90deg);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Listado de Proyectos</h1>
+            <p style="margin: 0;">Haz clic en un proyecto para ver y gestionar sus subproyectos.</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'recursoshumanos:gestion_proyectos' %}" class="btn-secondary">&larr; Volver a Tarjetas</a>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Descripcion</th>
+                <th>Fecha de Inicio</th> 
+                <th>Estado</th>
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for proyecto_padre in proyectos_padre %}
+                <tr class="parent-row" data-toggle="subprojects-{{ proyecto_padre.pk }}">
+                    <td>
+                        <strong>
+                            {% if proyecto_padre.subproyectos.all %}
+                                <span class="subprojects-toggler">
+                                    <i data-feather="chevron-right" style="width: 16px; height: 16px;"></i>
+                                </span>
+                            {% endif %}
+                            {{ proyecto_padre.codigo }}
+                        </strong>
+                    </td>
+                    <td>{{ proyecto_padre.nombre|default:"--" }}</td>
+                    <td>{{ proyecto_padre.fecha_inicio|date:"d/m/Y"|default:"--" }}</td> 
+                    <td>{% if proyecto_padre.activo %}<span class="status-active">✔ Activo</span>{% else %}<span class="status-inactive">✖ Inactivo</span>{% endif %}</td>
+                    <td style="text-align: center;">
+                        <div class="table-actions-container">
+                            <a href="{% url 'recursoshumanos:editar_proyecto' proyecto_padre.pk %}" class="btn-icon-action secondary" title="Editar Proyecto"><i data-feather="edit-2"></i></a>
+                            
+                            <a href="#" class="btn-icon-action danger" title="Eliminar Proyecto" onclick="confirmDelete(event, 'form-delete-{{ proyecto_padre.pk }}')">
+                                <i data-feather="trash-2"></i>
+                            </a>
+                            
+                            <form id="form-delete-{{ proyecto_padre.pk }}" action="{% url 'recursoshumanos:eliminar_proyecto' proyecto_padre.pk %}" method="post" style="display: none;">{% csrf_token %}</form>
+                        </div>
+                    </td>
+                </tr>
+                
+                {% for subproyecto in proyecto_padre.subproyectos.all %}
+                    <tr class="subproject-row hidden subprojects-{{ proyecto_padre.pk }}">
+                        <td class="subproject-name">{{ subproyecto.codigo }}</td>
+                        <td>{{ subproyecto.nombre|default:"--" }}</td>
+                        <td>{{ subproyecto.fecha_inicio|date:"d/m/Y"|default:"--" }}</td> 
+                        <td>{% if subproyecto.activo %}<span class="status-active">✔ Activo</span>{% else %}<span class="status-inactive">✖ Inactivo</span>{% endif %}</td>
+                        <td style="text-align: center;">
+                            <div class="table-actions-container">
+                                <a href="{% url 'recursoshumanos:editar_proyecto' subproyecto.pk %}" class="btn-icon-action secondary" title="Editar Subproyecto"><i data-feather="edit-2"></i></a>
+                                
+                                <a href="#" class="btn-icon-action danger" title="Eliminar Subproyecto" onclick="confirmDelete(event, 'form-delete-{{ subproyecto.pk }}')">
+                                    <i data-feather="trash-2"></i>
+                                </a>
+                                
+                                <form id="form-delete-{{ subproyecto.pk }}" action="{% url 'recursoshumanos:eliminar_proyecto' subproyecto.pk %}" method="post" style="display: none;">{% csrf_token %}</form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% empty %}
+                <tr><td colspan="6" style="text-align: center;">No hay proyectos registrados.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    // --- 1. Confirmación de eliminación ---
+    function confirmDelete(event, formId) {
+        event.stopPropagation(); // Evita que se dispare el evento de expandir fila
+        event.preventDefault(); 
+        
+        Swal.fire({
+            title: '¿Estás seguro?',
+            text: "Se eliminará este proyecto. Si tiene subproyectos o trabajadores asociados, no se podrá eliminar.",
+            icon: 'warning', 
+            showCancelButton: true, 
+            confirmButtonColor: '#d33', 
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, ¡eliminar!',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById(formId).submit();
+            }
+        });
+    }
+
+    // --- 2. Lógica de acordeón (Expandir/Contraer) ---
+    document.addEventListener('DOMContentLoaded', function() {
+        const togglers = document.querySelectorAll('[data-toggle]');
+        
+        togglers.forEach(function(toggler) {
+            toggler.addEventListener('click', function() {
+                const targetClass = this.dataset.toggle;
+                const subprojectRows = document.querySelectorAll('.' + targetClass);
+                const icon = this.querySelector('.subprojects-toggler');
+                
+                if (icon) {
+                    icon.classList.toggle('expanded');
+                }
+                
+                subprojectRows.forEach(function(row) {
+                    row.classList.toggle('hidden');
+                });
+            });
+        });
+
+        // --- 3. Mostrar mensajes Toasts ---
+        {% if messages %}
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 5000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+
+            {% for message in messages %}
+                Toast.fire({
+                    icon: '{{ message.tags }}', 
+                    title: '{{ message }}'
+                });
+            {% endfor %}
+        {% endif %}
+    });
+</script>
+{% endblock %}

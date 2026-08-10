@@ -1,0 +1,60 @@
+<!-- calidad/templates/calidad/formularios/subir_subsana_emo.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Subir Documento de Subsanación{% endblock %}
+
+{% block body_class %}form-background subsana-upload-page{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/file-upload.css' %}">
+{% endblock %}
+
+{% block content %}
+    <div class="back-button-container" style="max-width: 600px;">
+        {# Idealmente, volver a la página desde donde vino #}
+        <a href="javascript:history.back()" class="btn-secondary">&larr; Volver</a>
+    </div>
+
+    <div class="file-upload-wrapper">
+        <form class="file-upload-form" method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            
+            <div class="form-header" style="text-align:center; margin-bottom: 2rem;">
+                <h2>Levantamiento de Observación</h2>
+                <p class="subtitle">
+                    Adjunta la evidencia para el EMO de <span class="trabajador-name">{{ emo.trabajador }}</span>
+                </p>
+                <div style="font-size: 0.9rem; color: #6c757d;">
+                    <p><strong>Restricción/Observación Original:</strong> {{ emo.restriccion|default:"No especificada" }}</p>
+                </div>
+            </div>
+
+            <!-- Componente de Subida de Archivo -->
+            <div id="file-upload-wrapper">
+                <label for="id_archivo_subsana" id="file-drag">
+                    <div id="start">
+                        <i class="fa fa-upload" aria-hidden="true"></i>
+                        <div>Arrastra y suelta el PDF de subsanación aquí o haz clic para seleccionar</div>
+                    </div>
+                    <div id="response" style="display: none;">
+                        <div id="messages"></div>
+                    </div>
+                </label>
+                <!-- Input de archivo real, oculto por CSS -->
+                {{ form.archivo_subsana }}
+            </div>
+            
+            {% if form.archivo_subsana.errors %}
+                <div class="field-error" style="text-align: center; margin-top: 15px;">{{ form.archivo_subsana.errors }}</div>
+            {% endif %}
+
+            <button type="submit" class="submit-button">Subir y Enviar para Validación</button>
+        </form>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+    {# Reutilizamos el mismo JS de subida de archivos #}
+    <script src="{% static 'js/file-upload.js' %}"></script>
+{% endblock %}

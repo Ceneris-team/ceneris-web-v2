@@ -1,0 +1,31 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="form-container">
+    <div class="form-card">
+        <h2>{{ titulo }}</h2>
+        <p class="form-description">Elige un dispositivo para continuar con la configuración de su alarma.</p>
+        
+        <div class="form-group">
+            <label for="dispositivo-select">Dispositivo:</label>
+            <select id="dispositivo-select">
+                <option value="">-- Selecciona un dispositivo --</option>
+                {% for d in dispositivos %}
+                    {% if d.tipoDisp == 'Fijo' %}
+                        <option value="{{ d.id_dispositivo }}">{{ d }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- La información y el botón aparecerán aquí con JS -->
+        <div id="info-y-accion" class="info-card" style="display: none;">
+            <p>Tipo de Dispositivo: <strong id="tipo-dispositivo-texto"></strong></p>
+            <div class="form-actions">
+                <a href="#" id="configurar-btn" class="btn btn-primary">Configurar Alarma</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

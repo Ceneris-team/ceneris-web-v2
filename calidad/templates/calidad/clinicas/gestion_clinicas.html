@@ -1,0 +1,27 @@
+<!-- calidad/templates/calidad/clinicas/gestion_clinicas.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Gestión de Clínicas{% endblock %}
+
+{% block content %}
+    <h1>Gestión de Clínicas y Hospitales</h1>
+    <p>Administra los centros médicos disponibles en el sistema.</p>
+    
+    <div class="dashboard-grid">
+        <!-- Tarjeta para Crear Nueva Clínica -->
+        <a href="{% url 'calidad:crear_clinica' %}" class="card">
+            <div class="card__icon">🏥</div> {# Ícono de hospital #}
+            <h2 class="card__title">Registrar Clínicas</h2>
+            <p class="card__description">Añade un nuevo centro médico al sistema con su información principal.</p>
+            <div class="card__footer">Registrar Nueva &rarr;</div>
+        </a>
+        
+        <!-- Tarjeta para Ver Listado de Clínicas -->
+        <a href="{% url 'calidad:lista_clinicas' %}" class="card">
+            <div class="card__icon">📋</div>
+            <h2 class="card__title">Ver Clínicas</h2>
+            <p class="card__description">Consulta, edita y gestiona la lista de todos los centros médicos registrados.</p>
+            <div class="card__footer">Ver Listado &rarr;</div>
+        </a>
+    </div>
+{% endblock %}

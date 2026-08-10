@@ -1,0 +1,108 @@
+<!-- calidad/templates/calidad/formularios/confirmar_lectura_form.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block body_class %}form-background{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        .back-button-container { max-width: 800px; width: 90%; margin: 30px auto 10px auto; text-align: left; }
+        .field-error { color: #dc3545; font-size: 0.8rem; font-weight: 600; text-align: left; margin-top: 5px; }
+        #msform .form-group { text-align: left; margin-bottom: 20px; }
+        #msform .form-group label { margin-bottom: 5px; font-weight: 500; color: #555; }
+        /* Fix checkbox width being stretched by global form styles */
+        #msform input[type="checkbox"] { width: auto !important; margin-bottom: 0; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <!-- BOTÓN VOLVER DINÁMICO -->
+    <div class="back-button-container">
+        {% if es_edicion %}
+            <!-- Si estamos editando, volvemos al menú de opciones del EMO -->
+            <a href="{% url 'calidad:seleccionar_edicion_emo' emo.id %}" class="btn-secondary">&larr; Volver al Menú</a>
+        {% else %}
+            <!-- Si es confirmación nueva, volvemos a la lista de pendientes -->
+            <a href="{% url 'calidad:lista_emos_por_confirmar' %}" class="btn-secondary">&larr; Volver a la Lista</a>
+        {% endif %}
+    </div>
+
+    <!-- novalidate añadido para evitar bloqueo del navegador en archivo opcional -->
+    <form id="msform" method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        
+        <fieldset>
+            <h2 class="fs-title">{{ form_title }}</h2>
+            <h3 class="fs-subtitle">Trabajador: <strong>{{ emo.trabajador }}</strong></h3>
+            <hr>
+            
+            <!-- Campo Fecha -->
+            <div class="form-group">
+                {{ form.fecha_confirmacion.label_tag }}
+                {{ form.fecha_confirmacion }}
+                {% if form.fecha_confirmacion.errors %}
+                    <div class="field-error">{{ form.fecha_confirmacion.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Campo Archivo -->
+            <div class="form-group">
+                {{ form.archivo_confirmacion.label_tag }}
+                
+                {% if emo.archivo_confirmacion %}
+                    <div style="margin-bottom: 15px; font-size: 0.9em; background: #f8f9fa; padding: 12px 15px; border-radius: 6px; border: 1px solid #e9ecef;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <!-- Link al archivo -->
+                            <div style="display: flex; align-items: center;">
+                                <i data-feather="file-text" style="width: 16px; height: 16px; margin-right: 6px; color: #0056b3;"></i> 
+                                <span style="margin-right: 5px;">Archivo actual:</span>
+                                <a href="{{ emo.archivo_confirmacion.url }}" target="_blank" style="font-weight: 600; text-decoration: none; color: #0056b3; border-bottom: 1px dotted #0056b3;">
+                                    Ver documento
+                                </a>
+                            </div>
+                            
+                            <!-- Checkbox de eliminar -->
+                            <div class="form-check" style="margin: 0; padding: 0; display: flex; align-items: center;">
+                                {{ form.eliminar_archivo }}
+                                <label for="{{ form.eliminar_archivo.id_for_label }}" class="form-check-label" style="margin-left: 6px; font-size: 0.9em; color: #dc3545; cursor: pointer; user-select: none;">
+                                    Eliminar archivo
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {{ form.archivo_confirmacion }}
+                
+                {% if form.archivo_confirmacion.errors %}
+                    <div class="field-error">{{ form.archivo_confirmacion.errors.0 }}</div>
+                {% endif %}
+                
+                <small class="text-muted" style="display:block; margin-top:5px;">
+                    {% if es_edicion %}
+                        Sube un archivo solo si deseas reemplazar el actual.
+                    {% else %}
+                        Adjunta el PDF escaneado con la firma (Opcional).
+                    {% endif %}
+                </small>
+            </div>
+            
+            <hr>
+            
+            <!-- BOTÓN GUARDAR DINÁMICO -->
+            <input type="submit" name="submit" class="submit action-button" 
+                   value="{% if es_edicion %}Actualizar Lectura{% else %}Guardar Confirmación{% endif %}"/>
+        </fieldset>
+    </form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+</script>
+{% endblock %}

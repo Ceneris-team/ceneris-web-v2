@@ -1,0 +1,15 @@
+<!-- cotizaciones/templates/cotizaciones/editar_cotizacion.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Registrar Cotización{% endblock %}
+
+{% block content %}
+<h1>Editar Cotización</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }} <!-- Renderiza los campos del formulario -->
+    <button type="submit">Guardar Cambios</button>
+    <a href="{% url 'cotizaciones:lista_cotizaciones' %}">Cancelar</a>
+</form>
+{% endblock %}

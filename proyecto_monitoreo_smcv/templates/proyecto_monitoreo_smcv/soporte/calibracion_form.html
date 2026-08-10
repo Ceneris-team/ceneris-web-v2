@@ -1,0 +1,91 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block title %}Nuevo Certificado de Calibración{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto py-8 px-4">
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">Nuevo Certificado de Calibración</h2>
+
+    <form method="post" enctype="multipart/form-data" class="bg-white shadow rounded p-6">
+        {% csrf_token %}
+
+        <!-- DATOS GENERALES -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {% for field in form %}
+            <div>
+                <label class="block text-sm font-bold text-gray-700">{{ field.label }}</label>
+                {{ field }}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- MATRIZ DE MEDICIONES -->
+        <h3 class="text-lg font-bold text-blue-600 mb-2 border-b">Ingreso de Mediciones (L/min)</h3>
+        <p class="text-sm text-gray-500 mb-4">Ingrese las 3 mediciones para cada punto de flujo. El sistema calculará el promedio e incertidumbre automáticamente.</p>
+
+        <div class="overflow-x-auto mb-6">
+            <table class="min-w-full border text-sm text-center">
+                <thead class="bg-orange-100 font-bold">
+                    <tr>
+                        <th class="border p-2">Punto (Flujo Nominal)</th>
+                        <th class="border p-2">Medición 1</th>
+                        <th class="border p-2">Medición 2</th>
+                        <th class="border p-2">Medición 3</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Generamos 5 filas manualmente para los puntos 1, 2, 3, 4, 5 -->
+                    {% for i in "01234"|make_list %} <!-- Truco para iterar 5 veces -->
+                    <tr>
+                        <td class="border p-2 font-bold bg-gray-50">
+                            {{ forloop.counter }} L/min
+                        </td>
+                        <td class="border p-1">
+                            <input type="number" step="0.001" name="medicion_{{ forloop.counter0 }}_0" class="w-full border rounded p-1 text-center" required>
+                        </td>
+                        <td class="border p-1">
+                            <input type="number" step="0.001" name="medicion_{{ forloop.counter0 }}_1" class="w-full border rounded p-1 text-center" required>
+                        </td>
+                        <td class="border p-1">
+                            <input type="number" step="0.001" name="medicion_{{ forloop.counter0 }}_2" class="w-full border rounded p-1 text-center" required>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <h3 class="text-lg font-bold text-blue-600 mb-4 border-b pb-2 mt-6">Datos del Patrón Utilizado</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 bg-gray-50 p-4 rounded border">
+            
+            <!-- 1. Buscador del Equipo Patrón -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Seleccionar Equipo Patrón</label>
+                <!-- Renderizamos un select manual con la clase Tom Select -->
+                <select name="patron_id" class="tom-select-enable w-full" required>
+                    <option value="" selected disabled>Buscar patrón...</option>
+                    {% for equipo in posibles_patrones %}
+                        <option value="{{ equipo.id }}">{{ equipo.nombre }} - Serie: {{ equipo.serie }}</option>
+                    {% endfor %}
+                </select>
+                <p class="text-xs text-gray-500 mt-1">El sistema jalará la fecha de calibración de este equipo automáticamente.</p>
+            </div>
+        </div>
+        
+        <h3 class="text-lg font-bold text-blue-600 mb-2 border-b">Fotos de Patrones (Página 3)</h3>
+        <div class="mb-6 p-4 bg-gray-50 border rounded">
+            <input type="file" name="fotos_patron" multiple class="w-full">
+            <p class="text-xs text-gray-500">Puedes subir varias imágenes de los patrones utilizados.</p>
+        </div>
+
+        <div class="flex items-center justify-between mt-6">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded">
+                Calcular y Guardar
+            </button>
+            <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">
+                Cancelar
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

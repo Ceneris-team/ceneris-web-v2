@@ -1,0 +1,122 @@
+/* static/css/dashboard-bi.css */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+:root {
+    --bi-bg: #f0f2f5;
+    --bi-panel-bg: #ffffff;
+    --bi-text-primary: #333;
+    --bi-text-secondary: #888;
+    --bi-border-color: #e5e7eb;
+    --bi-brand-color: var(--title_color, #d45b04);
+}
+
+.bi-dashboard {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--bi-bg);
+    color: var(--bi-text-primary);
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: 280px 1fr; /* Columna de filtros y contenido principal */
+    grid-template-rows: auto 1fr; /* Fila para el header y fila para el contenido */
+    grid-template-areas:
+        "filters header"
+        "filters main";
+    gap: 1.5rem;
+    height: calc(100vh - 80px); /* Ajusta a la altura de tu header superior si es necesario */
+    overflow-y: auto;
+}
+
+.bi-header { grid-area: header; }
+.bi-filters { grid-area: filters; }
+.bi-main { grid-area: main; }
+
+.bi-panel {
+    background: var(--bi-panel-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.bi-header h1 {
+    margin: 0 0 5px 0;
+    color: var(--bi-brand-color);
+}
+.bi-header p {
+    margin: 0;
+    color: var(--bi-text-secondary);
+}
+
+.bi-filters h3 {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--bi-border-color);
+    padding-bottom: 1rem;
+}
+.filter-group { margin-bottom: 1.5rem; }
+.filter-group label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+.filter-group select, .filter-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--bi-border-color);
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+}
+
+.bi-main {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(4, 1fr); /* Cuadrícula flexible de 4 columnas */
+    grid-auto-rows: minmax(150px, auto);
+}
+
+.kpi-card-bi {
+    padding: 1.25rem;
+}
+.kpi-card-bi .kpi-label {
+    font-size: 0.9rem;
+    color: var(--bi-text-secondary);
+}
+.kpi-card-bi .kpi-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-top: 0.5rem;
+    color: var(--bi-brand-color);
+}
+
+.chart-card {
+    padding: 1.5rem;
+    position: relative;
+    height: 350px;
+}
+.chart-card h4 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Tamaños de las tarjetas de gráficos */
+.chart-card-full { grid-column: span 4; }
+.chart-card-half { grid-column: span 2; }
+.chart-card-third { grid-column: span 1; } /* Ajuste para cuadrícula de 3 si es necesario */
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .bi-dashboard {
+        grid-template-columns: 1fr;
+        grid-template-areas: "header" "filters" "main";
+        height: auto;
+    }
+    .bi-main {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .chart-card-full, .chart-card-half { grid-column: span 2; }
+}
+@media (max-width: 768px) {
+    .bi-main { grid-template-columns: 1fr; }
+    .chart-card-full, .chart-card-half { grid-column: span 1; }
+}

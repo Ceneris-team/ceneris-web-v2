@@ -1,0 +1,45 @@
+{% extends 'app_base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="header-container">
+        <h1>{{ titulo }}</h1>
+        <a href="{% url 'cenerisapp:crear_empresa' %}" class="btn btn-primary mb-3">Agregar Empresa</a>
+        <a href="{% url 'cenerisapp:tecnicos_indice' %}" class="btn btn-secondary">Volver al Índice</a>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Abreviación</th>
+                    <th>Dirección</th>
+                    <th>Departamento</th>
+                    <th>Telefono</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for empresa in empresas %}
+                    <tr>
+                        <td>{{ empresa.nombreE }}</td>
+                        <td>{{ empresa.abreviacion }}</td>
+                        <td>{{ empresa.direccion }}</td>
+                        <td>{{ empresa.departamento }}</td>
+                        <td>{{ empresa.telefono }}</td>
+                        <td data-label="Acciones">
+                            <div class="action-buttons">
+                                <a href="{% url 'cenerisapp:editar_empresa' empresa.id %}" class="btn btn-secondary">Editar</a>
+                                <a href="{% url 'cenerisapp:eliminar_empresa' empresa.id %}" class="btn btn-danger">Eliminar</a>
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="no-data">No hay empresas registradas.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

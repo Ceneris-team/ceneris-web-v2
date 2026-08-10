@@ -1,0 +1,266 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Vista Previa - Correo EMO{% endblock %}
+
+{% block extra_head %}
+<style>
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+        padding: 40px 20px;
+    }
+
+    .preview-container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .preview-header {
+        background: linear-gradient(135deg, #d45b04 0%, #f0832f 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+    }
+
+    .preview-header h1 {
+        margin: 0 0 10px 0;
+        font-size: 28px;
+        font-weight: 600;
+    }
+
+    .preview-header p {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.95;
+    }
+
+    .preview-body {
+        padding: 40px;
+    }
+
+    .email-meta {
+        background: #f8f9fa;
+        border-left: 4px solid #d45b04;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+    }
+
+    .email-meta-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .email-meta-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .email-meta-label {
+        font-weight: 700;
+        color: #333;
+        min-width: 120px;
+    }
+
+    .email-meta-value {
+        color: #666;
+        word-break: break-word;
+        text-align: right;
+    }
+
+    .email-preview-iframe {
+        width: 100%;
+        min-height: 600px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        background: white;
+        padding: 30px;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+        overflow: auto;
+    }
+
+    .email-preview-iframe img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .email-preview-iframe table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .email-preview-iframe th,
+    .email-preview-iframe td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    /* Mantener hover blanco en tablas del email PERO NO en los headers naranjas ni footer */
+    .email-preview-iframe table tr:hover td:not([bgcolor="#e67e22"]):not([bgcolor="#ff6f00"]):not([bgcolor="#2c3e50"]) {
+        background-color: white !important;
+    }
+
+    .email-preview-iframe table td:hover:not([bgcolor="#e67e22"]):not([bgcolor="#ff6f00"]):not([bgcolor="#2c3e50"]),
+    .email-preview-iframe table th:hover {
+        background-color: white !important;
+    }
+
+    /* Asegurar que los headers naranjas mantengan sus colores */
+    .email-preview-iframe table td[bgcolor="#e67e22"],
+    .email-preview-iframe table td[bgcolor="#e67e22"]:hover {
+        background-color: #e67e22 !important;
+    }
+
+    .email-preview-iframe table td[bgcolor="#ff6f00"],
+    .email-preview-iframe table td[bgcolor="#ff6f00"]:hover {
+        background-color: #ff6f00 !important;
+    }
+
+    /* Asegurar que el footer gris oscuro mantenga su color */
+    .email-preview-iframe table td[bgcolor="#2c3e50"],
+    .email-preview-iframe table td[bgcolor="#2c3e50"]:hover {
+        background-color: #2c3e50 !important;
+    }
+
+    /* Mantener colores en cajas grises de información */
+    .email-preview-iframe table td[bgcolor="#f9f9f9"],
+    .email-preview-iframe table td[bgcolor="#f9f9f9"]:hover {
+        background-color: #f9f9f9 !important;
+    }
+
+    .email-preview-iframe table td[bgcolor="#fff9f5"],
+    .email-preview-iframe table td[bgcolor="#fff9f5"]:hover {
+        background-color: #fff9f5 !important;
+    }
+
+    .email-preview-iframe table td[bgcolor="#fff8f0"],
+    .email-preview-iframe table td[bgcolor="#fff8f0"]:hover {
+        background-color: #fff8f0 !important;
+    }
+
+    .preview-footer {
+        border-top: 2px solid #d45b04;
+        background: #f9f9f9;
+        padding: 24px;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 15px 32px;
+        border: none;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+        min-width: 200px;
+        text-align: center;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #d45b04 0%, #f0832f 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(212, 91, 4, 0.2);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(212, 91, 4, 0.4);
+    }
+
+    .btn-secondary {
+        background: #e9ecef;
+        color: #333;
+        border: 2px solid #d45b04;
+        font-weight: 600;
+    }
+
+    .btn-secondary:hover {
+        background: #dee2e6;
+        border-color: #b84603;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="preview-container">
+    <div class="preview-header">
+        <h1>📧 Vista Previa - Correo de EMO</h1>
+        <p>Este es el correo que recibirá el trabajador</p>
+    </div>
+
+    <div class="preview-body">
+        <div class="email-meta">
+            <div class="email-meta-item">
+                <span class="email-meta-label">Para:</span>
+                <span class="email-meta-value">{{ to_email|default:"(sin email)" }}</span>
+            </div>
+            <div class="email-meta-item">
+                <span class="email-meta-label">DNI:</span>
+                <span class="email-meta-value">{{ trabajador.dni|default:"—" }}</span>
+            </div>
+            <div class="email-meta-item">
+                <span class="email-meta-label">Nombre:</span>
+                <span class="email-meta-value">{{ trabajador.nombres }} {{ trabajador.apellido_paterno }} {{ trabajador.apellido_materno }}</span>
+            </div>
+            <div class="email-meta-item">
+                <span class="email-meta-label">Tipo EMO:</span>
+                <span class="email-meta-value">{{ emo.get_tipo_emo_display }}</span>
+            </div>
+        </div>
+
+        <div class="email-preview-iframe">
+            {% if email_html %}
+                {{ email_html|safe }}
+            {% else %}
+                <p>No hay contenido disponible para mostrar.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="preview-footer">
+        <div class="action-buttons">
+            <a href="{% url 'calidad:editar_emo_programado' emo.id %}" class="btn btn-secondary">← Volver al formulario</a>
+            <button type="button" class="btn btn-primary" onclick="document.getElementById('confirm-form').submit();">✓ Confirmar y Enviar</button>
+        </div>
+
+        <form id="confirm-form" method="POST" action="{% url 'calidad:editar_emo_programado' emo.id %}" style="display:none;">
+            {% csrf_token %}
+            <input type="hidden" name="enviar_correo" value="true">
+            
+            {% comment %}Campos recuperados de la sesión{% endcomment %}
+            <input type="hidden" name="tipo_emo" value="{{ emo.tipo_emo }}">
+            <input type="hidden" name="fecha_programada" value="{{ emo.fecha_programada|date:'Y-m-d' }}">
+            <input type="hidden" name="hora_examen" value="{{ emo.hora_examen|time:'H:i' }}">
+            <input type="hidden" name="lugar_examen_id" value="{{ emo.lugar_examen.id }}">
+            <input type="hidden" name="empresa_id" value="{{ emo.empresa.id }}">
+            <input type="hidden" name="proyecto_id" value="{{ emo.proyecto.id }}">
+            {% if emo.subproyecto %}
+            <input type="hidden" name="subproyecto_id" value="{{ emo.subproyecto.id }}">
+            {% endif %}
+            <input type="hidden" name="cargo_id" value="{{ emo.cargo.id }}">
+            <input type="hidden" name="comentario_alerta" value="{{ comentario_alerta|default:'' }}">
+        </form>
+    </div>
+</div>
+{% endblock %}

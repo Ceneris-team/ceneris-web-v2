@@ -1,0 +1,46 @@
+<!-- dashboard/templates/dashboard/gestion_solicitudes.html -->
+{% extends "dashboard/base_rrhh.html" %}
+{% block title %}Gestión de Solicitudes{% endblock %}
+
+{% block content %}
+    <h1>Gestión de Solicitudes Pendientes</h1>
+    <p><a href="{% url 'recursoshumanos:main_dashboard' %}">&larr; Volver</a></p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha Solicitud</th>
+                <th>Trabajador</th>
+                <th>Tipo</th>
+                <th>Rango de Fechas</th>
+                <th>Motivo</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for solicitud in solicitudes %}
+            <tr>
+                <td>{{ solicitud.fechaSolicitud }}</td>
+                <td>{{ solicitud.nombreTrabajador }} ({{ solicitud.dniTrabajador }})</td>
+                <td>{{ solicitud.tipo }}</td>
+                <td>{{ solicitud.fechaInicio }} - {{ solicitud.fechaFin }}</td>
+                <td>{{ solicitud.motivo }}</td>
+                <td>
+                    <form method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="solicitud_id" value="{{ solicitud.id }}">
+                        <button type="submit" name="aprobar" style="background-color: #198754;">Aprobar</button>
+                    </form>
+                    <form method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="solicitud_id" value="{{ solicitud.id }}">
+                        <button type="submit" name="rechazar" style="background-color: #dc3545;">Rechazar</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6">No hay solicitudes pendientes.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

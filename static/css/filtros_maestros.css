@@ -1,0 +1,51 @@
+/* static/css/filtros_maestros.css */
+.master-filter-bar {
+    background-color: #fff;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    margin-bottom: 2rem;
+}
+.form-filters-master {
+    display: flex;
+    align-items: flex-end; /* Alinea los elementos en la parte inferior */
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+.filter-group {
+    flex-grow: 1; /* Permite que los grupos crezcan */
+}
+.filter-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+.filter-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+    font-size: 1rem;
+}
+
+/* Inputs con el mismo look & altura que los selects */
+.master-filter-bar .filter-group input[type="text"],
+.master-filter-bar .filter-group input[type="date"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+    font-size: 1rem;
+    height: 42px;
+    box-sizing: border-box;
+}
+
+/* Asegura consistencia de altura */
+.master-filter-bar .filter-group select {
+    height: 42px;
+    box-sizing: border-box;
+}

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page { size: A4 landscape; margin: 1cm; }
+        body { font-family: Arial, sans-serif; font-size: 8pt; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+        th, td { border: 1px solid #000; padding: 3px; text-align: center; vertical-align: middle; }
+        
+        .bg-blue { background-color: #bdd7ee; font-weight: bold; } /* Azul suave */
+        .bg-gray { background-color: #d9d9d9; font-weight: bold; } /* Gris encabezados */
+        .bg-orange { background-color: #f8cbad; font-weight: bold; } /* Naranja final */
+        
+        .text-left { text-align: left !important; padding-left: 5px; }
+        .font-bold { font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. ENCABEZADO -->
+    <table>
+        <tr>
+            <td width="20%"><img src="{{ logo_url }}" style="width: 180px"></td>
+            <td width="60%" style="font-size: 14pt; font-weight: bold;">FORMATO DE INSPECCIÓN DE EQUIPOS</td>
+            <td width="20%">
+                <div>Código: CEN-PY-MCV-PR-08-F-01</div>
+                <div>Versión: 1</div>
+                <div>Fecha: 01/03/2025</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- 2. TOTALES (Fila Gris) -->
+    <table>
+        <tr>
+            <td width="15%" class="bg-gray">TOTAL DE EQUIPOS</td> <td width="10%" class="bg-white font-bold">{{ inspeccion.total_equipos }}</td>
+            <td width="15%" class="bg-gray">EQUIPOS EN CAMPO</td> <td width="10%" class="bg-white font-bold">{{ inspeccion.equipos_en_campo }}</td>
+            <td width="15%" class="bg-gray">CANT. MUESTRA</td> <td width="10%" class="bg-white font-bold">{{ inspeccion.cant_muestra }}</td>
+            <td width="15%" class="bg-gray">FECHA DE INSPECCIÓN</td> <td width="10%" class="bg-white font-bold">{{ inspeccion.fecha_inspeccion|date:"d/m/Y" }}</td>
+        </tr>
+    </table>
+
+    <!-- 3. CHECKLIST GENERAL (TABLA ARRIBA) -->
+    <div style="background-color: #bdd7ee; text-align: center; font-weight: bold; border: 1px solid #000; font-size: 7pt;">DATOS GENERALES</div>
+    <table>
+        <tr class="bg-gray">
+            <th width="5%">ITEM</th>
+            <th width="5%">EQUIPOS</th>
+            <th colspan="11" width="85%">CHECK LIST</th>
+        </tr>
+        
+        <!-- FILA 1: Dosímetros -->
+        <tr>
+            <td>1.-</td>
+            <td class="text-left">Dosímetros de Ruido</td>
+            
+            <td>Operatividad</td>
+            <td>
+                SI <br> {% if inspeccion.dosi_operatividad == 'SI' %}✓{% endif %}
+            </td>
+            <td>
+                NO <br> {% if inspeccion.dosi_operatividad == 'NO' %}✓{% endif %}
+            </td>
+            
+            <td>Limpieza</td>
+            <td>
+                SI <br> {% if inspeccion.dosi_limpieza == 'SI' %}✓{% endif %}
+            </td>
+            <td>
+                NO <br> {% if inspeccion.dosi_limpieza == 'NO' %}✓{% endif %}
+            </td>
+
+            <td>Accesorios</td>
+            <td>
+                SI <br> {% if inspeccion.dosi_accesorios == 'SI' %}✓{% endif %}
+            </td>
+            <td>
+                NO <br> {% if inspeccion.dosi_accesorios == 'NO' %}✓{% endif %}
+            </td>
+            
+            <td class="text-left" style="font-size: 7pt;">
+                Observaciones:
+            </td>
+            <td>{{ inspeccion.dosi_obs }}</td>
+        </tr>
+
+        <!-- FILA 2: Bombas -->
+        <tr>
+            <td>2.-</td>
+            <td class="text-left">Bombas Gravimétricas</td>
+            
+            <td>Operatividad</td>
+            <td>SI <br> {% if inspeccion.bomba_operatividad == 'SI' %}✓{% endif %}</td>
+            <td>NO <br> {% if inspeccion.bomba_operatividad == 'NO' %}✓{% endif %}</td>
+            
+            <td>Limpieza</td>
+            <td>SI <br> {% if inspeccion.bomba_limpieza == 'SI' %}✓{% endif %}</td>
+            <td>NO <br> {% if inspeccion.bomba_limpieza == 'NO' %}✓{% endif %}</td>
+
+            <td>Accesorios</td>
+            <td>SI <br> {% if inspeccion.bomba_accesorios == 'SI' %}✓{% endif %}</td>
+            <td>NO <br> {% if inspeccion.bomba_accesorios == 'NO' %}✓{% endif %}</td>
+            
+            <td class="text-left" style="font-size: 7pt;">Observaciones: </td>
+            <td>{{ inspeccion.bomba_obs }}</td>
+        </tr>
+
+        <!-- FILA 3: Vibrometros -->
+        <tr>
+            <td>3.-</td>
+            <td class="text-left">Vibrómetros</td>
+            
+            <td>Operatividad</td>
+            <td>SI <br> {% if inspeccion.vibro_operatividad == 'SI' %}✓{% endif %}</td>
+            <td>NO <br> {% if inspeccion.vibro_operatividad == 'NO' %}✓{% endif %}</td>
+            
+            <td>Limpieza</td>
+            <td>SI <br> {% if inspeccion.vibro_limpieza == 'SI' %}✓{% endif %}</td>
+            <td>NO <br> {% if inspeccion.vibro_limpieza == 'NO' %}✓{% endif %}</td>
+
+            <td>Accesorios</td>
+            <td>SI <br> {% if inspeccion.vibro_accesorios == 'SI' %}✓{% endif %}</td>
+            <td>NO <br> {% if inspeccion.vibro_accesorios == 'NO' %}✓{% endif %}</td>
+            
+            <td class="text-left" style="font-size: 7pt;">Observaciones: </td>
+            <td>{{ inspeccion.vibro_obs }}</td>
+        </tr>
+    </table>
+
+    <!-- 4. REVISIÓN DE MUESTRA (TABLA DETALLADA) -->
+    <div style="background-color: #bdd7ee; text-align: center; font-weight: bold; border: 1px solid #000;">REVISIÓN DE MUESTRA DE EQUIPOS</div>
+    <table>
+        <tr class="bg-gray">
+            <th width="5%" rowspan="2">ITEM</th>
+            <th width="20%" rowspan="2">EQUIPO</th>
+            <th width="10%" rowspan="2">MARCA</th>
+            <th width="10%" rowspan="2">MODELO</th>
+            <th width="10%" rowspan="2">SERIE</th>
+            <th colspan="3">CALIBRACIÓN</th>
+            <th colspan="2">PATRÓN UTILIZADO</th>
+            <th rowspan="2">Otro metodo de verificación(Especificar)</th>
+            <th width="12%" rowspan="2">Resultado Final</th>
+        </tr>
+        <tr>
+            <th width="8%">Pre</th>
+            <th width="8%">Post</th>
+            <th width="5%">No Aplica</th>
+            <th width="12%">Equipo</th>
+            <th>Serie</th>
+        </tr>
+        {% for detalle in detalles %}
+        <tr>
+            <td>{{ forloop.counter }}.-</td>
+            <td class="text-left">{{ detalle.dispositivo.nombre }}</td>
+            <td>{{ detalle.dispositivo.marca }}</td>
+            <td>{{ detalle.dispositivo.modelo }}</td>
+            <td>{{ detalle.dispositivo.serie }}</td>
+            
+            <td>
+                {{ detalle.prueba_tecnica.db_pre_calibracion|default:detalle.prueba_tecnica.flujo_pre_calibracion|default:"-" }}
+            </td>
+            
+            <!-- POST CALIB -->
+            <td>
+                {{ detalle.prueba_tecnica.db_post_calibracion|default:detalle.prueba_tecnica.flujo_post_calibracion|default:"-" }}
+            </td>
+            <!-- 
+            <td>{{ detalle.prueba_tecnica.db_pre_calibracion|default:detalle.prueba_tecnica.db_pre_calibracion|default:"-" }}</td>
+            <td>{{ detalle.prueba_tecnica.db_post_calibracion|default:detalle.prueba_tecnica.db_post_calibracion|default:"-" }}</td>
+            -->
+            <!-- CHECK DE NO APLICA -->
+            <td>
+                {% if detalle.prueba_tecnica.no_aplica %}✓{% endif %}
+            </td>
+            
+            <!-- PATRÓN USADO EN ESTA FILA -->
+            {% if detalle.prueba_tecnica.equipo_patron %}
+            <td>
+                    {{ detalle.prueba_tecnica.equipo_patron.nombre }}
+            </td>
+            <td>
+                {{ detalle.prueba_tecnica.equipo_patron.serie }}
+            </td>
+            {% else %} <td><td></td></td> {% endif %}           
+            <td></td>
+            <td>{{ detalle.resultado_final }}</td>
+        </tr>
+        {% endfor %}
+        
+        <!-- Filas vacías de relleno si hay menos de 5 -->
+        {% for i in "12345"|make_list %}
+            {% if forloop.counter > detalles|length %}
+            <tr>
+                <td>{{ forloop.counter }}.-</td>
+                <td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td><td></td></td>
+            </tr>
+            {% endif %}
+        {% endfor %}
+    </table>
+    <div style="background-color: #bdd7ee; text-align: center; font-weight: bold; border: 1px solid #000; margin-top: 5px;">REVISIÓN DE EQUIPOS PATRONES</div>
+    <table>
+        <tr class="bg-gray">
+            <th width="5%">ITEM</th>
+            <th width="20%">EQUIPO</th>
+            <th width="15%">MARCA</th>
+            <th width="15%">MODELO</th>
+            <th width="15%">SERIE</th>
+            <th width="30%">OBSERVACIÓN</th>
+        </tr>
+        {% for p in inspeccion.patrones_usados.all %}
+        <tr>
+            <td>{{ forloop.counter }}.-</td>
+            <td>{{ p.patron.nombre }}</td>
+            <td>{{ p.patron.marca }}</td>
+            <td>{{ p.patron.modelo }}</td>
+            <td>{{ p.patron.serie }}</td>
+            <td>{{ p.observacion }}</td>
+        </tr>
+        {% endfor %}
+        <!-- Relleno vacío opcional... -->
+    </table>
+
+    <!-- 6. EQUIPOS REPORTADOS (Tabla Nueva en PDF) -->
+    <div style="background-color: #f8cbad; text-align: center; font-weight: bold; border: 1px solid #000; margin-top: 5px;">EQUIPOS REPORTADOS</div>
+    <table>
+        <tr class="bg-gray">
+            <th width="5%">ITEM</th>
+            <th width="20%">EQUIPO</th>
+            <th width="10%">MARCA</th>
+            <th width="10%">MODELO</th>
+            <th width="10%">SERIE</th>
+            <th width="10%">FECHA</th>
+            <th width="25%">MOTIVO DEL REPORTE</th>
+            <th width="10%">ESTADO</th>
+        </tr>
+        {% for r in inspeccion.equipos_reportados.all %}
+        <tr>
+            <td>{{ forloop.counter }}.-</td>
+            <td>{{ r.dispositivo.nombre }}</td>
+            <td>{{ r.dispositivo.marca }}</td>
+            <td>{{ r.dispositivo.modelo }}</td>
+            <td>{{ r.dispositivo.serie }}</td>
+            <td>{{ r.fecha_reporte|date:"d/m/Y" }}</td>
+            <td>{{ r.motivo }}</td>
+            <td>{{ r.estado }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <!-- 5. FIRMA -->
+    <br><br>
+    <table style="border: none;margin-left: 400px; position: relative;">
+        <tr>
+            <td style="border: none; text-align: center;">
+                <b>RESPONSABLE DE LA INSPECCIÓN</b><br><br><br><br>
+                <img src="{{ firmaT_url }}" style="width: 90px;position: absolute;margin: 0 auto;top: 15px;left: 460px;"><br>   
+                _________________________<br>
+                {{ inspeccion.responsable.nombre }}<br>
+                {{ inspeccion.responsable.cargo }}
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

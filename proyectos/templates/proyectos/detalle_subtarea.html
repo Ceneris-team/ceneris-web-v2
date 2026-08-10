@@ -1,0 +1,107 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block content %}
+<div class="content-area">
+    <div class="page-header">
+        <div class="header-text">
+            <div class="page-title">Detalle de Subtarea: "{{ subtarea.titulo }}"</div>
+            <div class="page-desc">
+                Perteneciente a la tarea "{{ subtarea.tarea.titulo }}" del proyecto "{{ subtarea.tarea.proyecto.nombre }}"
+            </div>
+        </div>
+        <a href="{% url 'proyectos:detalle_proyecto' subtarea.tarea.proyecto.pk %}" class="btn-secondary">
+            <i class="fa fa-arrow-left"></i> Volver a la Línea de Tiempo
+        </a>
+    </div>
+
+    <div class="details-grid">
+        <!-- Columna de Personal Asignado -->
+        <div class="details-card">
+            <h3><i class="fa fa-users"></i> Personal Asignado</h3>
+            <div class="personal-list">
+                {% for persona in subtarea.personal_asignado.all %}
+                    <div class="personal-item">
+                        <img src="{{ persona.foto.url }}" alt="{{ persona.nombre }}">
+                        <div class="personal-info">
+                            <strong>{{ persona.nombre }} {{ persona.apellido }}</strong>
+                            <span>{{ persona.cargo }}</span>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p>No hay personal asignado a esta subtarea.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Columna de Insumos Asignados -->
+        <div class="details-card">
+            <h3><i class="fa fa-box"></i> Insumos Asignados</h3>
+            <div class="insumos-list">
+                {% for asignacion in subtarea.insumos_asignados.all %}
+                    <div class="insumo-item">
+                        <div class="insumo-info">
+                            <strong>{{ asignacion.insumo.nombre }}</strong>
+                            <span>Cantidad: {{ asignacion.cantidad_asignada|floatformat:0 }} {{ asignacion.insumo.unidad_medida }}</span>
+                        </div>
+                        <!-- Botón para abrir el modal de reparación -->
+                        <button class="btn-reparacion"
+                                data-toggle="modal"
+                                data-target="#reparacion-modal"
+                                data-insumo-id="{{ asignacion.insumo.id }}"
+                                data-insumo-nombre="{{ asignacion.insumo.nombre }}">
+                            <i class="fa fa-wrench"></i> Registrar Reparación
+                        </button>
+                    </div>
+                {% empty %}
+                     <p>No hay insumos asignados a esta subtarea.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- REEMPLAZA TU MODAL EXISTENTE CON ESTE -->
+<div id="reparacion-modal-overlay" class="custom-modal-overlay" style="display: none;">
+    <div class="custom-modal-content animate__animated animate__fadeInUp">
+        
+        <form method="post" class="reparacion-form">
+            {% csrf_token %}
+            <input type="hidden" name="insumo_id" id="modal-insumo-id">
+
+            <div class="form-header">
+                <h3>Registrar Reparación para <span id="modal-insumo-nombre"></span></h3>
+                <button type="button" class="close-btn">&times;</button>
+            </div>
+            
+            <div class="form-body">
+                <div class="form-group">
+                    <label for="id_fecha_reporte">Fecha del Reporte</label>
+                    <input type="date" name="fecha_reporte" class="form-control" required id="id_fecha_reporte">
+                </div>
+                <div class="form-group">
+                    <label for="modal-item-insumo-select">Número de Serie Específico</label>
+                    <select name="item_insumo_id" id="modal-item-insumo-select" class="form-control" required>
+                        <option value="">Cargando...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="id_descripcion">Descripción</label>
+                    <textarea name="descripcion" class="form-control" required id="id_descripcion" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="id_costo">Costo de la Reparación</label>
+                    <input type="number" step="0.01" name="costo" class="form-control" required id="id_costo" placeholder="0.00">
+                </div>
+            </div>
+
+            <div class="form-footer">
+                <button type="button" class="btn-cancel">Cancelar</button>
+                <button type="submit" class="btn-save">Guardar Registro</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="{% static 'js/reparacion_modal.js' %}"></script>
+{% endblock %}

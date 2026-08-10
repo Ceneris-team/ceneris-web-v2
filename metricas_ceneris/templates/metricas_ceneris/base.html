@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ceneris | Talent Intelligence</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs" type="module"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Outfit"', 'sans-serif'],
+                    },
+                    colors: { ceneris: { DEFAULT: '#E85A18', light: '#FF8A50' } },
+                    animation: { 
+                        'blob': 'blob 10s infinite',
+                        'glow-pulse': 'glowPulse 3s ease-in-out infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        glowPulse: {
+                            '0%, 100%': { 
+                                transform: 'scale(1)',
+                                boxShadow: '0 0 15px rgba(232, 90, 24, 0.4), 0 0 30px rgba(232, 90, 24, 0.2)'
+                            },
+                            '50%': { 
+                                transform: 'scale(1.05)',
+                                boxShadow: '0 0 25px rgba(232, 90, 24, 0.6), 0 0 50px rgba(232, 90, 24, 0.4), 0 0 75px rgba(232, 90, 24, 0.2)'
+                            }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-10px)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #F8FAFC; color: #334155; overflow-x: hidden; }
+
+        /* NAVBAR BASE */
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                        background 0.3s ease, 
+                        padding 0.3s ease;
+        }
+
+        .nav-hidden {
+            transform: translateY(-100%);
+        }
+
+        .glass-nav.scrolled {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(226, 232, 240, 1);
+            padding-top: 0.75rem; 
+            padding-bottom: 0.75rem;
+            box-shadow: 0 4px 20px -5px rgba(0,0,0,0.1);
+        }
+
+        #scroll-progress {
+            position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, #E85A18, #F59E0B);
+            z-index: 100; width: 0%; transition: width 0.1s;
+        }
+
+        .role-menu summary { list-style: none; }
+        .role-menu summary::-webkit-details-marker { display: none; }
+        .role-menu[open] .menu-caret { transform: rotate(180deg); }
+        .role-menu[open] .role-menu-panel { animation: roleMenuIn 0.2s ease-out; }
+
+        @keyframes roleMenuIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="relative min-h-screen">
+
+    <div id="scroll-progress"></div>
+
+    <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div class="absolute top-0 left-1/4 w-[500px] h-[500px] bg-indigo-200 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-blob"></div>
+        <div class="absolute top-0 right-1/4 w-[500px] h-[500px] bg-orange-200 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-blob animation-delay-2000"></div>
+        <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+    </div>
+
+    <nav id="main-nav" class="fixed top-0 w-full z-50 glass-nav py-5">
+        <div class="max-w-7xl mx-auto px-4 md:px-6">
+            <div class="flex justify-between items-center gap-4">
+                
+                <a href="/" class="flex items-center gap-3 group cursor-pointer shrink-0">
+                    <div class="relative w-10 h-10 flex items-center justify-center bg-gradient-to-tr from-ceneris to-orange-400 rounded-xl text-white shadow-lg group-hover:rotate-12 transition-transform duration-300 animate-glow-pulse">
+                        <i class="ph ph-chart-polar text-2xl"></i>
+                    </div>
+                    <div class="flex flex-col hidden sm:block">
+                        <span class="text-2xl font-display font-bold text-slate-800 tracking-tight leading-none">
+                            Ceneris<span class="text-ceneris">.metrics</span>
+                        </span>
+                    </div>
+                </a>
+
+                <div class="flex items-center gap-4">
+                    <div class="hidden lg:flex items-center gap-3 xl:gap-6">
+                        {% if request.user.is_authenticated and request.user.trabajador %}
+                                {% with perfil=request.user.trabajador %}
+                                {% if perfil.cargo_jerarquico|lower == 'responsable' %}
+                                    <a href="{% url 'metricas_ceneris:dashboard_trabajador' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-user text-lg"></i>
+                                        <span class="hidden md:inline">Mi Panel</span>
+                                    </a>
+                                    <a href="{% url 'metricas_ceneris:dashboard_responsable' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-chart-pie-slice text-lg"></i>
+                                        <span class="hidden md:inline">Dashboard Responsable</span>
+                                    </a>
+                                    <a href="{% url 'metricas_ceneris:panel_responsable' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-users-three text-lg"></i>
+                                        <span class="hidden md:inline">Evaluaciones</span>
+                                    </a>
+                                    <a href="{% url 'metricas_ceneris:panel_asistencias_responsable' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-clock text-lg"></i>
+                                        <span class="hidden md:inline">Asistencias</span>
+                                    </a>
+
+                                {% elif perfil.es_gerente and perfil.es_jefe %}
+                                    <a href="{% url 'metricas_ceneris:dashboard_trabajador' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-user text-lg"></i>
+                                        <span class="hidden md:inline">Mi Panel</span>
+                                    </a>
+
+                                    <details id="combined-role-menu" class="relative role-menu">
+                                        <summary class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 cursor-pointer select-none whitespace-nowrap">
+                                            <i class="ph ph-squares-four text-lg"></i>
+                                            <span class="hidden md:inline">Paneles</span>
+                                            <i class="ph ph-caret-down text-base transition-transform duration-200 menu-caret"></i>
+                                        </summary>
+                                        <div class="role-menu-panel absolute right-0 mt-3 w-72 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-xl shadow-xl p-2 z-50">
+                                            <a href="{% url 'metricas_ceneris:dashboard_gerente' %}" class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                                                <i class="ph ph-gauge text-lg"></i>
+                                                <span>Dashboard General</span>
+                                            </a>
+                                            <a href="{% url 'metricas_ceneris:panel_jefe' %}" class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                                                <i class="ph ph-users-three text-lg"></i>
+                                                <span>Jefaturas y Areas</span>
+                                            </a>
+                                            <a href="{% url 'metricas_ceneris:panel_asistencias' %}" class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                                                <i class="ph ph-clock text-lg"></i>
+                                                <span>Asistencias</span>
+                                            </a>
+                                            <a href="{% url 'metricas_ceneris:importar_asistencias' %}" class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                                                <i class="ph ph-upload-simple text-lg"></i>
+                                                <span>Importar Asistencias</span>
+                                            </a>
+                                        </div>
+                                    </details>
+
+                                {% elif perfil.es_gerente %}
+                                    <a href="{% url 'metricas_ceneris:dashboard_gerente' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-chart-pie-slice text-lg"></i>
+                                        <span class="hidden md:inline">Dashboard General</span>
+                                    </a>
+                                       <a href="{% url 'metricas_ceneris:ranking_general' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                           <i class="ph ph-trophy text-lg"></i>
+                                           <span class="hidden md:inline">Ranking General</span>
+                                       </a>
+                                    <a href="{% url 'metricas_ceneris:panel_evaluacion_gerente' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-users-three text-lg"></i>
+                                        <span class="hidden md:inline">Jefaturas y Áreas</span>
+                                    </a>
+                                    <a href="{% url 'metricas_ceneris:panel_asistencias_gerente' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-clock text-lg"></i>
+                                        <span class="hidden md:inline">Asistencias</span>
+                                    </a>
+                                    <a href="{% url 'metricas_ceneris:importar_asistencias' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-upload-simple text-lg"></i>
+                                        <span class="hidden md:inline">Importar Asistencias</span>
+                                    </a>
+
+                                {% elif perfil.es_jefe %}
+                                    <a href="{% url 'metricas_ceneris:dashboard_trabajador' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-user text-lg"></i>
+                                        <span class="hidden md:inline">Mi Panel</span>
+                                    </a>
+                                    <a href="{% url 'metricas_ceneris:dashboard_jefe' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-chart-pie-slice text-lg"></i>
+                                        <span class="hidden md:inline">Dashboard Equipo</span>
+                                    </a>
+                                    <a href="{% url 'metricas_ceneris:panel_jefe' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-chart-line-up text-lg"></i>
+                                        <span class="hidden md:inline">Evaluaciones</span>
+                                    </a>
+                                    <a href="{% url 'metricas_ceneris:panel_asistencias' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-clock text-lg"></i>
+                                        <span class="hidden md:inline">Asistencias</span>
+                                    </a>
+
+                                {% else %}
+                                    <a href="{% url 'metricas_ceneris:dashboard_trabajador' %}" class="text-sm font-semibold text-slate-600 hover:text-ceneris transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="ph ph-user text-lg"></i>
+                                        <span class="hidden md:inline">Mi Panel</span>
+                                    </a>
+                                {% endif %}
+                                {% endwith %}
+                        {% endif %}
+                    </div>
+
+                    {% if request.user.is_authenticated and request.user.trabajador %}
+                    <button id="mobile-nav-toggle" type="button" class="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white/80 text-slate-700 hover:text-ceneris hover:border-orange-200 transition-colors" aria-label="Abrir menu de navegacion" aria-expanded="false">
+                        <i id="mobile-nav-icon" class="ph ph-list text-xl"></i>
+                    </button>
+                    {% endif %}
+
+                    <div class="flex items-center gap-3 lg:pl-6 pl-3 border-l border-slate-200 shrink-0">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-sm font-bold text-slate-700 whitespace-nowrap">
+                                {% if request.user.is_authenticated %}
+                                    {{ request.user.first_name|default:request.user.username }}
+                                {% else %} Invitado {% endif %}
+                            </p>
+                            <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">MetricasCeneris</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-display font-bold border-2 border-white shadow-md shrink-0">
+                            {% if request.user.is_authenticated %}{{ request.user.username|slice:":1"|upper }}{% else %}G{% endif %}
+                        </div>
+                        <form action="{% url 'logout' %}" method="post">
+                            {% csrf_token %}
+                            <button title="Cerrar Sesión" class="p-2 ml-1 rounded-full text-slate-400 hover:text-red-500 transition-colors"><i class="ph ph-sign-out text-xl"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {% if request.user.is_authenticated and request.user.trabajador %}
+            <div id="mobile-nav-panel" class="hidden lg:hidden mt-4 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-xl shadow-lg p-2">
+                {% with perfil=request.user.trabajador %}
+                    <a href="{% url 'metricas_ceneris:dashboard_trabajador' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                        <i class="ph ph-user text-lg"></i>
+                        <span>Mi Panel</span>
+                    </a>
+
+                    {% if perfil.cargo_jerarquico|lower == 'responsable' %}
+                        <a href="{% url 'metricas_ceneris:dashboard_responsable' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-chart-pie-slice text-lg"></i>
+                            <span>Dashboard Responsable</span>
+                        </a>
+                        <a href="{% url 'metricas_ceneris:panel_responsable' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-users-three text-lg"></i>
+                            <span>Evaluaciones</span>
+                        </a>
+                        <a href="{% url 'metricas_ceneris:panel_asistencias_responsable' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-clock text-lg"></i>
+                            <span>Asistencias</span>
+                        </a>
+
+                    {% elif perfil.es_gerente and perfil.es_jefe %}
+                        <a href="{% url 'metricas_ceneris:dashboard_gerente' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-gauge text-lg"></i>
+                            <span>Dashboard General</span>
+                        </a>
+                        <a href="{% url 'metricas_ceneris:panel_evaluacion_gerente' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-users-three text-lg"></i>
+                            <span>Jefaturas y Areas</span>
+                        </a>
+                        <a href="{% url 'metricas_ceneris:panel_asistencias' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-clock text-lg"></i>
+                            <span>Asistencias</span>
+                        </a>
+                        <a href="{% url 'metricas_ceneris:importar_asistencias' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-upload-simple text-lg"></i>
+                            <span>Importar Asistencias</span>
+                        </a>
+                    {% elif perfil.es_gerente %}
+                        <a href="{% url 'metricas_ceneris:dashboard_gerente' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-gauge text-lg"></i>
+                            <span>Dashboard General</span>
+                        </a>
+                           <a href="{% url 'metricas_ceneris:ranking_general' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                               <i class="ph ph-trophy text-lg"></i>
+                               <span>Ranking General</span>
+                           </a>
+                        <a href="{% url 'metricas_ceneris:panel_evaluacion_gerente' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-users-three text-lg"></i>
+                            <span>Jefaturas y Áreas</span>
+                        </a>
+                        <a href="{% url 'metricas_ceneris:panel_asistencias_gerente' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-clock text-lg"></i>
+                            <span>Asistencias</span>
+                        </a>
+                        <a href="{% url 'metricas_ceneris:importar_asistencias' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-upload-simple text-lg"></i>
+                            <span>Importar Asistencias</span>
+                        </a>
+                    {% elif perfil.es_jefe %}
+                        <a href="{% url 'metricas_ceneris:dashboard_jefe' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-chart-pie-slice text-lg"></i>
+                            <span>Dashboard Equipo</span>
+                        </a>
+                        <a href="{% url 'metricas_ceneris:panel_jefe' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-chart-line-up text-lg"></i>
+                            <span>Evaluaciones</span>
+                        </a>
+                        <a href="{% url 'metricas_ceneris:panel_asistencias' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-ceneris transition-colors">
+                            <i class="ph ph-clock text-lg"></i>
+                            <span>Asistencias</span>
+                        </a>
+                    {% endif %}
+                {% endwith %}
+            </div>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main class="relative z-10 pt-32 pb-20 px-4 sm:px-6">
+        <div class="max-w-7xl mx-auto">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer class="text-center py-8 text-slate-400 text-sm font-medium relative z-10">
+        <p>© {% now "Y" %} Ceneris Environmental & Hygiene Solutions SuperSexyBoys.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const nav = document.getElementById('main-nav');
+            const progressBar = document.getElementById('scroll-progress');
+            const roleMenu = document.getElementById('combined-role-menu');
+            const mobileNavToggle = document.getElementById('mobile-nav-toggle');
+            const mobileNavPanel = document.getElementById('mobile-nav-panel');
+            const mobileNavIcon = document.getElementById('mobile-nav-icon');
+
+            if (roleMenu) {
+                document.addEventListener('click', (event) => {
+                    if (!roleMenu.contains(event.target)) {
+                        roleMenu.removeAttribute('open');
+                    }
+                });
+            }
+
+            if (mobileNavToggle && mobileNavPanel) {
+                const closeMobileMenu = () => {
+                    mobileNavPanel.classList.add('hidden');
+                    mobileNavToggle.setAttribute('aria-expanded', 'false');
+                    if (mobileNavIcon) {
+                        mobileNavIcon.classList.remove('ph-x');
+                        mobileNavIcon.classList.add('ph-list');
+                    }
+                };
+
+                const toggleMobileMenu = () => {
+                    mobileNavPanel.classList.toggle('hidden');
+                    const isOpen = !mobileNavPanel.classList.contains('hidden');
+                    mobileNavToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                    if (mobileNavIcon) {
+                        mobileNavIcon.classList.toggle('ph-list', !isOpen);
+                        mobileNavIcon.classList.toggle('ph-x', isOpen);
+                    }
+                };
+
+                mobileNavToggle.addEventListener('click', toggleMobileMenu);
+
+                document.addEventListener('click', (event) => {
+                    if (!mobileNavPanel.classList.contains('hidden') && !mobileNavPanel.contains(event.target) && !mobileNavToggle.contains(event.target)) {
+                        closeMobileMenu();
+                    }
+                });
+
+                mobileNavPanel.querySelectorAll('a').forEach((link) => {
+                    link.addEventListener('click', closeMobileMenu);
+                });
+
+                window.addEventListener('resize', () => {
+                    if (window.innerWidth >= 1024) {
+                        closeMobileMenu();
+                    }
+                });
+            }
+            
+            let lastScrollY = window.scrollY;
+            
+            // Umbral para empezar a esconder (para evitar saltos al inicio)
+            const threshold = 60; 
+
+            window.addEventListener('scroll', () => {
+                const currentScrollY = window.scrollY;
+                
+                // 1. BARRA DE PROGRESO (Siempre funciona)
+                const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+                const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const scrolled = (winScroll / height) * 100;
+                progressBar.style.width = scrolled + "%";
+
+                // 2. LÓGICA APARECER / DESAPARECER
+                if (currentScrollY > threshold) {
+                    
+                    if (currentScrollY > lastScrollY) {
+                        // BAJANDO -> ESCONDER
+                        nav.classList.add('nav-hidden');
+                    } else {
+                        // SUBIENDO -> MOSTRAR
+                        nav.classList.remove('nav-hidden');
+                        nav.classList.add('scrolled'); // Añadir fondo sólido al subir
+                    }
+
+                } else {
+                    // ESTAMOS ARRIBA DEL TODO
+                    nav.classList.remove('nav-hidden');
+                    nav.classList.remove('scrolled'); // Volver a transparente/grande
+                }
+
+                lastScrollY = currentScrollY;
+            });
+        });
+    </script>
+
+</body>
+</html>

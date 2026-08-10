@@ -1,0 +1,58 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block title %}Programas de Mantenimiento{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Programa Anual</h1>
+            <p class="text-gray-500 text-sm">Cronograma de mantenimiento preventivo y ejecución.</p>
+        </div>
+        
+        <div class="flex gap-2">
+            <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="bg-white border border-gray-300 px-4 py-2 rounded text-gray-700 font-bold hover:bg-gray-50">
+                Volver
+            </a>
+            <a href="{% url 'proyecto_monitoreo_smcv:crear_programa' %}" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded shadow flex items-center">
+                <i class="fas fa-plus mr-2"></i> Nuevo Programa
+            </a>
+        </div>
+    </div>
+
+    <!-- Grid de Tarjetas por Año/Semestre -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for prog in programas %}
+        <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded uppercase">
+                        {{ prog.get_semestre_display }}
+                    </span>
+                    <span class="text-gray-400 text-sm"><i class="far fa-calendar"></i> {{ prog.anio }}</span>
+                </div>
+                
+                <h3 class="text-xl font-bold text-gray-800 mb-2">{{ prog.nombre }}</h3>
+                <p class="text-gray-500 text-sm mb-6">
+                    Contiene {{ prog.filas.count }} grupos de inspección programados.
+                </p>
+
+                <div class="flex gap-2">
+                    <a href="{% url 'proyecto_monitoreo_smcv:detalle_programa' prog.id %}" class="flex-1 text-center bg-blue-50 text-blue-700 py-2 rounded font-bold hover:bg-blue-100 transition">
+                        Ver Detalles
+                    </a>
+                    <a href="{% url 'proyecto_monitoreo_smcv:pdf_programa' prog.id %}" target="_blank" class="w-12 flex items-center justify-center bg-red-50 text-red-600 rounded hover:bg-red-100 transition" title="Descargar PDF">
+                        <i class="fas fa-file-pdf"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-3 text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+            <p class="text-gray-500 text-lg">No hay programas creados.</p>
+            <a href="{% url 'proyecto_monitoreo_smcv:crear_programa' %}" class="text-orange-600 font-bold hover:underline mt-2 inline-block">Crear el primero</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

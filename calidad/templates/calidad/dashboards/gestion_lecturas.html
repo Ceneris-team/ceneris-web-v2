@@ -1,0 +1,20 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Gestión de Lecturas y Validaciones{% endblock %}
+{% block content %}
+    <h1>Gestión de Lecturas y Validaciones</h1>
+    <p>Confirma la lectura de los EMOs registrados o valida las subsanaciones enviadas.</p>
+    <div class="dashboard-grid">
+        <a href="{% url 'calidad:lista_emos_por_confirmar' %}" class="card">
+            <div class="card__icon">📖</div>
+            <h2 class="card__title">Confirmar Lectura de EMOs</h2>
+            <p>Revisa y confirma la lectura de los EMOs recién registrados por el doctor.</p>
+            <div class="card__footer">Ver Pendientes &rarr;</div>
+        </a>
+        <a href="{% url 'calidad:lista_emos_por_validar' %}" class="card">
+            <div class="card__icon">✅</div>
+            <h2 class="card__title">Validar Subsanaciones</h2>
+            <p>Revisa la evidencia de subsanación y actualiza la aptitud del trabajador.</p>
+            <div class="card__footer">Ver para Validar &rarr;</div>
+        </a>
+    </div>
+{% endblock %}

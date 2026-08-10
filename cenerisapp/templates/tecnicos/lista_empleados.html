@@ -1,0 +1,63 @@
+{% extends 'app_base.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="header-container">
+        <h1>{{ titulo }}</h1>
+        <a href="{% url 'cenerisapp:crear_empleado' %}" class="btn btn-primary">Nuevo Empleado</a>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre del Empleado</th>
+                    <th>Puesto</th>
+                    <th>DNI</th>
+                    <th>Área de Trabajo</th>  <!-- NUEVA COLUMNA -->
+                    <th>Supervisor</th>       <!-- NUEVA COLUMNA -->
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for empleado in empleados %}
+                    <tr>
+                        <td data-label="Nombre">{{ empleado.nomEmpleado }}</td>
+                        <td data-label="Puesto">{{ empleado.puesto }}</td>
+                        <td data-label="DNI">{{ empleado.dni }}</td>
+                        
+                        <!-- ACCEDEMOS AL NOMBRE DEL ÁREA RELACIONADA -->
+                        <td data-label="Área de Trabajo">{{ empleado.areaTrabajo.nombreA }}</td>
+                        
+                        <!-- ACCEDEMOS AL NOMBRE DEL SUPERVISOR RELACIONADO -->
+                        <td data-label="Supervisor">
+                            <!-- Es importante comprobar si tiene supervisor para evitar errores -->
+                            {% if empleado.supervisor %}
+                                {{ empleado.supervisor.nomEmpleado }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        
+                        <td data-label="Acciones">
+                            <div class="action-buttons">
+                                <a href="#" class="btn btn-secondary">Editar</a>
+                                <form action="#" method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <!-- Actualizamos el colspan para que ocupe todas las columnas -->
+                    <tr><td colspan="6" class="no-data">No hay empleados registrados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="form-actions">
+        <a href="{% url 'cenerisapp:tecnicos_indice' %}" class="btn btn-secondary">Volver al Índice</a>
+    </div>
+    
+{% endblock %}

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Vencimientos</title>
+    <style>
+        /* Reset y estilos generales */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e0e0e0;
+        }
+        
+        /* --- CORRECCIÓN EN LA CABECERA --- */
+        .header {
+            /* 1. Color solido de respaldo (OBLIGATORIO para Outlook/Gmail) */
+            background-color: #d45b04; 
+            /* 2. El degradado va después (si el navegador lo soporta, lo usa) */
+            background: linear-gradient(135deg, #d45b04 0%, #b04a03 100%);
+            
+            color: #ffffff; /* Forzamos hex blanco */
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #ffffff !important; /* Forzamos color al texto específicamente */
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+            color: #ffffff !important;
+        }
+
+        /* Contenido */
+        .content {
+            padding: 30px;
+        }
+        .intro-text {
+            margin-bottom: 25px;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        /* Títulos de Sección */
+        h2 {
+            font-size: 18px;
+            color: #d45b04;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Tablas */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            background-color: #fff;
+            margin-bottom: 20px;
+        }
+        th {
+            background-color: #f8f9fa;
+            color: #444;
+            font-weight: 700;
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 2px solid #ddd;
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            color: #333;
+            vertical-align: middle;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover td {
+            background-color: #fafafa;
+        }
+
+        /* Badges y Colores */
+        .badge-urgent {
+            color: #dc3545;
+            font-weight: 700;
+            background-color: #ffebee;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .badge-warning {
+            color: #b04a03;
+            font-weight: 600;
+        }
+        .text-muted {
+            color: #999;
+            font-style: italic;
+        }
+
+        /* Pie de página */
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 11px;
+            color: #888;
+            border-top: 1px solid #eee;
+        }
+
+        .confidential { color: #999; font-style: italic; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <!-- Título dinámico según el bloque de envío -->
+            <h1>{{ titulo_reporte }}</h1>
+            <p>Sistema de Alertas Automáticas</p>
+        </div>
+        
+        <div class="content">
+            <p class="intro-text">
+                Estimados,<br>
+                A continuación se presenta el resumen de los documentos y controles próximos a vencer en los siguientes <strong>30 días</strong>. Por favor, tomar las acciones preventivas correspondientes.
+            </p>
+
+            <!-- ============================================= -->
+            <!-- SECCIÓN 1: EMOs (Solo si hay datos)           -->
+            <!-- ============================================= -->
+            {% if emos_por_vencer %}
+            <h2>📋 Exámenes Médicos (EMOs) por Vencer</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">DNI</th>
+                        <th style="width: 35%;">Trabajador</th>
+                        <th style="width: 20%;">Ubicación / Proyecto</th>
+                        <th style="width: 15%;">Vencimiento</th>
+                        <th style="width: 15%;">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emo in emos_por_vencer %}
+                    <tr>
+                        <td><strong>{{ emo.trabajador.dni }}</strong></td>
+                        <td>{{ emo.trabajador.nombres }} {{ emo.trabajador.apellido_paterno }} {{ emo.trabajador.apellido_materno }}</td>
+                        <td>
+                            <!-- Lógica para mostrar proyecto, subproyecto o asignación -->
+                            {% if emo.proyecto %}
+                                {{ emo.proyecto.codigo }}
+                            {% elif emo.subproyecto %}
+                                {{ emo.subproyecto.codigo }}
+                            {% else %}
+                                {% for asig in emo.trabajador.asignaciones.all %}
+                                    {{ asig.proyecto.codigo }}{% if not forloop.last %}, {% endif %}
+                                {% empty %}
+                                    <span class="text-muted">-</span>
+                                {% endfor %}
+                            {% endif %}
+                        </td>
+                        <td>{{ emo.fecha_vencimiento|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if emo.dias_restantes <= 7 %}
+                                <span class="badge-urgent">{{ emo.dias_restantes }} días</span>
+                            {% else %}
+                                <span class="badge-warning">{{ emo.dias_restantes }} días</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+
+            <!-- ============================================= -->
+            <!-- SECCIÓN 2: CONTROLES (Solo si hay datos)      -->
+            <!-- ============================================= -->
+            {% if controles_por_vencer %}
+            <h2>🩺 Controles Médicos Pendientes</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">DNI</th>
+                        <th style="width: 35%;">Trabajador</th>
+                        <th style="width: 25%;">Descripción del Control</th>
+                        <th style="width: 15%;">Programado</th>
+                        <th style="width: 10%;">Faltan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for control in controles_por_vencer %}
+                    <tr>
+                        <td><strong>{{ control.emo.trabajador.dni }}</strong></td>
+                        <td>{{ control.emo.trabajador.nombres }} {{ control.emo.trabajador.apellido_paterno }}</td>
+                        <td>
+                            <!-- LÓGICA DE RESTRICCIÓN AQUÍ -->
+                            {% if ocultar_detalle %}
+                                <span class="confidential">🔒 Información Médica Confidencial</span>
+                            {% else %}
+                                {{ control.descripcion }}
+                            {% endif %}
+                        </td>
+                        <td>{{ control.fecha_programada|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if control.dias_restantes <= 7 %}
+                                <span class="badge-urgent">{{ control.dias_restantes }} d</span>
+                            {% else %}
+                                {{ control.dias_restantes }} d
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+
+            <!-- Mensaje si ambos están vacíos (por seguridad) -->
+            {% if not emos_por_vencer and not controles_por_vencer %}
+                <div style="text-align: center; padding: 40px; color: #666; background: #f9f9f9; border-radius: 8px;">
+                    <h3>✅ Todo al día</h3>
+                    <p>No se encontraron registros pendientes de vencimiento para los criterios seleccionados.</p>
+                </div>
+            {% endif %}
+
+        </div>
+        
+        <div class="footer">
+            <p>Este reporte fue generado automáticamente el {% now "d/m/Y" %} a las {% now "H:i" %}.</p>
+            <p>CENERIS - Personnel & Safety Solutions</p>
+        </div>
+    </div>
+</body>
+</html>

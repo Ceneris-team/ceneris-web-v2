@@ -1,0 +1,163 @@
+/* static/css/components.css */
+/* Estilos para todos los componentes reutilizables: botones, filtros y acciones de tabla. */
+
+/* ==========================================================================
+   1. BOTONES DE FILTRO (Leyenda de EMOs)
+   ========================================================================== */
+.filter-buttons {
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 1.5rem;
+}
+
+/* Estilo base para los enlaces de filtro */
+a.legend-item {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none !important;
+    border: 1px solid #ddd;
+    background-color: #f8f9fa;
+    color: #333 !important;
+    transition: all 0.2s ease-in-out;
+}
+a.legend-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Estilo para el filtro ACTIVO */
+a.legend-item.active {
+    font-weight: 700;
+    transform: scale(1.05);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+/* Colores para el filtro activo por estado de vigencia */
+a.legend-item.legend-vigente.active { background-color: #198754; color: white !important; }
+a.legend-item.legend-por-vencer.active { background-color: #ffc107; color: #212529 !important; }
+a.legend-item.legend-vencido.active { background-color: #dc3545; color: white !important; }
+a.legend-item.legend-programado.active { background-color: #6c757d; color: white !important; }
+
+/* Colores de fondo para los botones de filtro de Aptitud (inactivos) */
+a.legend-item.legend-apto { background-color: #d1e7dd; border-color: #a3cfbb; }
+a.legend-item.legend-apto-con-restriccion { background-color: #fff3cd; border-color: #ffe69c; }
+a.legend-item.legend-observado,
+a.legend-item.legend-no-apto { background-color: #f8d7da; border-color: #f1aeb5; }
+a.legend-item.legend-pendiente { background-color: #e9ecef; border-color: #d3d9df; }
+
+/* Colores para el filtro ACTIVO de Aptitud */
+a.legend-item.legend-apto.active { background-color: #198754; color: white !important; }
+a.legend-item.legend-apto-con-restriccion.active { background-color: #ffc107; color: #212529 !important; }
+a.legend-item.legend-observado.active,
+a.legend-item.legend-no-apto.active { background-color: #dc3545; color: white !important; }
+a.legend-item.legend-pendiente.active { background-color: #6c757d; color: white !important; }
+
+
+/* ==========================================================================
+   2. ACCIONES EN TABLAS (Iconos y Enlaces de Texto)
+   ========================================================================== */
+
+/* --- Contenedor Flexbox para alinear todas las acciones --- */
+.table-actions-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* --- A. Estilo para enlaces de texto en tablas (ej. "Editar", "Eliminar") --- */
+.table-action-link {
+    font-weight: 600;
+    text-decoration: none !important;
+    margin: 0 4px;
+    transition: opacity 0.2s;
+}
+.table-action-link:hover {
+    text-decoration: underline !important;
+    opacity: 0.8;
+}
+.table-action-link.primary { color: var(--title_color, #d45b04) !important; }
+.table-action-link.secondary { color: #6c757d !important; }
+.table-action-link.danger { color: #dc3545 !important; }
+
+
+/* --- B. Estilo para botones de icono en tablas (ej. "Ver Info", "Desvincular") --- */
+
+/* Estilo base para CADA botón/enlace individual con icono */
+.btn-icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%; /* Círculo perfecto */
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    padding: 0;
+}
+.btn-icon-action:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    text-decoration: none !important;
+}
+.btn-icon-action i {
+    width: 18px;
+    height: 18px;
+}
+
+/* Colores para los botones de icono */
+.btn-icon-action.view { background-color: #cff4fc; color: #055160; } /* Azul */
+.btn-icon-action.secondary { background-color: #e2e6ea; color: #495057; } /* Gris */
+.btn-icon-action.reject { background-color: #f8d7da; color: #842029; } /* Rojo */
+.btn-icon-action.danger { background-color: #f8d7da; color: #842029; } /* Alias 'danger' para compatibilidad con plantillas */
+.btn-icon-action.approve { background-color: #d1e7dd; color: #0f5132; } /* Verde */
+
+
+/* --- C. Estilo para el grupo de validación (caja naranja) --- */
+
+.action-group-validate {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--title_color, #d45b04);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.action-group-view {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Estilo base para los botones DENTRO de los grupos */
+.table-action-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background-color: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 0;
+    transition: background-color 0.2s ease;
+    line-height: 1;
+}
+.table-action-button i {
+    width: 20px;
+    height: 20px;
+}
+.table-action-button:hover { text-decoration: none !important; }
+
+/* Colores para los iconos en cada grupo */
+.action-group-view .table-action-button { color: #0d6efd; }
+.action-group-view .table-action-button:hover { background-color: rgba(13, 110, 253, 0.1); }
+.action-group-validate .table-action-button { color: white; }
+.action-group-validate .table-action-button:hover { background-color: rgba(255, 255, 255, 0.2); }

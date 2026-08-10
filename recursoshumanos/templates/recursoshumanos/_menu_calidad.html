@@ -1,0 +1,46 @@
+<li class="navbar__item">
+    <a href="{% url 'calidad:estadisticas_calidad' %}" class="navbar__link"><i data-feather="bar-chart-2"></i><span>Estadísticas</span></a>
+</li>
+<li class="navbar__item {% if current_view == 'gestion_empresas' %}active{% endif %}">
+    <a href="{% url 'recursoshumanos:gestion_empresas' %}" class="navbar__link"><i data-feather="briefcase"></i><span>Empresas</span></a>
+</li>
+<li class="navbar__item {% if current_view == 'gestion_cargos' %}active{% endif %}">
+    <a href="{% url 'recursoshumanos:gestion_cargos' %}" class="navbar__link"><i data-feather="award"></i><span>Cargos</span></a>
+</li>
+<li class="navbar__item {% if current_view == 'gestion_proyectos' %}active{% endif %}">
+    <a href="{% url 'recursoshumanos:gestion_proyectos' %}" class="navbar__link"><i data-feather="folder"></i><span>Proyectos</span></a>
+</li>
+<li class="navbar__item {% if current_view == 'gestion_areas' %}active{% endif %}">
+    <a href="{% url 'recursoshumanos:gestion_areas' %}" class="navbar__link">
+        <i data-feather="layers"></i><span>Áreas</span>
+    </a>
+</li>
+<li class="navbar__item {% if current_view == 'gestion_clinicas' %}active{% endif %}">
+    <a href="{% url 'calidad:gestion_clinicas' %}" class="navbar__link"><i data-feather="plus-circle"></i><span>Clínicas</span></a>
+</li>
+<li class="navbar__item {% if current_view == 'gestion_empleados' %}active{% endif %}">
+    <a href="{% url 'calidad:gestion_empleados' %}" class="navbar__link"><i data-feather="users"></i><span>Trabajadores</span></a>
+</li>
+<li class="navbar__item {% if current_view == 'registrar_resultados' %}active{% endif %}">
+    <a href="{% url 'calidad:lista_emos_pendientes' %}" class="navbar__link"><i data-feather="edit-3"></i><span>Registrar Resultados</span></a>
+</li>
+<li class="navbar__item {% if current_view == 'gestion_lecturas' %}active{% endif %}">
+    <a href="{% url 'calidad:lista_emos_por_confirmar' %}" class="navbar__link">
+        <i data-feather="check-square"></i><span>Registrar lecturas</span>
+    </a>
+</li>
+<li class="navbar__item {% if current_view == 'observaciones' %}active{% endif %}">
+    <a href="{% url 'calidad:lista_observaciones' %}" class="navbar__link"><i data-feather="alert-triangle"></i><span>Observaciones</span></a>
+</li>
+<li class="navbar__item {% if current_view == 'lista_controles' %}active{% endif %}">
+    <a href="{% url 'calidad:lista_controles' %}" class="navbar__link"><i data-feather="clipboard"></i><span>Controles</span></a>
+</li>
+<li class="navbar__item {% if current_view == 'filtro_emos' %}active{% endif %}">
+    <a href="{% url 'calidad:reporte_maestro_emos' %}" class="navbar__link">
+        <i data-feather="filter"></i><span>Reporte de EMOs</span></a>
+</li>
+<li class="navbar__item {% if current_view == 'exportar_reportes' %}active{% endif %}">
+    <a href="{% url 'calidad:pagina_exportar_reportes' %}" class="navbar__link">
+        <i data-feather="download"></i><span>Exportar Reportes</span></a>
+</li>
+<li class="navbar__item"></li>

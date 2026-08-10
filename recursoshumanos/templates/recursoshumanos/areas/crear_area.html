@@ -1,0 +1,232 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body_class %}has-page-background{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        /* --- NUEVO: FONDO DE PANTALLA --- */
+        .page-background {
+            position: fixed; /* Se queda fijo aunque hagas scroll */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0; /* Fondo, pero visible sobre el body */
+            pointer-events: none;
+
+            /* El fondo se dibuja en ::before para poder aplicar blur */
+            background: transparent;
+        }
+
+        .page-background::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: url('{% static "img/fondo_rrhh.jpg" %}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(10px);
+            transform: scale(1.08);
+        }
+
+        .page-background::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+        }
+
+        /* Asegura que el contenido quede por encima del fondo */
+        .back-button-container,
+        #msform {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* --- ESTILOS DEL FORMULARIO (Mantenemos los anteriores) --- */
+        #msform {
+            width: 100%;
+            max-width: 600px;
+            margin: 40px auto; /* Un poco más de margen superior */
+            text-align: center;
+            position: relative;
+            
+            background: white; /* Importante: Fondo blanco para que el texto se lea sobre la imagen */
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); /* Sombra más fuerte para que "flote" */
+            padding: 40px; 
+            box-sizing: border-box;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2C3E50;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        #msform input, #msform textarea {
+            padding: 12px 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: montserrat;
+            color: #2C3E50;
+            font-size: 14px;
+            transition: all 0.3s;
+            background-color: #f9f9f9; /* Un gris muy suave para los inputs */
+        }
+
+        #msform input:focus, #msform textarea:focus {
+            border-color: #FF6B35;
+            background-color: #fff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.1);
+        }
+
+        #msform textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .back-button-container { 
+            max-width: 600px; 
+            margin: 25px auto 15px auto; 
+            text-align: left; 
+        }
+
+        .field-error { 
+            color: #dc3545; 
+            font-size: 0.8rem; 
+            font-weight: 600; 
+            margin-top: 2px;
+        }
+        
+        .help-text {
+            font-size: 11px;
+            color: #95a5a6;
+            margin-top: 2px;
+        }
+
+        .fs-title {
+            font-size: 20px;
+            text-transform: uppercase;
+            color: #2C3E50;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .fs-subtitle {
+            font-weight: normal;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 35px;
+        }
+        
+        .action-button {
+            width: 100%;
+            background: #FF6B35;
+            font-weight: bold;
+            color: white;
+            border: 0 none;
+            border-radius: 5px;
+            cursor: pointer;
+            padding: 12px 10px;
+            margin-top: 20px;
+            font-size: 16px;
+            text-transform: uppercase;
+            transition: background 0.3s;
+        }
+        .action-button:hover {
+            background: #e65a26;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+    <!-- 1. DIV DE FONDO (TELÓN) -->
+    <div class="page-background"></div>
+
+    <!-- 2. CONTENIDO NORMAL -->
+    <div class="back-button-container">
+        <a href="{% url 'recursoshumanos:lista_areas' %}" class="btn-secondary">
+            &larr; Volver al Listado
+        </a>
+    </div>
+
+    <form id="msform" method="post" novalidate>
+        {% csrf_token %}
+
+        <h2 class="fs-title">{{ titulo }}</h2>
+        <h3 class="fs-subtitle">Ingresa la información detallada del área.</h3>
+        
+        <div class="form-group">
+            <label for="id_codigo">Código de Área</label>
+            <input type="text" 
+                   id="id_codigo"
+                   name="{{ form.codigo.html_name }}" 
+                   value="{{ form.codigo.value|default_if_none:'' }}"
+                   placeholder="Ej: A-001">
+            
+            {% if form.codigo.errors %}
+                <div class="field-error">{{ form.codigo.errors.0 }}</div>
+            {% endif %}
+            <div class="help-text">Identificador único corto (Ej: RRHH, LOG, A-001)</div>
+        </div>
+
+        <div class="form-group">
+            <label for="id_nombre">Nombre del Área *</label>
+            <input type="text" 
+                   id="id_nombre"
+                   name="{{ form.nombre.html_name }}" 
+                   value="{{ form.nombre.value|default_if_none:'' }}" 
+                   placeholder="Ej: Recursos Humanos"
+                   required>
+            
+            {% if form.nombre.errors %}
+                <div class="field-error">{{ form.nombre.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="id_descripcion">Descripción / Funciones</label>
+            <textarea id="id_descripcion"
+                      name="{{ form.descripcion.html_name }}" 
+                      placeholder="Describe el propósito de este departamento...">{{ form.descripcion.value|default_if_none:'' }}</textarea>
+            
+            {% if form.descripcion.errors %}
+                <div class="field-error">{{ form.descripcion.errors.0 }}</div>
+            {% endif %}
+            <div class="help-text">Información opcional sobre las responsabilidades del área.</div>
+        </div>
+
+        <input type="submit" name="submit" class="submit action-button" value="Guardar Área"/>
+        
+    </form>
+
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const firstInput = document.getElementById('id_codigo');
+            if (firstInput) firstInput.focus();
+        });
+    </script>
+{% endblock %}

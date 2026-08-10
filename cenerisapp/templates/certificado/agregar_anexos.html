@@ -1,0 +1,178 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="dashboard-container modern">
+    <div class="dashboard-header-modern">
+        <h1>{{ titulo }}</h1>
+        <p>Busca un certificado por su número para ver, añadir o eliminar sus anexos.</p>
+    </div>
+
+    <!-- === FORMULARIO DE BÚSQUEDA === -->
+    <div class="info-card modern mb-4 shadow-sm">
+        <form method="GET" class="d-flex align-items-center gap-2">
+            <div class="flex-grow-1">
+                <input type="search" name="q" value="{{ query }}" class="form-control"
+                       placeholder="Ingresa el número de certificado exacto (ej. CEN2025_219)..." autofocus>
+            </div>
+            <button type="submit" class="btn btn-primary">Buscar</button>
+            <a href="{% url 'cenerisapp:agregar_anexos_certificado' %}" class="btn btn-secondary">Limpiar</a>
+        </form>
+    </div>
+
+    <!-- === SECCIÓN DE ANEXOS (Solo se muestra si se encontró un certificado) === -->
+    {% if certificado %}
+        <div class="info-card modern">
+            <h4 class="mb-3">Gestionar Anexos para Certificado: <strong class="text-primary">{{ certificado.nro_certificado }}</strong></h4>
+            <p><strong>Dispositivo:</strong> {{ certificado.dispositivo }} ({{ certificado.dispositivo.num_serie }})</p>
+
+            <form method="POST" enctype="multipart/form-data" class="mt-4">
+                {% csrf_token %}
+                <input type="hidden" name="certificado_id" value="{{ certificado.pk }}">
+
+                {{ formset.management_form }}
+                
+                {% if formset.non_form_errors %}
+                    <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+                {% endif %}
+
+                <div id="anexos-form-container">
+                    {% for anexo_form in formset %}
+                        <div class="anexo-form-row">
+                            <div class="anexo-input-wrapper">
+                                {{ anexo_form.imagen.errors }}
+                                {{ anexo_form.imagen.label_tag }}
+                                {{ anexo_form.imagen }}
+                            </div>
+                            
+                            {% if anexo_form.instance.pk %}
+                                <div class="anexo-preview-delete">
+                                    <a href="{{ anexo_form.instance.imagen.url }}" target="_blank" title="Ver anexo actual">
+                                        <img src="{{ anexo_form.instance.imagen.url }}" alt="Anexo">
+                                    </a>
+                                    <div class="form-check">
+                                        {{ anexo_form.DELETE }}
+                                        <label for="{{ anexo_form.DELETE.id_for_label }}">Eliminar</label>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="anexo-actions mt-3">
+                    <button type="button" id="add-anexo-form" class="btn btn-secondary"><i class="bi bi-plus-circle"></i> Añadir Fila</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-save"></i> Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    {% endif %}
+
+    <!-- Plantilla de formulario vacío para JavaScript -->
+    <div id="empty-form-template" style="display: none;">
+        <div class="anexo-form-row">
+            <div class="anexo-input-wrapper">
+                {{ formset.empty_form.imagen.errors }}
+                {{ formset.empty_form.imagen.label_tag }}
+                {{ formset.empty_form.imagen }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    /* Estilos ÚNICOS para esta página */
+    .anexo-form-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 1.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+    }
+
+    .anexo-input-wrapper {
+        flex-grow: 1;
+    }
+    .anexo-input-wrapper label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    .anexo-preview-delete {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-shrink: 0;
+        padding-top: 1.8rem; /* Alinea con el input de archivo */
+    }
+    .anexo-preview-delete img {
+        height: 40px;
+        width: 60px;
+        object-fit: cover;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .anexo-preview-delete .form-check {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    .anexo-preview-delete .form-check label {
+        color: #dc3545;
+        font-size: 0.9em;
+    }
+
+    .anexo-actions {
+        display: flex;
+        justify-content: space-between;
+        padding-top: 1rem;
+        border-top: 1px solid #eee;
+    }
+
+    .errorlist {
+        list-style: none;
+        padding: 0;
+        margin-top: 5px;
+        font-size: 0.85em;
+        color: #dc3545;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addButton = document.getElementById('add-anexo-form');
+    const container = document.getElementById('anexos-form-container');
+    const template = document.getElementById('empty-form-template');
+    const totalFormsInput = document.querySelector('#id_anexos-TOTAL_FORMS');
+
+    // Si no estamos en la vista de edición/creación, no hacemos nada.
+    if (!addButton || !container || !template || !totalFormsInput) {
+        return;
+    }
+
+    addButton.addEventListener('click', function() {
+        let formIdx = parseInt(totalFormsInput.value);
+        
+        // Clonamos el contenido del template
+        const newFormHtml = template.innerHTML.replace(/__prefix__/g, formIdx);
+        
+        // Creamos un nuevo div y le añadimos el HTML
+        const newFormRow = document.createElement('div');
+        newFormRow.innerHTML = newFormHtml;
+
+        // Añadimos la fila al contenedor
+        container.appendChild(newFormRow.firstChild);
+        
+        // Incrementamos el contador del management form
+        totalFormsInput.value = formIdx + 1;
+    });
+});
+</script>
+{% endblock %}

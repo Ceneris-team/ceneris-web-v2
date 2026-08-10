@@ -1,0 +1,485 @@
+{% extends 'metricas_ceneris/base.html' %}
+
+{% block content %}
+<div class="space-y-10">
+
+    <section class="relative rounded-[2rem] overflow-hidden shadow-2xl bg-slate-900 text-white">
+        <div class="absolute inset-0 bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4338ca] opacity-90"></div>
+        <div class="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-ceneris/20 to-transparent"></div>
+        
+        <div class="absolute -top-24 -right-24 w-96 h-96 bg-ceneris rounded-full blur-[80px] opacity-40"></div>
+        <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-500 rounded-full blur-[80px] opacity-40"></div>
+
+        <div class="relative z-10 p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8">
+            
+            <div class="max-w-2xl">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-ceneris-light mb-4 animate-float">
+                    <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                    VISTA GERENCIAL
+                </div>
+                <h1 class="text-4xl md:text-5xl font-display font-bold mb-4 leading-tight animate-float" style="animation-delay: 0.5s;">
+                    Panel de Rendimiento <br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-white to-indigo-200">Cascada de Liderazgo y Áreas Directas</span>
+                </h1>
+                <p class="text-indigo-200 text-lg font-light max-w-lg animate-float" style="animation-delay: 1s;">
+                    Gestiona evaluaciones por cascada jerárquica: <b class="text-white">Responsable</b> si existe, luego <b class="text-white">Supervisor</b>, y evaluación directa solo en áreas sin liderazgo activo.
+                </p>
+            </div>
+
+            <div class="relative group">
+                <div class="w-72 bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-3xl shadow-2xl relative overflow-hidden group-hover:-translate-y-2 transition-transform duration-500">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 transform -translate-x-full group-hover:animate-shine z-0"></div>
+                    
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-xs text-indigo-200 font-bold uppercase tracking-widest mb-2">Nivel de Liderazgo</p>
+                                {% if promedio_area >= 9 %}
+                                    <h3 class="text-7xl font-display font-black text-white">AD</h3>
+                                {% elif promedio_area >= 7 %}
+                                    <h3 class="text-7xl font-display font-black text-white">A</h3>
+                                {% elif promedio_area >= 5 %}
+                                    <h3 class="text-7xl font-display font-black text-white">B</h3>
+                                {% else %}
+                                    <h3 class="text-7xl font-display font-black text-white">C</h3>
+                                {% endif %}
+                            </div>
+                            <div class="w-12 h-12 bg-ceneris rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+                                <i class="ph ph-briefcase text-2xl"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-indigo-200 flex items-center gap-1 mt-6">
+                            <i class="ph ph-check-circle text-green-400"></i> {{ trabajadores|length }} líderes ({{ total_responsables_objetivo }} responsables / {{ total_supervisores_objetivo }} supervisores), {{ areas_asignadas_gerencia|length }} áreas en cascada y {{ areas_directas|length }} áreas directas
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-xl animate-float z-20 border-4 border-slate-900/50">
+                     <dotlottie-player src="https://lottie.host/6fce264f-c2a7-4615-b5f0-bf8d8b487227/IW6yyMgqEb.lottie" background="transparent" speed="1" style="width: 100%; height: 100%" loop autoplay></dotlottie-player>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {% if areas_asignadas_gerencia %}
+    <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800">Áreas con Liderazgo Activo</h2>
+                <p class="text-sm text-slate-500">Haz clic para enfocar el directorio en los líderes objetivo de esa área.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                {% if area_activa_id %}
+                <a href="?" class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200">Ver todas</a>
+                {% endif %}
+                <span class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-bold">{{ areas_asignadas_gerencia|length }} áreas</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {% for item in areas_asignadas_gerencia %}
+                <a href="?area_id={{ item.area.id }}" class="block rounded-2xl border p-4 transition-all {% if item.activa %}border-indigo-300 bg-indigo-100/70 shadow-md shadow-indigo-100{% else %}border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 hover:shadow-md{% endif %}">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                            <p class="text-[11px] uppercase tracking-wider text-indigo-500 font-bold">Cascada</p>
+                            <h3 class="text-base font-bold text-slate-800 leading-tight">{{ item.area.nombre }}</h3>
+                        </div>
+                        {% if item.nivel_cascada == 'RESPONSABLE' %}
+                        <span class="inline-flex items-center px-2 py-1 rounded-md bg-indigo-600 text-white text-[10px] font-bold">Responsable</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-1 rounded-md bg-purple-600 text-white text-[10px] font-bold">Supervisor</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="rounded-lg bg-indigo-50 border border-indigo-100 p-2 shadow-sm">
+                            <p class="text-[10px] text-indigo-500 uppercase">Líderes</p>
+                            <p class="text-sm font-bold text-indigo-700">{{ item.total_lideres_objetivo }}</p>
+                        </div>
+                        <div class="rounded-lg bg-white border border-slate-100 p-2 shadow-sm">
+                            <p class="text-[10px] text-slate-400 uppercase">Equipo</p>
+                            <p class="text-sm font-bold text-slate-800">{{ item.total_colaboradores }}</p>
+                        </div>
+                        <div class="rounded-lg bg-emerald-50 border border-emerald-100 p-2 shadow-sm">
+                            <p class="text-[10px] text-emerald-500 uppercase">Al día</p>
+                            <p class="text-sm font-bold text-emerald-700">{{ item.evaluados_mes }}</p>
+                        </div>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if areas_directas %}
+    <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800">Áreas sin Supervisor Activo</h2>
+                <p class="text-sm text-slate-500">Equipos que requieren evaluación directa de Gerencia.</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-orange-100 text-orange-700 text-xs font-bold">{{ areas_directas|length }} áreas</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {% for item in areas_directas %}
+                <a href="{% url 'metricas_ceneris:panel_area_directa_gerencia' item.area.id %}" class="block rounded-2xl border p-4 transition-all border-orange-200 bg-orange-50/50 hover:bg-orange-50 hover:shadow-md">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                            <p class="text-[11px] uppercase tracking-wider text-orange-500 font-bold">Área directa</p>
+                            <h3 class="text-base font-bold text-slate-800 leading-tight">{{ item.area.nombre }}</h3>
+                        </div>
+                        <span class="inline-flex items-center px-2 py-1 rounded-md bg-slate-900 text-white text-[10px] font-bold">Sin Supervisor</span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="rounded-lg bg-white border border-slate-100 p-2 shadow-sm">
+                            <p class="text-[10px] text-slate-400 uppercase">Equipo</p>
+                            <p class="text-sm font-bold text-slate-800">{{ item.total_colaboradores }}</p>
+                        </div>
+                        <div class="rounded-lg bg-emerald-50 border border-emerald-100 p-2 shadow-sm">
+                            <p class="text-[10px] text-emerald-500 uppercase">Al día</p>
+                            <p class="text-sm font-bold text-emerald-700">{{ item.evaluados_mes }}</p>
+                        </div>
+                        <div class="rounded-lg bg-amber-50 border border-amber-100 p-2 shadow-sm">
+                            <p class="text-[10px] text-amber-500 uppercase">Pend.</p>
+                            <p class="text-sm font-bold text-amber-700">{{ item.pendientes_mes }}</p>
+                        </div>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        
+        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-indigo-500 flex items-center animate-float">
+            <div class="p-3 rounded-full bg-indigo-100 text-indigo-600 mr-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            </div>
+            <div>
+                <p class="text-gray-500 text-sm font-medium">Promedio Directivo</p>
+                <p class="text-3xl font-bold text-gray-800">{{ promedio_area }}<small class="text-sm text-gray-400">/10</small></p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500 flex items-center animate-float" style="animation-delay: 1s;">
+            <div class="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div>
+                <p class="text-gray-500 text-sm font-medium">Evaluaciones (Mes)</p>
+                <p class="text-3xl font-bold text-gray-800">{{ total_evaluaciones }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500 flex items-center animate-float" style="animation-delay: 2s;">
+            <div class="p-3 rounded-full bg-green-100 text-green-600 mr-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+            </div>
+            <div>
+                <p class="text-gray-500 text-sm font-medium">Líder Destacado Mensual</p>
+                <p class="text-xl font-bold text-gray-800 truncate">
+                    {% if mejor_trabajador %}
+                        {{ mejor_trabajador.nombres }} {{ mejor_trabajador.apellido_paterno }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </p>
+                <p class="text-xs text-green-600 font-bold">Nota: {{ mejor_trabajador.ultima_nota }}</p>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-slate-200 pb-4">
+        <div>
+            <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                Líderes Objetivo
+                <span class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-lg font-bold">{{ trabajadores|length }}</span>
+            </h2>
+        </div>
+        <div class="flex gap-2 relative">
+            <div class="relative">
+                <button id="btnOrdenar" onclick="toggleMenu('menuOrdenar')" class="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:border-indigo-600 hover:text-indigo-600 transition-colors flex items-center gap-2 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path></svg>
+                    Ordenar
+                </button>
+                <div id="menuOrdenar" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-20">
+                    <a href="#" onclick="ordenarTrabajadores('nota_desc'); toggleMenu('menuOrdenar')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Mayor Nota</a>
+                    <a href="#" onclick="ordenarTrabajadores('nota_asc'); toggleMenu('menuOrdenar')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Menor Nota</a>
+                    <a href="#" onclick="ordenarTrabajadores('nombre_asc'); toggleMenu('menuOrdenar')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Nombre (A-Z)</a>
+                </div>
+            </div>
+
+            <div class="relative">
+                <button id="btnFiltros" onclick="toggleMenu('menuFiltros')" class="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:border-indigo-600 hover:text-indigo-600 transition-colors flex items-center gap-2 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    Filtros
+                </button>
+                <div id="menuFiltros" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-20">
+                    <a href="#" onclick="filtrarTrabajadores('todos'); toggleMenu('menuFiltros')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">Ver Todos</a>
+                    <div class="border-t border-gray-100 my-1"></div>
+                    <a href="#" onclick="filtrarTrabajadores('AD'); toggleMenu('menuFiltros')" class="block px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50">AD – Alto Desempeño (9-10)</a>
+                    <a href="#" onclick="filtrarTrabajadores('A'); toggleMenu('menuFiltros')" class="block px-4 py-2 text-sm text-green-600 hover:bg-green-50">A – Desempeño Esperado (7-8.9)</a>
+                    <a href="#" onclick="filtrarTrabajadores('B'); toggleMenu('menuFiltros')" class="block px-4 py-2 text-sm text-yellow-600 hover:bg-yellow-50">B – En Proceso de Mejora (5-6.9)</a>
+                    <a href="#" onclick="filtrarTrabajadores('C'); toggleMenu('menuFiltros')" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50">C – Desempeño Deficiente (&lt;5)</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+        <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-md sticky top-4 self-start z-10">
+            <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">Fortalezas del Equipo</h3>
+            <div class="h-64 relative">
+                <canvas id="graficoRadar"></canvas>
+            </div>
+            <div class="mt-4 space-y-1.5">
+                <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                    <span class="text-xs"><span class="font-black text-emerald-700">AD</span> <span class="text-emerald-600">Alto Desempeño</span> <span class="text-emerald-500">· 9 – 10</span></span>
+                </div>
+                <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100">
+                    <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                    <span class="text-xs"><span class="font-black text-indigo-700">A</span> <span class="text-indigo-600">Desempeño Esperado</span> <span class="text-indigo-500">· 7 – 8.9</span></span>
+                </div>
+                <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-100">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                    <span class="text-xs"><span class="font-black text-amber-700">B</span> <span class="text-amber-600">En Proceso de Mejora</span> <span class="text-amber-500">· 5 – 6.9</span></span>
+                </div>
+                <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-rose-50 border border-rose-100">
+                    <span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+                    <span class="text-xs"><span class="font-black text-rose-700">C</span> <span class="text-rose-600">Desempeño Deficiente</span> <span class="text-rose-500">· Menor a 5</span></span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="listaTrabajadores" class="lg:col-span-2 space-y-4">
+            <h3 class="font-bold text-gray-700 mb-2">Directorio de Líderes</h3>
+            {% for t in trabajadores %}
+            <div class="trabajador-card group relative bg-white rounded-[2rem] p-1 border border-slate-100 card-hover-effect"
+                data-nombre="{{ t.nombres }} {{ t.apellido_paterno }}"
+                data-nota="{{ t.ultima_nota|default:0 }}"
+                data-categoria="{% if t.ultima_nota >= 9 %}AD{% elif t.ultima_nota >= 7 %}A{% elif t.ultima_nota >= 5 %}B{% else %}C{% endif %}">
+                <div class="absolute inset-0 bg-gradient-to-br from-indigo-50 to-orange-50 rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+                <div class="relative bg-white/60 backdrop-blur-sm rounded-[1.8rem] p-6 h-full flex flex-col justify-between z-10">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center text-xl font-display font-bold text-slate-600 group-hover:bg-indigo-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-indigo-500/40 transition-all duration-300">
+                                {{ t.nombres|slice:":1"|upper }}{{ t.apellido_paterno|slice:":1"|upper }}
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-800 leading-tight group-hover:text-indigo-700 transition-colors">
+                                    {{ t.nombres|truncatewords:2 }} <br> {{ t.apellido_paterno }}
+                                </h3>
+                                <p class="text-xs font-bold text-indigo-500 mt-1 uppercase tracking-wider">{{ t.area.nombre }}</p>
+                                <span class="inline-flex items-center mt-1 px-2 py-0.5 rounded-md text-[10px] font-bold {{ t.tipo_lider_badge }}">{{ t.tipo_lider_label }}</span>
+                            </div>
+                        </div>
+                        {% if t.ultima_nota == 0 %}
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-orange-50 text-orange-600 border border-orange-100 shadow-sm">
+                                <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span> Pendiente
+                            </span>
+                        {% elif t.ultima_nota >= 9 %}
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm">
+                                <i class="ph ph-star-fill text-lg"></i> {{ t.ultima_nota }}
+                            </span>
+                        {% elif t.ultima_nota >= 7 %}
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-50 text-green-700 border border-green-200 shadow-sm">
+                                <i class="ph ph-check-circle-fill text-lg"></i> {{ t.ultima_nota }}
+                            </span>
+                        {% elif t.ultima_nota >= 5 %}
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-yellow-50 text-yellow-700 border border-yellow-200 shadow-sm">
+                                <i class="ph ph-warning-fill text-lg"></i> {{ t.ultima_nota }}
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-700 border border-red-200 shadow-sm">
+                                <i class="ph ph-x-circle-fill text-lg"></i> {{ t.ultima_nota }}
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="space-y-4 mb-8">
+                        {% if t.ultima_nota > 0 %}
+                        <div class="flex items-center justify-between bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+                            <div>
+                                <p class="text-xs text-indigo-400 font-bold uppercase">Última Evaluación</p>
+                                <p class="text-xs text-slate-500">{{ t.evaluaciones.first.fecha_evaluacion|date:"M Y" }}</p>
+                            </div>
+                            <div class="mt-1">
+                                {% if t.ultima_nota == 0 %}
+                                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-orange-50 text-orange-600 border border-orange-100 shadow-sm">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span> Pendiente
+                                    </span>
+                                {% elif t.ultima_nota >= 9 %}
+                                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm">
+                                        <i class="ph ph-star-fill text-lg"></i> AD · Alto Desempeño
+                                    </span>
+                                {% elif t.ultima_nota >= 7 %}
+                                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-50 text-green-700 border border-green-200 shadow-sm">
+                                        <i class="ph ph-check-circle-fill text-lg"></i> A · Desempeño Esperado
+                                    </span>
+                                {% elif t.ultima_nota >= 5 %}
+                                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-yellow-50 text-yellow-700 border border-yellow-200 shadow-sm">
+                                        <i class="ph ph-warning-fill text-lg"></i> B · En Proceso de Mejora
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-700 border border-red-200 shadow-sm">
+                                        <i class="ph ph-x-circle-fill text-lg"></i> C · Desempeño Deficiente
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 group-hover:border-indigo-100 transition-colors">
+                            <div class="flex justify-between text-xs text-slate-500 mb-2 font-semibold">
+                                <span>Sin evaluaciones</span>
+                            </div>
+                            <div class="flex gap-1 h-2">
+                                <div class="flex-1 bg-slate-200 rounded-full"></div>
+                                <div class="flex-1 bg-slate-200 rounded-full"></div>
+                                <div class="flex-1 bg-slate-200 rounded-full"></div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="flex gap-2 w-full mt-4">
+                        
+                        <a href="{% url 'metricas_ceneris:historial_trabajador' t.id %}" class="flex-1 flex flex-col justify-center items-center py-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 hover:text-indigo-600 transition-colors">
+                            <i class="ph ph-clock-counter-clockwise text-xl mb-0.5"></i>
+                            <span class="text-[9px] font-bold uppercase tracking-wider">Historial</span>
+                        </a>
+
+                        {% if t.hito_tipo == 'MENSUAL' %}
+                            {% if t.btn_mensual_activo %}
+                                <a href="{% url 'metricas_ceneris:evaluar_trabajador' t.id 'MENSUAL' %}" class="flex-1 group/btn flex flex-col justify-center items-center py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all hover:-translate-y-0.5">
+                                    <i class="ph ph-calendar-plus text-xl mb-0.5 group-hover/btn:scale-110 transition-transform"></i>
+                                    <span class="text-[9px] font-bold uppercase tracking-wider">Mensual</span>
+                                </a>
+                            {% else %}
+                                <div class="flex-1 flex justify-center items-center bg-green-50 text-green-600 rounded-xl font-bold text-xs gap-1 py-2">
+                                    <i class="ph-fill ph-check-circle text-lg"></i> Mes al día
+                                </div>
+                            {% endif %}
+                        {% endif %}
+
+                        {% if t.hito_tipo == 'NUEVO' %}
+                            {% if t.btn_hito_activo %}
+                                <a href="{% url 'metricas_ceneris:evaluar_trabajador' t.id 'NUEVO' %}" class="flex-1 group/btn flex flex-col justify-center items-center py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-500 shadow-md shadow-emerald-600/20 transition-all hover:-translate-y-0.5">
+                                    <i class="ph ph-user-plus text-xl mb-0.5 group-hover/btn:scale-110 transition-transform"></i>
+                                    <span class="text-[9px] font-bold uppercase tracking-wider">Ev. Nuevo</span>
+                                </a>
+                            {% else %}
+                                <div class="flex-1 flex justify-center items-center bg-green-50 text-green-600 rounded-xl font-bold text-xs gap-1 py-2">
+                                    <i class="ph-fill ph-check-circle text-lg"></i> Mes al día
+                                </div>
+                            {% endif %}
+                        {% elif t.hito_tipo == 'SEMESTRAL' %}
+                            {% if t.btn_hito_activo %}
+                                <a href="{% url 'metricas_ceneris:evaluar_trabajador' t.id 'SEMESTRAL' %}" class="flex-1 group/btn flex flex-col justify-center items-center py-2 bg-slate-900 text-white rounded-xl hover:bg-ceneris shadow-md shadow-slate-900/20 transition-all hover:-translate-y-0.5">
+                                    <i class="ph ph-star text-xl mb-0.5 group-hover/btn:scale-110 transition-transform"></i>
+                                    <span class="text-[9px] font-bold uppercase tracking-wider">Semestral</span>
+                                </a>
+                            {% else %}
+                                <div class="flex-1 flex justify-center items-center bg-green-50 text-green-600 rounded-xl font-bold text-xs gap-1 py-2">
+                                    <i class="ph-fill ph-check-circle text-lg"></i> Mes al día
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full text-center py-12">
+                <p class="text-gray-500 text-lg">No hay líderes objetivo para el filtro seleccionado.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctxRadar = document.getElementById('graficoRadar').getContext('2d');
+    const datosRadar = {{ radar_data|safe }}; 
+
+    new Chart(ctxRadar, {
+        type: 'radar',
+        data: {
+            labels: ['Operacional', 'Administrativo', 'Habilidades Blandas'],
+            datasets: [{
+                label: 'Nivel Directivo',
+                data: datosRadar,
+                fill: true,
+                backgroundColor: 'rgba(99, 102, 241, 0.2)', 
+                borderColor: 'rgb(99, 102, 241)',
+                pointBackgroundColor: 'rgb(99, 102, 241)',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: 'rgb(99, 102, 241)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    angleLines: { display: false },
+                    suggestedMin: 0,
+                    suggestedMax: 10
+                }
+            }
+        }
+    });
+
+    function toggleMenu(menuId) {
+        const menu = document.getElementById(menuId);
+        document.querySelectorAll('[id^="menu"]').forEach(m => {
+            if (m.id !== menuId) m.classList.add('hidden');
+        });
+        menu.classList.toggle('hidden');
+    }
+
+    document.addEventListener('click', function(event) {
+        const isButton = event.target.closest('button');
+        const isMenu = event.target.closest('[id^="menu"]');
+        if (!isButton && !isMenu) {
+            document.querySelectorAll('[id^="menu"]').forEach(m => m.classList.add('hidden'));
+        }
+    });
+
+    function filtrarTrabajadores(filtro) {
+        const tarjetas = document.querySelectorAll('.trabajador-card');
+        tarjetas.forEach(card => {
+            const cat = card.getAttribute('data-categoria');
+            if (filtro === 'todos' || cat === filtro) {
+                card.classList.remove('hidden'); 
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+    }
+
+    function ordenarTrabajadores(criterio) {
+        const contenedor = document.getElementById('listaTrabajadores');
+        const tarjetas = Array.from(document.querySelectorAll('.trabajador-card'));
+
+        tarjetas.sort((a, b) => {
+            const notaA = parseFloat(a.getAttribute('data-nota'));
+            const notaB = parseFloat(b.getAttribute('data-nota'));
+            const nombreA = a.getAttribute('data-nombre').toLowerCase();
+            const nombreB = b.getAttribute('data-nombre').toLowerCase();
+
+            if (criterio === 'nota_desc') return notaB - notaA;
+            if (criterio === 'nota_asc') return notaA - notaB;
+            if (criterio === 'nombre_asc') return nombreA.localeCompare(nombreB); 
+        });
+
+        const titulo = contenedor.querySelector('h3');
+        tarjetas.forEach(card => contenedor.appendChild(card));
+    }
+</script>
+{% endblock %}

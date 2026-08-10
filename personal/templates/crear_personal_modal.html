@@ -1,0 +1,74 @@
+<!-- personal/templates/personal/modals/crear_personal_modal.html -->
+<div id="add-personal-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content animate__animated animate__fadeInDown">
+        <button id="close-add-personal-modal-btn" class="modal-close-btn">&times;</button>
+        <h2>Añadir Nuevo Personal</h2>
+        
+        
+        <form id="add-personal-form" method="post" action="{% url 'personal:crear_personal' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.nombre.label_tag }}
+                    {{ form.nombre }}
+                </div>
+                <div class="form-group">
+                    {{ form.apellido.label_tag }}
+                    {{ form.apellido }}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.dni.label_tag }}
+                    {{ form.dni }}
+                </div>
+                <div class="form-group">
+                    {{ form.cargo.label_tag }}
+                    {{ form.cargo }}
+                </div>
+            </div>
+
+            <div class="form-group">
+                {{ form.area_trabajo.label_tag }}
+                {{ form.area_trabajo }}
+            </div>
+            
+            
+
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.correo.label_tag }}
+                    {{ form.correo }}
+                </div>
+                <div class="form-group">
+                    {{ form.telefono.label_tag }}
+                    {{ form.telefono }}
+                </div>
+            </div>
+            <div class="form-group">
+                {{ form.foto.label_tag }}
+                {{ form.foto }}
+            </div>
+            
+            <!-- Contenedor para mostrar errores del formulario -->
+            <div id="add-personal-errors" class="error-list">
+                {% if form.errors %}
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <p>{{ field.label }}: {{ error }}</p>
+                        {% endfor %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn-submit">Guardar Personal</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,324 @@
+{% extends 'metricas_ceneris/base.html' %}
+{% load metricas_custom_filters %}
+
+{% block content %}
+<style>
+    /* ================= FONDO (Heredado para consistencia) ================= */
+    .animated-background {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+    .orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.4; animation: float-orb 25s infinite ease-in-out alternate; }
+    .orb-1 { top: -15%; left: -15%; width: 50vw; height: 50vw; background: rgba(249, 115, 22, 0.3); }
+    .orb-2 { bottom: -20%; right: -20%; width: 60vw; height: 60vw; background: rgba(139, 92, 246, 0.3); animation-delay: -7s; }
+    .orb-3 { top: 40%; left: 30%; width: 45vw; height: 45vw; background: rgba(59, 130, 246, 0.25); animation-delay: -14s; }
+    
+    /* ================= GLASS CARDS ================= */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+        border-radius: 1.5rem; overflow: hidden; transition: transform 0.3s ease;
+    }
+    .glass-card:hover { transform: translateY(-2px); box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.15); }
+
+    /* ================= SCORE CIRCLE (SVG) ================= */
+    .score-circle-bg { fill: none; stroke: #e2e8f0; stroke-width: 8; }
+    .score-circle-progress {
+        fill: none; stroke: url(#scoreGradient); stroke-width: 8; stroke-linecap: round;
+        stroke-dasharray: 251; /* 2 * pi * r (r=40) */
+        stroke-dashoffset: 251; /* Empieza vacío */
+        animation: fillProgress 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    @keyframes fillProgress { to { stroke-dashoffset: var(--target-offset); } }
+
+    /* ================= MINI DIALS (Operacional) ================= */
+    .mini-dial-wrapper { position: relative; width: 60px; height: 30px; margin: 0 auto; }
+    .mini-dial-svg { width: 100%; height: 100%; overflow: visible; }
+    .mini-dial-bg { fill: none; stroke: #e2e8f0; stroke-width: 6; stroke-linecap: round; }
+    .mini-dial-fill {
+        fill: none; stroke: #f97316; stroke-width: 6; stroke-linecap: round;
+        stroke-dasharray: 94; stroke-dashoffset: 94;
+        animation: fillDial 1s ease-out forwards 0.5s;
+    }
+    @keyframes fillDial { to { stroke-dashoffset: var(--dial-offset); } }
+
+    /* ================= BARRAS (Administrativo) ================= */
+    .bar-container { height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 5px; width: 0; animation: fillBar 1s ease-out forwards 0.3s; }
+    @keyframes fillBar { to { width: var(--width); } }
+
+    /* ================= ESTRELLAS (Soft Skills) ================= */
+    .star-static { color: #cbd5e1; font-size: 1.2rem; }
+    .star-filled { color: transparent; background: linear-gradient(to bottom, #a855f7, #7c3aed); -webkit-background-clip: text; background-clip: text; }
+
+    /* ESTILOS DE IMPRESIÓN (Limpio para papel) */
+    @media print {
+        .animated-background, .no-print { display: none !important; }
+        .glass-card { box-shadow: none; border: 1px solid #ccc; backdrop-filter: none; background: white; }
+        body { background: white; color: black; }
+    }
+</style>
+
+<svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
+  <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#4f46e5" />
+    <stop offset="100%" stop-color="#9333ea" />
+  </linearGradient>
+</svg>
+
+<div class="animated-background">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+</div>
+
+<div class="max-w-6xl mx-auto px-4 py-10 relative z-10">
+
+    <div class="flex justify-between items-center mb-8 no-print">
+        <div class="flex items-center gap-2 text-slate-500">
+            <i class="ph ph-files text-xl"></i>
+            <span class="font-semibold tracking-wide text-sm uppercase">Reporte de Resultados</span>
+        </div>
+        <a href="javascript:history.back()" class="group flex items-center gap-2 px-5 py-2.5 bg-white/80 rounded-xl hover:bg-white hover:shadow-md transition-all text-slate-600 text-sm font-bold border border-white/50">
+            <i class="ph ph-arrow-left group-hover:-translate-x-1 transition-transform"></i> Volver
+        </a>
+    </div>
+
+    <div class="glass-card p-8 md:p-12 mb-10 relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+            
+            <!-- COLUMNA IZQUIERDA: Info del Trabajador -->
+            <div class="lg:col-span-5 flex items-center gap-6">
+                <div class="w-28 h-28 rounded-3xl bg-gradient-to-br from-slate-800 via-slate-900 to-indigo-900 text-white flex items-center justify-center text-4xl font-black shadow-2xl border-4 border-white/30 flex-shrink-0">
+                    {{ evaluacion.trabajador.nombres|slice:":1" }}{{ evaluacion.trabajador.apellido_paterno|slice:":1" }}
+                </div>
+                <div class="flex-1">
+                    <h1 class="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-none mb-2">
+                        {{ evaluacion.trabajador.nombres }}
+                    </h1>
+                    <h2 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent leading-tight mb-4">
+                        {{ evaluacion.trabajador.apellido_paterno }} {{ evaluacion.trabajador.apellido_materno }}
+                    </h2>
+                    <div class="flex flex-wrap gap-2 mb-2">
+                        <span class="px-4 py-1.5 bg-white/70 border border-slate-300 rounded-full text-xs font-bold text-slate-600 uppercase tracking-wider shadow-sm">
+                            <i class="ph ph-briefcase-metal mr-1"></i>{{ evaluacion.trabajador.area.nombre }}
+                        </span>
+                        <span class="px-4 py-1.5 bg-white/70 border border-slate-300 rounded-full text-xs font-bold text-slate-600 uppercase tracking-wider shadow-sm">
+                            <i class="ph ph-calendar-check mr-1"></i>{{ evaluacion.fecha_evaluacion|date:"F Y" }}
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm
+                            {% if evaluacion.tipo == 'SEMESTRAL' %}bg-slate-800 text-white border-transparent
+                            {% elif evaluacion.tipo == 'NUEVO' %}bg-emerald-100 text-emerald-700 border-emerald-200
+                            {% else %}bg-indigo-100 text-indigo-700 border-indigo-200{% endif %}">
+                            {% if evaluacion.tipo == 'NUEVO' %}
+                                Evaluación de Prueba
+                            {% elif evaluacion.tipo == 'SEMESTRAL' %}
+                                Evaluación Semestral
+                            {% else %}
+                                Evaluación Mensual
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMNA CENTRO: Animación Lottie -->
+            <div class="lg:col-span-3 flex items-center justify-center">
+                <div class="w-48 h-48 relative mx-auto">
+                    
+                    {% if evaluacion.promedio_final >= 9 %}
+                        <!-- Nota AD: Excelente (9-10) - TROFEO -->
+                        <dotlottie-player 
+                            src="https://lottie.host/7f839ee0-1ca4-4781-9828-af0bfcedb65e/Tm1K9KFmyw.lottie" 
+                            background="transparent" speed="1" style="width: 100%; height: 100%;" loop autoplay>
+                        </dotlottie-player>
+
+                    {% elif evaluacion.promedio_final >= 7 %}
+                        <!-- Nota A: Muy Bueno (7-8.9) - PULGAR ARRIBA -->
+                        <dotlottie-player 
+                            src="https://lottie.host/07abe19d-73bd-48a5-813c-4f661f383023/zFhtjwx2Li.lottie" 
+                            background="transparent" speed="1" style="width: 100%; height: 100%;" loop autoplay>
+                        </dotlottie-player>
+
+                    {% elif evaluacion.promedio_final >= 5 %}
+                        <!-- Nota B: Bueno (5-6.9) - PENSANDO -->
+                        <dotlottie-player 
+                            src="https://lottie.host/ac85b620-61fd-4b07-b310-72044b0877f6/mRVH4BxXyO.lottie" 
+                            background="transparent" speed="1" style="width: 100%; height: 100%;" loop autoplay>
+                        </dotlottie-player>
+
+                    {% else %}
+                        <!-- Nota C: Necesita Mejorar (0-4.9) - ALERTA -->
+                        <dotlottie-player 
+                            src="https://lottie.host/0c6c07bf-e43c-4814-b8de-759a1619fb58/6icfazf0Sw.lottie" 
+                            background="transparent" speed="1" style="width: 100%; height: 100%;" loop autoplay>
+                        </dotlottie-player>
+                    {% endif %}
+
+                    <div class="text-center mt-2 font-bold text-slate-600 text-sm">
+                        {% if evaluacion.promedio_final >= 9 %}
+                            ¡Estas en la cima!
+                        {% elif evaluacion.promedio_final >= 7 %}
+                            Ya casi estas en la cima
+                        {% elif evaluacion.promedio_final >= 5 %}
+                            Se puede mejorar
+                        {% else %}
+                            Requiere Atención Especial
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMNA DERECHA: Nota y Calificación -->
+            <div class="lg:col-span-4 flex flex-col items-center justify-center gap-4">
+                <div class="text-center mb-2">
+                    <p class="text-sm font-bold text-slate-400 uppercase tracking-widest">Nota de Desempeño</p>
+                    <p class="text-xs text-slate-400">Resultado de esta evaluación</p>
+                </div>
+                
+                <!-- Círculo de Score -->
+                <div class="relative w-36 h-36 flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90">
+                        <circle cx="72" cy="72" r="62" class="score-circle-bg" />
+                        <circle cx="72" cy="72" r="62" class="score-circle-progress" 
+                                style="--target-offset: calc(389 - ({{ evaluacion.promedio_final }} / 10 * 389));" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span class="text-4xl font-black text-slate-900">{{ evaluacion.promedio_final }}</span>
+                        <span class="text-[11px] font-bold text-slate-400 uppercase">sobre 10</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+
+        {% if 'OPERACIONAL' in grupos %}
+        <div class="glass-card p-6 border-t-4 border-t-orange-500 lg:sticky lg:top-24 self-start">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="p-2 bg-orange-100 text-orange-600 rounded-lg"><i class="ph ph-gear-six text-xl"></i></div>
+                <h3 class="font-bold text-slate-700 text-lg">Operacional</h3>
+            </div>
+            <div class="space-y-6">
+                {% for item in grupos.OPERACIONAL %}
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-semibold text-slate-600 w-2/3 leading-tight">{{ item.indicador_nombre }}</span>
+                    <div class="text-center w-1/3">
+                        <div class="mini-dial-wrapper">
+                            <svg class="mini-dial-svg" viewBox="0 0 60 30">
+                                <path class="mini-dial-bg" d="M 5,30 A 25,25 0 0,1 55,30" />
+                                <path class="mini-dial-fill" d="M 5,30 A 25,25 0 0,1 55,30" 
+                                      style="--dial-offset: calc(78 - ({{ item.nota }} / 10 * 78));" />
+                            </svg>
+                        </div>
+                        <span class="text-sm font-black text-orange-600 relative -top-2">{{ item.nota }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if 'ADMINISTRATIVO' in grupos %}
+        <div class="glass-card p-6 border-t-4 border-t-emerald-500 lg:sticky lg:top-24 self-start">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="p-2 bg-emerald-100 text-emerald-600 rounded-lg"><i class="ph ph-files text-xl"></i></div>
+                <h3 class="font-bold text-slate-700 text-lg">Administrativo</h3>
+            </div>
+            <div class="space-y-6">
+                {% for item in grupos.ADMINISTRATIVO %}
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span class="text-sm font-semibold text-slate-600">{{ item.indicador_nombre }}</span>
+                        <span class="text-sm font-bold {% if item.nota < 5 %}text-red-500{% elif item.nota < 8 %}text-amber-500{% else %}text-emerald-600{% endif %}">{{ item.nota }}</span>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-fill {% if item.nota < 5 %}bg-red-500{% elif item.nota < 8 %}bg-amber-500{% else %}bg-emerald-500{% endif %}" 
+                             style="--width: {{ item.nota }}0%;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if 'HABILIDADES' in grupos %}
+        <div class="glass-card p-6 border-t-4 border-t-purple-500">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="p-2 bg-purple-100 text-purple-600 rounded-lg"><i class="ph ph-sparkle text-xl"></i></div>
+                <h3 class="font-bold text-slate-700 text-lg">Habilidades</h3>
+            </div>
+            <div class="space-y-5">
+                {% for item in grupos.HABILIDADES %}
+                <div class="bg-purple-50/50 p-4 rounded-2xl border border-purple-100 hover:bg-purple-50 transition-colors">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-sm font-bold text-slate-700 block">{{ item.indicador_nombre }}</span>
+                        <span class="text-lg font-black text-purple-600 min-w-[2rem] text-right">{{ item.nota }}</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-1">
+                        <div class="flex gap-1 text-xl">
+                            {% for i in "0123456789" %}
+                                {% if forloop.counter <= item.nota %}
+                                    <i class="ph-fill ph-star text-purple-600"></i>
+                                {% else %}
+                                    <i class="ph-fill ph-star text-purple-200"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Etiqueta de nivel -->
+                    <div class="mt-2">
+                        {% if item.nota >= 9 %}
+                            <span class="inline-block px-2 py-0.5 bg-purple-600 text-white rounded-full text-[10px] font-bold uppercase">Excepcional</span>
+                        {% elif item.nota >= 7 %}
+                            <span class="inline-block px-2 py-0.5 bg-purple-500 text-white rounded-full text-[10px] font-bold uppercase">Sobresaliente</span>
+                        {% elif item.nota >= 5 %}
+                            <span class="inline-block px-2 py-0.5 bg-purple-400 text-white rounded-full text-[10px] font-bold uppercase">En Desarrollo</span>
+                        {% else %}
+                            <span class="inline-block px-2 py-0.5 bg-slate-400 text-white rounded-full text-[10px] font-bold uppercase">Requiere Refuerzo</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <div class="glass-card p-8 md:p-10">
+        <div class="flex flex-col md:flex-row gap-6">
+            <div class="md:w-1/4 border-r border-slate-200 pr-6">
+                <h3 class="text-xl font-bold text-slate-800 mb-2">Feedback Final</h3>
+                <p class="text-sm text-slate-400">Observaciones registradas por el evaluador.</p>
+                <div class="mt-4">
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Quién evaluó</p>
+                    <p class="text-lg font-black text-indigo-700 leading-tight mt-1">{{ nombre_evaluador }}</p>
+                    <p class="text-xs text-slate-500 mt-1">{{ cargo_evaluador }}</p>
+                </div>
+            </div>
+            <div class="md:w-3/4 relative">
+                <i class="ph ph-quotes text-6xl text-slate-200 absolute -top-4 -left-4 z-0"></i>
+                <div class="relative z-10 p-4">
+                    {% if evaluacion.comentario_general %}
+                        <p class="text-lg text-slate-600 italic leading-relaxed">
+                            "{{ evaluacion.comentario_general }}"
+                        </p>
+                    {% else %}
+                        <p class="text-slate-400 italic">Sin comentarios adicionales registrados.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

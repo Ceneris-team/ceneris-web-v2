@@ -1,0 +1,42 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="header-container">
+        <h1>{{ titulo }}</h1>
+        <a href="{% url 'cenerisapp:lista_lotes' %}" class="btn btn-secondary">Volver a Lotes</a>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre del Componente</th>
+                    <th>Cantidad en Stock</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in stock_items %}
+                <tr>
+                    <td data-label="Componente">{{ item.nomComp }}</td>
+                    <td data-label="Cantidad">{{ item.cantidad_total }}</td>
+                    <td data-label="Estado">
+                        <!-- Usamos la variable 'estado_stock' para aplicar la clase de color -->
+                        <span class="stock-status stock-{{ item.estado_stock }}">
+                            {% if item.estado_stock == 'rojo' %}Bajo
+                            {% elif item.estado_stock == 'amarillo' %}Advertencia
+                            {% else %}Óptimo
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="no-data">No hay componentes en el inventario.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

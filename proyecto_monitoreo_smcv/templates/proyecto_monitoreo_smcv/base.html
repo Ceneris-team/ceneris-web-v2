@@ -1,0 +1,325 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Panel de Gestión{% endblock %}</title>
+    <link rel="icon" href="{% static 'favicon.ico' %}">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Configuración personalizada (Tu color naranja) -->
+    <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                brand: {
+                  DEFAULT: '#EF6C00', 
+                  50: '#fff7ed',
+                  100: '#ffedd5',
+                  500: '#f97316',
+                  600: '#ea580c',
+                  700: '#c2410c',
+                  800: '#9a3412',
+                }
+              }
+            }
+          }
+        }
+    </script>
+    
+    <!-- Iconos (Usamos Heroicons SVG directamente o FontAwesome si prefieres) -->
+    <!-- Estilos Extra -->
+    <style>
+        /* Transición suave para el sidebar */
+        .sidebar-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+        .ts-control {
+            border: 1px solid #d1d5db !important; /* gris-300 */
+            border-radius: 0.375rem !important;   /* rounded-md */
+            padding: 0.5rem !important;           /* p-2 */
+            font-size: 1rem !important;
+            background-color: white !important;
+        }
+        .ts-dropdown {
+            border-color: #d1d5db !important;
+            border-radius: 0.375rem !important;
+        }
+        /* Oculta la flecha fea por defecto */
+        .ts-control::after { display: none !important; }
+
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50 flex flex-col h-screen overflow-hidden">
+
+    <!-- NAVBAR SUPERIOR (Fijo) -->
+    <nav class="bg-white border-b border-gray-200 shadow-sm z-30 w-full h-16 flex-shrink-0">
+        <div class="px-4 sm:px-6 lg:px-8 h-full">
+            <div class="flex justify-between items-center h-full">
+                
+                <!-- Izquierda: Toggle Sidebar (Mobile) + Logo -->
+                <div class="flex items-center">
+                    <!-- Botón Hamburguesa (Solo Móvil) -->
+                    <button id="mobile-menu-btn" class="lg:hidden p-2 rounded-md text-gray-500 hover:text-brand hover:bg-orange-50 focus:outline-none mr-3">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+
+                    <!-- Logo -->
+                    <div class="flex-shrink-0 flex items-center">
+                        <img src="{% static 'proyecto_monitoreo_smcv/img/logo.jpg' %}" 
+                             alt="Logo" 
+                             class="h-10 w-auto object-contain">
+                        <span class="ml-3 text-xl font-bold text-gray-800 hidden sm:block">
+                            Plataforma
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Derecha: Usuario -->
+                <div class="flex items-center">
+                    {% if user.is_authenticated %}
+                        <div class="hidden md:block mr-4 text-right">
+                            <p class="text-sm font-semibold text-gray-700">{{ user.username|title }}</p>
+                            <p class="text-xs text-gray-500">
+                                {% if user.is_superuser %}Administrador{% else %}{{ user.groups.all.0.name|default:"Usuario" }}{% endif %}
+                            </p>
+                        </div>
+                        <form action="{% url 'logout' %}" method="post">
+                            {% csrf_token %}
+                            <button title="Cerrar Sesión" class="p-2 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                            </button>
+                        </form>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="text-brand font-medium">Ingresar</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- WRAPPER PRINCIPAL (Sidebar + Contenido) -->
+    <div class="flex flex-1 overflow-hidden relative">
+        
+        <!-- SIDEBAR (Menú Lateral) -->
+        <!-- Oculto en móvil por defecto (-translate-x-full), visible en LG (translate-x-0) -->
+         {% if show_sidebar %}
+            <aside id="sidebar" class="bg-slate-800 text-white w-64 absolute inset-y-0 left-0 transform -translate-x-full lg:relative lg:translate-x-0 transition duration-200 ease-in-out z-20 flex flex-col h-full border-r border-gray-700">
+                
+                <!-- Menú Scrollable -->
+                <div class="flex-1 overflow-y-auto py-4">
+                    <nav class="space-y-1 px-2">
+                        
+                        <!-- 1. DASHBOARD -->
+                        <a href="{% url 'proyecto_monitoreo_smcv:dashboard' %}" class="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-100 hover:bg-brand-600 hover:text-white {% if request.resolver_match.url_name == 'dashboard' %}bg-brand-700{% endif %}">
+                            <!-- Icono Home -->
+                            <svg class="mr-4 h-6 w-6 text-gray-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            Dashboard
+                        </a>
+
+                        <div class="border-t border-gray-700 my-2"></div>
+                        <p class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                            Planificación Higiene
+                        </p>
+
+                        <!-- 2. PROGRAMACIÓN (Aquí conectamos con tu View y DB) -->
+                        <!-- Usamos un "Details" de HTML para hacer un desplegable nativo -->
+                        <details class="group">
+                            <summary class="flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-100 hover:bg-gray-700 cursor-pointer list-none justify-between">
+                                <div class="flex items-center">
+                                    <svg class="mr-4 h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    Programación
+                                </div>
+                                <!-- Flechita -->
+                                <svg class="h-4 w-4 transform group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </summary>
+                            <div class="pl-12 space-y-1 mt-1">
+                                <a href="{% url 'proyecto_monitoreo_smcv:importar_plan' %}" class="block px-2 py-2 text-sm text-gray-300 hover:text-white rounded-md">
+                                    1. Importaciones / Excel
+                                </a>
+                                <a href="{% url 'proyecto_monitoreo_smcv:plan_mensual_index' %}" class="block px-2 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md">
+                                    2. Programacion mensual
+                                </a>
+                                <a href="{% url 'proyecto_monitoreo_smcv:programacion_diaria_index' %}" class="block px-2 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md">
+                                    3. Programacion semanal
+                                </a>
+                                <a href="{% url 'proyecto_monitoreo_smcv:control_semanal_base' %}" class="block px-2 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md">
+                                    Control semanal
+                                </a>
+                                <a href="#" class="block px-2 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md">
+                                    Control mensual (próximamente)
+                                </a>
+                                
+                            </div>
+                        </details>
+
+                        <!-- 3. CATÁLOGOS (Para llenar tus tablas de BD) -->
+                        <details class="group mt-1">
+                            <summary class="flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-100 hover:bg-gray-700 cursor-pointer list-none justify-between">
+                                <div class="flex items-center">
+                                    <svg class="mr-4 h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                    </svg>
+                                    Catálogos (BD)
+                                </div>
+                                <svg class="h-4 w-4 transform group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </summary>
+                            <div class="pl-12 space-y-1 mt-1">
+                                <a href="{% url 'proyecto_monitoreo_smcv:lista_gerencias_generales' %}" class="block px-2 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md">Gerencias Generales</a>
+                                <a href="{% url 'proyecto_monitoreo_smcv:lista_gerencias' %}" class="block px-2 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md">Gerencias</a>
+                                <a href="{% url 'proyecto_monitoreo_smcv:lista_superintendencias' %}" class="block px-2 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md">Superintendencias</a>
+                                <a href="{% url 'proyecto_monitoreo_smcv:lista_puestos' %}" class="block px-2 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md">Puestos</a>
+                                <a href="{% url 'proyecto_monitoreo_smcv:lista_agentes' %}" class="block px-2 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md">Agentes</a>
+                                <a href="{% url 'proyecto_monitoreo_smcv:lista_trabajador' %}" class="block px-2 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md">Trabajadores</a>
+                                <a href="{% url 'proyecto_monitoreo_smcv:lista_ubicaciones' %}" class="block px-2 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md">Ubicaciones</a>
+                            </div>
+                        </details>
+
+                        <div class="border-t border-gray-700 my-2"></div>
+                        <p class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                            Otros Módulos
+                        </p>
+
+                        <!-- Módulos de tus vistas existentes -->
+                        <a href="{% url 'proyecto_monitoreo_smcv:evaluacion' %}" class="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white">
+                            <svg class="mr-4 h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Evaluación
+                        </a>
+                        
+                        <a href="{% url 'proyecto_monitoreo_smcv:capacitacion' %}" class="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white">
+                            <svg class="mr-4 h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                            Capacitación
+                        </a>
+                        
+                        <a href="{% url 'proyecto_monitoreo_smcv:soporte' %}" class="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white">
+                            <svg class="mr-4 h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Soporte Técnico
+                        </a>
+
+                    </nav>
+                </div>
+                
+                <!-- Perfil / Footer del Sidebar -->
+                <div class="border-t border-gray-700 p-4">
+                    <div class="flex items-center">
+                        <div class="ml-3">
+                            <p class="text-xs font-medium text-gray-400">Versión 1.0.0</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        {% endif %}
+
+        <!-- CONTENIDO PRINCIPAL (Scrollable independientemente) -->
+        <main class="flex-1 overflow-y-auto bg-gray-50 p-6 relative z-10">
+            
+            <!-- El overlay también debe ser condicional -->
+            {% if show_sidebar %}
+                <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-10 hidden lg:hidden"></div>
+            {% endif %}
+
+            <!-- === AQUÍ AGREGAMOS LOS MENSAJES GLOBALES === -->
+            {% if messages %}
+                <div class="container mx-auto max-w-7xl mb-6">
+                    {% for message in messages %}
+                        <div class="p-4 mb-2 rounded-lg border-l-4 shadow-sm flex justify-between items-center animate-fade-in-down
+                            {% if message.tags == 'success' %}bg-green-50 border-green-500 text-green-700
+                            {% elif message.tags == 'error' %}bg-red-50 border-red-500 text-red-700
+                            {% elif message.tags == 'warning' %}bg-yellow-50 border-yellow-500 text-yellow-700
+                            {% else %}bg-blue-50 border-blue-500 text-blue-700{% endif %}">
+                            
+                            <div class="flex items-center">
+                                {% if message.tags == 'success' %}
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                {% elif message.tags == 'error' %}
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                {% endif %}
+                                <span class="font-medium">{{ message }}</span>
+                            </div>
+                            
+                            <!-- Botón para cerrar el mensaje manualmente -->
+                            <button onclick="this.parentElement.remove()" class="text-sm font-bold opacity-50 hover:opacity-100 focus:outline-none">X</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+
+    <!-- Script para el Sidebar Móvil -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const btn = document.getElementById('mobile-menu-btn');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            // Función para abrir/cerrar
+            function toggleSidebar() {
+                if (sidebar) sidebar.classList.toggle('-translate-x-full');
+                if (overlay) overlay.classList.toggle('hidden');
+            }
+
+            // Solo agregamos el evento SI el botón existe en esta página
+            if (btn) {
+                btn.addEventListener('click', toggleSidebar);
+            }
+            
+            // Solo agregamos el evento SI el overlay existe
+            if (overlay) {
+                overlay.addEventListener('click', toggleSidebar);
+            }
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
+    <!-- 3. Inicializar el buscador -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Busca todos los selects con la clase 'tom-select-enable'
+            document.querySelectorAll('.tom-select-enable').forEach(function(el) {
+                new TomSelect(el, {
+                    create: false,        // No permitir crear nuevos items, solo seleccionar
+                    sortField: {
+                        field: "text",
+                        direction: "asc"
+                    },
+                    placeholder: 'Escribe para buscar dispositivo...',
+                    // Esto permite borrar la selección con una 'x'
+                    plugins: ['remove_button'], 
+                });
+            });
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

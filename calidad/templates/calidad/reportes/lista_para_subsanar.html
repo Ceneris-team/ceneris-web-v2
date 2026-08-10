@@ -1,0 +1,55 @@
+{% extends "dashboard/base_rrhh.html" %}
+{% block title %}EMOs que Requieren Subsanación{% endblock %}
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>EMOs que Requieren Subsanación</h1>
+            <p style="margin: 0;">La siguiente lista muestra los trabajadores cuyo último EMO necesita un documento de evidencia para levantar las observaciones.</p>
+        </div>
+        <div>
+            <!-- ¡BOTÓN DE VOLVER AÑADIDO! -->
+            <a href="{% url 'calidad:gestion_calidad' %}?view=gestion_certificados" class="btn-secondary">&larr; Volver</a>
+        </div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align: center; width: 50px;">N°</th>
+                <th>Trabajador</th>
+                <th>Aptitud</th>
+                <th>Restricción</th>
+                <th>¿Tiene Archivo? (Debug)</th> <!-- ¡COLUMNA DE DEPURACIÓN! -->
+                <th style="text-align: center;">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emo in emos %}
+            <tr class="emo-por-vencer">
+                <td style="text-align: center; font-weight: bold;">{{ forloop.counter }}</td>
+                <td>{{ emo.trabajador }}</td>
+                <td><strong>{{ emo.get_aptitud_display }}</strong></td>
+                <td>{{ emo.restriccion|default:emo.comentario|truncatewords:10 }}</td>
+                <td>
+                    {# ¡CHIVATO VISUAL! #}
+                    {% if emo.archivo_subsana %}
+                        <span style="color: green; font-weight: bold;">SÍ</span>
+                    {% else %}
+                        <span style="color: red;">NO</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: center;">
+                    {# Mostramos el botón solo si no tiene archivo #}
+                    {% if not emo.archivo_subsana %}
+                        <a href="{% url 'subir_subsana_emo' emo.id %}" class="btn-action-table">Subir Evidencia</a>
+                    {% else %}
+                        <span style="color: grey;">Ya subsanado</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <!-- ... -->
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends 'app_base.html' %}
+{% load static query_filters %} <!-- Carga nuestro tag para la paginación -->
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    
+<div class="dashboard-container modern">
+    <div class="dashboard-header-modern">
+        <h1>{{ titulo }}</h1>
+        <p>Busca y gestiona los reportes de equipos o componentes dañados/perdidos.</p>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-container" style="max-width: 900px;margin: 0 auto;">
+        <form method="GET" class="filter-form-grid">
+            <div class="form-group" style="grid-column: span 2;">
+                <label for="dispositivo">Buscar por Dispositivo o Componente</label>
+                <input type="text" name="dispositivo" id="dispositivo" value="{{ filtros_aplicados.dispositivo }}" 
+                       class="form-control" placeholder="Nombre, N/S de equipo o componente...">
+            </div>
+            <div class="form-group">
+                <label for="trabajador">Reportado Por</label>
+                <input type="text" name="trabajador" id="trabajador" value="{{ filtros_aplicados.trabajador }}" 
+                       class="form-control" placeholder="Nombre del trabajador...">
+            </div>
+            <div class="form-group">
+                <label for="fecha_desde">Desde Fecha</label>
+                <input type="date" name="fecha_desde" id="fecha_desde" value="{{ filtros_aplicados.fecha_desde }}" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="fecha_hasta">Hasta Fecha</label>
+                <input type="date" name="fecha_hasta" id="fecha_hasta" value="{{ filtros_aplicados.fecha_hasta }}" class="form-control">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" style="background-color: #d45b04;">Filtrar</button>
+                <a href="{% url 'cenerisapp:lista_reportes' %}" class="btn btn-secondary">Limpiar</a>
+            </div>
+        </form>
+    </div>
+    <div class="header-container" style="justify-content: flex-end;">
+         <a href="{% url 'cenerisapp:crear_reporte' %}" class="btn btn-primary" style="background-color: #d45b04;">Nuevo Reporte</a>
+    </div>
+
+    <!-- Grid de Tarjetas de Reporte -->
+    <div class="report-card-grid">
+        {% for reporte in page_obj %}
+            <div class="info-card modern" style="margin-bottom: 30px;">
+                <div class="card-header">
+                    <i class="bi bi-file-earmark-text card-icon"></i>
+                    <h4>Reporte #{{ reporte.id_reporte }}</h4>
+                    <span class="date">{{ reporte.fecReport|date:"d M, Y" }}</span>
+                </div>
+                <div class="report-details">
+                    <p>
+                        <strong>Afectado:</strong> 
+                        {% if reporte.id_dispositivo %}
+                            {{ reporte.id_dispositivo.nomDisp }} ({{ reporte.id_dispositivo.num_serie }})
+                        {% elif reporte.id_otro_componente %}
+                             {{ reporte.id_otro_componente.nomComp }} ({{ reporte.id_otro_componente.nSerieActual|default:"Sin N/S" }})
+                        {% endif %}
+                    </p>
+                    <p><strong>Razón:</strong> {{ reporte.razRetiro }}</p>
+                    <p><strong>Reportado por:</strong> {{ reporte.id_trabajador.nomEmpleado }}</p>
+                </div>
+                <div class="card-footer-actions">
+                    <a href="{% url 'cenerisapp:editar_reporte' reporte.id_reporte %}" class="btn btn-secondary btn-sm">Editar</a>
+                </div>
+            </div>
+        {% empty %}
+            <div class="info-card modern text-center" style="grid-column: 1 / -1;">
+                <p class="no-data">No se encontraron reportes con los filtros aplicados.</p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Paginación -->
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="Navegación de páginas" class="pagination-container">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?{% url_replace page=1 %}">&laquo; Primera</a></li>
+                    <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.previous_page_number %}">Anterior</a></li>
+                {% endif %}
+                <li class="page-item active"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.next_page_number %}">Siguiente</a></li>
+                    <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.paginator.num_pages %}">Última &raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+    
+{% endblock %}  

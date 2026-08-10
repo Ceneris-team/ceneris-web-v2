@@ -1,0 +1,85 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block title %}Historial Cambios Dosímetros{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Historial de Cambios - Dosímetros</h1>
+            <p class="text-gray-500 text-sm">Registro de mantenimiento preventivo y correctivo.</p>
+        </div>
+        
+        <!-- Botón Volver -->
+        <a href="{% url 'proyecto_monitoreo_smcv:dosimetros_view' %}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded transition border border-gray-300">
+            <i class="fas fa-arrow-left mr-2"></i> Volver a Matriz
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-hidden flex flex-col h-[70vh]">
+        <div class="overflow-auto custom-scrollbar flex-grow">
+            <table class="min-w-full">
+                <thead class="bg-gray-50 sticky top-0 z-10 border-b">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Fecha Cambio</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Equipo</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Serie</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Componente</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Próximo Cambio (Est.)</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for item in registros %}
+                    <tr class="hover:bg-blue-50 transition-colors">
+                        <!-- Fecha -->
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
+                            {{ item.fecha|date:"d/m/Y" }}
+                        </td>
+                        
+                        <!-- Equipo -->
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">
+                            {{ item.dispositivo.nombre }}
+                        </td>
+                        
+                        <!-- Serie -->
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                            {{ item.dispositivo.serie }}
+                        </td>
+                        
+                        <!-- Componente -->
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {% if item.componente == 'MICROFONO' %}
+                                <span class="px-2 py-1 rounded bg-purple-100 text-purple-800 font-semibold text-xs border border-purple-200">Micrófono</span>
+                            {% elif item.componente == 'CLIPS' %}
+                                <span class="px-2 py-1 rounded bg-yellow-100 text-yellow-800 font-semibold text-xs border border-yellow-200">Clips Sujeción</span>
+                            {% elif item.componente == 'PANTALLA' %}
+                                <span class="px-2 py-1 rounded bg-green-100 text-green-800 font-semibold text-xs border border-green-200">Pantalla Cortaviento</span>
+                            {% else %}
+                                {{ item.componente }}
+                            {% endif %}
+                        </td>
+
+                        <!-- Cálculo visual simple de +6 meses si es Pantalla -->
+                        <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                            {% if item.componente == 'PANTALLA' %}
+                                <!-- Nota: Esto es solo visual aproximado, el cálculo real está en la vista matriz -->
+                                <span class="text-red-500 font-bold">+ 6 meses</span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center py-8 text-gray-500 italic">No hay historial de cambios para dosímetros.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación Simple -->
+        <div class="bg-gray-50 px-6 py-3 border-t text-xs text-gray-500">
+            Mostrando últimos registros
+        </div>
+    </div>
+</div>
+{% endblock %}

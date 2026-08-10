@@ -1,0 +1,104 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+
+{% block title %}Nueva Verificación de Operatividad{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto py-8 px-4">
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">Nueva Verificación de Operatividad</h2>
+
+    <form method="post" enctype="multipart/form-data" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        {% csrf_token %}
+
+        <!-- 1. DATOS GENERALES -->
+        <h3 class="text-lg font-bold text-blue-600 mb-4 border-b pb-2">Datos Generales</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {% for field in form %}
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<p class="text-red-500 text-xs italic">{{ field.errors.0 }}</p>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 2. CHECKLIST (Tabla) -->
+        <h3 class="text-lg font-bold text-blue-600 mb-4 border-b pb-2">I. Verificación de Operatividad</h3>
+        <div class="overflow-x-auto mb-8">
+            <table class="min-w-full border text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 border text-left">Ítem / Pregunta</th>
+                        <th class="px-4 py-2 border text-center w-20">SI</th>
+                        <th class="px-4 py-2 border text-center w-20">NO</th>
+                        <th class="px-4 py-2 border text-center w-20">N.A</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pregunta in preguntas_lista %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 border">
+                            {{ forloop.counter }}. {{ pregunta }}
+                        </td>
+                        <!-- Usamos radios con el mismo nombre por fila para que sean excluyentes -->
+                        <td class="px-4 py-2 border text-center">
+                            <input type="radio" name="respuesta_{{ forloop.counter0 }}" value="SI" class="cursor-pointer">
+                        </td>
+                        <td class="px-4 py-2 border text-center">
+                            <input type="radio" name="respuesta_{{ forloop.counter0 }}" value="NO" class="cursor-pointer">
+                        </td>
+                        <td class="px-4 py-2 border text-center">
+                            <input type="radio" name="respuesta_{{ forloop.counter0 }}" value="N.A" class="cursor-pointer">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 3. EVIDENCIAS (Dinámico) -->
+        <h3 class="text-lg font-bold text-blue-600 mb-4 border-b pb-2">II. Evidencias Fotográficas</h3>
+        <div id="evidencias-container" class="space-y-4 mb-4">
+            <!-- Aquí se agregarán las filas con JS -->
+            <!-- Fila Inicial -->
+            <div class="flex gap-4 items-start p-4 bg-gray-50 border rounded evidencia-row">
+                <div class="w-1/3">
+                    <label class="block text-xs font-bold mb-1">Foto:</label>
+                    <input type="file" name="fotos[]" class="w-full text-sm">
+                </div>
+                <div class="w-2/3">
+                    <label class="block text-xs font-bold mb-1">Descripción (Ej: Fig. 1...):</label>
+                    <textarea name="descripciones[]" rows="2" class="w-full p-2 border rounded text-sm" placeholder="Descripción detallada de esta imagen..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <button type="button" id="add-evidence-btn" class="bg-green-500 hover:bg-green-600 text-white text-sm font-bold py-1 px-3 rounded mb-6">
+            + Agregar otra foto
+        </button>
+
+        <!-- BOTONES -->
+        <div class="flex items-center justify-end border-t pt-4">
+            <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="text-gray-600 hover:text-gray-800 font-bold mr-4">Cancelar</a>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded" type="submit">
+                Guardar Verificación
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- SCRIPT PARA AGREGAR FILAS DE FOTOS -->
+<script>
+    document.getElementById('add-evidence-btn').addEventListener('click', function() {
+        var container = document.getElementById('evidencias-container');
+        // Clonar la primera fila
+        var firstRow = container.querySelector('.evidencia-row');
+        var newRow = firstRow.cloneNode(true);
+        
+        // Limpiar los valores de los inputs clonados
+        newRow.querySelector('input').value = '';
+        newRow.querySelector('textarea').value = '';
+        
+        container.appendChild(newRow);
+    });
+</script>
+{% endblock %}

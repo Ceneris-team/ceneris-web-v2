@@ -1,0 +1,212 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Gestión de Dispositivos{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Estilos de tabla y alineación */
+    table th:last-child,
+    table td:last-child {
+        text-align: center;
+    }
+    
+    .table-actions-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Estilos para la cabecera con botones */
+    .header-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    /* Estilo sutil para filas con error de ID */
+    .row-error {
+        background-color: #fff5f5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Listado de Dispositivos</h1>
+            <p style="margin: 0;">Aquí puedes ver y gestionar los dispositivos registrados</p>
+        </div>
+        <div class="header-actions">
+            <!-- Botón VOLVER -->
+            <a href="{% url 'recursoshumanos:gestion_dispositivos_panel' %}" class="btn-secondary">
+                &larr; Volver al panel
+            </a>
+        </div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Nombre del Dispositivo</th>
+                <th>ID (Serial)</th>
+                <th>Fecha de Registro</th>
+                <th>Trabajadores</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for dispositivo in dispositivos %}
+            <tr class="{% if not dispositivo.pk %}row-error{% endif %}">
+                <!-- Nombre -->
+                <td style="font-weight: bold;">{{ dispositivo.nombre }}</td>
+                
+                <!-- ID -->
+                <td>
+                    {% if dispositivo.pk %}
+                        {{ dispositivo.pk }}
+                    {% else %}
+                        <span class="text-danger small">No registrado</span>
+                    {% endif %}
+                </td>
+                
+                <!-- Fecha -->
+                <td>{{ dispositivo.creado_en|date:"d/m/Y H:i" }}</td>
+                
+                <!-- Trabajadores (Contador) -->
+                <td>
+                    <span class="badge bg-light text-dark border">
+                        {{ dispositivo.trabajadores_permitidos.count }} asignados
+                    </span>
+                </td>
+                
+                <!-- Acciones -->
+                <td>
+                    <div class="table-actions-container">
+                        {% if dispositivo.pk %}
+                            <!-- 1. Botón EDITAR (Abre Modal) -->
+                            <!-- Pasamos la URL generada por Django y el nombre actual a la función JS -->
+                            <a href="#" 
+                               class="btn-icon-action secondary" 
+                               title="Editar Nombre"
+                               data-bs-toggle="modal" 
+                               data-bs-target="#modalEditar"
+                               onclick="setModalData('{% url 'recursoshumanos:editar_dispositivo' pk=dispositivo.pk %}', '{{ dispositivo.nombre }}')">
+                               <i data-feather="edit-2"></i>
+                            </a>
+
+                            <!-- 2. Botón ELIMINAR -->
+                            <a href="#" 
+                               class="btn-icon-action danger" 
+                               title="Eliminar Dispositivo" 
+                               onclick="confirmDelete(event, 'form-delete-{{ dispositivo.pk|slugify }}')">
+                               <i data-feather="trash-2"></i>
+                            </a>
+
+                            <!-- Formulario oculto para eliminar -->
+                            <form id="form-delete-{{ dispositivo.pk|slugify }}" 
+                                  action="{% url 'recursoshumanos:eliminar_dispositivo' pk=dispositivo.pk %}" 
+                                  method="post" 
+                                  style="display: none;">
+                                {% csrf_token %}
+                            </form>
+                        {% else %}
+                            <!-- Mensaje de error si la DB está sucia -->
+                            <span class="badge bg-danger" title="Este registro tiene el ID vacío. Bórralo desde el Admin o Shell">Error ID</span>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 30px;" class="text-muted">
+                    <i data-feather="smartphone" style="width: 40px; height: 40px; margin-bottom: 10px;"></i><br>
+                    No hay dispositivos registrados en la base de datos.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- ========================================== -->
+    <!--            VENTANA MODAL (POPUP)           -->
+    <!-- ========================================== -->
+    <div class="modal fade" id="modalEditar" tabindex="-1" aria-labelledby="modalEditarLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalEditarLabel">Editar Dispositivo</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <!-- El action se llena dinámicamente con JS -->
+                <form id="formEditarDispositivo" method="post" action="">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="inputNombreDispositivo" class="form-label">Nombre del Dispositivo</label>
+                            <input type="text" class="form-control" id="inputNombreDispositivo" name="nombre" required>
+                            <div class="form-text">Actualiza el nombre identificativo para este dispositivo.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    /**
+     * Función para configurar el Modal de Edición
+     * @param {string} url - La URL de Django a donde se enviará el formulario (ej: /editar/ID/)
+     * @param {string} nombreActual - El nombre actual del dispositivo para pre-llenar el input
+     */
+    function setModalData(url, nombreActual) {
+        // 1. Asignar la URL de acción al formulario
+        document.getElementById('formEditarDispositivo').action = url;
+        
+        // 2. Poner el nombre en el input
+        document.getElementById('inputNombreDispositivo').value = nombreActual;
+    }
+
+    /**
+     * Función para confirmar eliminación
+     */
+    function confirmDelete(event, formId) {
+        event.preventDefault(); 
+        
+        // Usamos SweetAlert si está disponible, si no, confirm normal
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "No podrás revertir esta acción",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(formId).submit();
+                }
+            })
+        } else {
+            // Fallback por si SweetAlert falla
+            if (confirm('¿Estás seguro de que deseas eliminar este dispositivo?')) {
+                document.getElementById(formId).submit();
+            }
+        }
+    }
+
+    // Reinicializar iconos Feather por si acaso
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+</script>
+{% endblock %}

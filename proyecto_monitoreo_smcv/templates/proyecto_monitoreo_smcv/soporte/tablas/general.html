@@ -1,0 +1,282 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+
+{% block title %}Inventario General - Plataforma Ceneris{% endblock %}
+
+{% block content %}
+
+
+<div class="container mx-auto px-4 py-8 max-w-full">
+    <div class="mb-4">
+        <a href="{% url 'proyecto_monitoreo_smcv:soporte_index' %}" class="inline-flex items-center text-gray-600 hover:text-blue-600 font-semibold transition-colors">
+            <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-2 shadow-sm group-hover:bg-blue-100">
+                <i class="fas fa-arrow-left text-sm"></i>
+            </div>
+            Volver al Panel
+        </a>
+    </div>
+    <!-- Encabezado y Filtros -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Inventario General de Equipos</h1>
+            <p class="text-sm text-gray-500">Vista maestra de equipos en mina y calibraciones.</p>
+        </div>
+        
+        <!-- Buscador Moderno -->
+        <div class="relative w-full md:w-96">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                <i class="fas fa-search text-gray-400"></i>
+            </span>
+            <input type="text" id="searchInput" 
+                   class="w-full py-2 pl-10 pr-4 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all shadow-sm"
+                   placeholder="Filtrar por serie, equipo, marca...">
+        </div>
+        <a href="{% url 'proyecto_monitoreo_smcv:exportar_inventario_pdf' %}" target="_blank" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow inline-flex items-center">
+            <i class="fas fa-file-pdf mr-2"></i> Exportar PDF
+        </a>
+    </div>
+
+    <!-- Contenedor de la Tabla con Scroll Horizontal -->
+    <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col h-[75vh]">
+        <div class="overflow-auto flex-grow custom-scrollbar">
+            <table class="min-w-full border-collapse" id="inventoryTable">
+                <thead class="bg-[#d4edda] text-gray-700 sticky top-0 z-10 shadow-sm"> <!-- Color verde claro estilo Excel -->
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[150px]">Código Interno</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[200px]">Equipo</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[120px]">Marca</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[120px]">Modelo</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[150px]">Serie</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[200px]">Accesorios</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[150px]">Serie Accesorio</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[150px]">Ubicación</th>
+                        <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[200px]">Estado</th>
+                        <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[120px]">Fecha de Bajada de Mina</th>
+                        <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[120px]">Fecha de Subida de Mina</th>
+                        <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[150px]">Tiempo de Retorno <br>a Proyecto</th>
+                        <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[120px]">F. Calibración</th>
+                        <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider border-b border-gray-300 min-w-[120px]">F. Prox Calib.</th>
+                        <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider border-b border-gray-300 sticky right-0 bg-[#d4edda] z-20">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for item in tabla_data %}
+                    <tr class="hover:bg-blue-50 transition-colors duration-150 group">
+                        <!-- Campos Vacíos por ahora -->
+                        <td class="px-4 py-3 text-sm text-gray-400 italic">{{ item.codigo_interno }}</td>
+                        
+                        <!-- Datos Dispositivo -->
+                        <td class="px-4 py-3 text-sm font-semibold text-gray-800">{{ item.equipo }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ item.marca }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ item.modelo }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-800 font-mono bg-gray-50 rounded px-2">{{ item.serie }}</td>
+                        
+                        <!-- Accesorios -->
+                        <td class="px-4 py-3 text-sm text-gray-600 truncate max-w-xs" title="{{ item.accesorios }}">{{ item.accesorios }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-400 italic">{{ item.serie_accesorio }}</td>
+                        <td class="px-4 py-3">
+                            <input type="text" 
+                                value="{{ item.obj.ubicacion|default_if_none:'' }}" 
+                                data-id="{{ item.obj.id }}" 
+                                data-field="ubicacion"
+                                class="editable-field w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:outline-none text-sm text-gray-700 transition-colors"
+                                placeholder="-">
+                        </td>
+                        
+                        <!-- Estado -->
+                        <td class="px-4 py-3 text-center">
+                            <div class="relative inline-block w-full">
+                                <select 
+                                    data-id="{{ item.obj.id }}" 
+                                    data-field="estado"
+                                    onchange="updateStatusColor(this)"
+                                    class="editable-field w-full appearance-none text-center text-xs font-bold py-1 px-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 transition-colors duration-300
+                                    {% if item.obj.estado == 'Operativo' %}bg-green-100 text-green-800 focus:ring-green-500
+                                    {% elif item.obj.estado == 'Inoperativo' or item.obj.estado == 'Sin Cortaviento' or item.obj.estado == 'No acepta Calibracion' %}bg-red-100 text-red-800 focus:ring-red-500
+                                    {% else %}bg-yellow-100 text-yellow-800 focus:ring-yellow-500{% endif %}">
+                                    
+                                    <option value="Operativo" {% if item.obj.estado == 'Operativo' %}selected{% endif %}>Operativo</option>
+                                    <option value="Inoperativo" {% if item.obj.estado == 'Inoperativo' %}selected{% endif %}>Inoperativo</option>
+                                    <option value="En Calibracion" {% if item.obj.estado == 'En Calibracion' %}selected{% endif %}>En Calibracion</option>
+                                    <option value="Sin Cortaviento" {% if item.obj.estado == 'Sin Cortaviento' %}selected{% endif %}>Sin Cortaviento</option>
+                                    <option value="No acepta Calibracion" {% if item.obj.estado == 'No acepta Calibracion' %}selected{% endif %}>No acepta Calibracion</option>
+                                    <option value="Mantenimiento" {% if item.obj.estado == 'Mantenimiento' %}selected{% endif %}>Mantenimiento</option>
+                                </select>
+                                
+                                <!-- Flechita invisible o sutil para indicar que es un menú (opcional) -->
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 opacity-0 hover:opacity-100">
+                                    <i class="fas fa-chevron-down text-[10px]"></i>
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- Fechas Vacías -->
+                        <td class="px-4 py-3 text-center">
+                            <input type="date" 
+                                value="{{ item.obj.fecha_bajada|date:'Y-m-d' }}" 
+                                data-id="{{ item.obj.id }}" 
+                                data-field="fecha_bajada"
+                                class="editable-field bg-transparent border border-transparent rounded hover:border-gray-300 focus:border-blue-500 focus:bg-white text-sm text-gray-600 text-center cursor-pointer">
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <input type="date" 
+                                value="{{ item.obj.fecha_subida|date:'Y-m-d' }}" 
+                                data-id="{{ item.obj.id }}" 
+                                data-field="fecha_subida"
+                                class="editable-field bg-transparent border border-transparent rounded hover:border-gray-300 focus:border-blue-500 focus:bg-white text-sm text-gray-600 text-center cursor-pointer">
+                        </td>
+                        <td class="px-4 py-3 text-center text-sm text-gray-400">{{ item.tiempo_retorno }}</td>
+                        
+                        <!-- Calibraciones -->
+                        <td class="px-4 py-3 text-center text-sm text-blue-600 font-medium">
+                            {{ item.fecha_calibracion|date:"d/m/Y"|default:"-" }}
+                        </td>
+                        <td class="px-4 py-3 text-center text-sm text-red-600 font-medium">
+                            {{ item.fecha_prox_calibracion|date:"d/m/Y"|default:"-" }}
+                        </td>
+
+                        <!-- Acciones (Sticky Right) -->
+                        <td class="px-4 py-3 text-center sticky right-0 bg-white group-hover:bg-blue-50 border-l border-gray-100 z-10">
+                            <button class="text-gray-400 hover:text-blue-600 transition-colors">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="15" class="px-4 py-8 text-center text-gray-500">
+                            No hay equipos registrados en el sistema.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Footer de la tabla -->
+        <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 text-xs text-gray-500 flex justify-between">
+            <span>Mostrando {{ tabla_data|length }} registros</span>
+            <span>Datos sincronizados en tiempo real</span>
+        </div>
+    </div>
+</div>
+
+<!-- Script de Filtrado Rápido -->
+<script>
+    function updateStatusColor(selectElement) {
+        const value = selectElement.value;
+            
+        // 1. Limpiar todas las clases de colores posibles
+        selectElement.classList.remove(
+            'bg-green-100', 'text-green-800', 'focus:ring-green-500',
+            'bg-red-100', 'text-red-800', 'focus:ring-red-500',
+            'bg-yellow-100', 'text-yellow-800', 'focus:ring-yellow-500'
+        );
+
+        // 2. Aplicar las nuevas clases según el valor seleccionado
+        if (value === 'Operativo') {
+            selectElement.classList.add('bg-green-100', 'text-green-800', 'focus:ring-green-500');
+        } else if (value === 'Inoperativo' || value === 'Sin Cortaviento' || value === 'No acepta Calibracion') {
+            selectElement.classList.add('bg-red-100', 'text-red-800', 'focus:ring-red-500');
+        } else {
+            // Para 'En Revisión', 'Stand By', etc.
+            selectElement.classList.add('bg-yellow-100', 'text-yellow-800', 'focus:ring-yellow-500');
+        }
+    }
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        // === 1. LÓGICA DEL BUSCADOR DE TABLA ===
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                const searchValue = this.value.toLowerCase();
+                const table = document.getElementById('inventoryTable');
+                const rows = table.getElementsByTagName('tr');
+
+                // Empezamos en 1 para saltar el encabezado
+                for (let i = 1; i < rows.length; i++) {
+                    const rowText = rows[i].textContent.toLowerCase();
+                    rows[i].style.display = rowText.includes(searchValue) ? "" : "none";
+                }
+            });
+        }
+
+        // === 2. LÓGICA DE EDICIÓN EN TIEMPO REAL (AJAX) ===
+        const inputs = document.querySelectorAll('.editable-field');
+
+        inputs.forEach(input => {
+            input.addEventListener('change', function() {
+                const id = this.dataset.id;
+                const field = this.dataset.field;
+                const value = this.value;
+
+                // Efecto visual de "Guardando..." (Amarillo suave)
+                this.style.backgroundColor = "#fff3cd";
+
+                fetch("{% url 'proyecto_monitoreo_smcv:api_update_device' %}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        id: id,
+                        campo: field,
+                        valor: value
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.status === 'success') {
+                        // Éxito: Verde suave momentáneo
+                        this.style.backgroundColor = "#d4edda";
+                        setTimeout(() => {
+                            this.style.backgroundColor = "transparent";
+                        }, 1000);
+                    } else {
+                        alert("Error al guardar: " + data.mensaje);
+                        this.style.backgroundColor = "#f8d7da"; // Rojo error
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    this.style.backgroundColor = "#f8d7da";
+                });
+            });
+        });
+
+        // === 3. FUNCIÓN AUXILIAR PARA CSRF TOKEN ===
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    });
+</script>
+
+<style>
+    /* Estilo para scrollbar personalizado */
+    .custom-scrollbar::-webkit-scrollbar {
+        height: 8px;
+        width: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1; 
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #c1c1c1; 
+        border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8; 
+    }
+</style>
+{% endblock %}

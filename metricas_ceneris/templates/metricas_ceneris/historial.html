@@ -1,0 +1,242 @@
+{% extends 'metricas_ceneris/base.html' %}
+
+{% block content %}
+<style>
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(25px);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+    }
+    
+    .table-row-hover {
+        transition: all 0.3s ease;
+    }
+    
+    .table-row-hover:hover {
+        background: rgba(255, 255, 255, 0.95);
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+</style>
+
+<div class="glass-panel p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-4 rounded-2xl relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-orange-500/10 to-transparent rounded-full blur-3xl -mr-16 -mt-16"></div>
+    
+    <div class="flex items-center gap-5 z-10">
+        <div class="w-16 h-16 rounded-2xl bg-ceneris text-white flex items-center justify-center text-3xl shadow-lg border-2 border-white/20">
+            <i class="ph ph-clock-counter-clockwise"></i>
+        </div>
+        <div>
+            <h2 class="text-2xl font-black text-slate-900">Historial de Evaluaciones</h2>
+            <p class="text-sm text-slate-600 font-bold mt-1">{{ trabajador.nombres }} {{ trabajador.apellido_paterno }} {{ trabajador.apellido_materno }}</p>
+        </div>
+    </div>
+    {% if request.user.trabajador.cargo_jerarquico == 'gerente' %}
+        <a href="{% url 'metricas_ceneris:panel_evaluacion_gerente' %}" class="group flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl hover:border-indigo-600 hover:text-indigo-600 transition-all shadow-sm z-10 font-bold text-sm text-slate-600">
+            <i class="ph ph-arrow-left group-hover:-translate-x-1 transition-transform"></i> Volver a Supervisión
+        </a>
+    {% elif request.user.trabajador.cargo_jerarquico == 'responsable' %}
+        <a href="{% url 'metricas_ceneris:panel_responsable' %}" class="group flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl hover:border-ceneris hover:text-ceneris transition-all shadow-sm z-10 font-bold text-sm text-slate-600">
+            <i class="ph ph-arrow-left group-hover:-translate-x-1 transition-transform"></i> Volver al Panel
+        </a>
+    {% else %}
+        <a href="{% url 'metricas_ceneris:panel_jefe' %}" class="group flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl hover:border-ceneris hover:text-ceneris transition-all shadow-sm z-10 font-bold text-sm text-slate-600">
+            <i class="ph ph-arrow-left group-hover:-translate-x-1 transition-transform"></i> Volver al Panel
+        </a>
+    {% endif %}
+</div>
+
+<div class="mb-4 flex justify-end">
+    <a href="{% url 'metricas_ceneris:evaluar_trabajador' trabajador.id 'MENSUAL' %}" class="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-100 transition-colors">
+        <i class="ph ph-calendar-plus"></i> Nueva evaluación mensual
+    </a>
+</div>
+
+<div class="glass-panel rounded-2xl overflow-hidden mb-8">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="border-b-2 border-slate-200 bg-slate-50/50">
+                    <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap" style="width: 180px;">Fecha</th>
+                    <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap" style="width: 150px;">Promedio</th>
+                    <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Comentario</th>
+                    <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap" style="width: 240px;">Quién evaluó</th>
+                    <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap" style="width: 150px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ev in evaluaciones %}
+                <tr class="table-row-hover border-b border-slate-100 last:border-0">
+                    <td class="px-4 py-4 whitespace-nowrap">
+                        <div class="flex flex-col gap-1">
+                            <div class="flex items-center gap-2">
+                                <i class="ph ph-calendar text-ceneris text-lg flex-shrink-0"></i>
+                                <span class="font-bold text-slate-700 capitalize">{{ ev.fecha_evaluacion|date:"F Y" }}</span>
+                            </div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full w-fit 
+                                {% if ev.tipo == 'SEMESTRAL' %}bg-slate-800 text-white
+                                {% elif ev.tipo == 'NUEVO' %}bg-emerald-100 text-emerald-700
+                                {% else %}bg-indigo-100 text-indigo-700{% endif %}">
+                                {% if ev.tipo == 'NUEVO' %}Evaluación de Prueba{% elif ev.tipo == 'SEMESTRAL' %}Evaluación Semestral{% else %}Evaluación Mensual{% endif %}
+                            </span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap">
+                        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-black text-sm
+                            {% if ev.promedio_final >= 8 %}bg-emerald-50 text-emerald-700 border border-emerald-200
+                            {% elif ev.promedio_final >= 5 %}bg-amber-50 text-amber-700 border border-amber-200
+                            {% else %}bg-rose-50 text-rose-700 border border-rose-200{% endif %}">
+                            <i class="ph-fill flex-shrink-0
+                                {% if ev.promedio_final >= 8 %}ph-smiley text-emerald-600
+                                {% elif ev.promedio_final >= 5 %}ph-smiley-meh text-amber-600
+                                {% else %}ph-smiley-sad text-rose-600{% endif %}"></i>
+                            <span>{{ ev.promedio_final }}/10</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-4">
+                        <p class="text-slate-600 text-sm font-medium truncate max-w-md italic">
+                            "{{ ev.comentario_general|default:"Sin comentarios" }}"
+                        </p>
+                    </td>
+                    <td class="px-4 py-4">
+                        {% if ev.evaluador %}
+                            <p class="text-sm font-extrabold text-slate-800 leading-tight">{{ ev.evaluador.nombre_completo }}</p>
+                            <p class="text-xs text-slate-500 mt-1">{{ ev.cargo_evaluador|default:ev.evaluador.cargo|default:"Sin cargo" }}</p>
+                        {% elif ev.cargo_evaluador %}
+                            <p class="text-sm font-semibold text-slate-700 leading-tight">{{ ev.cargo_evaluador }}</p>
+                            <p class="text-xs text-slate-500 mt-1">Nombre no registrado</p>
+                        {% else %}
+                            <p class="text-sm font-semibold text-slate-500">Sin registro histórico</p>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-4 text-right whitespace-nowrap">
+                        <div class="inline-flex items-center gap-2">
+                            <a href="{% url 'metricas_ceneris:detalle_evaluacion' ev.id %}" 
+                               class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-ceneris text-white font-bold text-sm hover:bg-orange-600 transition-all shadow-sm hover:shadow-md">
+                                <i class="ph ph-eye flex-shrink-0"></i> Ver Detalle
+                            </a>
+                            <a href="{% url 'metricas_ceneris:corregir_evaluacion' ev.id %}" 
+                               class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 font-bold text-sm hover:bg-indigo-100 transition-all shadow-sm hover:shadow-md">
+                                <i class="ph ph-pencil-simple-line flex-shrink-0"></i> Corregir
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-12 text-center">
+                        <div class="flex flex-col items-center justify-center text-slate-400">
+                            <i class="ph ph-file-search text-5xl mb-3 opacity-50"></i>
+                            <p class="font-bold">No hay evaluaciones registradas para este trabajador.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="glass-panel p-8 rounded-2xl">
+    <div class="flex items-center gap-3 mb-6">
+        <div class="p-2 bg-orange-100 text-ceneris rounded-lg">
+            <i class="ph ph-chart-line text-xl"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-700">Progreso Mensual</h3>
+    </div>
+    <div class="relative h-64 w-full">
+        <canvas id="graficoHistorial"></canvas>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('graficoHistorial').getContext('2d');
+    
+    // Obtenemos los datos que mandamos desde la vista de Django
+    const fechas = {{ fechas_grafica|safe }}; 
+    const notas = {{ notas_grafica|safe }};
+    
+    // Crear gradiente para las barras con colores naranja
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(249, 115, 22, 0.8)'); // Orange-500
+    gradient.addColorStop(1, 'rgba(251, 146, 60, 0.4)'); // Orange-400
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: fechas,
+            datasets: [{
+                label: 'Promedio de Evaluación',
+                data: notas,
+                backgroundColor: gradient,
+                borderColor: 'rgba(249, 115, 22, 1)',
+                borderWidth: 2,
+                borderRadius: 8,
+                hoverBackgroundColor: 'rgba(249, 115, 22, 1)',
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                    padding: 12,
+                    cornerRadius: 8,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
+                    displayColors: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 10,
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        font: {
+                            weight: 'bold',
+                            size: 12
+                        },
+                        color: '#64748b'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Puntaje (1-10)',
+                        font: {
+                            weight: 'bold',
+                            size: 13
+                        },
+                        color: '#475569'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            weight: 'bold',
+                            size: 12
+                        },
+                        color: '#64748b'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

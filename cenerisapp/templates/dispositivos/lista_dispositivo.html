@@ -1,0 +1,284 @@
+{# 1. Hereda de tu plantilla base de la aplicación #}
+{% extends 'app_base.html' %} 
+{% load ceneris_tags query_filters %}
+{# 2. Carga 'static' si necesitas imágenes específicas en esta página #}
+{% load static %}
+
+{# 3. Rellena el bloque del título #}
+{% block title %}Lista de Dispositivos - Controlador{% endblock %}
+
+{# 4. Rellena el bloque del contenido principal #}
+{% block main_content %}
+
+     
+    
+    <div class="dashboard-header-modern">
+        <h1>{{ titulo }}</h1>
+        <p>Aqui podra buscar dispositivos, ver sus certificados, registrar mantenimientos, visualizar los kardex, ver los certificados y gestionar las fotos de las bases de datos</p>
+        <div>
+            <a href="{% url 'cenerisapp:configurar_lote_certificacion' %}" class="btn btn-primary" style="background-color: #d45b04;" style="margin-right: 20px;">Iniciar Lote de Certificación</a>
+            <a href="{% url 'cenerisapp:crear_dispositivo' %}" class="btn btn-primary" style="background-color: #d45b04;">Añadir Dispositivo</a>
+        </div>
+    </div>
+
+    <div class="filter-container">
+        <form method="GET" action="" class="filter-form-grid">
+            <!-- Fila 1 de filtros -->
+            <div class="form-group">
+                <label for="modelo">Modelo</label>
+                <select name="modelo" id="modelo" class="form-select">
+                    <option value="">-- Todos los Modelos --</option>
+                    {% for modelo in opciones_modelos %}
+                        <option value="{{ modelo }}" {% if filtros_aplicados.modelo == modelo %}selected{% endif %}>{{ modelo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="serie">N° Serie</label>
+                <input type="text" name="serie" id="serie" value="{{ filtros_aplicados.serie }}" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="tag">TAG</label>
+                <input type="text" name="tag" id="tag" value="{{ filtros_aplicados.tag }}" class="form-control">
+            </div>
+            
+            <!-- Fila 2 de filtros -->
+            <div class="form-group">
+                <label for="tipo">Tipo</label>
+                <select name="tipo" id="tipo" class="form-select">
+                    <option value="">-- Todos --</option>
+                    {% for tipo in opciones_tipos %}
+                        <option value="{{ tipo }}" {% if filtros_aplicados.tipo == tipo %}selected{% endif %}>{{ tipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="estado">Estado</label>
+                <select name="estado" id="estado" class="form-select">
+                    <option value="">-- Todos --</option>
+                    {% for estado in opciones_estados %}
+                        <option value="{{ estado }}" {% if filtros_aplicados.estado == estado %}selected{% endif %}>{{ estado }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="area">Área General</label>
+                <select name="area" id="area" class="form-select">
+                    <option value="">-- Todas --</option>
+                    {% for area in opciones_areas %}
+                        <option value="{{ area }}" {% if filtros_aplicados.area == area %}selected{% endif %}>{{ area }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Botones -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" style="background-color: #d45b04;">Filtrar</button>
+                <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="btn btn-secondary">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>N/S</th>
+                    <th>TAG</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                    <th>Fabricante</th>
+                    <th>Ingreso</th>
+                    <th>Vencimiento Garantía</th>
+                    <th>Acciones</th> {# Columna para los botones #}
+                </tr>
+            </thead>
+            <tbody>
+                {% for dispositivo in page_obj %}
+                <tr>
+                    <td data-label="Nombre">{{ dispositivo.nomDisp }}</td>
+                    <td data-label="N/S">{{ dispositivo.num_serie }}</td>
+                    <td data-label="TAG">{{ dispositivo.tag }}</td>
+                    <td data-label="Tipo">{{ dispositivo.tipoDisp }}</td>
+                    <td data-label="Estado">{{ dispositivo.estadoD }}</td>
+                    <td data-label="Fabricante">{{ dispositivo.fabDisp }}</td>
+                    <td data-label="Ingreso">{{ dispositivo.fecIngreso|date:"d/m/Y" }}</td> {# Filtro para formatear fecha #}
+                    <td data-label="Vencimiento Garantía">{{ dispositivo.fecVencimientoGarantia|date:"d/m/Y" }}</td>
+                    <td data-label="Acciones">
+                        <!-- Contenedor del menú desplegable -->
+                        <div class="actions-dropdown">
+                            <!-- El botón que el usuario ve y en el que hace clic -->
+                            <button class="actions-btn">Acciones</button> <!-- O usa un ícono: <button>...</button> -->
+
+                            <!-- El menú que está oculto por defecto -->
+                            <div class="dropdown-content">
+                                <a href="{% url 'cenerisapp:editar_dispositivo' dispositivo.id_dispositivo %}">Editar Dispositivo</a>
+                                <a href="{% url 'cenerisapp:asignar_partes_a_dispositivo' dispositivo.id_dispositivo %}">Asignar Partes</a>
+                                {% if dispositivo.tipoDisp == 'Fijo' %}
+                                    <button type="button" class="btn btn-info btn-abrir-modal-informe" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#sensorSelectModal"
+                                            data-device-id="{{ dispositivo.id_dispositivo }}"
+                                            data-device-name="{{ dispositivo.nomDisp }}">
+                                        Añadir Informe
+                                    </button>
+                                {% endif %}
+                                <a href="{% url 'cenerisapp:lista_certificados_dispositivo' dispositivo.id_dispositivo %}">Ver Certificados</a>
+                                <a href="{% url 'cenerisapp:crear_mantenimiento' dispositivo.id_dispositivo %}">Registrar Mantenimiento</a>
+                                <a href="{% url 'cenerisapp:gestionar_fotos_dispositivo' dispositivo.id_dispositivo %}">Gestionar Fotos</a>
+                                {% if dispositivo.tipoDisp == 'Portatil' %}
+                                    {% if not dispositivo.cardex_revisado %}
+                                        <form action="{% url 'cenerisapp:marcar_cardex_revisado' dispositivo.id_dispositivo %}" method="post">
+                                            {% csrf_token %}
+                                            <button type="submit" style="color: red;border: none;font-weight: bold;background-color: #ddd;width: 100%;position: left;">Marcar CARDEX</button>
+                                        </form>
+                                    {% else %}
+                                        <span class="text-success">CARDEX Revisado</span>
+                                    {% endif %}
+                                    <a href="{% url 'cenerisapp:exportar_cardex_excel' dispositivo.id_dispositivo %}" style="color: rgb(42, 166, 75);">Ver CARDEX</a>
+                                {% endif %}
+                                <hr> {# Una línea divisoria #}
+                                <a href="#" class="danger-link">Eliminar</a>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="no-data">No se encontraron dispositivos con los filtros aplicados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if page_obj.has_other_pages %}
+            <nav aria-label="Navegación de páginas" class="pagination-container">
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            {# ¡LA MAGIA! Usamos el nuevo tag para establecer page=1 #}
+                            <a class="page-link" href="?{% url_replace page=1 %}">&laquo; Primera</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% url_replace page=page_obj.previous_page_number %}">Anterior</a>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item active" aria-current="page">
+                        <span class="page-link">
+                            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% url_replace page=page_obj.next_page_number %}">Siguiente</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% url_replace page=page_obj.paginator.num_pages %}">Última &raquo;</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    </div>
+
+    <!-- ============================================= -->
+<!-- ============================================= -->
+<!--     MODAL ÚNICO PARA SELECCIONAR SENSOR       -->
+<!-- ============================================= -->
+<div class="modal fade" id="sensorSelectModal" tabindex="-1" aria-labelledby="sensorSelectModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="sensorSelectModalLabel">Seleccionar Sensor</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="sensor-list-container" class="list-group">
+            <p>Cargando sensores...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Plantillas ocultas con los sensores de cada dispositivo (muy eficiente) -->
+<div style="display:none;">
+    {% for dispositivo in dispositivos %}
+        {% if dispositivo.tipoDisp == 'Fijo' %}
+            <div id="sensores-para-dispositivo-{{ dispositivo.id_dispositivo }}">
+                {% for sensor in dispositivo.sensor_set.all %}
+                    <a href="{% url 'cenerisapp:crear_informe_calibracion' sensor.id_componente %}" class="list-group-item list-group-item-action">
+                        <strong>{{ sensor.nomComp }}</strong> ({{ sensor.tipGas }})
+                        <br>
+                    </a>
+                {% endfor %}
+                
+                {# Mensaje si el dispositivo no tiene sensores #}
+                {% if not dispositivo.sensor_set.all %}
+                    <p class="no-data" style="padding: 1rem;">Este dispositivo no tiene sensores registrados.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>
+
+<style>
+    .filter-container {
+        background-color: var(--bg_color, #fff);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    .filter-form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        align-items: end;
+    }
+    .filter-form-grid .form-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        /* Esto hará que los botones se alineen con los otros campos */
+        padding-bottom: 5px; 
+        margin-top: 0;
+        padding-top: 0;
+        justify-content: flex-start;
+    }
+</style>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const sensorSelectModal = document.getElementById('sensorSelectModal');
+    
+    // Verificamos que el modal exista en la página antes de añadir el listener
+    if (sensorSelectModal) {
+        sensorSelectModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            
+            const deviceId = button.getAttribute('data-device-id');
+            const deviceName = button.getAttribute('data-device-name');
+            
+            const modalTitle = sensorSelectModal.querySelector('.modal-title');
+            modalTitle.textContent = `Seleccionar Sensor para ${deviceName}`;
+            
+            const sensorListContainer = document.getElementById('sensor-list-container');
+            const sensorTemplate = document.getElementById(`sensores-para-dispositivo-${deviceId}`);
+            
+            if (sensorTemplate) {
+                sensorListContainer.innerHTML = sensorTemplate.innerHTML;
+            } else {
+                sensorListContainer.innerHTML = '<p class="text-danger">Error: No se encontró la lista de sensores.</p>';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

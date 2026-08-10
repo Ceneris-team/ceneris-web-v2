@@ -1,0 +1,268 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Listado de Empleados{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/tabla_estados.css' %}">
+    <link rel="stylesheet" href="{% static 'css/filtros_maestros.css' %}">
+    <style>
+        .container, .container-fluid, main, .content, .content-wrapper {
+            max-width: 100% !important;
+            padding-left: 30px !important;
+            padding-right: 30px !important;
+            margin: 0 !important;
+        }
+
+        .page-header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 25px;
+            padding-top: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+
+        .header-titles h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: #0f172a;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .back-link:hover { color: #3b82f6; transform: translateX(-4px); }
+        .back-link svg { width: 18px; height: 18px; }
+
+        .status-active { color: #198754; font-weight: bold; }
+        .status-inactive { color: #dc3545; font-weight: bold; }
+        .form-filters-master { display: flex; flex-wrap: wrap; gap: 1.5rem 1rem; align-items: flex-end; }
+        .filter-group { flex: 1 1 180px; min-width: 180px; max-width: 300px; }
+        #trabajador-input { position: relative !important; opacity: 1 !important; height: auto !important; z-index: 1 !important; width: 100%; padding: 0.6rem 1rem; border: 1px solid #ced4da; border-radius: 6px; }
+        #trabajador-input:focus { border-color: #86b7fe; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); outline: none; }
+        .form-actions { display: flex; gap: 0.75rem; padding-bottom: 2px; flex-grow: 0; }
+        .form-actions .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; font-weight: 500; border-radius: 6px; white-space: nowrap; border: none; transition: background-color 0.2s ease; cursor: pointer; }
+        .form-actions .btn-primary { background-color: #d45b04; color: #ffffff; }
+        .form-actions .btn-primary:hover { background-color: #b04a03; }
+        .form-actions .btn-secondary { background-color: #6c757d; color: #ffffff; }
+        .form-actions .btn-secondary:hover { background-color: #5a6268; }
+        .form-actions i { width: 16px; height: 16px; }
+        
+        /* Estilos para las etiquetas de proyecto múltiple */
+        .badge-proyecto {
+            display: inline-block;
+            padding: 0.25em 0.6em;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #495057;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            margin-bottom: 2px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header-container">
+        <div class="header-titles">
+            <a href="{% url 'recursoshumanos:gestion_empleados' %}" class="back-link">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+                Volver al Panel
+            </a>
+            <h1>Lista de Trabajadores</h1>
+            <p style="margin: 0;">Utiliza los filtros para gestionar y consultar trabajadores de manera eficiente.</p>
+        </div>
+    </div>
+
+    <div class="master-filter-bar">
+        <form method="get" class="form-filters-master" action="{% url 'recursoshumanos:lista_trabajadores' %}">
+            <div class="filter-group" style="flex-grow: 1.5; min-width: 250px;">
+                <label for="trabajador-input">Buscar Trabajador</label>
+                <input type="text" name="search" id="trabajador-input" placeholder="Nombre, apellido o DNI..." value="{{ filtro_busqueda }}">
+            </div>
+            
+            <div class="filter-group">
+                <label for="empresa">Empresa</label>
+                <select name="empresa" id="empresa">
+                    <option value="">Todas</option>
+                    {% for empresa in opciones_empresas %}
+                        <option value="{{ empresa.pk }}" {% if filtro_activo_empresa == empresa.pk %}selected{% endif %}>{{ empresa.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="proyecto_padre">Proyecto Padre</label>
+                <select name="proyecto_padre" id="proyecto_padre">
+                    <option value="">Todos</option>
+                    {% for proy in opciones_proyectos_padre %}
+                        <option value="{{ proy.pk }}" {% if filtro_activo_proyecto_padre == proy.pk %}selected{% endif %}>{{ proy.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="subproyecto">Subproyecto</label>
+                <select name="subproyecto" id="subproyecto" {% if not filtro_activo_proyecto_padre %}disabled{% endif %}>
+                    <option value="">Todos</option>
+                    {# Este selector se llenará con JavaScript #}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="cargo">Cargo</label>
+                <select name="cargo" id="cargo">
+                    <option value="">Todos</option>
+                    {% for cargo in opciones_cargos %}
+                        <option value="{{ cargo.pk }}" {% if filtro_activo_cargo == cargo.pk %}selected{% endif %}>{{ cargo.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="estado">Estado</label>
+                <select name="estado" id="estado">
+                    <option value="">Todos</option>
+                    <option value="activo" {% if filtro_activo_estado == 'activo' %}selected{% endif %}>Activo</option>
+                    <option value="inactivo" {% if filtro_activo_estado == 'inactivo' %}selected{% endif %}>Inactivo</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary"><i data-feather="filter"></i><span>Buscar</span></button>
+                <a href="{% url 'recursoshumanos:lista_trabajadores' %}" class="btn btn-secondary"><i data-feather="refresh-cw"></i><span>Limpiar</span></a>
+            </div>
+        </form>
+    </div>
+
+    <table style="margin-top: 2rem;">
+        <thead>
+            <tr>
+                <th>DNI</th>
+                <th>Nombre Completo</th>
+                <th colspan="2">Asignaciones Activas</th>
+                <th>Estado</th>
+                <th>Dispositivo Vinculado</th>
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+                <tbody>
+                    {% for trabajador in trabajadores %}
+                    <tr>
+                        <td>{{ trabajador.dni }}</td>
+                        <td>{{ trabajador }}</td>
+                        
+                        <td colspan="2"> 
+                            {% for asignacion in trabajador.asignaciones.all %}
+                                <div style="padding: 4px 0; border-bottom: 1px solid #e9ecef; line-height: 1.2;">
+                                    <span style="font-weight: bold; font-size: 0.9em; color: #495057;">
+                                        {{ asignacion.proyecto.nombre }}
+                                    </span>
+                                    <br>
+                                    <span style="font-size: 0.8em; color: #d45b04;">
+                                        {{ asignacion.cargo.nombre|default:"Sin Cargo" }}
+                                    </span>
+                                </div>
+                            {% empty %}
+                                <span class="text-muted">--</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if trabajador.activo %}
+                                <span class="status-active">✔ Activo</span>
+                            {% else %}
+                                <span class="status-inactive">✖ Inactivo</span>
+                            {% endif %}
+                        </td>
+                        
+                        {% with fs_data=firestore_data|get_item:trabajador.dni %}
+                            <td>{{ fs_data.deviceIdVinculado|default:"No vinculado"|truncatechars:15 }}</td>
+                        {% endwith %}
+
+                        <td style="text-align: center;">
+                            <div class="table-actions-container">
+                                <a href="{% url 'calidad:buscar_trabajador_info' %}?dni={{ trabajador.dni }}" class="btn-icon-action view" title="Ver Info"><i data-feather="user"></i></a>
+                                <a href="{% url 'recursoshumanos:gestionar_permisos' pk=trabajador.pk %}" class="btn-icon-action secondary" title="Permisos de Asistencia"><i data-feather="map-pin"></i></a>
+                                <a href="{% url 'recursoshumanos:editar_trabajador' pk=trabajador.pk %}?next={% url 'recursoshumanos:lista_trabajadores' %}" class="btn-icon-action secondary" title="Editar Info Maestra"><i data-feather="edit-2"></i></a>
+                                <form action="{% url 'recursoshumanos:eliminar_trabajador' pk=trabajador.pk %}" method="post" onsubmit="return confirm('¿Estás seguro de que deseas eliminar a este trabajador? Esta acción no se puede deshacer.');" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-icon-action reject" title="Eliminar Trabajador">
+                                        <i data-feather="trash-2"></i>
+                                    </button>
+                                </form>
+                                {% with fs_data=firestore_data|get_item:trabajador.pk|stringformat:"s" %}
+                                    {% if fs_data.deviceIdVinculado %}
+                                        <form action="{% url 'recursoshumanos:lista_trabajadores' %}" method="post" onsubmit="return confirm('¿Seguro que quieres desvincular el dispositivo?');" style="display: inline;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="desvincular_pk" value="{{ trabajador.pk }}">
+                                            <button type="submit" class="btn-icon-action reject" title="Desvincular"><i data-feather="zap-off"></i></button>
+                                        </form>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align: center;">No se encontraron trabajadores con los filtros aplicados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+    </table>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const proyectoPadreSelect = document.getElementById('proyecto_padre');
+    const subproyectoSelect = document.getElementById('subproyecto');
+    // Usamos 'default:"{}"' para evitar error si la variable es None
+    const subproyectosMap = {{ subproyectos_map_json|default:"{}"|safe }};
+    
+    function updateSubproyectos() {
+        const padreId = proyectoPadreSelect.value;
+        subproyectoSelect.innerHTML = '<option value="">Todos</option>';
+        
+        if (padreId && subproyectosMap[padreId]) {
+            subproyectoSelect.disabled = false;
+            subproyectosMap[padreId].forEach(function(sub) {
+                const option = document.createElement('option');
+                option.value = sub.id;
+                option.textContent = `${sub.nombre} (${sub.codigo})`;
+                subproyectoSelect.appendChild(option);
+            });
+        } else {
+            subproyectoSelect.disabled = true;
+        }
+    }
+    
+    if (proyectoPadreSelect) {
+        proyectoPadreSelect.addEventListener('change', updateSubproyectos);
+        
+        const subproyectoSeleccionado = "{{ filtro_activo_subproyecto|default:'' }}";
+        
+        // Ejecutamos la función al cargar la página
+        updateSubproyectos(); 
+        
+        if (subproyectoSeleccionado) {
+            subproyectoSelect.value = subproyectoSeleccionado;
+        }
+    }
+});
+</script>
+{% endblock %}

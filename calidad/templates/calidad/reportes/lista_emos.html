@@ -1,0 +1,77 @@
+<!-- calidad/templates/calidad/lista_emos.html -->
+{% extends "dashboard/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{# --- BLOQUE CLAVE PARA CARGAR NUESTRO CSS AISLADO --- #}
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/tabla_estados.css' %}">
+{% endblock %}
+
+{% block content %}
+    
+    <div class="page-header">
+        <div>
+            <h1>Estado actual de Vigencia de EMOs</h1>
+            <p style="margin: 0;">Esta lista muestra el estado del último examen médico registrado para cada trabajador. Usa los botones para filtrar la vista.</p>
+        </div>
+        <div>
+             <a href="{% url 'gestion_calidad' %}?view=filtro_emos" class="btn-secondary">&larr; Volver</a>
+        </div>
+    </div>
+    <!-- Barra de Filtros -->
+    <div class="filter-buttons">
+        <a href="{% url 'lista_emos' %}" class="legend-item {% if not filtro_activo %}active{% endif %}">Todos</a>
+        <a href="?filtro_estado=vigente" class="legend-item legend-vigente {% if filtro_activo == 'vigente' %}active{% endif %}">Vigente</a>
+        <a href="?filtro_estado=por_vencer" class="legend-item legend-por-vencer {% if filtro_activo == 'por_vencer' %}active{% endif %}">Por Vencer</a>
+        <a href="?filtro_estado=vencido" class="legend-item legend-vencido {% if filtro_activo == 'vencido' %}active{% endif %}">Vencido</a>
+        <a href="?filtro_estado=programado" class="legend-item legend-programado {% if filtro_activo == 'programado' %}active{% endif %}">Programado</a>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align: center; width: 50px;">N°</th>
+                <th>Trabajador</th>
+                <th>Empresa</th>
+                <th>Tipo de EMO</th>
+                <th>Aptitud</th>
+                <th>Fecha de Vencimiento</th>
+                <th>Estado Actual</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emo in emos %}
+                <tr class="
+                    {% if emo.estado == 'Programado' %}emo-programado{% endif %}
+                    {% if emo.esta_vencido %}emo-vencido{% endif %}
+                    {% if emo.esta_por_vencer %}emo-por-vencer{% endif %}
+                    {% if emo.esta_vigente %}emo-vigente{% endif %}
+                ">
+                    <td style="text-align: center; font-weight: bold;">{{ forloop.counter }}</td>
+                    <td>{{ emo.trabajador }}</td>
+                    <td>{{ emo.empresa.nombre|default:"--" }}</td>
+                    <td>{{ emo.tipo_emo|default:"N/A" }}</td>
+                    <td>{{ emo.get_aptitud_display }}</td>
+                    <td>{{ emo.fecha_vencimiento|date:"d/m/Y"|default:"--" }}</td>
+                    <td>
+                        {% if emo.estado == 'Programado' %}Programado{% endif %}
+                        {% if emo.esta_vencido %}Vencido{% endif %}
+                        {% if emo.esta_por_vencer %}Por Vencer{% endif %}
+                        {% if emo.esta_vigente %}Vigente{% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'buscar_trabajador_info' %}?dni={{ emo.trabajador.dni }}" class="link-action-table">Ver Historial</a>
+                
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center;">No hay EMOs que coincidan con el filtro seleccionado.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="header-container">
+        <h1>{{ titulo }}</h1>
+        <a href="{% url 'cenerisapp:crear_area' %}" class="btn btn-primary">Nueva Área de Trabajo</a>
+        <a href="{% url 'cenerisapp:tecnicos_indice' %}" class="btn btn-secondary">Volver al Índice</a>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre del Área</th>
+                    <th>Ubicación</th>
+                    <th>Mina</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for area in areas %}
+                    <tr>
+                        <td>{{ area.nombreA }}</td>
+                        <td>{{ area.ubicacionA }}</td>
+                        <td>{{ area.tipoArea }}</td>
+                        <td data-label="Acciones">
+                            <div class="action-buttons">
+                                <a href="{% url 'cenerisapp:editar_area' area.id %}" class="btn btn-secondary">Editar</a>
+                                <a href="{% url 'cenerisapp:eliminar_area' area.id %}" class="btn btn-danger">Eliminar</a>
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="no-data">No hay áreas de trabajo registradas.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

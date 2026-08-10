@@ -1,0 +1,335 @@
+<!-- en templates/certificado/seleccionar_dispositivos_lote.html -->
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="dashboard-container modern">
+    <div class="dashboard-header-modern">
+        <h1>{{ titulo }}</h1>
+        <p>Seleccione todos los dispositivos que fueron calibrados con estos datos de lote.</p>
+    </div>
+
+    <div class="filter-container" style="margin-bottom: 2rem;">
+        <form method="GET" class="filter-form-grid" style="grid-template-columns: 1fr auto;">
+            <div class="form-group">
+                <label for="q">Buscar Dispositivo</label>
+                <input type="text" name="q" id="q" value="{{ query }}" class="form-control" placeholder="Nombre o N° de Serie...">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Buscar</button>
+                <a href="{% url 'cenerisapp:seleccionar_dispositivos_lote' %}" class="btn btn-secondary">Limpiar</a>
+            </div>
+        </form>
+    </div>
+    
+    <div class="info-card modern">
+        <form method="POST" id="dispositivos-lote-form" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <input type="hidden" name="todos_los_seleccionados" id="todos-los-seleccionados-input">
+
+
+            <div class="info-card modern mb-4">
+                <div class="form-group">
+                    <label for="programa-select">Asociar a Programa:</label>
+                    <select name="programa" id="programa-select" class="form-select">
+                        <option value="">-- Ninguno --</option>
+                        {% for prog in programas %}
+                        <option value="{{ prog.pk }}">{{ prog }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Anexos para TODO el lote:</label>
+                    
+                    <!-- Este input oculto contendrá la lista de paths de los archivos ya subidos -->
+                    <input type="hidden" name="anexos_paths" id="anexos-paths-input">
+
+                    <div id="anexos-form-container">
+                        <!-- Fila inicial -->
+                        <div class="anexo-form">
+                            <input type="file" class="anexo-file-input">
+                            <span class="anexo-status"></span>
+                            <button type="button" class="remove-anexo-button" style="display:none;">×</button>
+                        </div>
+                    </div>
+                    <button type="button" id="add-anexo-form" class="btn btn-secondary btn-sm mt-2">Añadir Otro Anexo</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all"></th>
+                            <th>Dispositivo</th>
+                            <th>N° Serie</th>
+                            <th>Área General</th>
+                            <th>N° de Certificado (Individual)</th>
+                            <th>Estado Final</th>
+                            <th>Versión</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dispositivo in dispositivos %}
+                        <tr>
+                            <td><input type="checkbox" class="dispositivo-checkbox" value="{{ dispositivo.pk }}"></td>
+                            <td>{{ dispositivo.nomDisp }}</td>
+                            <td>{{ dispositivo.num_serie }}</td>
+                            <td>{{ dispositivo.area_general }}</td>
+                            <td>
+                                <!-- Añadimos data-id y data-field -->
+                                <input type="text" name="nro_certificado_D{{ dispositivo.pk }}" 
+                                    class="form-control form-control-sm dispositivo-input"
+                                    data-id="{{ dispositivo.pk }}" data-field="nro_certificado">
+                            </td>
+                            <td>
+                                <select name="estado_final_D{{ dispositivo.pk }}"
+                                        class="form-select form-select-sm dispositivo-input"
+                                        data-id="{{ dispositivo.pk }}" data-field="estado_final">
+                                    <option value="Calibrado">Operativo</option>
+                                    <option value="Ajustado">No Operativo</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="version_D{{ dispositivo.pk }}" 
+                                        class="form-select form-select-sm dispositivo-input"
+                                        data-id="{{ dispositivo.pk }}" data-field="version">
+                                    <option value="01" selected>01</option>
+                                    <option value="02">02</option>
+                                    <option value="03">03</option>
+                                </select>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="no-data">
+                                No se encontraron dispositivos {% if query %}para la búsqueda "{{ query }}"{% endif %}.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-actions mt-3" style="justify-content: flex-end;">
+                <a href="{% url 'cenerisapp:configurar_lote_certificacion' %}" class="btn btn-secondary">Volver al Paso 1</a>
+                <button type="submit" class="btn btn-primary">Generar Certificados Seleccionados</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div id="empty-form-template" style="display:none;" class="anexo-form">...</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('dispositivos-lote-form');
+    if (!form) return;
+
+    // --- MANEJO DE SELECCIONES Y DATOS ---
+    const seleccionadosInput = document.getElementById('todos-los-seleccionados-input');
+    const checkboxes = document.querySelectorAll('.dispositivo-checkbox');
+    const dataInputs = document.querySelectorAll('.dispositivo-input');
+    const programaSelect = document.getElementById('programa-select');
+
+    // Cargamos tanto los IDs seleccionados como los datos de los inputs desde sessionStorage
+    let seleccionadosSet = new Set(JSON.parse(sessionStorage.getItem('loteDispositivosSeleccionados')) || []);
+    let datosInputs = JSON.parse(sessionStorage.getItem('loteDispositivosData')) || {};
+    let programaSeleccionado = sessionStorage.getItem('loteProgramaSeleccionado') || '';
+
+    // --- Funciones de guardado ---
+    const guardarSeleccion = () => {
+        sessionStorage.setItem('loteDispositivosSeleccionados', JSON.stringify(Array.from(seleccionadosSet)));
+        seleccionadosInput.value = Array.from(seleccionadosSet).join(',');
+    };
+
+    const guardarDatosInputs = () => {
+        sessionStorage.setItem('loteDispositivosData', JSON.stringify(datosInputs));
+    };
+
+    const guardarPrograma = () => { // <-- NUEVO
+        if (programaSelect) {
+            sessionStorage.setItem('loteProgramaSeleccionado', programaSelect.value);
+        }
+    };
+
+    // --- Lógica para checkboxes ---
+    checkboxes.forEach(checkbox => {
+        // Restaurar estado al cargar
+        checkbox.checked = seleccionadosSet.has(checkbox.value);
+
+        // Listener de cambio
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                seleccionadosSet.add(this.value);
+            } else {
+                seleccionadosSet.delete(this.value);
+            }
+            guardarSeleccion();
+        });
+    });
+
+    // --- Lógica para inputs de datos ---
+    dataInputs.forEach(input => {
+        const deviceId = input.dataset.id;
+        const fieldName = input.dataset.field;
+
+        // Restaurar valor al cargar la página
+        if (datosInputs[deviceId] && datosInputs[deviceId][fieldName]) {
+            input.value = datosInputs[deviceId][fieldName];
+        }
+
+        // Listener de cambio para guardar el nuevo valor
+        input.addEventListener('change', function() {
+            // Asegurarse de que el objeto para este ID exista
+            if (!datosInputs[deviceId]) {
+                datosInputs[deviceId] = {};
+            }
+            datosInputs[deviceId][fieldName] = this.value;
+            guardarDatosInputs();
+        });
+    });
+
+    if (programaSelect) {
+        // Restaurar valor al cargar la página
+        programaSelect.value = programaSeleccionado;
+
+        // Listener de cambio para guardar el nuevo valor
+        programaSelect.addEventListener('change', function() {
+            guardarPrograma();
+        });
+    }
+
+    // --- Lógica para "Seleccionar Todo" (simplificada) ---
+    const selectAllCheckbox = document.getElementById('select-all');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            checkboxes.forEach(cb => {
+                cb.checked = this.checked; // Solo actualiza el estado visual
+                // Dispara el evento 'change' para que se ejecute la lógica de guardado individual
+                cb.dispatchEvent(new Event('change'));
+            });
+        });
+    }
+
+    // --- Limpieza al enviar el formulario ---
+    form.addEventListener('submit', function(event) {
+        
+        // 1. Aseguramos que el input principal de IDs esté actualizado
+        seleccionadosInput.value = Array.from(seleccionadosSet).join(',');
+
+        // 2. Iteramos sobre TODOS los datos guardados en nuestro objeto JS
+        for (const deviceId in datosInputs) {
+            // Solo nos interesan los datos de los dispositivos que están realmente seleccionados
+            if (seleccionadosSet.has(deviceId)) {
+                
+                const deviceData = datosInputs[deviceId];
+                for (const fieldName in deviceData) {
+                    const value = deviceData[fieldName];
+                    const inputName = `${fieldName}_D${deviceId}`;
+                    
+                    // Buscamos si ya existe un input (visible o no) para este dato
+                    let hiddenInput = form.querySelector(`input[name="${inputName}"], select[name="${inputName}"]`);
+                    
+                    if (!hiddenInput) {
+                        // Si el input NO existe (porque el dispositivo no está visible), lo creamos
+                        console.log(`Creando input oculto para ${inputName} con valor ${value}`);
+                        hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = inputName;
+                        form.appendChild(hiddenInput);
+                    }
+                    
+                    // Asignamos el valor guardado al input (sea visible u oculto)
+                    hiddenInput.value = value;
+                }
+            }
+        }
+
+        // 3. Limpiamos sessionStorage para la próxima vez
+        sessionStorage.removeItem('loteDispositivosSeleccionados');
+        sessionStorage.removeItem('loteDispositivosData');
+        sessionStorage.removeItem('loteProgramaSeleccionado');
+        
+        // No necesitamos 'event.preventDefault()', dejamos que el formulario se envíe normalmente
+    });
+
+    // Sincronizar el input oculto al cargar la página por primera vez
+    seleccionadosInput.value = Array.from(seleccionadosSet).join(',');
+
+    const anexosContainer = document.getElementById('anexos-form-container');
+    const addAnexoButton = document.getElementById('add-anexo-form');
+    const anexosPathsInput = document.getElementById('anexos-paths-input');
+    const uploadUrl = "{% url 'cenerisapp:upload_anexo_temporal' %}";
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    let anexoPaths = JSON.parse(sessionStorage.getItem('loteAnexosPaths')) || [];
+
+    const actualizarAnexosInput = () => {
+        anexosPathsInput.value = anexoPaths.join(',');
+        sessionStorage.setItem('loteAnexosPaths', JSON.stringify(anexoPaths));
+    };
+
+    const handleFileUpload = (fileInput, statusSpan) => {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        statusSpan.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Cargando...';
+        fileInput.disabled = true;
+
+        const formData = new FormData();
+        formData.append('imagen', file);
+
+        fetch(uploadUrl, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                statusSpan.textContent = `✅ ${file.name} subido.`;
+                statusSpan.style.color = 'green';
+                
+                // Añadimos el path a nuestra lista
+                anexoPaths.push(data.path);
+                actualizarAnexosInput();
+            } else {
+                throw new Error(data.message);
+            }
+        })
+        .catch(error => {
+            statusSpan.textContent = `❌ Error: ${error.message}`;
+            statusSpan.style.color = 'red';
+            fileInput.disabled = false;
+        });
+    };
+    
+    const setupAnexoRow = (row) => {
+        const fileInput = row.querySelector('.anexo-file-input');
+        const statusSpan = row.querySelector('.anexo-status');
+        fileInput.addEventListener('change', () => handleFileUpload(fileInput, statusSpan));
+    };
+    
+    // Configurar la primera fila
+    setupAnexoRow(anexosContainer.querySelector('.anexo-form'));
+    
+    // Botón para añadir más filas
+    addAnexoButton.addEventListener('click', () => {
+        const newRow = anexosContainer.children[0].cloneNode(true);
+        newRow.querySelector('.anexo-file-input').value = '';
+        newRow.querySelector('.anexo-status').innerHTML = '';
+        setupAnexoRow(newRow);
+        anexosContainer.appendChild(newRow);
+    });
+    
+    // Al cargar la página, llenamos el input oculto
+    actualizarAnexosInput();
+    
+    // Al enviar el formulario, limpiamos el sessionStorage
+    form.addEventListener('submit', function() {
+        sessionStorage.removeItem('loteAnexosPaths');
+    });
+});
+</script>
+{% endblock %}

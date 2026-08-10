@@ -1,0 +1,522 @@
+{% load static %}
+{% load custom_filters_rrhh %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="{% static 'favicon.ico' %}">
+    <title>{% block title %}Panel de Control{% endblock %}</title>
+    
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/sidebar.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <style>
+        /* ================================================= */
+        /*        SIDEBAR INTEGRAL - CORRECCIÓN EXPANSIÓN    */
+        /* ================================================= */
+
+        /* 1. ESTRUCTURA PRINCIPAL */
+        #sidebar {
+            /* TAMAÑO BASE (CERRADO) */
+            width: 80px !important;
+            min-width: 80px !important;
+            max-width: 80px !important; /* Mantiene el sidebar angosto cuando no hay mouse */
+            
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            border-right: 1px solid #e0e0e0;
+            
+            /* ANIMACIÓN */
+            transition: width 0.3s ease, min-width 0.3s ease, max-width 0.3s ease;
+            z-index: 1050;
+            
+            /* FLEXBOX INTERNO */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden; /* Oculta barras de scroll feas durante la animación */
+            
+            /* --- IMPORTANTE: ESTO EVITA QUE EL CONTENIDO LO APLASTE --- */
+            flex-shrink: 0; 
+        }
+
+        /* 2. AL PASAR EL MOUSE (HOVER) - FORZAMOS LA EXPANSIÓN */
+        #sidebar:hover {
+            /* --- IMPORTANTE: ROMPEMOS TODOS LOS LÍMITES --- */
+            width: 280px !important;
+            min-width: 280px !important;
+            max-width: 280px !important; /* Sobrescribimos el límite de 80px */
+        }
+
+        /* 3. CABECERA (LOGO + TÍTULO) */
+        .sidebar-header {
+            padding: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding-left: 20px; 
+            min-height: 80px;
+            white-space: nowrap;
+            border-bottom: 1px solid #f0f0f0;
+            overflow: hidden; /* Asegura que el título no se vea cuando está cerrado */
+        }
+
+        .sidebar-header img {
+            width: 40px !important;
+            min-width: 40px !important; /* Evita que el logo se aplaste */
+            height: auto;
+            display: block;
+            margin-right: 15px;
+        }
+
+        /* Título */
+        .sidebar-title {
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+            /* Asegura que el texto no ocupe espacio cuando está cerrado */
+            position: absolute; 
+            left: 80px; 
+        }
+        
+        /* Cuando se abre, mostramos el título */
+        #sidebar:hover .sidebar-title {
+            opacity: 1;
+            transform: translateX(0);
+            position: static; /* Vuelve a su flujo normal */
+            transition-delay: 0.1s;
+        }
+
+        .sidebar-title span { font-weight: 700; font-size: 18px; color: #333; }
+        .sidebar-title small { font-size: 10px; color: #888; }
+
+        /* 4. MENÚ SCROLLABLE */
+        .sidebar-menu {
+            flex-grow: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-top: 10px;
+            width: 100%; /* Ocupa todo el ancho disponible */
+        }
+        
+        .sidebar-menu::-webkit-scrollbar { width: 4px; }
+        .sidebar-menu::-webkit-scrollbar-thumb { background-color: #ddd; border-radius: 4px; }
+
+        /* 5. ITEMS / ENLACES */
+        .navbar__item { width: 100%; }
+
+        #sidebar .navbar__link {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start !important; /* Alineación izquierda obligatoria */
+            width: 100% !important;
+            padding: 12px 20px; 
+            color: #555;
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: all 0.2s ease;
+            border-left: 4px solid transparent;
+        }
+
+        /* Colores Activo / Hover (Naranja) */
+        #sidebar .navbar__link:hover,
+        .navbar__item.active .navbar__link {
+            background-color: #fff3e0; 
+            color: #e65100;
+        }
+
+        .navbar__item.active .navbar__link {
+            border-left-color: #e65100; 
+            font-weight: 600;
+        }
+        
+        /* Iconos */
+        #sidebar .navbar__link i,
+        #sidebar .navbar__link svg {
+            min-width: 24px;
+            width: 24px;
+            height: 24px;
+            margin-right: 15px;
+            text-align: center;
+            display: inline-block;
+        }
+
+        /* Texto de enlaces */
+        #sidebar .navbar__link span {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-15px);
+            transition: all 0.3s ease;
+            display: inline-block;
+            
+            /* FIX: Reset completo de estilos externos de tooltip */
+            position: static !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            margin-left: 0 !important;
+            color: inherit !important;
+            padding: 0 !important;
+        }
+
+        #sidebar:hover .navbar__link span {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+            transition-delay: 0.1s;
+        }
+
+        /* 6. FOOTER (USUARIO) */
+        .sidebar-footer {
+            padding: 0; /* Quitamos padding del contenedor para manejarlo dentro */
+            background-color: #f8f9fa; /* Gris muy suave */
+            border-top: 1px solid #e0e0e0;
+            min-height: 80px; /* Altura fija para consistencia */
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Centrado por defecto (para cuando está cerrado) */
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 0 20px; /* Mismo padding que los items del menú */
+            transition: all 0.3s ease;
+        }
+
+        .user-avatar {
+            min-width: 40px;
+            height: 40px;
+            background-color: #e65100;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 15px;
+        }
+
+        .avatar-circle {
+            min-width: 40px;
+            width: 40px;
+            height: 40px;
+            background-color: #e65100; /* Naranja corporativo */
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+            text-transform: uppercase;
+            
+            /* Sombra suave para darle relieve */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+        }
+
+        .user-details {
+            opacity: 0;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column; /* Nombre arriba, botón abajo */
+            margin-left: 12px;
+            justify-content: center;
+            
+            /* Oculto por defecto (cuando sidebar está cerrado) */
+            opacity: 0;
+            width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        #sidebar:hover .user-info {
+            opacity: 1;
+            width: auto; /* Se expande */
+            transition-delay: 0.1s;
+        }
+
+        .user-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 2px;
+            line-height: 1.2;
+        }
+
+        .user-role {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        #sidebar .logout-btn {
+            background: transparent !important;
+            border: none !important;
+            padding: 0;
+            margin: 0;
+            color: #dc3545 !important; /* Rojo forzado */
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            transition: color 0.2s;
+            width: 100%;
+        }
+
+        #sidebar .logout-btn:hover {
+            color: #a71d2a !important; /* Rojo más oscuro al pasar el mouse */
+            text-decoration: underline;
+        }
+
+        #sidebar .logout-btn i, 
+        #sidebar .logout-btn svg {
+            width: 12px;
+            height: 12px;
+            margin-right: 5px;
+            color: inherit;
+        }
+
+
+        #sidebar:hover .user-details {
+            opacity: 1;
+        }
+        
+        .logout-button {
+            border: none; background: none; padding: 0; color: #dc3545; font-size: 0.85rem;
+        }
+
+        /* ================================================= */
+        /*   MULTISTEP FORMS: DEJAR VER EL FONDO DEL BODY     */
+        /* ================================================= */
+        /* En formularios multistep, el fondo se pinta en el <body>
+           (ver static/css/multistep-form.css). Pero este layout aplica
+           un fondo gris en #content por inline-style, lo que lo tapa.
+           Con esta regla, cuando el <body> tiene clase form-background,
+           hacemos el contenido transparente para que se vea la imagen. */
+        body.form-background #content {
+            background-color: transparent !important;
+        }
+
+        /* Para páginas que renderizan su propio fondo (ej. Áreas) */
+        body.has-page-background #content {
+            background-color: transparent !important;
+        }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    <div class="wrapper d-flex">
+        
+        <!-- ============================================= -->
+        <!--        SIDEBAR REESTRUCTURADO                 -->
+        <!-- ============================================= -->
+        <nav id="sidebar">
+            
+            <!-- 1. HEADER DEL SIDEBAR (Logo + Título) -->
+            <div class="sidebar-header">
+                <a href="#">
+                    <img src="{% static 'img/logo.png' %}" alt="Logo">
+                </a>
+                <div class="sidebar-title">
+                    <span>CALIDAD</span>
+                    <small>Gestion</small>
+                </div>
+            </div>
+
+            <!-- 2. MENÚ SCROLLABLE -->
+            <ul class="list-unstyled components sidebar-menu">
+                
+                {# Si el usuario está en URLs de Calidad, priorizar menú de Calidad aunque también tenga RRHH #}
+                {% if request.user|has_group:"Calidad" and request.resolver_match and request.resolver_match.namespace == 'calidad' %}
+                    {% include 'recursoshumanos/_menu_calidad.html' %}
+
+                {# MENÚ PARA USUARIOS DE RRHH/SUPERVISORES #}
+                {% elif request.user|has_group:"Recursos Humanos" or request.user|has_group:"Supervisores" or request.user|has_group:"Gerencia" %}
+                    <li class="navbar__item">
+                        <a href="{% url 'recursoshumanos:dashboard' %}" class="navbar__link"><i data-feather="pie-chart"></i><span>Dashboard</span></a>
+                    </li>
+                    <li class="navbar__item {% if current_view == 'gestion_empresas' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:gestion_empresas' %}" class="navbar__link"><i data-feather="briefcase"></i><span>Empresas</span></a>
+                    </li>
+                    <li class="navbar__item {% if current_view == 'gestion_proyectos' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:gestion_proyectos' %}" class="navbar__link"><i data-feather="folder"></i><span>Proyectos</span></a>
+                    </li>
+                    <li class="navbar__item {% if current_view == 'gestion_areas' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:gestion_areas' %}" class="navbar__link">
+                            <i data-feather="layers"></i><span>Áreas</span>
+                        </a>
+                    </li>
+                    
+                    <li class="navbar__item {% if current_view == 'gestion_cargos' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:gestion_cargos' %}" class="navbar__link"><i data-feather="award"></i><span>Cargos</span></a>
+                    </li>
+                    <li class="navbar__item {% if current_view == 'gestion_empleados' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:gestion_empleados' %}" class="navbar__link"><i data-feather="users"></i><span>Empleados</span></a>
+                    </li>
+                    <li class="navbar__item {% if current_view == 'gestion_ubicaciones' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:gestion_ubicaciones' %}" class="navbar__link"><i data-feather="map-pin"></i><span>Ubicaciones</span></a>
+                    </li>
+                    <li class="navbar__item {% if current_view == 'gestion_dispositivos' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:gestion_dispositivos_panel' %}" class="navbar__link">
+                            <i data-feather="smartphone"></i><span>Gestión Dispositivos</span>
+                        </a>
+                    </li>
+                    <li class="navbar__item {% if current_view == 'gestion_horarios' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:gestion_tareo' %}" class="navbar__link"><i data-feather="calendar"></i><span>Tareo</span></a>
+                    </li>
+                    <li class="navbar__item {% if current_view == 'gestion_reportes' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:gestion_reportes' %}" class="navbar__link"><i data-feather="download"></i><span>Reportes</span></a>
+                    </li>
+                    {% if request.user|has_group:"Recursos Humanos" or request.user|has_group:"Gerencia" or request.user.is_superuser %}
+                    <li class="navbar__item {% if current_view == 'exportar_metricas_rrhh' %}active{% endif %}">
+                        <a href="{% url 'metricas_ceneris:exportacion_metricas_rrhh' %}" class="navbar__link"><i data-feather="file-text"></i><span>Exportar metricas</span></a>
+                    </li>
+                    {% endif %}
+                        <li class="navbar__item {% if current_view == 'lista_consulta' %}active{% endif %}">
+                            <a href="{% url 'recursoshumanos:lista_consulta' %}" class="navbar__link"><i data-feather="search"></i><span>Consulta Asistencias</span></a>
+                        </li>
+                    <li class="navbar__item {% if current_view == 'reporte_justificaciones_rrhh' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:reporte_justificaciones_rrhh' %}" class="navbar__link"><i data-feather="check-square"></i><span>Justificaciones</span></a>
+                    </li>
+                    <li class="navbar__item {% if current_view == 'reportes_fraude' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:reportes_fraude' %}" class="navbar__link"><i data-feather="alert-triangle"></i><span>Fraude</span></a>
+                    </li>
+                    <li class="navbar__item"></li>
+
+                {# MENÚ PARA USUARIOS DE CALIDAD #}
+                {% elif request.user|has_group:"Calidad" %}
+                    {% include 'recursoshumanos/_menu_calidad.html' %}
+                {% endif %}
+
+                {# MENÚ ADMIN, COTIZACIONES, ETC (RESTO DE TU LÓGICA) #}
+                {# ... Se mantiene igual que tu código original ... #}
+                {% if request.user|has_group:"Administracion" %}
+                     <li class="navbar__item {% if current_view == 'dashboard_estadistico' %}active{% endif %}">
+                        <a href="{% url 'administracion:dashboard_estadistico' %}" class="navbar__link">
+                            <i data-feather="grid"></i><span>Dashboard</span>
+                        </a>
+                    </li>
+                     {# ... resto de items ... #}
+                {% endif %}
+
+                {# MENÚ COTIZACIONES #}
+                {% if request.user|has_group:"Cotizaciones" %}
+                    <li class="navbar__item {% if 'cotizaciones' in request.path %}active{% endif %}">
+                        <a href="{% url 'cotizaciones:dashboard_cotizaciones' %}" class="navbar__link">
+                            <i data-feather="briefcase"></i><span>Cotizaciones</span>
+                        </a>
+                    </li>
+                    <li class="navbar__item {% if 'procesos' in request.path %}active{% endif %}">
+                        <a href="{% url 'cotizaciones:lista_procesos' %}" class="navbar__link">
+                            <i data-feather="list"></i><span>Procesos</span>
+                        </a>
+                    </li>
+                    <li class="navbar__item {% if 'centrogestion' in request.path %}active{% endif %}">
+                        <a href="{% url 'cotizaciones:centro_gestion_empresas' %}" class="navbar__link">
+                            <i data-feather="building"></i><span>Gestión Empresas</span>
+                        </a>
+                    </li>
+                {% endif %}
+                
+                {% if request.user.is_superuser %}
+                    <li class="navbar__item {% if 'auditoria' in request.path %}active{% endif %}">
+                        <a href="{% url 'cotizaciones:dashboard_auditoria' %}" class="navbar__link">
+                            <i data-feather="shield"></i><span>Auditoría Cotizaciones</span>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+
+            <!-- 3. FOOTER DEL SIDEBAR (USUARIO Y LOGOUT) -->
+            <div class="sidebar-footer">
+                {% if user.is_authenticated %}
+                    <div class="user-profile">
+                        <!-- Avatar (Visible siempre) -->
+                        <div class="avatar-circle">
+                            {{ user.username|slice:":1" }}
+                        </div>
+                        
+                        <!-- Info (Solo visible al expandir) -->
+                        <div class="user-info">
+                            <span class="user-name">{{ user.username|title }}</span>
+                            <!-- Opcional: <span class="user-role">RRHH / Admin</span> -->
+                            
+                            <form action="{% url 'logout' %}" method="post" style="margin:0; padding:0;">
+                                {% csrf_token %}
+                                <button type="submit" class="logout-btn">
+                                    <i data-feather="log-out"></i> Cerrar Sesión
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </nav>
+
+        <!-- CONTENIDO PRINCIPAL (SIN HEADER SUPERIOR) -->
+        <div id="content" style="flex-grow: 1; width: auto; overflow-x: hidden; background-color: #f4f6f9; min-height: 100vh;">
+            
+            <!-- Ya no hay <header class="main-header"> -->
+            
+            <main class="main-container" style="padding: 2rem;">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script>
+      feather.replace()
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- SWEETALERT -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+        {% if messages %}
+            {% for message in messages %}
+                var type = "{{ message.tags }}";
+                if (type === 'debug') type = 'info';
+                if (type === 'danger') type = 'error'; 
+                Toast.fire({ icon: type, title: "{{ message }}" });
+            {% endfor %}
+        {% endif %}
+    </script>
+    {% block extra_scripts %}{% endblock %}
+
+</body>
+</html>

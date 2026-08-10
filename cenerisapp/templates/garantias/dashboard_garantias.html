@@ -1,0 +1,70 @@
+{% extends 'app_base.html' %}
+{% load static garantia_filters query_filters %} 
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="dashboard-container modern">
+    
+    <div class="dashboard-header-modern">
+        <h1>{{ titulo }}</h1>
+        <p>Estado y vencimiento de las garantías de equipos y sensores.</p>
+    </div>
+
+    <!-- Buscador -->
+    <div class="search-container-modern">
+        <form method="GET" class="search-form-modern">
+            <i class="bi bi-search search-icon"></i>
+            <input type="search" name="q" value="{{ query }}" 
+                   placeholder="Busca por N° de Serie de equipo o sensor..." class="search-input">
+        </form>
+    </div>
+
+    <!-- Tarjetas de Resumen (KPIs) -->
+    <div class="general-stats-grid modern">
+        <div class="info-card modern stat-card kpi-vigente">
+            <div class="card-header">
+                <i class="bi bi-calendar2-check card-icon"></i><h3>Vigentes</h3>
+            </div>
+            <p class="stat-number">{{ total_vigentes }}</p>
+            <small>Vencen después del {{ fecha_limite_proximas|date:"d M, Y" }}</small>
+        </div>
+        <div class="info-card modern stat-card kpi-proxima">
+            <div class="card-header">
+                <i class="bi bi-hourglass-split card-icon"></i><h3>Próximas a Vencer</h3>
+            </div>
+            <p class="stat-number">{{ total_proximas }}</p>
+            <small>Vencen en los próximos 30 días</small>
+        </div>
+        <div class="info-card modern stat-card kpi-vencida">
+            <div class="card-header">
+                <i class="bi bi-calendar-x card-icon"></i><h3>Vencidas</h3>
+            </div>
+            <p class="stat-number">{{ total_vencidas }}</p>
+            <small>Garantías que ya han expirado</small>
+        </div>
+    </div>
+
+    <!-- Sección de Próximas a Vencer -->
+    <div class="section-title modern"><i class="bi bi-exclamation-triangle-fill"></i> Próximas a Vencer</div>
+    <div class="info-card modern">
+        {% include 'garantias/partials/garantia_table.html' with items=proximas_page_obj %}
+        {% include 'partials/pagination.html' with page_obj=proximas_page_obj page_param_name='page_proximas' %}
+    </div>
+
+    <!-- Sección de Garantías Vencidas -->
+    <div class="section-title modern"><i class="bi bi-x-circle-fill"></i> Garantías Vencidas</div>
+    <div class="info-card modern">
+        {% include 'garantias/partials/garantia_table.html' with items=vencidas_page_obj %}
+        {% include 'partials/pagination.html' with page_obj=vencidas_page_obj page_param_name='page_vencidas' %}
+    </div>
+    
+    <!-- Sección de Garantías Vigentes -->
+    <div class="section-title modern"><i class="bi bi-check-circle-fill"></i> Garantías Vigentes</div>
+    <div class="info-card modern">
+        {% include 'garantias/partials/garantia_table.html' with items=vigentes_page_obj %}
+        {% include 'partials/pagination.html' with page_obj=vigentes_page_obj page_param_name='page_vigentes' %}
+    </div>
+
+</div>
+{% endblock %}

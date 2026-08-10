@@ -1,0 +1,261 @@
+{% extends 'metricas_ceneris/base.html' %}
+
+{% block content %}
+<style>
+    /* Estilos Glass Premium */
+    .export-glass {
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.9);
+        box-shadow: 0 15px 35px -5px rgba(79, 70, 229, 0.08);
+        border-radius: 1.5rem;
+    }
+
+    .export-header {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        border-radius: 1rem 1rem 0 0;
+    }
+
+    .filter-section {
+        background: rgba(249, 250, 251, 0.6);
+        border-radius: 0.75rem;
+        border: 1px solid rgba(209, 213, 219, 0.3);
+    }
+
+    .export-btn {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .export-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px -4px rgba(79, 70, 229, 0.3);
+    }
+
+    .section-divider {
+        height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), transparent);
+    }
+
+    .feature-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: rgb(16, 185, 129);
+    }
+
+    .filter-disabled {
+        background: #e5e7eb !important;
+        border-color: #d1d5db !important;
+        color: #6b7280 !important;
+        cursor: not-allowed !important;
+        opacity: 1 !important;
+    }
+
+    .filter-section-disabled {
+        background: rgba(229, 231, 235, 0.8) !important;
+        border-color: rgba(209, 213, 219, 0.9) !important;
+    }
+
+    .filter-section-disabled label {
+        color: #6b7280 !important;
+    }
+</style>
+
+<div class="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-8 px-4">
+    <!-- Header -->
+    <div class="max-w-7xl mx-auto mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-4xl font-bold text-gray-800 mb-2">
+                    📊 Exportación de Métricas
+                </h1>
+                <p class="text-gray-600">Genera reportes personalizados con gráficos para análisis y auditorías</p>
+            </div>
+            <a href="{% url 'metricas_ceneris:dashboard_gerente' %}" 
+               class="px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 rounded-xl border border-gray-200 shadow-sm transition flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Volver al Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Sección 1: Reporte Completo -->
+    <div class="max-w-7xl mx-auto mb-8">
+        <div class="export-glass overflow-hidden">
+            <div class="export-header p-6">
+                <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    📊 Reporte Completo de Métricas
+                </h2>
+                <p class="text-indigo-100 mt-2">Exporta un Excel con múltiples hojas: Ranking, Podio, Comparativa de Áreas y Resumen Ejecutivo</p>
+                
+                <div class="flex flex-wrap gap-2 mt-4">
+                    <span class="feature-badge">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                        </svg>
+                        4 Hojas en 1 archivo
+                    </span>
+                    <span class="feature-badge">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                        </svg>
+                        Gráficos visuales incluidos
+                    </span>
+                    <span class="feature-badge">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                        </svg>
+                        Colores condicionales
+                    </span>
+                    <span class="feature-badge">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                        </svg>
+                        Listo para auditorías
+                    </span>
+                </div>
+            </div>
+            <div class="p-6">
+                <form id="formCompleto" method="GET" action="{% url 'metricas_ceneris:exportar_ranking_excel' %}">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <!-- Periodo -->
+                        <div class="filter-section p-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Periodo</label>
+                            <select id="filtroPeriodoExport" name="periodo" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="semestre" {% if periodo_tabla_defecto == 'semestre' %}selected{% endif %}>Semestre</option>
+                                <option value="mes" {% if periodo_tabla_defecto == 'mes' %}selected{% endif %}>Mes</option>
+                            </select>
+                        </div>
+
+                        <!-- Año -->
+                        <div class="filter-section p-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Año</label>
+                            <select name="anio" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                {% for a in anios_disponibles %}
+                                <option value="{{ a }}" {% if a == anio_tabla_defecto %}selected{% endif %}>{{ a }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Mes -->
+                        <div id="contenedorMesExport" class="filter-section p-4 {% if periodo_tabla_defecto != 'mes' %}hidden{% endif %}">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Mes</label>
+                            <select id="filtroMesExport" name="mes" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                                {% for mes_num, mes_nombre in meses_disponibles %}
+                                <option value="{{ mes_num }}" {% if mes_num == mes_tabla_defecto %}selected{% endif %}>{{ mes_nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Semestre -->
+                        <div id="contenedorSemestreExport" class="filter-section p-4 {% if periodo_tabla_defecto == 'mes' %}hidden{% endif %}">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Semestre</label>
+                            <select id="filtroSemestreExport" name="semestre" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                                <option value="1" {% if semestre_tabla_defecto == 1 %}selected{% endif %}>Semestre 1</option>
+                                <option value="2" {% if semestre_tabla_defecto == 2 %}selected{% endif %}>Semestre 2</option>
+                            </select>
+                        </div>
+
+                        <!-- Tipo -->
+                        <div class="filter-section p-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Tipo Trabajador</label>
+                            <select name="tipo" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="todos">Todos</option>
+                                <option value="operativo">Operativos</option>
+                                <option value="lider">Lideres (Supervisor y Responsable)</option>
+                            </select>
+                        </div>
+
+                        <!-- Sede -->
+                        <div class="filter-section p-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Sede</label>
+                            <select name="sede" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="todas">Todas las sedes</option>
+                                {% for sede in sedes %}
+                                <option value="{{ sede.id }}">{{ sede.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Área -->
+                        <div class="filter-section p-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Área</label>
+                            <select name="area" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="todas">Todas las áreas</option>
+                                {% for area in areas %}
+                                <option value="{{ area.0 }}">{{ area.1 }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Ordenar por -->
+                        <div class="filter-section p-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Ordenar por</label>
+                            <select name="orden" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="score_desc">Score (Mayor a Menor)</option>
+                                <option value="score_asc">Score (Menor a Mayor)</option>
+                                <option value="nombre">Nombre (A-Z)</option>
+                                <option value="area">Área</option>
+                            </select>
+                        </div>
+
+                        <!-- Límite registros -->
+                        <div class="filter-section p-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Límite de registros</label>
+                            <select name="limite" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="todos">Todos</option>
+                                <option value="10">Top 10</option>
+                                <option value="20">Top 20</option>
+                                <option value="50">Top 50</option>
+                                <option value="100">Top 100</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="export-btn w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl flex items-center justify-center gap-3">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Descargar Reporte Completo (Excel con Gráficos)
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-divider max-w-7xl mx-auto my-8"></div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const filtroPeriodo = document.getElementById('filtroPeriodoExport');
+        const contenedorMes = document.getElementById('contenedorMesExport');
+        const contenedorSemestre = document.getElementById('contenedorSemestreExport');
+
+        if (!filtroPeriodo || !contenedorMes || !contenedorSemestre) {
+            return;
+        }
+
+        const actualizarVistaPeriodo = () => {
+            const esMes = filtroPeriodo.value === 'mes';
+            contenedorMes.classList.toggle('hidden', !esMes);
+            contenedorSemestre.classList.toggle('hidden', esMes);
+        };
+
+        filtroPeriodo.addEventListener('change', actualizarVistaPeriodo);
+        actualizarVistaPeriodo();
+    });
+</script>
+
+{% endblock %}

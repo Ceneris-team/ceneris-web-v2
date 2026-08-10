@@ -1,0 +1,58 @@
+<!-- recursoshumanos/templates/recursoshumanos/empleados/gestionar_permisos.html -->
+{% extends "recursoshumanos/base.html" %}
+
+{% block title %}Gestionar Permisos de Asistencia{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>Gestionar Permisos de Asistencia</h1>
+        <a href="{% url 'recursoshumanos:lista_trabajadores' %}" class="btn-secondary">&larr; Volver al Listado</a>
+    </div>
+
+    <div class="profile-card" style="margin-bottom: 2rem;">
+        <div class="profile-avatar">
+            <img src="https://ui-avatars.com/api/?name={{ trabajador.nombre|first }}&background=d45b04&color=fff&size=150" alt="Avatar">
+            <h2>{{ trabajador.nombre }}</h2>
+            <span class="puesto">{{ trabajador.cargo|default:"Sin Cargo" }}</span>
+        </div>
+        <div class="profile-details">
+            <div class="detail-item"><div class="info"><span>{{ trabajador.dni }}</span><span class="label">DNI</span></div></div>
+            <div class="detail-item"><div class="info"><span>{{ trabajador.deviceIdVinculado|default:"No vinculado" }}</span><span class="label">Dispositivo Vinculado</span></div></div>
+        </div>
+    </div>
+
+    <div class="form-container">
+        <form method="post">
+            {% csrf_token %}
+            <fieldset>
+                <legend>Configuración de Permisos</legend>
+                
+                <div class="form-group">
+                    {{ form.ubicacionesPermitidas.label_tag }}
+                    <div class="checkbox-list">
+                        {{ form.ubicacionesPermitidas }}
+                    </div>
+                    {% if form.ubicacionesPermitidas.errors %}<div class="form-error">{{ form.ubicacionesPermitidas.errors }}</div>{% endif %}
+                </div>
+
+                <hr>
+                
+                <div class="form-group">
+                    <label>Dispositivo Vinculado</label>
+                    <p>El dispositivo se vincula la primera vez que el trabajador marca desde la app móvil.</p>
+                    {% if trabajador.deviceIdVinculado %}
+                        <button type="submit" name="desvincular_dni" value="{{ trabajador.dni }}" class="btn-action btn-action--danger" 
+                                onclick="return confirm('¿Seguro que quieres desvincular el dispositivo? El trabajador deberá volver a vincularlo en su próximo marcaje.');">
+                            Desvincular Dispositivo
+                        </button>
+                    {% else %}
+                        <p>Aún no hay ningún dispositivo vinculado.</p>
+                    {% endif %}
+                </div>
+
+            </fieldset>
+            <br>
+            <button type="submit" class="button--primary">Guardar Permisos</button>
+        </form>
+    </div>
+{% endblock %}

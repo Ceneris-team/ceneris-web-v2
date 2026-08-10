@@ -1,0 +1,228 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+{% block title %}Gestión de Dispositivos{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/custom-select.css' %}">
+    <style>
+        /* --- Tus estilos se mantienen igual --- */
+        .assignment-board { display: flex; gap: 2rem; margin-top: 2rem; }
+        .assignment-column { flex: 1; background: #f4f7f9; padding: 1.5rem; border-radius: 10px; }
+        .assignment-column h3 { margin-top: 0; border-bottom: 2px solid #ddd; padding-bottom: 1rem; font-size: 1.2rem; }
+        .worker-list { min-height: 400px; max-height: 60vh; overflow-y: auto; padding: 5px; }
+        .worker-card { background: white; padding: 1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; cursor: grab; }
+        .worker-card:active { cursor: grabbing; }
+        .worker-card strong { display: block; color: #333; }
+        .worker-card span { font-size: 0.85rem; color: #888; }
+        .sortable-ghost { background: #d4edda; border: 2px dashed #155724; opacity: 0.6; }
+        .edit-device-name { cursor: pointer; color: #0d6efd; white-space: nowrap; }
+        .edit-device-name:hover { text-decoration: underline; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>Asignación por Dispositivo</h1>
+        <a href="{% url 'recursoshumanos:gestion_dispositivos_panel' %}" class="btn-secondary">&larr; Volver al panel</a>
+    </div>
+
+    <!-- Barra de Selección -->
+    <div class="master-filter-bar">
+        <form method="get" style="display: flex; align-items: center; gap: 1rem;">
+            <div class="custom-select-wrapper" style="flex: 1; max-width: 500px;">
+                <div class="custom-select">
+                    <div class="custom-select__trigger" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <span style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            {% if selected_dispositivo %}{{ selected_dispositivo.nombre|default:selected_dispositivo.id }}{% else %}-- Selecciona un Dispositivo --{% endif %}
+                        </span>
+                    </div>
+                    <select name="device_id" id="device-selector" onchange="this.form.submit()">
+                        <option value="">-- Selecciona un Dispositivo --</option>
+                        {% for dispositivo in todos_los_dispositivos %}
+                            <option value="{{ dispositivo.id }}" {% if selected_dispositivo and selected_dispositivo.id == dispositivo.id %}selected{% endif %}>
+                                {{ dispositivo.nombre|default:dispositivo.id }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            {% if selected_dispositivo %}
+            <span class="edit-device-name" data-device-id="{{ selected_dispositivo.id }}" data-current-name="{{ selected_dispositivo.nombre|default:'' }}" style="white-space: nowrap;">
+                ✏️ Renombrar Dispositivo
+            </span>
+            {% endif %}
+        </form>
+    </div>
+
+    {% if selected_dispositivo %}
+        <div class="assignment-board">
+            <div class="assignment-column">
+                <h3>Trabajadores Disponibles ({{ trabajadores_disponibles|length }})</h3>
+                <input type="text" id="disponibles-search" class="form-control" placeholder="Buscar trabajador..." style="margin-bottom: 1rem;">
+                <div id="disponibles-list" class="worker-list">
+                    {% for trabajador in trabajadores_disponibles %}
+                        <!-- CORRECCIÓN: Usamos la Primary Key (pk) y el nombre_completo del trabajador -->
+                        <div class="worker-card" data-pk="{{ trabajador.pk }}">
+                            <strong>{{ trabajador.nombre_completo }}</strong>
+                            <span>DNI: {{ trabajador.dni }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="assignment-column">
+                <!-- CORRECCIÓN: El campo se llama 'nombre' -->
+                <h3>Asignados a {{ selected_dispositivo.nombre|default:selected_dispositivo.id }} ({{ trabajadores_asignados|length }})</h3>
+                <input type="text" id="asignados-search" class="form-control" placeholder="Buscar trabajador..." style="margin-bottom: 1rem;">
+                <div id="asignados-list" class="worker-list" data-device-id="{{ selected_dispositivo.id }}">
+                    {% for trabajador in trabajadores_asignados %}
+                        <!-- CORRECCIÓN: Usamos la Primary Key (pk) y el nombre_completo del trabajador -->
+                        <div class="worker-card" data-pk="{{ trabajador.pk }}">
+                            <strong>{{ trabajador.nombre_completo }}</strong>
+                            <span>DNI: {{ trabajador.dni }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info" style="margin-top: 2rem;">Selecciona un dispositivo para empezar a asignar permisos.</div>
+    {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const csrfToken = '{{ csrf_token }}';
+        let isUpdating = false;
+
+        const disponiblesList = document.getElementById('disponibles-list');
+        const asignadosList = document.getElementById('asignados-list');
+        
+        if (disponiblesList && asignadosList) {
+            const updateUrl = "{% url 'recursoshumanos:actualizar_asignacion_dispositivo' %}";
+            const deviceId = asignadosList.dataset.deviceId;
+
+            function updateAssignment(element, workerPk, action) {
+                if (isUpdating) return false;
+
+                isUpdating = true;
+                
+                fetch(updateUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                    body: JSON.stringify({ worker_pk: parseInt(workerPk), device_id: deviceId, action: action })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    isUpdating = false;
+                    if (data.status !== 'ok') {
+                        console.error("Error del servidor:", data.message);
+                        alert(`Error: ${data.message}`);
+                        // Revertir el movimiento
+                        const sourceList = action === 'add' ? disponiblesList : asignadosList;
+                        sourceList.appendChild(element);
+                    } else {
+                        console.log(`✅ Éxito: ${action} para worker ${workerPk}`);
+                        updateCounts();
+                    }
+                })
+                .catch(error => {
+                    isUpdating = false;
+                    console.error("Error de red:", error);
+                    alert(`Error de conexión: ${error.message}`);
+                    const sourceList = action === 'add' ? disponiblesList : asignadosList;
+                    sourceList.appendChild(element);
+                });
+            }
+
+            function updateCounts() {
+                const availCount = disponiblesList.querySelectorAll('.worker-card:not([style*="display: none"])').length;
+                const assignedCount = asignadosList.querySelectorAll('.worker-card:not([style*="display: none"])').length;
+                
+                const titles = document.querySelectorAll('h3');
+                titles.forEach(title => {
+                    if (title.textContent.includes('Disponibles')) {
+                        title.textContent = `Trabajadores Disponibles (${availCount})`;
+                    } else if (title.textContent.includes('Asignados')) {
+                        title.textContent = `Asignados a ${title.textContent.split('Asignados a ')[1] ? title.textContent.split('Asignados a ')[1].split(' (')[0] : 'Dispositivo'} (${assignedCount})`;
+                    }
+                });
+            }
+
+            // Inicializar Sortable
+            new Sortable(disponiblesList, {
+                group: 'shared-devices',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onAdd: (evt) => {
+                    const element = evt.item;
+                    const workerPk = element.dataset.pk;
+                    updateAssignment(element, workerPk, 'remove');
+                }
+            });
+            
+            new Sortable(asignadosList, {
+                group: 'shared-devices',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onAdd: (evt) => {
+                    const element = evt.item;
+                    const workerPk = element.dataset.pk;
+                    updateAssignment(element, workerPk, 'add');
+                }
+            });
+            
+            // Función de búsqueda
+            function setupSearch(inputId, listId) {
+                const input = document.getElementById(inputId);
+                const list = document.getElementById(listId);
+                if (!input || !list) return;
+                
+                input.addEventListener('keyup', function() {
+                    const filter = this.value.toLowerCase();
+                    const cards = list.querySelectorAll('.worker-card');
+                    let visibleCount = 0;
+                    
+                    cards.forEach(card => {
+                        const text = card.textContent.toLowerCase();
+                        const isMatch = text.includes(filter);
+                        card.style.display = isMatch ? '' : 'none';
+                        if (isMatch) visibleCount++;
+                    });
+                    
+                    updateCounts();
+                });
+            }
+            
+            setupSearch('disponibles-search', 'disponibles-list');
+            setupSearch('asignados-search', 'asignados-list');
+        }
+
+        // Renombrar dispositivo
+        const editLinks = document.querySelectorAll('.edit-device-name');
+        editLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                const deviceId = this.dataset.deviceId;
+                const currentName = this.dataset.currentName;
+                const newName = prompt('Nuevo nombre del dispositivo:', currentName);
+                if (newName && newName.trim()) {
+                    fetch("{% url 'recursoshumanos:renombrar_dispositivo' %}", {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                        body: JSON.stringify({ device_id: deviceId, new_name: newName })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'ok') {
+                            window.location.reload();
+                        }
+                    });
+                }
+            });
+        });
+    });
+    </script>
+{% endblock %}

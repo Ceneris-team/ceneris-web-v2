@@ -1,0 +1,195 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+{% block title %}Asignación de Cargos{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/custom-select.css' %}">
+    <style>
+        .assignment-board { display: flex; gap: 2rem; margin-top: 2rem; }
+        .assignment-column { flex: 1; background: #f4f7f9; padding: 1.5rem; border-radius: 10px; }
+        .assignment-column h3 { margin-top: 0; border-bottom: 2px solid #ddd; padding-bottom: 1rem; font-size: 1.2rem; }
+        .worker-list { min-height: 400px; max-height: 60vh; overflow-y: auto; }
+        .worker-card { background: white; padding: 1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; cursor: grab; border-left: 4px solid #ccc; }
+        .worker-card:active { cursor: grabbing; }
+        
+        /* Estilo para diferenciar visualmente los proyectos */
+        .project-label { display: block; font-size: 0.75rem; text-transform: uppercase; color: #888; margin-bottom: 2px; letter-spacing: 0.5px;}
+        .worker-name { display: block; color: #333; font-weight: bold; font-size: 1rem; margin-bottom: 4px;}
+        .cargo-current { font-size: 0.85rem; color: #d45b04; font-weight: 500; }
+        
+        .sortable-ghost { background: #d4edda; border: 2px dashed #155724; opacity: 0.7;}
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>Asignación de Trabajadores a Cargos</h1>
+        <a href="{% url 'recursoshumanos:gestion_cargos' %}" class="btn-secondary">&larr; Volver a Tarjetas</a>
+    </div>
+
+    <div class="master-filter-bar">
+        <form method="get">
+            <div class="custom-select-wrapper">
+                <div class="custom-select">
+                    <div class="custom-select__trigger">
+                        <span id="selected-value">
+                            {% if selected_cargo %}{{ selected_cargo.nombre }}{% else %}-- Selecciona un Cargo --{% endif %}
+                        </span>
+                    </div>
+                    <select name="cargo_id" id="cargo-selector">
+                        <option value="">-- Selecciona un Cargo --</option>
+                        {% for cargo in cargos %}
+                            <option value="{{ cargo.pk }}" {% if selected_cargo and selected_cargo.pk == cargo.pk %}selected{% endif %}>
+                                {{ cargo.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if selected_cargo %}
+        <div class="assignment-board">
+            <div class="assignment-column">
+                <h3>Disponibles / Otros Cargos ({{ asignaciones_disponibles.count }})</h3>
+                <input type="text" id="disponibles-search" class="search-input" placeholder="Buscar trabajador o proyecto..." style="margin-bottom: 1rem; width: 100%; padding: 8px;">
+                
+                <div id="disponibles-list" class="worker-list">
+                    {% for asignacion in asignaciones_disponibles %}
+                    <div class="worker-card" data-id="{{ asignacion.id }}">
+                        <span class="project-label">Proyecto: {{ asignacion.proyecto.nombre }}</span>
+                        <strong class="worker-name">{{ asignacion.trabajador }}</strong>
+                        <span class="cargo-current">
+                            {% if asignacion.cargo %}
+                                Cargo Actual: {{ asignacion.cargo.nombre }}
+                            {% else %}
+                                <span style="color: #999; font-style: italic;">Sin Cargo Asignado</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="assignment-column">
+                <h3>Asignados a {{ selected_cargo.nombre }} ({{ asignaciones_asignadas.count }})</h3>
+                <input type="text" id="asignados-search" class="search-input" placeholder="Buscar..." style="margin-bottom: 1rem; width: 100%; padding: 8px;">
+                
+                <div id="asignados-list" class="worker-list" data-cargo-id="{{ selected_cargo.pk }}">
+                    {% for asignacion in asignaciones_asignadas %}
+                    <div class="worker-card" data-id="{{ asignacion.id }}" style="border-left-color: #28a745;">
+                        <span class="project-label">Proyecto: {{ asignacion.proyecto.nombre }}</span>
+                        <strong class="worker-name">{{ asignacion.trabajador }}</strong>
+                        <span class="cargo-current">★ {{ asignacion.cargo.nombre }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info" style="margin-top: 2rem;">Selecciona un cargo para empezar a asignar personal.</div>
+    {% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        const selectWrapper = document.querySelector('.custom-select-wrapper');
+        const select = document.getElementById('cargo-selector');
+        
+        if (selectWrapper && select) {
+            selectWrapper.addEventListener('click', function(event) {
+                if (event.target.tagName !== 'SELECT') { this.classList.toggle('open'); }
+            });
+            select.addEventListener('change', function() { this.form.submit(); });
+            document.addEventListener('click', function(event) {
+                if (!selectWrapper.contains(event.target)) { selectWrapper.classList.remove('open'); }
+            });
+        }
+
+        // --- DRAG AND DROP ---
+        const disponiblesList = document.getElementById('disponibles-list');
+        const asignadosList = document.getElementById('asignados-list');
+        
+        if (disponiblesList && asignadosList) {
+            const csrfToken = '{{ csrf_token }}';
+            const updateUrl = `{% url 'recursoshumanos:actualizar_asignacion_cargo' %}`;
+
+            function updateCounter(listId, change) {
+                const listElement = document.getElementById(listId);
+                const h3 = listElement.parentElement.querySelector('h3');
+                if(h3) {
+                    const match = h3.innerText.match(/\((\d+)\)/);
+                    if (match) {
+                        let count = parseInt(match[1]);
+                        count += change;
+                        h3.innerText = h3.innerText.replace(/\(\d+\)/, `(${count})`);
+                    }
+                }
+            }
+
+            function updateAssignment(asignacionId, newCargoId, sourceId, targetId) {
+                fetch(updateUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                    // ENVIAMOS asignacion_id EN LUGAR DE worker_dni
+                    body: JSON.stringify({ asignacion_id: asignacionId, new_cargo_id: newCargoId })
+                }).then(response => {
+                     if(response.ok) {
+                        updateCounter(sourceId, -1);
+                        updateCounter(targetId, 1);
+                     } else {
+                         alert("Error al actualizar. Recarga la página.");
+                     }
+                });
+            }
+
+            new Sortable(disponiblesList, {
+                group: 'shared-cargos',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onAdd: function (evt) {
+                    const asignacionId = evt.item.dataset.id;
+                    updateAssignment(asignacionId, null, 'asignados-list', 'disponibles-list');
+                    // Visualmente quitar el estilo verde
+                    evt.item.style.borderLeftColor = '#ccc';
+                    // Actualizar texto visualmente (opcional)
+                    evt.item.querySelector('.cargo-current').innerHTML = '<span style="color: #999; font-style: italic;">Sin Cargo Asignado</span>';
+                }
+            });
+            
+            new Sortable(asignadosList, {
+                group: 'shared-cargos',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onAdd: function (evt) {
+                    const asignacionId = evt.item.dataset.id;
+                    const newCargoId = evt.to.dataset.cargoId;
+                    updateAssignment(asignacionId, newCargoId, 'disponibles-list', 'asignados-list');
+                    // Visualmente poner estilo verde
+                    evt.item.style.borderLeftColor = '#28a745';
+                    // Actualizar texto visualmente
+                    const cargoName = document.getElementById('selected-value').innerText.trim();
+                    evt.item.querySelector('.cargo-current').innerText = '★ ' + cargoName;
+                }
+            });
+            
+            function setupSearch(inputId, listId) {
+                $('#' + inputId).on('keyup', function() {
+                    var value = $(this).val().toLowerCase();
+                    $('#' + listId + ' .worker-card').filter(function() {
+                        $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                    });
+                });
+            }
+            setupSearch('disponibles-search', 'disponibles-list');
+            setupSearch('asignados-search', 'asignados-list');
+        }
+    });
+    </script>
+{% endblock %}

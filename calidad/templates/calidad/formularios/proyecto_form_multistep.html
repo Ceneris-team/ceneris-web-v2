@@ -1,0 +1,139 @@
+<!-- calidad/templates/calidad/proyecto_form_multistep.html -->
+{% extends "dashboard/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block body_class %}form-background{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        /* Estilo para la barra de progreso de 2 pasos */
+        #progressbar.two-steps li {
+            width: 50%;
+        }
+        .back-button-container {
+            max-width: 800px;
+            width: 90%;
+            margin: 30px auto 10px auto;
+            text-align: left;
+        }
+        .field-error { color: #dc3545; font-size: 0.8rem; font-weight: 600; text-align: left; margin-top: -5px; margin-bottom: 10px; }
+        .field-error ul { list-style: none; padding: 0; margin: 0; }
+        
+        /* Estilo para el checkbox */
+        .checkbox-group {
+            text-align: left;
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .checkbox-group label {
+            display: inline;
+            font-weight: normal;
+            margin: 0;
+        }
+        .debug-panel {
+            background-color: #fff3cd; /* Amarillo de advertencia */
+            border: 2px solid #ffe69c;
+            padding: 15px;
+            margin: 20px auto;
+            max-width: 800px;
+            width: 90%;
+            border-radius: 5px;
+            font-family: monospace; /* Fuente de ancho fijo para mejor legibilidad */
+            text-align: left;
+        }
+        .debug-panel h4 {
+            margin-top: 0;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        .debug-panel pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            white-space: pre-wrap; /* Permite que el texto largo se ajuste */
+            word-wrap: break-word;
+        }
+        .debug-inline {
+            font-size: 0.75rem;
+            color: #dc3545;
+            font-family: monospace;
+            display: block;
+            margin-top: -5px;
+            margin-bottom: 10px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    {% if form.errors %}
+        <div class="debug-panel">
+            <h4>Panel de Depuración de Django</h4>
+            <p>El formulario no es válido. Se encontraron los siguientes errores:</p>
+            <pre>{{ form.errors.as_json }}</pre>
+        </div>
+    {% endif %}
+
+    <div class="back-button-container">
+        <a href="{% url 'calidad:gestion_proyectos' %}" class="btn-secondary">
+            &larr; Volver
+        </a>
+    </div>
+
+    <form id="msform" method="post" novalidate>
+        {% csrf_token %}
+
+        <ul id="progressbar" class="two-steps">
+            <li class="active">Información Principal</li>
+            <li>Detalles Adicionales</li>
+        </ul>
+        
+        <!-- Fieldset 1: Información Principal -->
+        <fieldset>
+            <h2 class="fs-title">{{ form_title }}</h2>
+            <h3 class="fs-subtitle">Define la empresa, el nombre del proyecto y el cliente.</h3>
+            
+            <!-- ¡NUEVO CAMPO EMPRESA! -->
+            {{ form.empresa }}
+            {% if form.empresa.errors %}<div class="field-error">{{ form.empresa.errors }}</div>{% endif %}
+
+
+            <input type="text" name="{{ form.nombre.html_name }}" placeholder="Nombre del Proyecto *" value="{{ form.nombre.value|default_if_none:'' }}" required>
+            {% if form.nombre.errors %}<div class="field-error">{{ form.nombre.errors }}</div>{% endif %}
+
+            <input type="text" name="{{ form.cliente.html_name }}" placeholder="Cliente (Opcional)" value="{{ form.cliente.value|default_if_none:'' }}">
+            {% if form.cliente.errors %}<div class="field-error">{{ form.cliente.errors }}</div>{% endif %}
+
+            <input type="button" name="next" class="next action-button" value="Siguiente"/>
+        </fieldset>
+
+        <!-- Fieldset 2: Detalles Adicionales -->
+        <fieldset>
+            <h2 class="fs-title">Detalles Adicionales</h2>
+            <h3 class="fs-subtitle">Configuración de fechas y estado del proyecto.</h3>
+
+            <label for="{{ form.fecha_inicio.id_for_label }}" style="text-align: left; font-weight: normal; color: #666;">Fecha de Inicio (Opcional)</label>
+            {{ form.fecha_inicio }}
+            {% if form.fecha_inicio.errors %}<div class="field-error">{{ form.fecha_inicio.errors }}</div>{% endif %}
+
+            <div class="checkbox-group">
+                {{ form.activo }}
+                <label for="{{ form.activo.id_for_label }}">¿Proyecto Activo?</label>
+                {% if form.activo.errors %}<div class="field-error">{{ form.activo.errors }}</div>{% endif %}
+            </div>
+
+            <input type="button" name="previous" class="previous action-button-previous" value="Anterior"/>
+            <input type="submit" name="submit" class="submit action-button" value="Guardar Proyecto"/>
+        </fieldset>
+    </form>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.3/jquery.easing.min.js"></script>
+    <script src="{% static 'js/multistep-form.js' %}"></script>
+{% endblock %}

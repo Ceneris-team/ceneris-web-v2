@@ -1,0 +1,70 @@
+/* static/css/tabla_estados.css */
+/* ... (los estilos de colores de fila se quedan igual) ... */
+
+/* ==========================================================================
+   Acciones en Tablas (Versión Final A Prueba de Balas)
+   ========================================================================== */
+
+/* 1. Contenedor principal */
+#content .table-actions-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+}
+
+/* 2. Grupo de visualización */
+#content .action-group-view {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 3. Grupo de validación */
+.action-group-validate {
+    display: flex;
+    /* flex-direction: row; es el valor por defecto, no es necesario declararlo */
+    gap: 4px; /* Añadimos un pequeño espacio entre los botones */
+    background-color: var(--title_color, #d45b04);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 4. Estilo base para CADA botón/enlace individual */
+#content .table-action-button {
+    display: flex !important; /* ¡FORZAR FLEX! */
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    height: 32px !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    transition: background-color 0.2s ease !important;
+    line-height: 1 !important;
+}
+
+/* 5. ¡LA CLAVE! Estilos para los SVG generados por Feather Icons */
+#content .table-action-button svg {
+    width: 20px !important;
+    height: 20px !important;
+    stroke-width: 2.5 !important; /* Hacemos los íconos un poco más gruesos */
+}
+
+/* 6. Colores específicos para cada grupo */
+#content .action-group-view .table-action-button {
+    color: #0d6efd !important;
+}
+#content .action-group-view .table-action-button:hover {
+    background-color: rgba(13, 110, 253, 0.1) !important;
+}
+
+#content .action-group-validate .table-action-button {
+    color: white !important;
+}
+#content .action-group-validate .table-action-button:hover {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+}

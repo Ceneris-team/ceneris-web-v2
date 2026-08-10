@@ -1,0 +1,149 @@
+<!-- en templates/reportes/gestor_reportes.html -->
+{% extends 'app_base.html' %}
+{% load static %}
+{% load static ceneris_tags %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="dashboard-container modern">
+    <div class="dashboard-header-modern">
+        <h1>{{ titulo }}</h1>
+        <p>Arrastra un archivo a un día para cargarlo, o haz clic para seleccionarlo.</p>
+    </div>
+
+    <!-- Controles de Navegación -->
+    <div class="calendar-nav">
+        <a href="?year={{ current_month.year }}&month={{ current_month.month|add:-1 }}" class="btn btn-secondary">&lt; Mes Anterior</a>
+        <h2>{{ current_month|date:"F Y" }}</h2>
+        <a href="?year={{ current_month.year }}&month={{ current_month.month|add:1 }}" class="btn btn-secondary">Mes Siguiente &gt;</a>
+    </div>
+
+    <!-- Calendario -->
+    <div class="calendar-grid">
+        <!-- Encabezados de días de la semana -->
+        <div class="calendar-header">Lun</div>
+        <div class="calendar-header">Mar</div>
+        <div class="calendar-header">Mié</div>
+        <div class="calendar-header">Jue</div>
+        <div class="calendar-header">Vie</div>
+        <div class="calendar-header">Sáb</div>
+        <div class="calendar-header">Dom</div>
+        
+        <!-- Días del mes -->
+        {% for semana in dias_del_mes %}
+            {% for dia in semana %}
+                {% with archivo_url=mapa_archivos|get_item:dia %}
+                {% comment %}
+                    Para el reporte quincenal, solo habilitamos los días 15 y el último del mes.
+                {% endcomment %}
+                {% if es_quincenal and dia.day != 15 and dia.day != current_month|date:"t" %}
+                    <div class="calendar-day other-month">
+                        <span class="day-number">{{ dia.day }}</span>
+                    </div>
+                {% else %}
+                    <div class="calendar-day {% if dia.month != current_month.month %}other-month{% endif %} {% if archivo_url %}has-file{% endif %}"
+                         data-date="{{ dia|date:'Y-m-d' }}">
+                        <span class="day-number">{{ dia.day }}</span>
+                        <div class="file-status">
+                            {% if archivo_url %}
+                                <a href="{{ archivo_url }}" target="_blank" class="file-link">
+                                    <i class="bi bi-file-earmark-check-fill"></i>
+                                    <span>Ver Archivo</span>
+                                </a>
+                            {% else %}
+                                <i class="bi bi-upload"></i>
+                                <span>Cargar Archivo</span>
+                            {% endif %}
+                        </div>
+                        <input type="file" class="file-input" hidden>
+                    </div>
+                {% endif %}
+                {% endwith %}
+            {% endfor %}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = '{{ csrf_token }}';
+
+    document.querySelectorAll('.calendar-day').forEach(dayCell => {
+        const fileInput = dayCell.querySelector('.file-input');
+        const fileStatus = dayCell.querySelector('.file-status');
+
+        // Función para manejar la carga del archivo
+        const handleFileUpload = (file, date) => {
+            const formData = new FormData();
+            formData.append('archivo', file);
+            formData.append('fecha', date);
+            
+            fileStatus.innerHTML = '<div class="spinner"></div><span>Cargando...</span>';
+
+            fetch(window.location.pathname, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    dayCell.classList.add('has-file');
+                    fileStatus.innerHTML = `
+                        <a href="${data.file_url}" target="_blank" class="file-link">
+                            <i class="bi bi-file-earmark-check-fill"></i>
+                            <span>Ver Archivo</span>
+                        </a>`;
+                } else {
+                    throw new Error(data.error || 'Error desconocido.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al cargar el archivo: ' + error.message);
+                // Restaurar estado original
+                dayCell.classList.remove('has-file');
+                fileStatus.innerHTML = '<i class="bi bi-upload"></i><span>Cargar Archivo</span>';
+            });
+        };
+
+        // 1. Clic para seleccionar archivo
+        dayCell.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'A' && !e.target.closest('a')) {
+                 fileInput.click();
+            }
+        });
+
+        // 2. Listener para cuando se selecciona un archivo
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                handleFileUpload(fileInput.files[0], dayCell.dataset.date);
+            }
+        });
+
+        // 3. Lógica de Drag and Drop
+        dayCell.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dayCell.classList.add('drag-over');
+        });
+
+        dayCell.addEventListener('dragleave', () => {
+            dayCell.classList.remove('drag-over');
+        });
+
+        dayCell.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dayCell.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                handleFileUpload(e.dataTransfer.files[0], dayCell.dataset.date);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

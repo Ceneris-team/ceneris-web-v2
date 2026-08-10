@@ -1,0 +1,30 @@
+<!-- dashboard/templates/dashboard/dashboards/gestion_ubicaciones.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Gestión de Ubicaciones (Asistencia){% endblock %}
+{% block content %}
+    <h1>Gestión de Ubicaciones</h1>
+    <p>Administra las zonas de trabajo permitidas para el registro de asistencia.</p>
+    
+    <div class="dashboard-grid">
+        <a href="{% url 'recursoshumanos:ubicacion_crear' %}" class="card">
+            <div class="card__icon">📍</div>
+            <h2 class="card__title">Crear Ubicación</h2>
+            <p class="card__description">Define una nueva zona de trabajo (polígono o radio) en el mapa.</p>
+            <div class="card__footer">Crear Ubicacion &rarr;</div>
+        </a>
+        
+        <a href="{% url 'recursoshumanos:lista_ubicaciones' %}" class="card">
+            <div class="card__icon">🗺️</div>
+            <h2 class="card__title">Ver Ubicaciones</h2>
+            <p class="card__description">Consulta, edita y elimina las zonas de trabajo existentes.</p>
+            <div class="card__footer">Ver Listado &rarr;</div>
+        </a>
+        <a href="{% url 'recursoshumanos:asignacion_masiva_ubicaciones' %}" class="card">
+            <div class="card__icon">↔️</div>
+            <h2 class="card__title">Asignar Ubicaciones</h2>
+            <p class="card__description">Gestiona qué trabajadores pueden marcar en cada ubicación de forma masiva.</p>
+            <div class="card__footer">Aignar &rarr;</div>
+        </a>
+    </div>
+    
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "administracion/base_administracion.html" %}
+{% load humanize format_filters %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3>{{ titulo }}</h3>
+            <!-- Filtros -->
+            <form method="get" class="d-flex align-items-center">
+                <select name="month" class="form-select form-select-sm me-3" onchange="this.form.submit()">
+                    {% for month_val, month_name in available_months %}
+                        <option value="{{ month_val }}" {% if month_val|stringformat:"s" == selected_month %}selected{% endif %}>{{ month_name }}</option>
+                    {% endfor %}
+                </select>
+                <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+                    {% for year in available_years %}
+                        <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Total Facturado en el Período:</h4>
+                <h4 class="mb-0 fw-bold">{{ total_facturado|euro }}</h4>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Agente</th>
+                            <th>Tipo de Monitoreo</th>
+                            <th>Mes/Año</th>
+                            <th class="text-end">Cantidad Consumida</th>
+                            <th class="text-end">Precio Unitario</th>
+                            <th class="text-end">Subtotal Facturado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for registro in registros_facturados %}
+                        <tr>
+                            <td>{{ registro.requerimiento.agente.nombre_agente|default:registro.requerimiento.agente }}</td>
+                            <td>{{ registro.requerimiento.get_tipo_monitoreo_display }}</td> <!-- ¡NUEVA CELDA! -->
+                            <td>{{ registro.get_mes_display }}/{{ registro.año }}</td>
+                            <td class="text-end">{{ registro.cantidad_consumida|floatformat:2|intcomma }}</td>
+                            <!-- ¡CAMBIO AQUÍ! Usamos 'precio_unitario' -->
+                            <td class="text-end">{{ registro.agente_precio|euro }}</td>
+                            <td class="text-end fw-bold">{{ registro.subtotal|euro }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No hay registros de consumo para el período seleccionado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

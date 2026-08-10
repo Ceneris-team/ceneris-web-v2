@@ -1,0 +1,1080 @@
+{% extends 'metricas_ceneris/base.html' %}
+{% load metricas_custom_filters %}
+
+{% block content %}
+<style>
+    /* Esta vista usa ancho completo para evitar que el layout quede recortado. */
+    main > .max-w-7xl {
+        max-width: none !important;
+        width: 100% !important;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    @media (min-width: 1024px) {
+        main > .max-w-7xl {
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+    }
+
+    /* Efecto para filas flotantes de la tabla */
+    .table-floating-rows {
+        border-collapse: separate;
+        border-spacing: 0 12px; /* Espacio entre filas */
+    }
+    .floating-row {
+        background: rgba(255, 255, 255, 0.4);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .floating-row:hover {
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        position: relative;
+    }
+    
+    /* Anillo de Progreso SVG */
+    .progress-ring__circle {
+        transition: stroke-dashoffset 1s ease-in-out;
+        transform: rotate(-90deg);
+        transform-origin: 50% 50%;
+    }
+    
+    /* Badge de Estado Pulsante */
+    .status-dot {
+        height: 8px; width: 8px; border-radius: 50%; display: inline-block;
+        box-shadow: 0 0 0 rgba(0,0,0,0); animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+        0% { box-shadow: 0 0 0 0 rgba(var(--dot-color), 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(var(--dot-color), 0); }
+        100% { box-shadow: 0 0 0 0 rgba(var(--dot-color), 0); }
+    }
+    
+    /* Animación de pulso para números grandes */
+    @keyframes pulse-scale {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    
+    /* Animación de rotación suave para iconos */
+    @keyframes icon-bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+    
+    /* Animación de brillo */
+    @keyframes shimmer {
+        0% { background-position: -1000px 0; }
+        100% { background-position: 1000px 0; }
+    }
+</style>
+
+<div class="glass-panel p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-4 relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-indigo-500/10 to-transparent rounded-full blur-3xl -mr-16 -mt-16"></div>
+    
+    <div class="flex items-center gap-5 z-10">
+        <div class="w-16 h-16 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-3xl shadow-lg border-2 border-white/20">
+            <i class="ph ph-clock-user"></i>
+        </div>
+        <div>
+            <h1 class="text-2xl font-black text-slate-900">Control de Asistencia</h1>
+            <div class="flex items-center gap-3 text-sm text-slate-600 font-bold mt-1">
+                <span class="flex items-center gap-1">
+                    <i class="ph {% if es_gerente %}ph-buildings{% else %}ph-briefcase{% endif %}"></i>
+                    {{ ambito_nombre }}
+                </span>
+                <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+                <span class="flex items-center gap-1 uppercase tracking-wide"><i class="ph ph-calendar-blank"></i> {{ mes_nombre }} {{ anio_seleccionado }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- FILTROS DE MES Y AÑO -->
+    <div class="z-10 flex items-center gap-3 flex-wrap">
+        <form id="encabezado-filtro-form" method="GET" class="flex items-center gap-3">
+            {% if es_responsable %}
+            <input type="hidden" name="modo_responsable" value="{{ modo_responsable }}">
+            {% endif %}
+
+            <div class="relative">
+                <label class="text-xs font-bold text-slate-600 block mb-1">Mes</label>
+                <select name="mes" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold">
+                    <option value="1" {% if mes_seleccionado == 1 %}selected{% endif %}>Enero</option>
+                    <option value="2" {% if mes_seleccionado == 2 %}selected{% endif %}>Febrero</option>
+                    <option value="3" {% if mes_seleccionado == 3 %}selected{% endif %}>Marzo</option>
+                    <option value="4" {% if mes_seleccionado == 4 %}selected{% endif %}>Abril</option>
+                    <option value="5" {% if mes_seleccionado == 5 %}selected{% endif %}>Mayo</option>
+                    <option value="6" {% if mes_seleccionado == 6 %}selected{% endif %}>Junio</option>
+                    <option value="7" {% if mes_seleccionado == 7 %}selected{% endif %}>Julio</option>
+                    <option value="8" {% if mes_seleccionado == 8 %}selected{% endif %}>Agosto</option>
+                    <option value="9" {% if mes_seleccionado == 9 %}selected{% endif %}>Septiembre</option>
+                    <option value="10" {% if mes_seleccionado == 10 %}selected{% endif %}>Octubre</option>
+                    <option value="11" {% if mes_seleccionado == 11 %}selected{% endif %}>Noviembre</option>
+                    <option value="12" {% if mes_seleccionado == 12 %}selected{% endif %}>Diciembre</option>
+                </select>
+            </div>
+            
+            <div class="relative">
+                <label class="text-xs font-bold text-slate-600 block mb-1">Año</label>
+                <select name="anio" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold">
+                    {% for anio in anios_disponibles %}
+                    <option value="{{ anio }}" {% if anio == anio_seleccionado %}selected{% endif %}>{{ anio }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% if es_rol_combinado %}
+            <div class="relative">
+                <label class="text-xs font-bold text-slate-600 block mb-1">Vista</label>
+                <select name="modo_asistencia" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold min-w-44">
+                    <option value="equipo" {% if modo_asistencia == 'equipo' %}selected{% endif %}>Equipo</option>
+                    <option value="gerencia" {% if modo_asistencia == 'gerencia' %}selected{% endif %}>Gerencia</option>
+                </select>
+            </div>
+            {% endif %}
+
+            {% if es_gerente %}
+            <div class="relative">
+                <label class="text-xs font-bold text-slate-600 block mb-1">Cobertura</label>
+                <select name="alcance_gerencia" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold min-w-52">
+                    <option value="todo" {% if alcance_gerencia == 'todo' %}selected{% endif %}>Vista global</option>
+                    <option value="mandos" {% if alcance_gerencia == 'mandos' %}selected{% endif %}>Áreas con mando activo</option>
+                    <option value="directas" {% if alcance_gerencia == 'directas' %}selected{% endif %}>Áreas directas</option>
+                </select>
+            </div>
+            {% endif %}
+
+            {% if not es_gerente %}
+                {% if es_responsable %}
+                    {% if modo_responsable == 'equipos' %}
+                        {% if areas_asignadas|length > 1 %}
+                        <div class="relative">
+                            <label class="text-xs font-bold text-slate-600 block mb-1">Área</label>
+                            <select name="area_id" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold min-w-48">
+                                {% for area_item in areas_asignadas %}
+                                <option value="{{ area_item.id }}" {% if area_item.id == area_activa_id %}selected{% endif %}>{{ area_item.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% elif area_activa_id %}
+                        <input type="hidden" name="area_id" value="{{ area_activa_id }}">
+                        {% endif %}
+                    {% endif %}
+                {% else %}
+                    {% if areas_asignadas|length > 1 %}
+                    <div class="relative">
+                        <label class="text-xs font-bold text-slate-600 block mb-1">Área</label>
+                        <select name="area_id" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold min-w-48">
+                            {% for area_item in areas_asignadas %}
+                            <option value="{{ area_item.id }}" {% if area_item.id == area_activa_id %}selected{% endif %}>{{ area_item.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% elif area_activa_id %}
+                    <input type="hidden" name="area_id" value="{{ area_activa_id }}">
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+
+            {% if es_gerente %}
+            <div class="relative">
+                <label class="text-xs font-bold text-slate-600 block mb-1">Área</label>
+                <select name="area_id" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold min-w-52">
+                    <option value="">Todas las áreas</option>
+                    {% for area_item in areas_filtro_gerencia %}
+                    <option value="{{ area_item.id }}" {% if area_item.id == area_activa_id %}selected{% endif %}>{{ area_item.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            {% if es_gerente or es_rol_combinado %}
+            <div id="sede-filter-wrapper" class="relative {% if es_rol_combinado and modo_asistencia != 'gerencia' %}opacity-50{% endif %}">
+                <label class="text-xs font-bold text-slate-600 block mb-1">Sede</label>
+                <select id="sede-filter-select" name="sede" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold" {% if es_rol_combinado and modo_asistencia != 'gerencia' %}disabled{% endif %}>
+                    <option value="todas" {% if sede_seleccionada == 'todas' %}selected{% endif %}>Todas las sedes</option>
+                    {% for sede in sedes_disponibles %}
+                    <option value="{{ sede.id }}" {% if sede_seleccionada == sede.id|stringformat:'s' %}selected{% endif %}>{{ sede.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <input type="hidden" name="tipo_colaborador" value="{{ tipo_colaborador }}">
+            <input type="hidden" name="filtro_faltas" value="{{ filtro_faltas }}">
+            <input type="hidden" name="filtro_tardanza" value="{{ filtro_tardanza }}">
+            <input type="hidden" name="filtro_asistencia" value="{{ filtro_asistencia }}">
+            <input type="hidden" name="nota_orden" value="{{ nota_orden }}">
+            <input type="hidden" name="q" value="{{ busqueda_nombre }}">
+            
+            <div class="pt-6">
+                <button type="submit" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center gap-2">
+                    <i class="ph ph-funnel"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if es_responsable and mostrar_selector_responsable %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+    <a href="{% url 'metricas_ceneris:panel_asistencias_responsable' %}?modo_responsable=supervisores&mes={{ mes_seleccionado }}&anio={{ anio_seleccionado }}"
+       class="glass-panel p-4 border {% if modo_responsable == 'supervisores' %}border-indigo-300 ring-2 ring-indigo-100{% else %}border-slate-200{% endif %} transition-all hover:-translate-y-0.5">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-base font-black text-slate-900">Vista Consolidada de Supervisores</h3>
+            <span class="px-2 py-1 text-[11px] rounded-lg bg-indigo-100 text-indigo-700 font-bold">{{ areas_con_supervisor|length }} áreas</span>
+        </div>
+        <p class="text-xs text-slate-600 font-semibold">Centraliza asistencia de todos los supervisores bajo tus áreas con supervisor activo.</p>
+    </a>
+
+    {% if primera_area_sin_supervisor_id %}
+    <a href="{% url 'metricas_ceneris:panel_asistencias_responsable' %}?modo_responsable=equipos&area_id={{ primera_area_sin_supervisor_id }}&mes={{ mes_seleccionado }}&anio={{ anio_seleccionado }}"
+       class="glass-panel p-4 border {% if modo_responsable == 'equipos' %}border-emerald-300 ring-2 ring-emerald-100{% else %}border-slate-200{% endif %} transition-all hover:-translate-y-0.5">
+    {% else %}
+    <a href="{% url 'metricas_ceneris:panel_asistencias_responsable' %}?modo_responsable=equipos&mes={{ mes_seleccionado }}&anio={{ anio_seleccionado }}"
+       class="glass-panel p-4 border {% if modo_responsable == 'equipos' %}border-emerald-300 ring-2 ring-emerald-100{% else %}border-slate-200{% endif %} transition-all hover:-translate-y-0.5">
+    {% endif %}
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-base font-black text-slate-900">Vista por Equipo y Área</h3>
+            <span class="px-2 py-1 text-[11px] rounded-lg bg-emerald-100 text-emerald-700 font-bold">{{ areas_sin_supervisor|length }} áreas</span>
+        </div>
+        <p class="text-xs text-slate-600 font-semibold">Muestra asistencia de trabajadores en áreas donde no existe supervisor activo.</p>
+    </a>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+    
+    <div class="glass-panel p-6 relative overflow-hidden group animate-float" style="animation-delay: 0s;">
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-30 transition-all duration-500" style="animation: icon-bounce 3s ease-in-out infinite;">
+            <i class="ph ph-users-three text-8xl text-indigo-600"></i>
+        </div>
+        
+        <p class="text-xs font-black text-slate-600 uppercase tracking-widest mb-4">Asistencia Global</p>
+        
+        <div class="flex items-center gap-6">
+            <div class="relative w-32 h-32 flex items-center justify-center" style="animation: pulse-scale 2s ease-in-out infinite;">
+                <svg class="w-full h-full" viewBox="0 0 120 120">
+                    <circle class="text-slate-200 stroke-current" stroke-width="8" cx="60" cy="60" r="50" fill="transparent"></circle>
+                    <circle class="progress-ring__circle stroke-current 
+                        {% if promedio_asistencia_area >= 95 %}text-emerald-500
+                        {% elif promedio_asistencia_area >= 85 %}text-amber-500
+                        {% else %}text-rose-500{% endif %}" 
+                        stroke-width="8" stroke-linecap="round" cx="60" cy="60" r="50" fill="transparent" 
+                        stroke-dasharray="314" 
+                        stroke-dashoffset="calc(314 - (314 * {{ promedio_asistencia_area }}) / 100)"></circle>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center flex-col">
+                    <span class="text-3xl font-black 
+                        {% if promedio_asistencia_area >= 95 %}text-emerald-700
+                        {% elif promedio_asistencia_area >= 85 %}text-amber-700
+                        {% else %}text-rose-700{% endif %}">
+                        {{ promedio_asistencia_area|floatformat:0 }}%
+                    </span>
+                </div>
+            </div>
+            
+            <div>
+                <p class="text-base font-black text-slate-900 leading-tight mb-1">
+                    {% if promedio_asistencia_area >= 95 %}¡Excelente!
+                    {% elif promedio_asistencia_area >= 85 %}Atención necesaria
+                    {% else %}Nivel crítico{% endif %}
+                </p>
+                <p class="text-xs text-slate-600 font-semibold">
+                    Promedio del equipo en {{ mes_nombre }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-panel p-6 border-l-4 border-rose-500 relative overflow-hidden group animate-float" style="animation-delay: 0.5s;">
+        <!-- Icono decorativo de fondo -->
+        <div class="absolute top-1/2 right-4 -translate-y-1/2 opacity-5 group-hover:opacity-10 transition-all duration-500 pointer-events-none">
+            <i class="ph-fill ph-warning-octagon text-[12rem] text-rose-600"></i>
+        </div>
+        
+        <div class="flex justify-between items-start relative z-10">
+            <div>
+                <p class="text-xs font-black text-rose-600 uppercase tracking-widest">Días Perdidos</p>
+                <h3 class="text-5xl font-display font-black text-slate-900 mt-2" style="animation: pulse-scale 2s ease-in-out infinite; animation-delay: 0.2s;">{{ total_faltas_area }}</h3>
+                <p class="text-sm font-bold text-slate-600 mt-1">Faltas injustificadas</p>
+            </div>
+        </div>
+        <div class="absolute bottom-0 left-0 w-full h-1.5 bg-rose-100 z-10">
+            <div class="h-full bg-gradient-to-r from-rose-500 to-rose-600 transition-all duration-1000" style="width: min(100%, {{ total_faltas_area }}0%); box-shadow: 0 0 10px rgba(244, 63, 94, 0.5);"></div>
+        </div>
+    </div>
+
+    <div class="glass-panel p-6 border-l-4 border-amber-500 relative overflow-hidden group animate-float" style="animation-delay: 1s;">
+        <!-- Icono decorativo de fondo -->
+        <div class="absolute top-1/2 right-4 -translate-y-1/2 opacity-5 group-hover:opacity-10 transition-all duration-500 pointer-events-none">
+            <i class="ph-fill ph-clock-countdown text-[12rem] text-amber-600"></i>
+        </div>
+        
+        <div class="flex justify-between items-start relative z-10">
+            <div>
+                <p class="text-xs font-black text-amber-700 uppercase tracking-widest">Impuntualidad</p>
+                <h3 class="text-5xl font-display font-black text-slate-900 mt-2 flex items-baseline gap-1" style="animation: pulse-scale 2s ease-in-out infinite; animation-delay: 0.4s;">
+                    {{ total_horas_tardanza|floatformat:2 }}<span class="text-lg text-slate-600 font-black">h</span>
+                </h3>
+                <p class="text-sm font-bold text-slate-600 mt-1">Acumulado del equipo</p>
+            </div>
+        </div>
+        <div class="absolute bottom-0 left-0 w-full h-1.5 bg-amber-100 z-10">
+            <div class="h-full bg-gradient-to-r from-amber-500 to-amber-600 transition-all duration-1000" style="width: min(100%, {{ total_horas_tardanza }}0%); box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);"></div>
+        </div>
+    </div>
+
+    <div class="glass-panel p-6 border-l-4 border-cyan-500 relative overflow-hidden group animate-float" style="animation-delay: 1.5s;">
+        <div class="absolute top-1/2 right-4 -translate-y-1/2 opacity-5 group-hover:opacity-10 transition-all duration-500 pointer-events-none">
+            <i class="ph-fill ph-calculator text-[12rem] text-cyan-600"></i>
+        </div>
+
+        <div class="flex justify-between items-start relative z-10">
+            <div>
+                <p class="text-xs font-black text-cyan-700 uppercase tracking-widest">Nota Asistencia</p>
+                <h3 class="text-5xl font-display font-black text-slate-900 mt-2 flex items-baseline gap-1" style="animation: pulse-scale 2s ease-in-out infinite; animation-delay: 0.6s;">
+                    {{ promedio_nota_asistencia_area|floatformat:1 }}<span class="text-lg text-slate-600 font-black">/10</span>
+                </h3>
+                <p class="text-sm font-bold text-slate-600 mt-1">Cada 3 tardanzas se aplica una sancion</p>
+            </div>
+        </div>
+        <div class="absolute bottom-0 left-0 w-full h-1.5 bg-cyan-100 z-10">
+            <div class="h-full bg-gradient-to-r from-cyan-500 to-cyan-600 transition-all duration-1000" style="width: min(100%, {{ promedio_nota_asistencia_area }}0%); box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);"></div>
+        </div>
+    </div>
+
+</div>
+
+<div class="glass-panel px-6 py-8">
+    <div class="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
+        <i class="ph ph-list-magnifying-glass text-xl text-ceneris"></i>
+        <h3 class="font-bold text-slate-700 text-lg">Detalle por Trabajador</h3>
+    </div>
+
+    <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
+        <p class="font-bold mb-1">Como se calcula % Impuntualidad</p>
+        <p class="font-semibold">
+            % Impuntualidad = (Dias con tardanza valida / Dias asistidos) x 100
+        </p>
+        <p class="text-xs text-amber-800 mt-1">
+            Tardanza valida: desde {{ tardanza_minima_minutos }} min tarde respecto a {{ hora_ref_semana|time:"H:i" }} (lun-vie) o {{ hora_ref_sabado|time:"H:i" }} (sab).
+        </p>
+    </div>
+
+    <form id="detalle-filtro-form" method="GET" class="mb-5 bg-white/85 backdrop-blur-sm p-3 rounded-xl border border-slate-200 flex items-end gap-3 flex-wrap">
+        <input type="hidden" name="mes" value="{{ mes_seleccionado }}">
+        <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+        <input type="hidden" name="modo_asistencia" value="{{ modo_asistencia }}">
+        <input type="hidden" name="modo_responsable" value="{{ modo_responsable }}">
+        <input type="hidden" name="alcance_gerencia" value="{{ alcance_gerencia }}">
+        <input type="hidden" name="sede" value="{{ sede_seleccionada }}">
+        {% if area_activa_id %}
+        <input type="hidden" name="area_id" value="{{ area_activa_id }}">
+        {% endif %}
+        <input type="hidden" id="detalle-page-input" name="page" value="{{ page_obj.number|default:1 }}">
+
+        <div>
+            <label class="text-xs font-bold text-slate-600 block mb-1">Buscar por nombre</label>
+            <input id="busqueda-nombre-input" type="text" name="q" value="{{ busqueda_nombre }}" placeholder="Escribe el nombre" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold w-56">
+        </div>
+
+        {% if mostrar_filtro_tipo_colaborador %}
+        <div>
+            <label class="text-xs font-bold text-slate-600 block mb-1">Tipo de trabajador</label>
+            <select id="tipo-colaborador-select" name="tipo_colaborador" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold min-w-56">
+                <option value="todos" {% if tipo_colaborador == 'todos' %}selected{% endif %}>Todos</option>
+                {% if mostrar_filtro_trabajador %}
+                <option value="trabajador" {% if tipo_colaborador == 'trabajador' %}selected{% endif %}>Solo Trabajadores</option>
+                {% endif %}
+                {% if mostrar_filtro_supervisor %}
+                <option value="supervisor" {% if tipo_colaborador == 'supervisor' %}selected{% endif %}>Solo Supervisores</option>
+                {% endif %}
+            </select>
+        </div>
+        {% else %}
+        <input type="hidden" name="tipo_colaborador" value="{{ tipo_colaborador }}">
+        {% endif %}
+
+        <div>
+            <label class="text-xs font-bold text-slate-600 block mb-1">Faltas</label>
+            <select id="filtro-faltas-select" name="filtro_faltas" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold min-w-48">
+                <option value="todos" {% if filtro_faltas == 'todos' %}selected{% endif %}>Todos</option>
+                <option value="con_faltas" {% if filtro_faltas == 'con_faltas' %}selected{% endif %}>Con faltas</option>
+                <option value="sin_faltas" {% if filtro_faltas == 'sin_faltas' %}selected{% endif %}>Sin faltas</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="text-xs font-bold text-slate-600 block mb-1">Tardanza</label>
+            <select id="filtro-tardanza-select" name="filtro_tardanza" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold min-w-48">
+                <option value="todos" {% if filtro_tardanza == 'todos' %}selected{% endif %}>Todos</option>
+                <option value="con_tardanza" {% if filtro_tardanza == 'con_tardanza' %}selected{% endif %}>Con tardanza</option>
+                <option value="sin_tardanza" {% if filtro_tardanza == 'sin_tardanza' %}selected{% endif %}>Sin tardanza</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="text-xs font-bold text-slate-600 block mb-1">Asistencia</label>
+            <select id="filtro-asistencia-select" name="filtro_asistencia" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold min-w-56">
+                <option value="todos" {% if filtro_asistencia == 'todos' %}selected{% endif %}>Todos los niveles</option>
+                <option value="alta" {% if filtro_asistencia == 'alta' %}selected{% endif %}>Alta (95% o mas)</option>
+                <option value="media" {% if filtro_asistencia == 'media' %}selected{% endif %}>Media (85% - 94%)</option>
+                <option value="baja" {% if filtro_asistencia == 'baja' %}selected{% endif %}>Baja (menos de 85%)</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="text-xs font-bold text-slate-600 block mb-1">Orden por nota</label>
+            <select id="nota-orden-select" name="nota_orden" class="px-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition-all text-sm font-semibold min-w-56">
+                <option value="desc" {% if nota_orden == 'desc' %}selected{% endif %}>Mayor a menor</option>
+                <option value="asc" {% if nota_orden == 'asc' %}selected{% endif %}>Menor a mayor</option>
+            </select>
+        </div>
+
+        <div>
+            <button id="limpiar-filtros-btn" type="button" class="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm transition-all">
+                Limpiar filtros
+            </button>
+        </div>
+    </form>
+
+    <div id="detalle-colaboradores-container">
+
+    <div class="overflow-x-auto relative z-0">
+        <table class="w-full table-floating-rows text-left border-separate" style="border-spacing: 0 10px;">
+            <thead class="text-xs font-extrabold text-slate-600 uppercase tracking-wider">
+                <tr>
+                    <th class="px-4 pb-2">Trabajador</th>
+                    <th class="px-4 pb-2">Tasa Asistencia</th>
+                    <th class="px-4 pb-2 text-center">Asistencias</th>
+                    <th class="px-4 pb-2 text-center">Faltas</th>
+                    <th class="px-4 pb-2 text-center">Días Tarde</th>
+                    <th class="px-4 pb-2 text-center">% Impuntualidad</th>
+                    <th class="px-4 pb-2 text-center">Total Horas Tarde</th>
+                    <th class="px-4 pb-2 text-center">Nota Asistencia</th>
+                    <th class="px-4 pb-2">Clasificación</th>
+                    <th class="px-4 pb-2 text-right">Justificaciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in datos %}
+                <tr class="floating-row rounded-2xl group cursor-default bg-white shadow-sm hover:shadow-md transition-shadow">
+                    
+                    <td class="px-4 py-3 rounded-l-2xl border-l border-y border-white/50">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-600 font-bold text-sm shadow-inner group-hover:from-indigo-500 group-hover:to-purple-600 group-hover:text-white transition-all flex-shrink-0">
+                                {{ item.trabajador.nombres|slice:":1" }}{{ item.trabajador.apellido_paterno|slice:":1" }}
+                            </div>
+                            <div class="min-w-0">
+                                <p class="font-extrabold text-slate-900 group-hover:text-indigo-700 transition-colors text-sm truncate">
+                                    {{ item.trabajador.nombres }} {{ item.trabajador.apellido_paterno }}
+                                </p>
+                                <p class="text-[10px] text-slate-500 font-bold truncate">
+                                    {{ item.trabajador.apellido_materno|default:"" }}
+                                </p>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td class="px-4 py-3 border-y border-white/50">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 min-w-0">
+                                <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                    <div class="h-full rounded-full transition-all duration-1000 ease-out
+                                        {% if item.porc_asistencia >= 95 %}bg-gradient-to-r from-emerald-400 to-emerald-500
+                                        {% elif item.porc_asistencia >= 85 %}bg-gradient-to-r from-amber-400 to-amber-500
+                                        {% else %}bg-gradient-to-r from-rose-400 to-rose-500{% endif %}"
+                                        style="width: {{ item.porc_asistencia }}%">
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="text-xs font-extrabold flex-shrink-0
+                                {% if item.porc_asistencia >= 95 %}text-emerald-700
+                                {% elif item.porc_asistencia >= 85 %}text-amber-700
+                                {% else %}text-rose-700{% endif %}">
+                                {{ item.porc_asistencia|floatformat:0 }}%
+                            </span>
+                        </div>
+                    </td>
+
+                    <td class="px-4 py-3 text-center border-y border-white/50">
+                        {% if item.asistencias > 0 %}
+                        <button onclick="abrirModal('modal-asistencias-{{ item.trabajador.id }}')"
+                                class="inline-flex items-center justify-center w-9 h-8 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-sm font-extrabold hover:bg-emerald-100 transition-all">
+                            {{ item.asistencias }}
+                        </button>
+                        {% else %}
+                        <span class="inline-flex items-center justify-center w-9 h-8 bg-slate-100 border border-slate-200 text-slate-500 rounded-lg text-sm font-extrabold">
+                            0
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <td class="px-4 py-3 text-center border-y border-white/50">
+                        {% if item.faltas > 0 %}
+                            <button onclick="abrirModal('modal-faltas-{{ item.trabajador.id }}')"
+                                    class="inline-flex items-center justify-center w-8 h-8 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-sm font-extrabold hover:bg-rose-100 transition-all">
+                                {{ item.faltas }}
+                            </button>
+                        {% else %}
+                            <div class="flex items-center justify-center">
+                                <i class="ph-fill ph-check-circle text-3xl text-emerald-500"></i>
+                            </div>
+                        {% endif %}
+                    </td>
+
+                    <td class="px-4 py-3 text-center border-y border-white/50">
+                        {% if item.dias_tarde > 0 %}
+                        <button onclick="abrirModal('modal-tardanzas-{{ item.trabajador.id }}')"
+                                class="inline-flex items-center justify-center min-w-9 h-8 px-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm font-extrabold hover:bg-amber-100 transition-all">
+                            {{ item.dias_tarde }}
+                        </button>
+                        {% else %}
+                        <span class="inline-flex items-center justify-center min-w-9 h-8 px-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-sm font-extrabold">
+                            0
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <td class="px-4 py-3 text-center border-y border-white/50">
+                        <span class="font-extrabold text-sm
+                            {% if item.porc_tardanza > 0 %}text-amber-700
+                            {% else %}text-emerald-600{% endif %}">
+                            {{ item.porc_tardanza|floatformat:0 }}%
+                        </span>
+                    </td>
+
+                    <td class="px-4 py-3 text-center rounded-r-2xl border-r border-y border-white/50">
+                        <span class="font-mono font-extrabold text-slate-900 text-sm">
+                            {{ item.horas_tardanza|floatformat:2 }} h
+                        </span>
+                    </td>
+
+                    <td class="px-4 py-3 text-center border-y border-white/50">
+                        <span class="inline-flex items-center gap-1.5 font-extrabold text-sm
+                            {% if item.nota_asistencia >= 9 %}text-emerald-600{% elif item.nota_asistencia >= 7 %}text-indigo-600{% elif item.nota_asistencia >= 5 %}text-amber-600{% else %}text-rose-600{% endif %}">
+                            <span class="text-xs font-black">{% if item.nota_asistencia >= 9 %}AD{% elif item.nota_asistencia >= 7 %}A{% elif item.nota_asistencia >= 5 %}B{% else %}C{% endif %}</span>
+                            {{ item.nota_asistencia|floatformat:1 }}/10
+                        </span>
+                    </td>
+
+                    <td class="px-4 py-3 border-y border-white/50">
+                        <span class="text-xs font-semibold
+                            {% if item.nota_asistencia >= 9 %}text-emerald-700{% elif item.nota_asistencia >= 7 %}text-indigo-700{% elif item.nota_asistencia >= 5 %}text-amber-700{% else %}text-rose-700{% endif %}">
+                            {% if item.nota_asistencia >= 9 %}Alto Desempeño{% elif item.nota_asistencia >= 7 %}Desempeño Esperado{% elif item.nota_asistencia >= 5 %}En Proceso de Mejora{% else %}Desempeño Deficiente{% endif %}
+                        </span>
+                    </td>
+
+                    <td class="px-4 py-3 text-right rounded-r-2xl border-r border-y border-white/50">
+                        <button onclick="abrirModal('modal-{{ item.trabajador.id }}')" 
+                                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all
+                                {% if item.cant_justificadas > 0 %}
+                                    bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200
+                                {% else %}
+                                    bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed
+                                {% endif %}"
+                                {% if item.cant_justificadas == 0 %}disabled{% endif %}>
+                            
+                            {% if item.cant_justificadas > 0 %}
+                                <span class="w-5 h-5 flex items-center justify-center bg-indigo-600 text-white rounded-full text-[10px]">
+                                    {{ item.cant_justificadas }}
+                                </span>
+                                Ver Detalle
+                            {% else %}
+                                0 Justif.
+                            {% endif %}
+                        </button>
+                    </td>
+
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="px-6 py-12 text-center">
+                        <div class="flex flex-col items-center justify-center text-slate-400">
+                            <i class="ph ph-calendar-x text-4xl mb-2 opacity-50"></i>
+                            <p>No se encontraron registros de asistencia para este periodo.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="mt-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <p class="text-xs font-semibold text-slate-500">
+            Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ page_obj.paginator.count }} trabajadores
+        </p>
+
+        <div class="flex items-center gap-2">
+            {% if page_obj.has_previous %}
+                <a href="?{{ filtros_query }}&page={{ page_obj.previous_page_number }}"
+                   data-page="{{ page_obj.previous_page_number }}"
+                   class="detalle-page-link inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50 transition-all">
+                    <i class="ph ph-caret-left"></i> Anterior
+                </a>
+            {% else %}
+                <span class="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-400 text-xs font-bold cursor-not-allowed">
+                    <i class="ph ph-caret-left"></i> Anterior
+                </span>
+            {% endif %}
+
+            <span class="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-black">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+                <a href="?{{ filtros_query }}&page={{ page_obj.next_page_number }}"
+                   data-page="{{ page_obj.next_page_number }}"
+                   class="detalle-page-link inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50 transition-all">
+                    Siguiente <i class="ph ph-caret-right"></i>
+                </a>
+            {% else %}
+                <span class="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-400 text-xs font-bold cursor-not-allowed">
+                    Siguiente <i class="ph ph-caret-right"></i>
+                </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- SISTEMA DE MODALS -->
+{% for item in datos %}
+{% if item.cant_justificadas > 0 %}
+<div id="modal-{{ item.trabajador.id }}" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <!-- Backdrop oscuro -->
+    <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop" onclick="cerrarModal('modal-{{ item.trabajador.id }}')"></div>
+
+    <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            
+            <!-- Contenido del Modal -->
+            <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg modal-panel opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+                
+                <!-- Header Modal -->
+                <div class="bg-amber-600 px-4 py-4 sm:px-6 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-base font-bold leading-6 text-white" id="modal-title">
+                            Justificaciones Registradas
+                        </h3>
+                        <p class="text-indigo-100 text-xs mt-1">
+                            Trabajador: {{ item.trabajador.nombres }} {{ item.trabajador.apellido_paterno }}
+                        </p>
+                    </div>
+                    <button type="button" onclick="cerrarModal('modal-{{ item.trabajador.id }}')" class="text-indigo-200 hover:text-white">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Lista de Justificaciones -->
+                <div class="px-4 py-5 sm:p-6 bg-slate-50 max-h-[60vh] overflow-y-auto">
+                    <div class="space-y-3">
+                        {% for just in item.lista_justificaciones %}
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">
+                                        {{ just.tareo.fecha|date:"d M, Y" }}
+                                    </span>
+                                    <!-- Estado -->
+                                    {% if just.estado_solicitud == 'APROBADO' %}
+                                        <span class="text-[10px] uppercase font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Aprobado</span>
+                                    {% elif just.estado_solicitud == 'RECHAZADO' %}
+                                        <span class="text-[10px] uppercase font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100">Rechazado</span>
+                                    {% else %}
+                                        <span class="text-[10px] uppercase font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">Pendiente</span>
+                                    {% endif %}
+                                </div>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ just.get_motivo_display }}</span>
+                            </div>
+                            
+                            <p class="text-sm text-slate-700 mb-3 bg-slate-50 p-2 rounded-lg border border-slate-100 italic">
+                                "{{ just.descripcion }}"
+                            </p>
+
+                            {% if just.archivo_evidencia %}
+                            <a href="{{ just.archivo_evidencia.url }}" target="_blank" class="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline">
+                                <i class="ph ph-paperclip"></i> Ver Evidencia Adjunta
+                            </a>
+                            {% else %}
+                                <span class="text-xs text-slate-400 flex items-center gap-1"><i class="ph ph-prohibit"></i> Sin evidencia</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-slate-100">
+                    <button type="button" onclick="cerrarModal('modal-{{ item.trabajador.id }}')" class="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+{% for item in datos %}
+{% if item.asistencias > 0 %}
+<div id="modal-asistencias-{{ item.trabajador.id }}" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop" onclick="cerrarModal('modal-asistencias-{{ item.trabajador.id }}')"></div>
+    <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg modal-panel opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+                <div class="bg-emerald-600 px-4 py-4 sm:px-6 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-base font-bold leading-6 text-white">Dias con asistencia</h3>
+                        <p class="text-emerald-100 text-xs mt-1">
+                            {{ item.trabajador.nombres }} {{ item.trabajador.apellido_paterno }}
+                        </p>
+                    </div>
+                    <button type="button" onclick="cerrarModal('modal-asistencias-{{ item.trabajador.id }}')" class="text-emerald-100 hover:text-white">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="px-4 py-5 sm:p-6 bg-slate-50 max-h-[60vh] overflow-y-auto">
+                    <div class="space-y-2">
+                        {% for asistencia in item.asistencias_detalle %}
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                            <span class="text-sm font-bold text-slate-800">{{ asistencia.fecha|date:"d/m/Y" }}</span>
+                            <span class="text-xs font-semibold text-slate-500">
+                                {% if asistencia.hora_entrada_real %}Ingreso: {{ asistencia.hora_entrada_real|time:"H:i" }}{% else %}Ingreso sin marca{% endif %}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-slate-100">
+                    <button type="button" onclick="cerrarModal('modal-asistencias-{{ item.trabajador.id }}')" class="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+{% for item in datos %}
+{% if item.faltas > 0 %}
+<div id="modal-faltas-{{ item.trabajador.id }}" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop" onclick="cerrarModal('modal-faltas-{{ item.trabajador.id }}')"></div>
+    <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg modal-panel opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+                <div class="bg-rose-600 px-4 py-4 sm:px-6 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-base font-bold leading-6 text-white">Días con falta</h3>
+                        <p class="text-rose-100 text-xs mt-1">
+                            {{ item.trabajador.nombres }} {{ item.trabajador.apellido_paterno }}
+                        </p>
+                    </div>
+                    <button type="button" onclick="cerrarModal('modal-faltas-{{ item.trabajador.id }}')" class="text-rose-100 hover:text-white">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="px-4 py-5 sm:p-6 bg-slate-50 max-h-[60vh] overflow-y-auto">
+                    <div class="space-y-2">
+                        {% for falta in item.faltas_detalle %}
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                            <span class="text-sm font-bold text-slate-800">{{ falta.fecha|date:"d/m/Y" }}</span>
+                            {% if falta.tipo == 'REGISTRADA' %}
+                            <span class="text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg">Falta registrada</span>
+                            {% else %}
+                            <span class="text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg">Sin marcación</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-slate-100">
+                    <button type="button" onclick="cerrarModal('modal-faltas-{{ item.trabajador.id }}')" class="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+{% for item in datos %}
+{% if item.dias_tarde > 0 %}
+<div id="modal-tardanzas-{{ item.trabajador.id }}" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop" onclick="cerrarModal('modal-tardanzas-{{ item.trabajador.id }}')"></div>
+    <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg modal-panel opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+                <div class="bg-amber-600 px-4 py-4 sm:px-6 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-base font-bold leading-6 text-white">Dias con tardanza</h3>
+                        <p class="text-amber-100 text-xs mt-1">
+                            {{ item.trabajador.nombres }} {{ item.trabajador.apellido_paterno }}
+                        </p>
+                    </div>
+                    <button type="button" onclick="cerrarModal('modal-tardanzas-{{ item.trabajador.id }}')" class="text-amber-100 hover:text-white">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="px-4 py-5 sm:p-6 bg-slate-50 max-h-[60vh] overflow-y-auto">
+                    <div class="space-y-2">
+                        {% for tardanza in item.tardanzas_detalle %}
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                            <span class="text-sm font-bold text-slate-800">{{ tardanza.fecha|date:"d/m/Y" }}</span>
+                            <span class="text-xs font-semibold text-amber-700">
+                                {% if tardanza.hora_entrada_real %}Ingreso: {{ tardanza.hora_entrada_real|time:"H:i" }}{% endif %}
+                                {% if tardanza.horas_tardanza %}| {{ tardanza.horas_tardanza|floatformat:2 }} h tarde{% endif %}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-slate-100">
+                    <button type="button" onclick="cerrarModal('modal-tardanzas-{{ item.trabajador.id }}')" class="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+    </div>
+<script>
+    function abrirModal(id) {
+        const modal = document.getElementById(id);
+        const backdrop = modal.querySelector('.modal-backdrop');
+        const panel = modal.querySelector('.modal-panel');
+        
+        modal.classList.remove('hidden');
+        // Pequeño delay para permitir la transición CSS
+        setTimeout(() => {
+            backdrop.classList.remove('opacity-0');
+            panel.classList.remove('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+        }, 10);
+    }
+
+    function cerrarModal(id) {
+        const modal = document.getElementById(id);
+        const backdrop = modal.querySelector('.modal-backdrop');
+        const panel = modal.querySelector('.modal-panel');
+
+        backdrop.classList.add('opacity-0');
+        panel.classList.add('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300); // Esperar a que termine la animación (duration-300 por defecto en tailwind a veces)
+    }
+
+    const encabezadoFiltroForm = document.getElementById('encabezado-filtro-form');
+    const detalleFiltroForm = document.getElementById('detalle-filtro-form');
+    const tipoColaboradorSelect = document.getElementById('tipo-colaborador-select');
+    const filtroFaltasSelect = document.getElementById('filtro-faltas-select');
+    const filtroTardanzaSelect = document.getElementById('filtro-tardanza-select');
+    const filtroAsistenciaSelect = document.getElementById('filtro-asistencia-select');
+    const notaOrdenSelect = document.getElementById('nota-orden-select');
+    const busquedaNombreInput = document.getElementById('busqueda-nombre-input');
+    const limpiarFiltrosBtn = document.getElementById('limpiar-filtros-btn');
+    const detalleContainer = document.getElementById('detalle-colaboradores-container');
+    const detallePageInput = document.getElementById('detalle-page-input');
+    const modoAsistenciaSelect = encabezadoFiltroForm ? encabezadoFiltroForm.querySelector('select[name="modo_asistencia"]') : null;
+    const coberturaGerenciaSelect = encabezadoFiltroForm ? encabezadoFiltroForm.querySelector('select[name="alcance_gerencia"]') : null;
+    const sedeFilterSelect = document.getElementById('sede-filter-select');
+    const sedeFilterWrapper = document.getElementById('sede-filter-wrapper');
+    let busquedaTimer = null;
+
+    if (modoAsistenciaSelect && sedeFilterSelect && sedeFilterWrapper) {
+        const actualizarEstadoSede = () => {
+            const esGerencia = modoAsistenciaSelect.value === 'gerencia';
+            sedeFilterSelect.disabled = !esGerencia;
+            sedeFilterWrapper.classList.toggle('opacity-50', !esGerencia);
+        };
+
+        modoAsistenciaSelect.addEventListener('change', function () {
+            const areaSelect = encabezadoFiltroForm ? encabezadoFiltroForm.querySelector('select[name="area_id"]') : null;
+            const sedeSelect = encabezadoFiltroForm ? encabezadoFiltroForm.querySelector('select[name="sede"]') : null;
+            const esGerencia = modoAsistenciaSelect.value === 'gerencia';
+
+            if (sedeSelect) {
+                sedeSelect.value = 'todas';
+            }
+
+            if (areaSelect) {
+                if (esGerencia) {
+                    // En gerencia arrancamos sin área fija para evitar arrastre desde equipo.
+                    if (areaSelect.querySelector('option[value=""]')) {
+                        areaSelect.value = '';
+                    }
+                } else {
+                    // En vista de equipo volvemos al primer área asignada disponible.
+                    areaSelect.selectedIndex = 0;
+                }
+            }
+
+            actualizarEstadoSede();
+            if (encabezadoFiltroForm) {
+                encabezadoFiltroForm.requestSubmit();
+            }
+        });
+
+        actualizarEstadoSede();
+    }
+
+    if (coberturaGerenciaSelect && encabezadoFiltroForm) {
+        coberturaGerenciaSelect.addEventListener('change', function () {
+            const areaSelect = encabezadoFiltroForm.querySelector('select[name="area_id"]');
+            if (areaSelect && areaSelect.querySelector('option[value=""]')) {
+                areaSelect.value = '';
+            }
+            encabezadoFiltroForm.requestSubmit();
+        });
+    }
+
+    function actualizarDetallePorAjax(params) {
+        const query = params.toString();
+        const url = `${window.location.pathname}?${query}`;
+
+        fetch(url)
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const nuevoDetalle = doc.getElementById('detalle-colaboradores-container');
+
+                if (!nuevoDetalle || !detalleContainer) {
+                    window.location.href = url;
+                    return;
+                }
+
+                detalleContainer.innerHTML = nuevoDetalle.innerHTML;
+                window.history.replaceState({}, '', url);
+            })
+            .catch(() => {
+                window.location.href = url;
+            });
+    }
+
+    function enviarFiltrosDetalle(page = 1) {
+        if (!detalleFiltroForm) {
+            return;
+        }
+        if (detallePageInput) {
+            detallePageInput.value = String(page);
+        }
+        const params = new URLSearchParams(new FormData(detalleFiltroForm));
+        actualizarDetallePorAjax(params);
+    }
+
+    if (detalleFiltroForm) {
+        detalleFiltroForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const paginaActual = detallePageInput ? Number(detallePageInput.value || '1') : 1;
+            enviarFiltrosDetalle(paginaActual);
+        });
+    }
+
+    if (tipoColaboradorSelect && detalleFiltroForm) {
+        tipoColaboradorSelect.addEventListener('change', function () {
+            enviarFiltrosDetalle(1);
+        });
+    }
+
+    if (filtroFaltasSelect && detalleFiltroForm) {
+        filtroFaltasSelect.addEventListener('change', function () {
+            enviarFiltrosDetalle(1);
+        });
+    }
+
+    if (filtroTardanzaSelect && detalleFiltroForm) {
+        filtroTardanzaSelect.addEventListener('change', function () {
+            enviarFiltrosDetalle(1);
+        });
+    }
+
+    if (filtroAsistenciaSelect && detalleFiltroForm) {
+        filtroAsistenciaSelect.addEventListener('change', function () {
+            enviarFiltrosDetalle(1);
+        });
+    }
+
+    if (notaOrdenSelect && detalleFiltroForm) {
+        notaOrdenSelect.addEventListener('change', function () {
+            enviarFiltrosDetalle(1);
+        });
+    }
+
+    if (busquedaNombreInput && detalleFiltroForm) {
+        busquedaNombreInput.addEventListener('input', function () {
+            if (busquedaTimer) {
+                clearTimeout(busquedaTimer);
+            }
+            busquedaTimer = setTimeout(() => {
+                enviarFiltrosDetalle(1);
+            }, 350);
+        });
+
+        busquedaNombreInput.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                enviarFiltrosDetalle(1);
+            }
+        });
+    }
+
+    if (limpiarFiltrosBtn && detalleFiltroForm) {
+        limpiarFiltrosBtn.addEventListener('click', function () {
+            if (busquedaNombreInput) {
+                busquedaNombreInput.value = '';
+            }
+            if (tipoColaboradorSelect) {
+                tipoColaboradorSelect.value = 'todos';
+            }
+            if (filtroFaltasSelect) {
+                filtroFaltasSelect.value = 'todos';
+            }
+            if (filtroTardanzaSelect) {
+                filtroTardanzaSelect.value = 'todos';
+            }
+            if (filtroAsistenciaSelect) {
+                filtroAsistenciaSelect.value = 'todos';
+            }
+            if (notaOrdenSelect) {
+                notaOrdenSelect.value = 'desc';
+            }
+            enviarFiltrosDetalle(1);
+        });
+    }
+
+    if (detalleContainer && detalleFiltroForm) {
+        detalleContainer.addEventListener('click', function (event) {
+            const pageLink = event.target.closest('.detalle-page-link');
+            if (!pageLink) {
+                return;
+            }
+
+            event.preventDefault();
+            const page = Number(pageLink.dataset.page || '1');
+            enviarFiltrosDetalle(page);
+        });
+    }
+</script>
+{% endblock %}

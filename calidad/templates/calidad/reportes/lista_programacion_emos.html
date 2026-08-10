@@ -1,0 +1,54 @@
+<!-- calidad/templates/calidad/reportes/lista_programacion_emos.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}EMOs por Renovar o Registrar{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>EMOs por renovar o registrar</h1>
+    </div>
+    <p>La siguiente lista muestra trabajadores nuevos que requieren su primer EMO, y trabajadores cuyo EMO ha vencido o está por vencer.</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align: center; width: 50px;">N°</th>
+                <th>Trabajador</th>
+                <th>Puesto</th>
+                <th>Estado Actual del EMO</th>
+                <th>Fecha de Vencimiento</th>
+                <th style="text-align: center;">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emo in emos %}
+            {# Los que no tienen EMO y los vencidos se marcan en rojo (alta prioridad) #}
+            <tr class="
+                {% if emo.aptitud == 'Sin EMO' or emo.esta_vencido %}emo-vencido{% endif %}
+                {% if emo.esta_por_vencer %}emo-por-vencer{% endif %}
+            ">
+                <td style="text-align: center; font-weight: bold;">{{ forloop.counter }}</td>
+                <td>{{ emo.trabajador }}</td>
+                <td>{{ emo.trabajador.puesto }}</td>
+                <td>
+                    {% if emo.aptitud == 'Sin EMO' %}
+                        <span style="color: #dc3545; font-weight: bold;">REQUIERE PRIMER EMO</span>
+                    {% elif emo.esta_vencido %}
+                        <span style="color: #dc3545; font-weight: bold;">VENCIDO</span>
+                    {% elif emo.esta_por_vencer %}
+                        Por Vencer
+                    {% endif %}
+                </td>
+                <td>{{ emo.fecha_vencimiento|date:"d/m/Y"|default:"--" }}</td>
+                <td style="text-align: center;">
+                    <a href="{% url 'calidad:programar_emo' %}?trabajador_id={{ emo.trabajador.dni }}" class="btn-action-table">Programar EMO</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align: center;">No hay trabajadores que requieran un nuevo EMO en este momento.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

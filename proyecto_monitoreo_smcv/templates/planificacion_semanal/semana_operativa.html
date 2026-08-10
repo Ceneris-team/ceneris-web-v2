@@ -1,0 +1,60 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    
+    <!-- Encabezado con Botón "Volver" -->
+    <div class="flex items-center mb-8">
+        <a href="{% url 'proyecto_monitoreo_smcv:programacion_diaria_index' %}?mes={{ mes }}&anio={{ anio }}" class="mr-4 w-10 h-10 flex items-center justify-center bg-white rounded-full shadow text-gray-600 hover:text-brand-600 transition">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Semana {{ nro_semana }}</h1>
+            <p class="text-gray-500 text-sm">{{ fecha_inicio|date:"d M" }} al {{ fecha_fin|date:"d M" }}</p>
+        </div>
+    </div>
+
+    <!-- GRID DE 7 DÍAS (Estilo Calendario Horizontal) -->
+    <div class="grid grid-cols-1 md:grid-cols-7 gap-4">
+        {% for dia in dias %}
+        <a href="{% url 'proyecto_monitoreo_smcv:crear_prog_diaria' dia.fecha|date:'Y-m-d' %}" 
+           class="relative flex flex-col bg-white rounded-xl border-2 transition-all duration-200 h-48 group
+                  {% if dia.es_hoy %}border-brand-500 shadow-md transform -translate-y-1{% else %}border-gray-100 hover:border-brand-300 hover:shadow-lg{% endif %}">
+            
+            <!-- Cabecera Día -->
+            <div class="p-3 text-center border-b border-gray-100 bg-gray-50 rounded-t-lg group-hover:bg-brand-50 transition">
+                <span class="block text-xs uppercase font-bold text-gray-500">{{ dia.fecha|date:"l" }}</span>
+                <span class="block text-2xl font-bold {% if dia.es_hoy %}text-brand-600{% else %}text-gray-800{% endif %}">
+                    {{ dia.fecha|date:"d" }}
+                </span>
+            </div>
+
+            <!-- Cuerpo Estado -->
+            <div class="flex-grow flex flex-col items-center justify-center p-2">
+                {% if dia.estado == "Programado" %}
+                    <div class="flex flex-col items-center animate-fade-in">
+                        <div class="bg-green-100 text-green-700 w-10 h-10 rounded-full flex items-center justify-center mb-2">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <span class="text-xs font-bold text-green-700">{{ dia.tareas }} Tareas</span>
+                    </div>
+                {% else %}
+                    <span class="text-gray-300 group-hover:text-brand-300 transition">
+                        <i class="fas fa-plus-circle text-3xl"></i>
+                    </span>
+                    <span class="text-xs text-gray-400 mt-2">Programar</span>
+                {% endif %}
+            </div>
+            
+            {% if dia.es_hoy %}
+            <div class="absolute top-2 right-2">
+                <span class="flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-brand-500"></span>
+                </span>
+            </div>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

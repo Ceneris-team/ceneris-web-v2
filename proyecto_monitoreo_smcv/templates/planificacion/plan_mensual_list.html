@@ -1,0 +1,105 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% load humanize %} 
+
+{% block title %}Historial de Planes{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    
+    <!-- Encabezado -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Planes Mensuales</h1>
+            <p class="text-sm text-gray-600">Historial de cargas masivas y metas configuradas.</p>
+        </div>
+        <a href="{% url 'proyecto_monitoreo_smcv:importar_plan' %}" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-lg flex items-center transition transform hover:-translate-y-1">
+            <i class="fas fa-file-excel mr-2"></i> Importar Nuevo Excel
+        </a>
+    </div>
+
+    <!-- Mensajes -->
+    {% if messages %}
+        {% for message in messages %}
+        <div class="mb-4 p-4 rounded-lg {% if message.tags == 'success' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Tabla Historial -->
+    <div class="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Periodo</th>
+                    <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Total Muestreos</th>
+                    <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Puestos Involucrados</th>
+                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Estado</th>
+                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for plan in planes %}
+                <tr class="hover:bg-gray-50 transition">
+                    <!-- Columna Periodo -->
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
+                                <i class="far fa-calendar-alt text-lg"></i>
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-bold text-gray-900">
+                                    {% if plan.mes == 1 %}Enero{% elif plan.mes == 2 %}Febrero{% elif plan.mes == 3 %}Marzo{% elif plan.mes == 4 %}Abril{% elif plan.mes == 5 %}Mayo{% elif plan.mes == 6 %}Junio{% elif plan.mes == 7 %}Julio{% elif plan.mes == 8 %}Agosto{% elif plan.mes == 9 %}Septiembre{% elif plan.mes == 10 %}Octubre{% elif plan.mes == 11 %}Noviembre{% elif plan.mes == 12 %}Diciembre{% endif %}
+                                    {{ plan.anio }}
+                                </div>
+                                <div class="text-xs text-gray-500">{{ plan.total_registros }} filas importadas</div>
+                            </div>
+                        </div>
+                    </td>
+                    
+                    <!-- Métricas -->
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            {{ plan.total_muestreos }} Meta
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600">
+                        {{ plan.total_puestos }} Puestos
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                            Cargado
+                        </span>
+                    </td>
+
+                    <!-- Botones de Acción -->
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <!-- Ir al Dashboard Semanal filtrando por este mes -->
+                        <a href="{% url 'proyecto_monitoreo_smcv:dashboard_planificacion' %}?mes={{ plan.mes }}&anio={{ plan.anio }}" class="text-indigo-600 hover:text-indigo-900 mr-4 font-bold">
+                            Ver Semanas
+                        </a>
+                        
+                        <!-- Botón Eliminar (Con confirmación simple JS) -->
+                        <form action="{% url 'proyecto_monitoreo_smcv:eliminar_plan' plan.anio plan.mes %}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de eliminar TODO el plan de {{ plan.mes }}/{{ plan.anio }}? Esta acción borrará todas las metas asociadas.');">
+                            {% csrf_token %}
+                            <button type="submit" class="text-red-600 hover:text-red-900 cursor-pointer">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                        <div class="flex flex-col items-center">
+                            <i class="fas fa-inbox text-4xl text-gray-300 mb-2"></i>
+                            <p>No hay planes importados aún.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

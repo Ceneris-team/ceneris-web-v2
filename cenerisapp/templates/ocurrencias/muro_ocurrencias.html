@@ -1,0 +1,72 @@
+<!-- en templates/ocurrencias/muro_ocurrencias.html -->
+{% extends 'app_base.html' %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class.dashboard-container modern">
+    
+    <div class="dashboard-header-modern">
+        <h1>{{ titulo }}</h1>
+        <p>Un espacio para registrar eventos, noticias y comentarios importantes.</p>
+    </div>
+
+    <!-- Formulario para Nueva Ocurrencia -->
+    <div class="info-card modern" style="margin-bottom: 2rem;">
+        <form method="POST">
+            {% csrf_token %}
+            <h4>Publicar una nueva ocurrencia</h4>
+            <div class="form-group">
+                {{ form.mensaje }}
+                {{ form.mensaje.errors }}
+            </div>
+            <div class="form-group">
+                {{ form.pci.label }}
+                {{ form.pci }}
+                
+                {{ form.pci.errors }}
+            </div>
+            <div class="form-actions" style="justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary">Publicar</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Línea de Tiempo de Ocurrencias -->
+    <div class="section-title modern">
+        <i class="bi bi-list-ol"></i> Actividad Reciente
+    </div>
+
+    <div class="timeline-container">
+        {% for ocurrencia in ocurrencias %}
+        <div class="timeline-item">
+            <div class="timeline-icon bg-secondary">
+                <i class="bi bi-chat-left-text"></i>
+            </div>
+            <div class="timeline-content">
+                <span class="timeline-date">{{ ocurrencia.fecha_creacion|date:"d M, Y - h:i a" }}</span>
+                <!-- Usamos 'get_full_name' si existe, si no, el username -->
+                <h5 class="timeline-title">Publicado por: <strong>{{ ocurrencia.autor.get_full_name|default:ocurrencia.autor.username }}</strong></h5>
+                <p class="timeline-description" style="white-space: pre-wrap;">{{ ocurrencia.mensaje }}</p>
+                <span>PCI: {{ ocurrencia.pci }}</span>
+                {% if ocurrencia.autor == user %}
+                <div class="timeline-actions">
+                    <!-- Usamos un formulario para enviar una petición POST -->
+                    <form action="{% url 'cenerisapp:borrar_ocurrencia' ocurrencia.id_ocurrencia %}" method="POST" onsubmit="return confirm('¿Estás seguro de que quieres borrar esta ocurrencia?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="bi bi-trash"></i> Borrar
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="info-card modern text-center">
+            <p class="no-data">Aún no hay ocurrencias. ¡Sé el primero en publicar!</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

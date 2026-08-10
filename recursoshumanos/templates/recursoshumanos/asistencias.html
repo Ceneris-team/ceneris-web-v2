@@ -1,0 +1,99 @@
+<!-- dashboard/templates/dashboard/asistencias.html -->
+
+{% extends "dashboard/base.html" %}
+
+{% block title %}Monitor de Asistencias{% endblock %}
+
+{% block content %}
+    <h1>Monitor de Asistencias</h1>
+    <p><a href="{% url 'recursoshumanos:main_dashboard' %}">&larr; Volver al Dashboard Principal</a></p>
+
+    <!-- La sección de tarjetas de resumen (métricas) se mantiene igual -->
+    <!-- ... -->
+
+    <form method="get" action="{% url 'dashboard' %}">
+        <fieldset>
+            <legend>Filtrar Asistencias</legend>
+            
+            <label for="dni">Filtrar por DNI:</label>
+            <input type="text" id="dni" name="dni" value="{{ filtro_dni }}">
+            
+            <label for="fecha_inicio">Desde:</label>
+            <input type="date" id="fecha_inicio" name="fecha_inicio" value="{{ filtro_fecha_inicio }}">
+            
+            <label for="fecha_fin">Hasta:</label>
+            <input type="date" id="fecha_fin" name="fecha_fin" value="{{ filtro_fecha_fin }}">
+            
+            <label for="ubicacion">Filtrar por Ubicación:</label>
+            <select id="ubicacion" name="ubicacion">
+                <option value="">-- Todas las Ubicaciones --</option>
+                {% for ubicacion in ubicaciones_disponibles %}
+                <option value="{{ ubicacion }}" {% if ubicacion == filtro_ubicacion %}selected{% endif %}>
+                    {{ ubicacion }}
+                </option>
+                {% endfor %}
+            </select>
+            
+            <button type="submit">Filtrar</button>
+            <a href="{% url 'dashboard' %}">Limpiar Filtros</a>
+        </fieldset>
+    </form>
+    <hr>
+
+    <!-- El botón de exportar ahora pasa todos los filtros -->
+    <a href="{% url 'exportar_asistencias' %}?dni={{ filtro_dni }}&ubicacion={{ filtro_ubicacion }}&fecha_inicio={{ filtro_fecha_inicio }}&fecha_fin={{ filtro_fecha_fin }}">
+        <button>Exportar a CSV</button>
+    </a>
+    <br><br>
+
+    <!-- La tabla de asistencias se mantiene igual -->
+    <table>
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>DNI</th>
+                <th>Fecha y Hora</th>
+                <th>Ubicación</th>
+                <th>Puntualidad</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for asistencia in asistencias %}
+            <tr>
+                <td><a href="{% url 'recursoshumanos:trabajador_detail' dni=asistencia.userDni %}">{{ asistencia.userName }}</a></td>
+                <td>{{ asistencia.userDni }}</td>
+                <td>{{ asistencia.timestamp_formateado }}</td> <!-- Asegúrate de usar la variable formateada de tu vista -->
+                <td>{{ asistencia.locationName }}</td>
+                <td>
+                    {% if asistencia.estadoPuntualidad == "Tardanza" %}
+                        <span style="color: red; font-weight: bold;">{{ asistencia.estadoPuntualidad }}</span>
+                    {% else %}
+                        <span style="color: green;">{{ asistencia.estadoPuntualidad }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">No se encontraron asistencias con los filtros aplicados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="pagination">
+        <span class="step-links">
+            {% if asistencias.has_previous %}
+                <a href="?page=1">&laquo; primera</a>
+                <a href="?page={{ asistencias.previous_page_number }}">anterior</a>
+            {% endif %}
+
+            <span class="current">
+                Página {{ asistencias.number }} de {{ asistencias.paginator.num_pages }}.
+            </span>
+
+            {% if asistencias.has_next %}
+                <a href="?page={{ asistencias.next_page_number }}">siguiente</a>
+                <a href="?page={{ asistencias.paginator.num_pages }}">última &raquo;</a>
+            {% endif %}
+        </span>
+    </div>
+{% endblock %}

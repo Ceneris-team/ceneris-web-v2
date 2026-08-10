@@ -1,0 +1,47 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="form-container">
+        <form method="post" class="form-card">
+            <h2>{{ titulo }}</h2>
+            {% csrf_token %}
+            <!-- Mostramos errores generales si los hay -->
+            {{ form.non_field_errors }}
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="abreviacion" class="form-label">Abreviación</label>
+                    <input type="text" name="abreviacion" id="abreviacion" class="form-control" maxlength="20" required>
+                </div>
+                <div class="form-group">
+                    <label for="nombreE" class="form-label">Nombre</label>
+                    <input type="text" name="nombreE" id="nombreE" class="form-control" maxlength="100" required>
+                </div>
+                <div class="form-group">
+                    <label for="direccion" class="form-label">Dirección</label>
+                    <input type="text" name="direccion" id="direccion" class="form-control" maxlength="255" required>
+                </div>
+                <div class="form-group">
+                   <label for="departamento" class="form-label">Departamento</label>
+                   <input type="text" name="departamento" id="departamento" class="form-control" maxlength="50" required>
+               </div>
+               <div class="form-group">
+                    <label for="telefono" class="form-label">Teléfono</label>
+                    <input type="text" name="telefono" id="telefono" class="form-control" maxlength="20" required>
+                </div>
+                <div class="form-group">
+                    <label for="ruc" class="form-label">RUC</label>
+                    <input type="text" name="ruc" id="ruc" class="form-control" maxlength="11" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success">Guardar Empresa</button>
+                    <a href="{% url 'cenerisapp:lista_empresas' %}" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

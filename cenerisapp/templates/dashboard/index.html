@@ -1,0 +1,198 @@
+{% extends 'app_base.html' %}
+{% load static %}
+
+{% block title %}Graficos - Device Monitor{% endblock %}
+
+{% block main_content %}
+    
+    <div class="header-container">
+        <h1>Graficos estadisticos</h1>
+    </div>
+
+    <div class="dashboard-container">
+        <div class="dashboard-grid">
+            
+            <!-- Widget 1: Gráfico de Barras Principal -->
+            <div class="dashboard-widget widget-empresa">
+                <h3>Dispositivos Prestados por Empresa</h3>
+                <div class="chart-container">
+                    <canvas id="empresaChart"></canvas>
+                </div>
+            </div>
+
+            
+            <!-- Widget 2: Gráfico Circular de Tipos -->
+            <div class="dashboard-widget widget-tipo">
+                <h3>Dispositivos por Tipo</h3>
+                <div class="chart-container">
+                    <canvas id="tipoChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Widget 3: Gráfico de Donut de Estado -->
+            <div class="dashboard-widget">
+                <h3>Préstamos por Turno</h3>
+                <div class="chart-container">
+                    <canvas id="turnoChart"></canvas>
+                </div>
+            </div>
+
+            <div class="dashboard-widget widget-area-estado">
+                <h3>Estado de Portátiles por Área General</h3>
+                <div class="chart-container">
+                    <canvas id="areaEstadoChart"></canvas>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+    
+
+<!-- Los scripts van al final para asegurar que el HTML se haya cargado -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const empresaCtx = document.getElementById('empresaChart');
+    if (empresaCtx) {
+        new Chart(empresaCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                // CORRECCIÓN: Usamos el nombre de campo correcto del diccionario.
+                labels: [{% for item in entregas_por_empresa %}'{{ item.trabajador_receptor__empresa_id__nombreE|default:"Sin Empresa" }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+                datasets: [{
+                    label: 'Cantidad de Entregas',
+                    // Usamos la misma variable del contexto que en 'labels'
+                    data: [{% for item in entregas_por_empresa %}{{ item.total }}{% if not forloop.last %},{% endif %}{% endfor %}],
+                    backgroundColor: '#3498db',
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    // --- GRÁFICO 2: DISPOSITIVOS POR TIPO (PIE) ---
+    const tipoCtx = document.getElementById('tipoChart');
+    if (tipoCtx) {
+        new Chart(tipoCtx.getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: [{% for item in por_tipo %}'{{ item.tipo_upper }}'{% if not forloop.last %},{% endif %}{% endfor %}], // Usamos 'tipo_upper' normalizado
+                datasets: [{
+                    data: [{% for item in por_tipo %}{{ item.total }}{% if not forloop.last %},{% endif %}{% endfor %}],
+                    backgroundColor: ['#2ecc71', '#e74c3c', '#9b59b6', '#f1c40f']
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                plugins: { // <--- AÑADIR ESTE OBJETO
+                    legend: {
+                        display: true, // <--- FORZAR QUE LA LEYENDA SE MUESTRE
+                        position: 'top', // Posiciona la leyenda a la derecha para que sea más visible
+                        labels: {
+                            boxWidth: 14 // Ajusta el tamaño de la caja de color
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Dispositivos por Tipo'
+                    }
+                }
+            }
+        });
+    }
+
+    // --- GRÁFICO 3: ESTADO DE DISPOSITIVOS (DOUGHNUT) ---
+    const turnoCtx = document.getElementById('turnoChart');
+    if (turnoCtx) {
+        new Chart(turnoCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: {{ labels_turnos|safe }}, // ['A', 'B', 'C']
+                datasets: [
+                    {
+                        label: 'Dispositivos',
+                        data: {{ values_dispositivos|safe }}, // Ej: [5, 8, 3]
+                        backgroundColor: '#3498db' // Azul
+                    },
+                    {
+                        label: 'Bombas',
+                        data: {{ values_bombas|safe }}, // Ej: [2, 1, 4]
+                        backgroundColor: '#e74c3c' // Rojo
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    
+    // --- GRÁFICO NUEVO: ESTADO DE PORTÁTILES POR ÁREA (BARRAS APILADAS) ---
+    const areaEstadoCtx = document.getElementById('areaEstadoChart');
+    if (areaEstadoCtx) {
+        new Chart(areaEstadoCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                // Las etiquetas son los nombres de las áreas
+                labels: {{ labels_area_estado|safe }},
+                datasets: [
+                    {
+                        label: 'Operativo',
+                        // Los datos de dispositivos operativos por cada área
+                        data: {{ data_operativos|safe }},
+                        backgroundColor: '#27ae60', // Verde
+                        borderRadius: 5
+                    },
+                    {
+                        label: 'Inoperativo',
+                        // Los datos de dispositivos inoperativos por cada área
+                        data: {{ data_inoperativos|safe }},
+                        backgroundColor: '#c0392b', // Rojo
+                        borderRadius: 5
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Distribución de Dispositivos Portátiles'
+                    },
+                    legend: {
+                        position: 'top', // Muestra la leyenda arriba
+                    }
+                },
+                scales: {
+                    // ¡LA MAGIA PARA APILAR LAS BARRAS!
+                    x: {
+                        stacked: true, 
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+});
+</script>
+{% endblock %}

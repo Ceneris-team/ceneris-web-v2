@@ -1,0 +1,194 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block meta %}
+    {{ block.super }}    
+    <link rel="stylesheet" href="{% static 'inventario/css/style.css' %}">
+{% endblock %}
+
+
+{% block content %}
+
+<div class="content-area">
+    <div class="page-header">
+        <div class="header-text">
+            <h1 class="page-title">Centro de Notificaciones de Calibración</h1>
+            <div class="page-desc">Equipos que requieren atención por su fecha de calibración.</div>
+        </div>
+    </div>
+    <div class="filters-container notificaciones" style="margin-top: 15px;">
+        <form method="get" class="advanced-filter-form">
+            <!-- Buscador por Número de Serie -->
+            <div class="filter-group text-search">
+                <i class="fa fa-search"></i>
+                <input type="text" name="q_serie" placeholder="Buscar por S/N, Código o Nombre..." value="{{ filtros_aplicados.q_serie|default_if_none:'' }}">
+            </div>
+            <!-- Filtro "Desde Fecha" -->
+            <div class="filter-group">
+                <label>Vencimiento Desde:</label>
+                <input type="date" name="start_date" value="{{ filtros_aplicados.start_date|default_if_none:'' }}">
+            </div>
+            <!-- Filtro "Hasta Fecha" -->
+            <div class="filter-group">
+                <label>Vencimiento Hasta:</label>
+                <input type="date" name="end_date" value="{{ filtros_aplicados.end_date|default_if_none:'' }}">
+            </div>
+            <!-- Botones de Acción -->
+            <div class="filter-actions">
+                <button type="submit" class="btn-create">Filtrar</button>
+                <a href="{% url 'inventario:notificaciones_calibracion' %}" class="btn-clear-filters">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Contenedor principal de las columnas de notificación -->
+    <div class="notifications-grid">
+        
+        <!-- COLUMNA 1: CERCA DE VENCER -->
+        <div class="notification-column">
+            <div class="column-header warning">
+                <i class="fa fa-hourglass-half"></i>
+                <h3>Cerca de Vencer <small>(Próximos 8-30 días)</small></h3>
+            </div>
+            <div class="notification-list">
+                {% for item_info in cerca_de_vencer %}
+                    {% with obj=item_info.objeto type=item_info.es_accesorio|yesno:"accesorio,iteminsumo" %}
+                        <div class="notification-card" id="notification-card-{{ type }}-{{ obj.pk }}">
+                            <div class="card-actions">
+                                <a href="{% if item_info.es_accesorio %}{% url 'inventario:gestionar_accesorios' obj.item_insumo.pk %}{% else %}{% url 'inventario:detalle_insumo' obj.insumo_padre.pk %}{% endif %}" class="btn-details" title="Ver Detalles">
+                                    <i class="fa fa-eye"></i>
+                                </a>
+                                
+                                <button type="button" class="btn-calibrado" title="Marcar como Calibrado"
+                                        data-url="{% url 'inventario:api_registrar_calibracion' model_type=type pk=obj.pk %}">
+                                    <i class="fa fa-check-circle"></i> Calibrado
+                                </button>
+                                <!-- El enlace para ver detalles -->
+                                
+                            </div>
+                            <div class="card-content">
+                                <div class="item-info">
+                                    <!-- Mostramos si es EQUIPO o ACCESORIO -->
+                                    <span class="item-code">{{ obj.codigo_interno|default_if_none:"S/C" }} - <strong>{% if item_info.es_accesorio %}ACCESORIO{% else %}EQUIPO{% endif %}</strong></span>
+                                    <!-- El nombre cambia si es accesorio o item -->
+                                    <strong class="item-name">
+                                        {% if item_info.es_accesorio %}
+                                            {{ obj.nombre }} (del equipo S/N: {{ obj.item_insumo.numero_serie }})
+                                        {% else %}
+                                            {{ obj.insumo_padre.nombre }} (S/N: {{ obj.numero_serie }})
+                                        {% endif %}
+                                    </strong>
+                                </div>
+                                <div class="item-date">
+                                    <span>Vence el:</span>
+                                    <strong>{{ obj.fecha_prox_calibracion|date:"d M Y" }}</strong>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    {% endwith %}
+                {% empty %}
+                    <p class="no-notifications">No hay equipos en esta categoría.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- COLUMNA 2: MUY CERCA A VENCER -->
+        <div class="notification-column">
+            <div class="column-header urgent">
+                <i class="fa fa-bell"></i>
+                <h3>Muy Cerca a Vencer <small>(Próximos 7 días)</small></h3>
+            </div>
+            <div class="notification-list">
+                {% for item_info in muy_cerca %}
+                    {% with obj=item_info.objeto type=item_info.es_accesorio|yesno:"accesorio,iteminsumo" %}
+                        <div class="notification-card" id="notification-card-{{ type }}-{{ obj.pk }}">
+                            <div class="card-actions">
+                                <a href="{% if item_info.es_accesorio %}{% url 'inventario:gestionar_accesorios' obj.item_insumo.pk %}{% else %}{% url 'inventario:detalle_insumo' obj.insumo_padre.pk %}{% endif %}" class="btn-details" title="Ver Detalles">
+                                    <i class="fa fa-eye"></i>
+                                </a>
+                                
+                                <button type="button" class="btn-calibrado" title="Marcar como Calibrado"
+                                        data-url="{% url 'inventario:api_registrar_calibracion' model_type=type pk=obj.pk %}">
+                                    <i class="fa fa-check-circle"></i> Calibrado
+                                </button>
+                                <!-- El enlace para ver detalles -->
+                                
+                            </div>
+                            <div class="card-content">
+                                    <div class="item-info">
+                                    <!-- Mostramos si es EQUIPO o ACCESORIO -->
+                                    <span class="item-code">{{ obj.codigo_interno|default_if_none:"S/C" }} - <strong>{% if item_info.es_accesorio %}ACCESORIO{% else %}EQUIPO{% endif %}</strong></span>
+                                    <!-- El nombre cambia si es accesorio o item -->
+                                    <strong class="item-name">
+                                        {% if item_info.es_accesorio %}
+                                            {{ obj.nombre }} (del equipo S/N: {{ obj.item_insumo.numero_serie }})
+                                        {% else %}
+                                            {{ obj.insumo_padre.nombre }} (S/N: {{ obj.numero_serie }})
+                                        {% endif %}
+                                    </strong>
+                                </div>
+                                <div class="item-date">
+                                    <span>Vence el:</span>
+                                    <strong>{{ obj.fecha_prox_calibracion|date:"d M Y" }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    {% endwith %}
+                {% empty %}
+                    <p class="no-notifications">No hay equipos en esta categoría.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- COLUMNA 3: VENCIDAS -->
+        <div class="notification-column">
+            <div class="column-header expired">
+                <i class="fa fa-exclamation-triangle"></i>
+                <h3>Calibraciones Vencidas</h3>
+            </div>
+            <div class="notification-list">
+                {% for item_info in vencidos %}
+                    {% with obj=item_info.objeto type=item_info.es_accesorio|yesno:"accesorio,iteminsumo" %}
+                        <div class="notification-card" id="notification-card-{{ type }}-{{ obj.pk }}">
+                            <div class="card-actions">
+                                <a href="{% if item_info.es_accesorio %}{% url 'inventario:gestionar_accesorios' obj.item_insumo.pk %}{% else %}{% url 'inventario:detalle_insumo' obj.insumo_padre.pk %}{% endif %}" class="btn-details" title="Ver Detalles">
+                                    <i class="fa fa-eye"></i>
+                                </a>
+                                
+                                <button type="button" class="btn-calibrado" title="Marcar como Calibrado"
+                                        data-url="{% url 'inventario:api_registrar_calibracion' model_type=type pk=obj.pk %}">
+                                    <i class="fa fa-check-circle"></i> Calibrar
+                                </button>
+                                <!-- El enlace para ver detalles -->
+                                
+                            </div>
+                            <div class="card-content">
+                                    <div class="item-info">
+                                    <!-- Mostramos si es EQUIPO o ACCESORIO -->
+                                    <span class="item-code">{{ obj.codigo_interno|default_if_none:"S/C" }} - <strong>{% if item_info.es_accesorio %}ACCESORIO{% else %}EQUIPO{% endif %}</strong></span>
+                                    <!-- El nombre cambia si es accesorio o item -->
+                                    <strong class="item-name">
+                                        {% if item_info.es_accesorio %}
+                                            {{ obj.nombre }} (del equipo S/N: {{ obj.item_insumo.numero_serie }})
+                                        {% else %}
+                                            {{ obj.insumo_padre.nombre }} (S/N: {{ obj.numero_serie }})
+                                        {% endif %}
+                                    </strong>
+                                </div>
+                                <div class="item-date">
+                                    <span>Vence el:</span>
+                                    <strong>{{ obj.fecha_prox_calibracion|date:"d M Y" }}</strong>
+                                </div>
+                            </div>    
+                        </div>
+                    {% endwith %}
+                {% empty %}
+                    <p class="no-notifications">No hay equipos en esta categoría.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'inventario/js/calibration_handler.js' %}"></script>
+{% endblock %}

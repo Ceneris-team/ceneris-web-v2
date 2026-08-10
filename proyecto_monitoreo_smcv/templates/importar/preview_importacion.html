@@ -1,0 +1,85 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+        
+        <!-- Cabecera -->
+        <div class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center">
+            <div>
+                <h2 class="text-xl font-bold">Resumen de Carga - {{ mes }}/{{ anio }}</h2>
+                <p class="text-gray-400 text-sm">Verifica los datos antes de guardar en la base de datos.</p>
+            </div>
+            <div class="text-right">
+                <p class="text-xs text-gray-400 uppercase">Total Monitoreos</p>
+                <p class="text-3xl font-bold">{{ total_global }}</p>
+            </div>
+        </div>
+
+        <!-- Tabla Resumen (Estilo Idéntico a tu Imagen) -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-gray-200 text-gray-700 uppercase text-xs font-bold text-center">
+                        <th class="py-3 px-4 border border-gray-300">Gerencia General</th>
+                        <th class="py-3 px-4 border border-gray-300">Agente</th>
+                        <th class="py-3 px-4 border border-gray-300">Cantidad</th>
+                        <th class="py-3 px-4 border border-gray-300">Total Gerencia</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-700">
+                    {% for gerencia, info in resumen.items %}
+                        {# Primera fila del grupo (Lleva los rowspans) #}
+                        <tr class="hover:bg-gray-50 border-b border-gray-200">
+                            <!-- Columna Gerencia (Fusionada) -->
+                            <td class="py-3 px-4 border border-gray-300 font-bold align-middle text-center bg-gray-50" rowspan="{{ info.rowspan }}">
+                                {{ gerencia }}
+                            </td>
+                            
+                            <!-- Primer Agente -->
+                            <td class="py-2 px-4 border border-gray-300 text-center">{{ info.agentes.0.nombre }}</td>
+                            <td class="py-2 px-4 border border-gray-300 text-center font-medium">{{ info.agentes.0.cantidad }}</td>
+                            
+                            <!-- Columna Total (Fusionada) -->
+                            <td class="py-3 px-4 border border-gray-300 font-bold align-middle text-center bg-white text-lg" rowspan="{{ info.rowspan }}">
+                                {{ info.total_gerencia }}
+                            </td>
+                        </tr>
+
+                        {# Resto de agentes de la misma gerencia #}
+                        {% for ag in info.agentes|slice:"1:" %}
+                        <tr class="hover:bg-gray-50 border-b border-gray-200">
+                            <td class="py-2 px-4 border border-gray-300 text-center">{{ ag.nombre }}</td>
+                            <td class="py-2 px-4 border border-gray-300 text-center font-medium">{{ ag.cantidad }}</td>
+                            <!-- No ponemos Gerencia ni Total aquí porque el rowspan de arriba las cubre -->
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Botones de Confirmación -->
+        <div class="bg-gray-100 px-6 py-4 flex justify-end gap-4 border-t border-gray-200">
+            <!-- Botón Cancelar -->
+            <a href="{% url 'proyecto_monitoreo_smcv:importar_plan' %}" class="px-6 py-2 bg-white border border-gray-300 text-gray-700 font-bold rounded shadow hover:bg-gray-50">
+                Cancelar / Corregir
+            </a>
+
+            <!-- Formulario Oculto para Confirmar -->
+            <form action="{% url 'proyecto_monitoreo_smcv:confirmar_importacion' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="filename" value="{{ filename }}">
+                <input type="hidden" name="mes" value="{{ mes }}">
+                <input type="hidden" name="anio" value="{{ anio }}">
+                
+                <button type="submit" class="px-6 py-2 bg-green-600 text-white font-bold rounded shadow hover:bg-green-700 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    Confirmar y Guardar
+                </button>
+            </form>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

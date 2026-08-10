@@ -1,0 +1,72 @@
+<!-- calidad/templates/calidad/reporte_aptitud_emos.html -->
+{% extends "dashboard/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/tabla_estados.css' %}">
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Reporte de Aptitud por Trabajador</h1>
+            <p style="margin: 0;">Esta lista muestra el resultado de aptitud del último examen médico realizado para cada trabajador.</p>
+        </div>
+        <div>
+             <a href="{% url 'calidad:gestion_calidad' %}?view=filtro_emos" class="btn-secondary">&larr; Volver</a>
+        </div>
+    </div>
+
+
+    <!-- Barra de Filtros por Aptitud -->
+    <div class="filter-buttons">
+        <a href="{% url 'calidad:reporte_aptitud_emos' %}" class="legend-item {% if not filtro_activo %}active{% endif %}">Todos</a>
+        {% for opcion in opciones_aptitud %}
+            <a href="?filtro_aptitud={{ opcion }}" 
+               class="legend-item legend-{{ opcion|slugify }} {% if filtro_activo == opcion %}active{% endif %}">
+                {{ opcion }}
+            </a>
+        {% endfor %}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Trabajador</th>
+                <th>Empresa</th>
+                <th>Puesto</th>
+                <th>Aptitud</th>
+                <th style="width: 25%;">Restricción</th>
+                <th>Fecha de Vencimiento</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emo in emos %}
+                {# Usamos las mismas clases de estado para colorear las filas #}
+                <tr class="
+                    {% if emo.aptitud == 'Observado' or emo.aptitud == 'No Apto' %}emo-vencido{% endif %}
+                    {% if emo.aptitud == 'Apto con Restricción' %}emo-por-vencer{% endif %}
+                    {% if emo.aptitud == 'Apto' %}emo-vigente{% endif %}
+                    {% if emo.aptitud == 'Pendiente' %}emo-programado{% endif %}
+                ">
+                    <td>{{ emo.trabajador }}</td>
+                    <td>{{ emo.empresa.nombre|default:"--" }}</td>
+                    <td>{{ emo.trabajador.puesto }}</td>
+                    <td><strong>{{ emo.get_aptitud_display }}</strong></td>
+                    <td>{{ emo.restriccion|default:"--" }}</td>
+                    <td>{{ emo.fecha_vencimiento|date:"d/m/Y" }}</td>
+                    <td>
+                        <a href="{% url 'calidad:buscar_trabajador_info' %}?dni={{ emo.trabajador.dni }}" class="table-action-link">Ver Historial</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center;">No hay trabajadores que coincidan con el filtro de aptitud seleccionado.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

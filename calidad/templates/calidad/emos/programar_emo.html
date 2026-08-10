@@ -1,0 +1,664 @@
+<!-- calidad/templates/calidad/formularios/programar_emo.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body_class %}form-background{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        .back-button-container { max-width: 800px; margin: 30px auto 10px; text-align: left; }
+        
+        #msform label {
+            display: block;
+            text-align: left;
+            font-weight: 600;
+            color: #444;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        /* Unificar look del form (como la 2da imagen) */
+        #msform input:not(.action-button):not([type="submit"]),
+        #msform textarea,
+        #msform select {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: montserrat, arial, verdana;
+            color: #2C3E50;
+            font-size: 14px;
+            background-color: #fff;
+            margin-bottom: 1px;
+        }
+
+        #msform input:not(.action-button):not([type="submit"]):focus,
+        #msform textarea:focus,
+        #msform select:focus {
+            border: 1px solid var(--title_color, #d45b04);
+            outline: none;
+            transition: All 0.5s ease-in;
+        }
+
+        /* Selects con flecha consistente */
+        #msform select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            padding-right: 2.5rem;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23666' d='M4.646 6.646a.5.5 0 0 1 .708 0L8 9.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: .65em auto;
+        }
+
+        #msform select::-ms-expand {
+            display: none;
+        }
+        
+        .field-error {
+            color: #dc3545;
+            font-size: 0.85em;
+            margin-top: 4px;
+            text-align: left;
+        }
+
+        /* Select buscable (1 solo campo) manteniendo el look del form */
+        #msform {
+            /* Ajusta estos colores si quieres afinar el tono */
+            --ss-hover-bg: #707070;
+            --ss-hover-fg: #ffffff;
+            --ss-selected-bg: #5f5f5f;
+            --ss-selected-fg: #ffffff;
+        }
+
+        #msform .ss-hidden-select {
+            position: absolute !important;
+            left: -9999px !important;
+            width: 1px !important;
+            height: 1px !important;
+            overflow: hidden !important;
+        }
+        #msform .searchable-select {
+            position: relative;
+            width: 100%;
+            margin-bottom: 10px;
+            text-align: left;
+        }
+        #msform .searchable-select .ss-control {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: montserrat, arial, verdana;
+            color: #2C3E50;
+            font-size: 14px;
+            background-color: #fff;
+            text-align: left;
+            /* Evitar doble espaciado: el CSS global de #msform input añade margin-bottom */
+            margin-bottom: 0 !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23666' d='M4.646 6.646a.5.5 0 0 1 .708 0L8 9.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: .65em auto;
+        }
+        #msform .searchable-select .ss-control:focus {
+            border: 1px solid var(--title_color, #d45b04);
+            outline: none;
+            transition: All 0.5s ease-in;
+        }
+        #msform .searchable-select .ss-dropdown {
+            position: absolute;
+            top: calc(100% + 2px);
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            max-height: 260px;
+            overflow-y: auto;
+            z-index: 1000;
+
+            display: none;
+            text-align: left;
+        }
+        #msform .searchable-select.open .ss-dropdown {
+            display: block;
+        }
+        #msform .searchable-select .ss-option {
+            padding: 6px 12px;
+            cursor: pointer;
+            font-family: montserrat, arial, verdana;
+            font-size: 14px;
+            color: #2C3E50;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* Hover/active como el select nativo (gris oscuro + texto blanco) */
+        #msform .searchable-select .ss-option:hover,
+        #msform .searchable-select .ss-option.active {
+            background: var(--ss-hover-bg);
+            color: var(--ss-hover-fg);
+        }
+        /* Resaltar el seleccionado actual */
+        #msform .searchable-select .ss-option.selected {
+            background: var(--ss-selected-bg);
+            color: var(--ss-selected-fg);
+        }
+        #msform .searchable-select .ss-empty {
+            padding: 8px 12px;
+            color: #6c757d;
+            font-size: 13px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <!-- BOTÓN VOLVER DINÁMICO -->
+    <div class="back-button-container">
+        {% if modo_edicion %}
+            <!-- MODO EDICIÓN: Vuelve al menú de tarjetas del EMO específico -->
+            <a href="{% url 'calidad:seleccionar_edicion_emo' emo.id %}" class="btn-secondary">&larr; Volver al Menú</a>
+        {% else %}
+            <!-- MODO CREACIÓN: Vuelve al reporte general -->
+            <a href="{% url 'calidad:reporte_maestro_emos' %}" class="btn-secondary">&larr; Volver a la Lista</a>
+        {% endif %}
+    </div>
+
+    <form id="msform" method="post" novalidate>
+        {% csrf_token %}
+        <fieldset>
+            <h2 class="fs-title">{{ titulo }}</h2>
+            
+            <!-- SECCIÓN TRABAJADOR -->
+            {% if trabajador_preseleccionado %}
+                <h3 class="fs-subtitle">Trabajador: <strong style="color: #d45b04;">{{ trabajador_preseleccionado }}</strong></h3>
+                <p style="text-align: center; color: #666; margin-bottom: 20px; font-size: 0.9em;">
+                    DNI: {{ trabajador_preseleccionado.dni }}
+                </p>
+                <!-- Campo oculto para enviar el ID -->
+                <div style="display:none;">
+                    {{ form.trabajador }}
+                </div>
+            {% else %}
+                <h3 class="fs-subtitle">Selecciona un trabajador para programar su EMO</h3>
+                <div class="form-group">
+                    <label for="{{ form.trabajador.id_for_label }}">Trabajador *</label>
+                    {{ form.trabajador }}
+                    {% if form.trabajador.errors %}<div class="field-error">{{ form.trabajador.errors.0 }}</div>{% endif %}
+                </div>
+            {% endif %}
+
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+
+            <!-- DATOS DEL EMO -->
+            <div class="form-group">
+                <label for="{{ form.tipo_emo.id_for_label }}">Tipo de Examen *</label>
+                {{ form.tipo_emo }}
+                {% if form.tipo_emo.errors %}<div class="field-error">{{ form.tipo_emo.errors.0 }}</div>{% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.empresa.id_for_label }}">Empresa</label>
+                {{ form.empresa }}
+                {% if form.empresa.errors %}<div class="field-error">{{ form.empresa.errors.0 }}</div>{% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.cargo.id_for_label }}">Puesto / Cargo</label>
+                <div class="searchable-select" id="cargo-ss" data-select-id="id_cargo">
+                    <input
+                        type="text"
+                        class="ss-control"
+                        id="id_cargo_ss"
+                        autocomplete="off"
+                        placeholder="Seleccionar Cargo para este EMO *"
+                        role="combobox"
+                        aria-expanded="false"
+                        aria-controls="id_cargo_ss_dropdown"
+                    />
+                    <div class="ss-dropdown" id="id_cargo_ss_dropdown" role="listbox"></div>
+                </div>
+                {{ form.cargo }}
+                {% if form.cargo.errors %}<div class="field-error">{{ form.cargo.errors.0 }}</div>{% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.lugar_examen.id_for_label }}">Clínica / Lugar</label>
+                <div class="searchable-select" id="clinica-ss" data-select-id="id_lugar_examen">
+                    <input
+                        type="text"
+                        class="ss-control"
+                        id="id_lugar_examen_ss"
+                        autocomplete="off"
+                        placeholder="Seleccionar Clínica (Opcional)"
+                        role="combobox"
+                        aria-expanded="false"
+                        aria-controls="id_lugar_examen_ss_dropdown"
+                    />
+                    <div class="ss-dropdown" id="id_lugar_examen_ss_dropdown" role="listbox"></div>
+                </div>
+                {{ form.lugar_examen }}
+                {% if form.lugar_examen.errors %}<div class="field-error">{{ form.lugar_examen.errors.0 }}</div>{% endif %}
+
+                <div id="clinica-fachada-wrap" style="display:none; text-align:left; margin-top: 10px;">
+                    <div style="font-weight:600; color:#444; margin-bottom:6px; font-size:14px;">Fachada de la clínica</div>
+                    <a id="clinica-fachada-link" href="#" target="_blank" style="text-decoration:none;">
+                        <img id="clinica-fachada-img" alt="Fachada" style="width: 100%; max-width: 420px; height: 160px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;" />
+                    </a>
+                </div>
+            </div>
+
+            <!-- PROYECTOS (Lógica JS) -->
+            <div class="form-group">
+                <label for="{{ form.proyecto_padre.id_for_label }}">Proyecto(Opcional)</label>
+                {{ form.proyecto_padre }}
+                {% if form.proyecto_padre.errors %}<div class="field-error">{{ form.proyecto_padre.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.subproyecto.id_for_label }}">Subproyecto / Área</label>
+                {{ form.subproyecto }}
+                {% if form.subproyecto.errors %}<div class="field-error">{{ form.subproyecto.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.fecha_programada.id_for_label }}">Fecha Programada</label>
+                {{ form.fecha_programada }}
+                {% if form.fecha_programada.errors %}<div class="field-error">{{ form.fecha_programada.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.hora_examen.id_for_label }}">Hora del Examen</label>
+                {{ form.hora_examen }}
+                {% if form.hora_examen.errors %}<div class="field-error">{{ form.hora_examen.errors.0 }}</div>{% endif %}
+            </div>
+
+            {% if not modo_edicion %}
+            <div class="form-group">
+                <label for="{{ form.comentario_alerta.id_for_label }}">Comentario (solo para correo)</label>
+                {{ form.comentario_alerta }}
+                {% if form.comentario_alerta.errors %}<div class="field-error">{{ form.comentario_alerta.errors.0 }}</div>{% endif %}
+            </div>
+            {% endif %}
+
+            {% if not modo_edicion and mostrar_preview %}
+            <div class="form-group" style="margin-top: 16px;">
+                <label>Ejemplo de alerta por correo</label>
+                <div style="border: 1px solid rgba(0,0,0,0.08); border-radius: 10px; padding: 12px; background: rgba(255,255,255,0.85);">
+                    <div style="font-size: 13px; color: #555; margin-bottom: 8px;">
+                        <div><strong>Asunto:</strong> {{ email_preview_subject }}</div>
+                        <div><strong>Para:</strong> {% if email_preview_to %}{{ email_preview_to }}{% else %}<span style="color:#b10000;">(sin correo registrado)</span>{% endif %}</div>
+                        {% if not email_preview_can_send %}
+                            <div style="margin-top: 6px; color: #b10000;">No se podrá enviar hasta que el trabajador tenga email.</div>
+                        {% endif %}
+                    </div>
+                    <iframe
+                        title="Vista previa del correo"
+                        style="width: 100%; height: 520px; border: 1px solid rgba(0,0,0,0.10); border-radius: 10px; background: #fff;"
+                        srcdoc="{{ email_preview_html|escape }}"
+                    ></iframe>
+                    <div style="display:flex; gap: 10px; justify-content:flex-end; margin-top: 10px;">
+                        {% if email_preview_can_send %}
+                            <button type="submit" name="confirm_send" value="1" class="action-button">Confirmar, programar y enviar</button>
+                                        <button type="button" class="action-button" style="opacity:.6; cursor:not-allowed;" disabled>Confirmar, programar y enviar</button>
+                        {% endif %}
+                    </div>
+                </div>
+                <p class="help-text" style="margin-top: 8px;">Edita los datos o el comentario y pulsa “Confirmar, programar y enviar”.</p>
+            </div>
+            {% endif %}
+
+            <!-- BOTÓN GUARDAR DINÁMICO -->
+            <input type="submit" name="submit" class="submit action-button" 
+                       value="{% if modo_edicion %}Guardar Cambios{% else %}Ver ejemplo del correo{% endif %}"/>
+        </fieldset>
+    </form>
+{% endblock %}
+
+{% block extra_scripts %}
+    <!-- Inyectamos el mapa de subproyectos de forma segura -->
+    {{ subproyectos_map|json_script:"subproyectos-data" }}
+    {{ clinicas_fachadas_map|json_script:"clinicas-fachadas-data" }}
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Limpiar localStorage en modo creación para evitar datos precargados
+        {% if not modo_edicion %}
+            localStorage.removeItem('ceneris_last_cargo_id');
+            localStorage.removeItem('ceneris_last_clinica_id');
+        {% endif %}
+
+        function initSearchableSelect(config) {
+            const selectEl = document.getElementById(config.selectId);
+            const wrapperEl = document.getElementById(config.wrapperId);
+            const inputEl = document.getElementById(config.inputId);
+            const dropdownEl = document.getElementById(config.dropdownId);
+            const storageKey = config.storageKey;
+            const includePlaceholderInList = !!config.includePlaceholderInList;
+
+            if (!selectEl || !wrapperEl || !inputEl || !dropdownEl) return;
+
+            selectEl.classList.add('ss-hidden-select');
+
+            const options = Array.from(selectEl.options).map((opt, idx) => ({
+                index: idx,
+                value: opt.value,
+                text: (opt.textContent || '').trim(),
+                disabled: opt.disabled,
+            }));
+
+            const placeholderText = (options.length ? options[0].text : '') || config.fallbackPlaceholder || '';
+            if (placeholderText) inputEl.placeholder = placeholderText;
+
+            function openDropdown() {
+                wrapperEl.classList.add('open');
+                inputEl.setAttribute('aria-expanded', 'true');
+            }
+            function closeDropdown() {
+                wrapperEl.classList.remove('open');
+                inputEl.setAttribute('aria-expanded', 'false');
+                activeIndex = -1;
+            }
+            function isOpen() {
+                return wrapperEl.classList.contains('open');
+            }
+
+            function setControlValueFromSelect() {
+                const selected = selectEl.selectedOptions && selectEl.selectedOptions[0];
+                if (!selected) {
+                    inputEl.value = '';
+                    inputEl.placeholder = placeholderText;
+                    return;
+                }
+                if (selectEl.value) {
+                    inputEl.value = (selected.textContent || '').trim();
+                } else {
+                    inputEl.value = '';
+                    inputEl.placeholder = placeholderText;
+                }
+            }
+
+            function selectValue(value) {
+                selectEl.value = value;
+                selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                try {
+                    if (storageKey) {
+                        if (value) localStorage.setItem(storageKey, value);
+                        else localStorage.removeItem(storageKey);
+                    }
+                } catch (e) {
+                    // ignore
+                }
+                setControlValueFromSelect();
+                closeDropdown();
+            }
+
+            function renderDropdown(filtered) {
+                dropdownEl.innerHTML = '';
+                if (!filtered.length) {
+                    const empty = document.createElement('div');
+                    empty.className = 'ss-empty';
+                    empty.textContent = 'Sin resultados';
+                    dropdownEl.appendChild(empty);
+                    return;
+                }
+
+                filtered.forEach((o, idx) => {
+                    const item = document.createElement('div');
+                    item.className = 'ss-option';
+                    item.setAttribute('role', 'option');
+                    item.dataset.value = o.value;
+                    item.dataset.idx = String(idx);
+                    item.textContent = o.text;
+                    if (selectEl.value === o.value) {
+                        item.classList.add('selected');
+                    }
+                    if (o.disabled) {
+                        item.style.opacity = '0.6';
+                        item.style.pointerEvents = 'none';
+                    }
+                    dropdownEl.appendChild(item);
+                });
+            }
+
+            function getFilteredOptions(query) {
+                const q = (query || '').trim().toLowerCase();
+
+                const base = includePlaceholderInList
+                    ? options.filter(o => !o.disabled)
+                    : options.slice(1).filter(o => !o.disabled);
+
+                if (!q) return base;
+                return base.filter(o => (o.text || '').toLowerCase().includes(q));
+            }
+
+            function ensureActiveVisible() {
+                const activeEl = dropdownEl.querySelector('.ss-option.active');
+                if (!activeEl) return;
+                const dropdownRect = dropdownEl.getBoundingClientRect();
+                const activeRect = activeEl.getBoundingClientRect();
+                if (activeRect.top < dropdownRect.top) {
+                    dropdownEl.scrollTop -= (dropdownRect.top - activeRect.top);
+                } else if (activeRect.bottom > dropdownRect.bottom) {
+                    dropdownEl.scrollTop += (activeRect.bottom - dropdownRect.bottom);
+                }
+            }
+
+            let current = getFilteredOptions('');
+            let activeIndex = -1;
+            renderDropdown(current);
+            setControlValueFromSelect();
+
+            // Preseleccionar último valor si no hay valor (solo si corresponde)
+            if (storageKey) {
+                try {
+                    const saved = localStorage.getItem(storageKey);
+                    if (saved && !selectEl.value && options.some(o => o.value === saved)) {
+                        selectEl.value = saved;
+                    }
+                } catch (e) {
+                    // ignore
+                }
+                setControlValueFromSelect();
+            }
+
+            inputEl.addEventListener('focus', function() {
+                current = getFilteredOptions(inputEl.value);
+                renderDropdown(current);
+                openDropdown();
+            });
+            inputEl.addEventListener('click', function() {
+                current = getFilteredOptions(inputEl.value);
+                renderDropdown(current);
+                openDropdown();
+            });
+            inputEl.addEventListener('input', function() {
+                current = getFilteredOptions(inputEl.value);
+                activeIndex = -1;
+                renderDropdown(current);
+                openDropdown();
+            });
+            inputEl.addEventListener('keydown', function(e) {
+                if (!isOpen() && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                    openDropdown();
+                }
+                if (!isOpen()) return;
+
+                const items = Array.from(dropdownEl.querySelectorAll('.ss-option'));
+                if (!items.length) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIndex = Math.min(items.length - 1, activeIndex + 1);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIndex = Math.max(0, activeIndex - 1);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const el = items[activeIndex] || items[0];
+                    if (el) selectValue(el.dataset.value);
+                    return;
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeDropdown();
+                    return;
+                }
+
+                items.forEach(i => i.classList.remove('active'));
+                const active = items[activeIndex];
+                if (active) {
+                    active.classList.add('active');
+                    ensureActiveVisible();
+                }
+            });
+
+            dropdownEl.addEventListener('mousedown', function(e) {
+                const target = e.target.closest('.ss-option');
+                if (!target) return;
+                e.preventDefault();
+                selectValue(target.dataset.value);
+            });
+
+            document.addEventListener('mousedown', function(e) {
+                if (!wrapperEl.contains(e.target)) closeDropdown();
+            });
+
+            selectEl.addEventListener('change', function() {
+                setControlValueFromSelect();
+                // Re-render para actualizar "selected" si el usuario abre
+                current = getFilteredOptions(inputEl.value);
+                renderDropdown(current);
+            });
+        }
+
+        // -----------------------------
+        // UX: Puesto/Cargo como SELECT BUSCABLE de 1 solo campo (mismo look)
+        // Mantiene el <select> real oculto para el submit + recordar último
+        // -----------------------------
+        initSearchableSelect({
+            selectId: 'id_cargo',
+            wrapperId: 'cargo-ss',
+            inputId: 'id_cargo_ss',
+            dropdownId: 'id_cargo_ss_dropdown',
+            storageKey: 'ceneris_last_cargo_id',
+            includePlaceholderInList: false,
+            fallbackPlaceholder: 'Seleccionar Cargo'
+        });
+
+        // -----------------------------
+        // UX: Clínica/Lugar como SELECT BUSCABLE (1 campo) + recordar última
+        // (permite elegir vacío porque es opcional)
+        // -----------------------------
+        initSearchableSelect({
+            selectId: 'id_lugar_examen',
+            wrapperId: 'clinica-ss',
+            inputId: 'id_lugar_examen_ss',
+            dropdownId: 'id_lugar_examen_ss_dropdown',
+            storageKey: 'ceneris_last_clinica_id',
+            includePlaceholderInList: true,
+            fallbackPlaceholder: 'Seleccionar Clínica (Opcional)'
+        });
+
+        // Vista previa de fachada de clínica
+        let clinicasFachadas = {};
+        try {
+            clinicasFachadas = JSON.parse(document.getElementById('clinicas-fachadas-data').textContent || '{}');
+        } catch (e) {
+            clinicasFachadas = {};
+        }
+        const clinicaSelectReal = document.getElementById('id_lugar_examen');
+        const fachadaWrap = document.getElementById('clinica-fachada-wrap');
+        const fachadaImg = document.getElementById('clinica-fachada-img');
+        const fachadaLink = document.getElementById('clinica-fachada-link');
+
+        function updateClinicaFachadaPreview() {
+            if (!clinicaSelectReal || !fachadaWrap || !fachadaImg || !fachadaLink) return;
+            const id = clinicaSelectReal.value;
+            const url = id ? (clinicasFachadas[String(id)] || '') : '';
+            if (url) {
+                fachadaImg.src = url;
+                fachadaLink.href = url;
+                fachadaWrap.style.display = 'block';
+            } else {
+                fachadaImg.removeAttribute('src');
+                fachadaLink.href = '#';
+                fachadaWrap.style.display = 'none';
+            }   
+        }
+
+        if (clinicaSelectReal) {
+            clinicaSelectReal.addEventListener('change', updateClinicaFachadaPreview);
+            updateClinicaFachadaPreview();
+        }
+
+        const proyectoPadreSelect = document.getElementById('id_proyecto_padre');
+        const subproyectoSelect = document.getElementById('id_subproyecto');
+        
+        // 1. Leer datos del JSON inyectado
+        let subproyectosMap = {};
+        try {
+            subproyectosMap = JSON.parse(document.getElementById('subproyectos-data').textContent);
+        } catch (e) {
+            console.error("Error al leer subproyectos:", e);
+        }
+        
+        // 2. Función para actualizar el desplegable hijo
+        function updateSubproyectos() {
+            const padreId = proyectoPadreSelect.value;
+            
+            // Capturamos el valor actual antes de borrar las opciones.
+            // Esto es CRUCIAL para el modo edición: Django pone el valor en el HTML,
+            // pero si limpiamos el select con JS, perdemos esa selección.
+            const valorActual = subproyectoSelect.value;
+
+            // Limpiamos el select
+            subproyectoSelect.innerHTML = '<option value="">Seleccionar Subproyecto (si aplica)</option>';
+            
+            if (padreId && subproyectosMap[padreId]) {
+                subproyectoSelect.disabled = false;
+                
+                // Agregamos las nuevas opciones
+                subproyectosMap[padreId].forEach(function(sub) {
+                    const option = document.createElement('option');
+                    option.value = sub.id;
+                    const textoCodigo = sub.codigo ? ` (${sub.codigo})` : '';
+                    option.textContent = `${sub.nombre}${textoCodigo}`;
+                    subproyectoSelect.appendChild(option);
+                });
+
+                // Intentamos restaurar la selección
+                if (valorActual) {
+                    // Verificamos si el valor antiguo existe en las nuevas opciones
+                    for (let i = 0; i < subproyectoSelect.options.length; i++) {
+                        if (subproyectoSelect.options[i].value == valorActual) {
+                            subproyectoSelect.value = valorActual;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                subproyectoSelect.disabled = true;
+            }
+        }
+        
+        if (proyectoPadreSelect && subproyectoSelect) {
+            proyectoPadreSelect.addEventListener('change', updateSubproyectos);
+            
+            // Ejecutar al inicio para cargar estado inicial (útil en Edición)
+            if (proyectoPadreSelect.value) {
+                updateSubproyectos();
+            } else {
+                subproyectoSelect.disabled = true;
+            }
+        }
+    });
+    </script>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+    <div class="form-container">
+        <form method="post" class="form-card">
+            <h2>{{ titulo }}</h2>
+            <p class="form-description">Define las fechas y la cantidad total de servicios para el nuevo programa.</p>
+            {% csrf_token %}
+
+            {{ form.non_field_errors }}
+
+            <div class="form-grid">
+                <div class="form-group">
+                    {{ form.ano.label_tag }}
+                    {{ form.ano }}
+                    {{ form.ano.errors }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.mes.label_tag }}
+                    {{ form.mes }}
+                    {{ form.mes.errors }}
+                </div>
+
+                <div class="form-group">
+                    {{ form.tipo_dispositivo.label_tag }}
+                    {{ form.tipo_dispositivo }}
+                    {{ form.tipo_dispositivo.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.totalPrograma.label_tag }}
+                    {{ form.totalPrograma }}
+                    {{ form.totalPrograma.errors }}
+                </div>
+            </div>
+            <div class="form-group">
+                {{ form.comentarios.label_tag }}
+                {{ form.comentarios }}
+                {{ form.comentarios.errors }}
+            </div>
+                    
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Crear Programa</button>
+                <a href="{% url 'cenerisapp:lista_programas' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

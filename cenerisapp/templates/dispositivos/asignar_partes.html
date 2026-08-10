@@ -1,0 +1,127 @@
+{% extends 'app_base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="form-container">
+    <form method="post" class="form-card">
+        <h2>{{ titulo }}</h2>
+        <p class="form-description">Añade, edita o elimina las partes que componen este dispositivo.</p>
+        {% csrf_token %}
+        
+        <!-- OBLIGATORIO: El management_form gestiona el conteo de formularios -->
+        {{ formset.management_form }}
+        
+        <!-- Errores generales del formset (si los hay) -->
+        {% if formset.non_form_errors %}
+            <div class="alert alert-danger">
+                {{ formset.non_form_errors }}
+            </div>
+        {% endif %}
+
+        <div id="partes-form-list">
+            {% for form in formset %}
+                <div class="inline-form-group" style="border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
+                    
+                    <!-- ==================================================== -->
+                    <!-- ¡CORRECCIÓN CRÍTICA! -->
+                    <!-- Renderizamos los campos ocultos (incluye el id_parte) -->
+                    <!-- Sin esto, Django piensa que todo es nuevo y falla -->
+                    <!-- ==================================================== -->
+                    {% for hidden in form.hidden_fields %}
+                        {{ hidden }}
+                    {% endfor %}
+
+                    <!-- Errores específicos de este formulario individual -->
+                    {{ form.non_field_errors }}
+
+                    <div class="form-group">
+                        {{ form.nomPart.label_tag }}
+                        {{ form.nomPart }}
+                        {{ form.nomPart.errors }}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.estado.label_tag }}
+                        {{ form.estado }}
+                        {{ form.estado.errors }}
+                    </div>
+                    
+                    <!-- Botón de eliminar (solo aparece si el registro ya existe en BD) -->
+                    {% if form.instance.pk %}
+                    <div class="form-group checkbox-group" style="display: flex; align-items: center; gap: 8px; margin-top: 25px;">
+                        {{ form.DELETE }}
+                        <label for="{{ form.DELETE.id_for_label }}" style="color: #d9534f; cursor: pointer;">
+                            Eliminar
+                        </label>
+                    </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Botón para agregar más filas -->
+        <button type="button" id="add-partes-form" class="btn btn-secondary btn-sm" style="margin-top: 10px;">
+            + Añadir Parte
+        </button>
+
+        <div class="form-actions" style="margin-top: 30px;">
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            <a href="{% url 'cenerisapp:lista_dispositivos' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<!-- Plantilla oculta usada por JS para crear nuevos formularios -->
+<div id="partes-empty-form" style="display:none;">
+    <div class="inline-form-group" style="border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
+        <!-- También incluimos campos ocultos en la plantilla vacía por seguridad -->
+        {% for hidden in formset.empty_form.hidden_fields %}
+            {{ hidden }}
+        {% endfor %}
+        
+        <div class="form-group">
+            {{ formset.empty_form.nomPart.label_tag }}
+            {{ formset.empty_form.nomPart }}
+        </div>
+        <div class="form-group">
+            {{ formset.empty_form.estado.label_tag }}
+            {{ formset.empty_form.estado }}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    function setupInlineFormset(prefix) {
+        const addBtn = document.getElementById(`add-${prefix}-form`);
+        if (!addBtn) return;
+
+        const formList = document.getElementById(`${prefix}-form-list`);
+        const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+        const emptyFormTemplateEl = document.getElementById(`${prefix}-empty-form`);
+
+        if (!formList || !totalFormsInput || !emptyFormTemplateEl) return;
+
+        const emptyFormTemplate = emptyFormTemplateEl.innerHTML;
+
+        addBtn.addEventListener('click', () => {
+            const formIndex = parseInt(totalFormsInput.value);
+            // Reemplaza el placeholder __prefix__ con el número actual (ej: 0, 1, 2)
+            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, formIndex);
+            
+            formList.insertAdjacentHTML('beforeend', newFormHtml);
+            
+            // Incrementa el contador total para que Django lo procese
+            totalFormsInput.value = formIndex + 1;
+        });
+    }
+
+    // Inicializa la lógica para el formset 'partes'
+    setupInlineFormset('partes');
+});
+</script>
+{% endblock %}

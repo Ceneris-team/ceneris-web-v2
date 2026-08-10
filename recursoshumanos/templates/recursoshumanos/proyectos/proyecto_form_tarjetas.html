@@ -1,0 +1,148 @@
+<!-- recursoshumanos/templates/recursoshumanos/proyectos/proyecto_form_tarjetas.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block body_class %}form-background{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/multistep-form.css' %}">
+    <style>
+        .back-button-container { max-width: 800px; margin: 30px auto 10px; text-align: left; }
+        .field-error { color: #dc3545; font-size: 0.8rem; font-weight: 600; text-align: left; margin-top: 5px; }
+        #msform .form-group { text-align: left; margin-bottom: 20px; }
+        #msform .form-group label { margin-bottom: 5px; font-weight: 500; color: #555; }
+        .selection-cards { display: flex; gap: 2rem; justify-content: center; margin-bottom: 2rem; flex-wrap: wrap; }
+        .card-select { padding: 2rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; text-align: center; width: 250px; }
+        .card-select i { font-size: 2.5rem; color: #d45b04; margin-bottom: 1rem; }
+        .card-select:hover { border-color: #d45b04; background-color: #fdf5f0; }
+        .card-select.active { border-color: #d45b04; background-color: #fbeadb; box-shadow: 0 0 15px rgba(212, 91, 4, 0.2); }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="back-button-container">
+        <a href="{% url 'recursoshumanos:gestion_proyectos' %}" class="btn-secondary">&larr; Volver</a>
+    </div>
+
+    <form id="msform" method="post" novalidate>
+        {% csrf_token %}
+        
+        {{ form.tipo_proyecto }}
+
+        <fieldset id="step-selection">
+            <h2 class="fs-title">Tipo de Proyecto</h2>
+            <h3 class="fs-subtitle">¿Qué deseas registrar?</h3>
+            <div class="selection-cards">
+                <div class="card-select" data-type="padre">
+                    <i data-feather="folder-plus"></i>
+                    <h4>Proyecto Principal</h4>
+                    <p>Un proyecto nuevo e independiente.</p>
+                </div>
+                <div class="card-select" data-type="subproyecto">
+                    <i data-feather="git-branch"></i>
+                    <h4>Subproyecto / Codigo</h4>
+                    <p>Un área o contrato que depende de un proyecto principal.</p>
+                </div>
+            </div>
+        </fieldset>
+        
+        <fieldset id="step-form" style="display:none;">
+            <h2 class="fs-title">{{ form_title }}</h2>
+            <h3 class="fs-subtitle" id="form-subtitle">Completa la información requerida.</h3>
+            
+            <div class="form-group" id="group-parent">
+                {{ form.parent.label_tag }} {{ form.parent }}
+                {% if form.parent.errors %}<div class="field-error">{{ form.parent.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group" id="group-empresa">
+                {{ form.empresa.label_tag }} {{ form.empresa }}
+                {% if form.empresa.errors %}<div class="field-error">{{ form.empresa.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group" id="group-nombre">
+                {{ form.nombre.label_tag }} {{ form.nombre }}
+                {% if form.nombre.errors %}<div class="field-error">{{ form.nombre.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group" id="group-codigo">
+                {{ form.codigo.label_tag }} {{ form.codigo }}
+                {% if form.codigo.errors %}<div class="field-error">{{ form.codigo.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                {{ form.fecha_inicio.label_tag }} {{ form.fecha_inicio }}
+                {% if form.fecha_inicio.errors %}<div class="field-error">{{ form.fecha_inicio.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                {{ form.activo.label_tag }} {{ form.activo }}
+            </div>
+
+            <input type="button" name="previous" class="previous action-button-previous" value="Anterior"/>
+            <input type="submit" name="submit" class="submit action-button" value="Guardar Proyecto"/>
+        </fieldset>
+    </form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoProyectoInput = document.getElementById('id_tipo_proyecto');
+    const cards = document.querySelectorAll('.card-select');
+    const stepSelection = document.getElementById('step-selection');
+    const stepForm = document.getElementById('step-form');
+    
+    // Función para ocultar/mostrar campos según la selección
+    function setupForm(type) {
+        tipoProyectoInput.value = type;
+        
+        const groupParent = document.getElementById('group-parent');
+        const groupEmpresa = document.getElementById('group-empresa');
+        const groupNombre = document.getElementById('group-nombre');
+        const groupCodigo = document.getElementById('group-codigo');
+        const formSubtitle = document.getElementById('form-subtitle');
+        
+        if (type === 'padre') {
+            groupParent.style.display = 'none';
+            groupEmpresa.style.display = 'block';
+            groupNombre.style.display = 'block';
+            groupCodigo.style.display = 'block';
+            formSubtitle.textContent = 'Define un nuevo proyecto principal.';
+        } else if (type === 'subproyecto') {
+            groupParent.style.display = 'block';
+            groupEmpresa.style.display = 'none';
+            groupNombre.style.display = 'block';
+            groupCodigo.style.display = 'block';
+            formSubtitle.textContent = 'Añade un subproyecto (área o contrato) a uno principal existente.';
+        }
+
+        stepSelection.style.display = 'none';
+        stepForm.style.display = 'block';
+    }
+
+    cards.forEach(card => {
+        card.addEventListener('click', function() {
+            cards.forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            const type = this.getAttribute('data-type');
+            setupForm(type);
+        });
+    });
+
+    document.querySelector('.previous').addEventListener('click', function() {
+        stepForm.style.display = 'none';
+        stepSelection.style.display = 'block';
+        cards.forEach(c => c.classList.remove('active'));
+        tipoProyectoInput.value = '';
+    });
+
+    // Lógica para modo edición o si el formulario falla la validación
+    if (tipoProyectoInput.value) {
+        const type = tipoProyectoInput.value;
+        const activeCard = document.querySelector(`.card-select[data-type="${type}"]`);
+        if (activeCard) {
+            activeCard.classList.add('active');
+        }
+        setupForm(type);
+    }
+});
+</script>
+{% endblock %}

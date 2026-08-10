@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #ddd; }
+        .header { background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); color: white; padding: 15px; text-align: center; border-radius: 8px 8px 0 0; }
+        h1 { margin: 0; font-size: 22px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+        th { background-color: #f2f2f2; padding: 10px; text-align: left; border-bottom: 2px solid #ccc; }
+        td { padding: 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .tag-date { background: #fff3e0; color: #e65100; padding: 3px 8px; border-radius: 10px; font-weight: bold; font-size: 12px; }
+        .tag-urgent { background: #ffebee; color: #c62828; font-weight: bold; }
+        .footer { margin-top: 20px; font-size: 11px; color: #777; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container" style="max-width: 900px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #ddd;">
+        <div class="header" style="background: #e67e22; background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); color: white; padding: 15px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 22px;">Agenda de EMOs Programados</h1>
+            <p style="margin: 5px 0 0; font-size: 14px;">Próximos 7 días</p>
+        </div>
+
+        <p style="color:#555;">Hola, este es el resumen de los exámenes médicos programados para la semana:</p>
+
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px;">
+            <thead>
+                <tr>
+                    <th style="background-color: #f2f2f2; padding: 10px; text-align: left; border-bottom: 2px solid #ccc;">Fecha</th>
+                    <th style="background-color: #f2f2f2; padding: 10px; text-align: left; border-bottom: 2px solid #ccc;">Hora</th>
+                    <th style="background-color: #f2f2f2; padding: 10px; text-align: left; border-bottom: 2px solid #ccc;">Trabajador</th>
+                    <th style="background-color: #f2f2f2; padding: 10px; text-align: left; border-bottom: 2px solid #ccc;">Clínica</th>
+                    <th style="background-color: #f2f2f2; padding: 10px; text-align: left; border-bottom: 2px solid #ccc;">Proyecto</th>
+                    <th style="background-color: #f2f2f2; padding: 10px; text-align: left; border-bottom: 2px solid #ccc;">Días</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emo in emos %}
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: middle;">
+                        <span class="tag-date" style="background: #fff3e0; color: #e65100; padding: 3px 8px; border-radius: 10px; font-weight: bold; font-size: 12px;">{{ emo.fecha_programada|date:"D d/m" }}</span>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: middle;">{{ emo.hora_examen|time:"H:i"|default:"-" }}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: middle;">
+                        <strong>{{ emo.trabajador.nombres }} {{ emo.trabajador.apellido_paterno }}</strong><br>
+                        <span style="color:#888;">{{ emo.trabajador.dni }}</span>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: middle;">{{ emo.lugar_examen.nombre|default:"-" }}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: middle;">
+                        {% if emo.proyecto %}
+                            {{ emo.proyecto.codigo }}
+                        {% elif emo.subproyecto %}
+                            {{ emo.subproyecto.codigo }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: middle; {% if emo.dias_faltan == 0 %}background: #ffebee; color: #c62828; font-weight: bold;{% endif %}" class="{% if emo.dias_faltan == 0 %}tag-urgent{% endif %}">
+                        {% if emo.dias_faltan == 0 %}
+                            ¡HOY!
+                        {% elif emo.dias_faltan == 1 %}
+                            Mañana
+                        {% else %}
+                            En {{ emo.dias_faltan }} días
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="footer">
+            Generado el {% now "d/m/Y H:i" %} - Sistema SSOMA
+        </div>
+    </div>
+</body>
+</html>

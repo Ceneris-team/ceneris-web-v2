@@ -1,0 +1,613 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load custom_filters %}
+{% block title %}Gestión de Tareo Matricial{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ====================================================================== */
+    /* 1. ANCHO COMPLETO (FULL WIDTH)                                         */
+    /* ====================================================================== */
+    .container, .container-fluid, main, .content, .content-wrapper {
+        max-width: 100% !important;
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+        margin: 0 !important;
+    }
+
+    /* ====================================================================== */
+    /* 2. CABECERA PRINCIPAL Y FLECHA                                         */
+    /* ====================================================================== */
+    .page-header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 25px;
+        padding-top: 10px;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 15px;
+    }
+
+    .header-titles h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        color: #0f172a;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #64748b;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+        transition: color 0.2s ease, transform 0.2s ease;
+    }
+    .back-link:hover { color: #3b82f6; transform: translateX(-4px); }
+    .back-link svg { width: 18px; height: 18px; }
+
+    /* Botones de acción */
+    .btn-action {
+        padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer;
+        font-weight: 600; font-size: 0.95rem; transition: all 0.2s;
+        display: inline-flex; align-items: center; gap: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .btn-primary { background-color: #3b82f6; color: white; }
+    .btn-primary:hover { background-color: #2563eb; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2); }
+    .btn-success { background-color: #10b981; color: white; }
+    .btn-success:hover { background-color: #059669; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2); }
+    .btn-clean { background-color: #64748b; color: white; }
+    .btn-clean:hover { background-color: #475569; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(100, 116, 139, 0.2); }
+    .btn-icon-only {
+        width: 44px; /* Ajuste para hacerlo perfectamente cuadrado y simétrico */
+        height: 44px;
+        padding: 0;
+        justify-content: center;
+    }
+
+    .broom-emoji {
+        font-size: 20px;
+        line-height: 1;
+        transform: translateY(1px);
+    }
+
+    /* ====================================================================== */
+    /* 3. PANEL DE FILTROS INTELIGENTE (CSS GRID)                             */
+    /* ====================================================================== */
+    .filter-card {
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        margin-bottom: 25px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        align-items: end;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { 
+        font-size: 0.75rem; font-weight: 700; color: #64748b; 
+        text-transform: uppercase; letter-spacing: 0.05em; 
+    }
+
+    .filter-input {
+        padding: 10px 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        background-color: #f8fafc;
+        width: 100%;
+        color: #334155;
+        transition: all 0.2s ease;
+    }
+    .filter-input:focus { 
+        outline: none; border-color: #3b82f6; 
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); 
+        background-color: #ffffff; 
+    }
+
+    /* Buscador visualmente distinto (con ícono) */
+    .search-wrapper { position: relative; width: 100%; }
+    .search-wrapper svg {
+        position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        width: 18px; height: 18px; color: #94a3b8;
+        pointer-events: none;
+    }
+    .search-input {
+        padding-left: 14px;
+        padding-right: 38px;
+        background-image: none !important;
+        -webkit-appearance: none;
+        appearance: none;
+    }
+    .search-input::-webkit-search-decoration,
+    .search-input::-webkit-search-cancel-button,
+    .search-input::-webkit-search-results-button,
+    .search-input::-webkit-search-results-decoration {
+        display: none;
+    }
+
+    .area-filter-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .area-filter-row .filter-input {
+        flex: 1;
+    }
+
+    .area-filter-row .btn-icon-only {
+        flex: 0 0 44px;
+    }
+
+    .table-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 14px;
+    }
+
+    .pagination-wrapper {
+        margin-top: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .pagination-link,
+    .pagination-current {
+        min-width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        text-decoration: none;
+        color: #334155;
+        background: #ffffff;
+        padding: 0 10px;
+    }
+
+    .pagination-link:hover {
+        border-color: #3b82f6;
+        color: #1d4ed8;
+    }
+
+    .pagination-current {
+        background: #eff6ff;
+        border-color: #3b82f6;
+        color: #1d4ed8;
+    }
+
+    /* ====================================================================== */
+    /* 4. TABLA MATRICIAL PERFECCIONADA                                       */
+    /* ====================================================================== */
+    .table-container {
+        overflow: auto; max-height: 70vh; border-radius: 10px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0; background: #ffffff;
+    }
+
+    .tareo-table {
+        border-collapse: separate; border-spacing: 0; table-layout: fixed;
+        width: max-content; min-width: 100%; font-size: 0.85rem;
+    }
+
+    .tareo-table th, .tareo-table td {
+        border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;
+        padding: 8px 6px; text-align: center; vertical-align: middle; 
+    }
+
+    /* CABECERA BLANCA Y LIMPIA (SIN FRANJA NARANJA) */
+    .tareo-table thead th {
+        background-color: #ffffff; 
+        color: #475569; 
+        font-weight: 700;
+        position: sticky; top: 0; z-index: 10;
+        border-right: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0; /* Borde sutil y estándar */
+    }
+
+    /* COLUMNAS FIJAS */
+    .codigo-col { width: 95px; min-width: 95px; position: sticky; left: 0; z-index: 5; }
+    .trabajador-col { width: 260px; min-width: 260px; position: sticky; left: 95px; z-index: 5; text-align: left; padding-left: 14px !important; }
+
+    .tareo-table tbody td.sticky-col {
+        background-color: #fdfdfd; font-weight: 500; color: #1e293b;
+        border-right: 2px solid #e2e8f0; 
+    }
+    .tareo-table thead th.sticky-col {
+        z-index: 20; background-color: #ffffff;
+        border-right: 2px solid #e2e8f0; 
+        border-bottom: 1px solid #e2e8f0; /* Borde sutil y estándar */
+    }
+
+    .dia-col { width: 48px; min-width: 48px; line-height: 1.3; }
+
+    .tareo-cell { cursor: pointer; user-select: none; transition: background 0.1s; }
+    
+    /* Colores de selección neutros/azules para combinar con todo */
+    .tareo-cell:hover { background-color: #f1f5f9; } 
+    .tareo-cell.selected { background-color: #dbeafe !important; outline: 2px solid #3b82f6; outline-offset: -2px; }
+    .changed { background-color: #fef08a !important; font-weight: bold; color: #854d0e; }
+
+    /* Modales y Menu contextual ocultos */
+    #context-menu { position: absolute; background: white; border: 1px solid #e2e8f0; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); padding: 5px 0; z-index: 2000; display: none; border-radius: 8px; overflow: hidden; }
+    #context-menu ul { list-style: none; margin: 0; padding: 0; }
+    #context-menu li { padding: 10px 20px; cursor: pointer; font-size: 0.9rem; color: #334155; }
+    #context-menu li:hover { background-color: #f8fafc; color: #3b82f6; font-weight: 600;}
+    .modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); }
+    .modal-content { background-color: #ffffff; margin: 10% auto; padding: 25px; width: 90%; max-width: 400px; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); position: relative; }
+    .close-button { color: #94a3b8; position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; }
+    .close-button:hover { color: #3b82f6; }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header-container">
+        <div class="header-titles">
+            
+            <h1>Planificación Matricial: {{ mes_nombre }}</h1>
+        </div>
+        
+                <div class="header-actions"></div>
+    </div>
+
+    <div class="filter-card">
+        <form method="get" id="filterForm" class="filter-grid" style="width: 100%; margin: 0;">
+            
+            <div class="form-group">
+                <label for="buscadorTrabajador">Búsqueda Rápida</label>
+                <div class="search-wrapper">
+                    <input type="search" id="buscadorTrabajador" name="q" value="{{ busqueda|default:'' }}" placeholder="DNI o Nombre..." class="filter-input search-input">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="mes">Mes y Año</label>
+                <input type="month" id="mes" name="mes" value="{{ mes_seleccionado }}" class="filter-input">
+            </div>
+
+            <div class="form-group">
+                <label for="proyecto">Proyecto</label>
+                <select id="proyecto" name="proyecto" class="filter-input">
+                    <option value="">-- Todos --</option>
+                    {% for proyecto in proyectos %}
+                        <option value="{{ proyecto.id }}" {% if proyecto.id|stringformat:"s" == proyecto_seleccionado_id %}selected{% endif %}>{{ proyecto.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="subproyecto">Subproyecto</label>
+                <select id="subproyecto" name="subproyecto" class="filter-input">
+                    <option value="">-- Todos --</option>
+                    {% for subp in subproyectos %}
+                        <option value="{{ subp.id }}" {% if subp.id|stringformat:"s" == subproyecto_seleccionado_id %}selected{% endif %}>{{ subp.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="area">Área</label>
+                <div class="area-filter-row">
+                    <select id="area" name="area" class="filter-input">
+                        <option value="">-- Todas --</option>
+                        {% for area in areas %}
+                            <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_seleccionada_id %}selected{% endif %}>{{ area.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn-action btn-primary btn-icon-only" aria-label="Consultar filtros" title="Consultar filtros">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18M6 12h12m-9 8h6" />
+                        </svg>
+                    </button>
+                    <button type="button" id="limpiarFiltrosBtn" class="btn-action btn-clean btn-icon-only" aria-label="Limpiar filtros" title="Limpiar filtros">
+                        <span class="broom-emoji" aria-hidden="true">🧹</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-container">
+        <table class="tareo-table" id="tablaMatricial">
+            <thead>
+                <tr>
+                    <th class="codigo-col sticky-col">DNI</th>
+                    <th class="trabajador-col sticky-col">Nombres y Apellidos</th>
+                    {% for dia_info in dias_del_mes_info %}
+                        <th class="dia-col">
+                            {{ dia_info.nombre }}<br><span style="font-size: 1.1em; color: #0f172a;">{{ dia_info.numero }}</span>
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for trabajador in trabajadores %}
+                <tr class="fila-trabajador"> 
+                    <td class="codigo-col sticky-col">{{ trabajador.dni }}</td>
+                    <td class="trabajador-col sticky-col">{{ trabajador.nombre_completo }}</td>
+                    {% for dia_info in dias_del_mes_info %}
+                        {% with dia=dia_info.numero dia_str=dia_info.numero|stringformat:"s" %}
+                        {% with horario_trabajador=tareo_del_mes|get_item:trabajador.dni %}
+                        {% with horario_dia=horario_trabajador|get_item:dia_str %}
+                        <td class="tareo-cell" data-dni="{{ trabajador.dni }}" data-dia="{{ dia }}">
+                            {% if horario_dia.estado == 'J' and horario_dia.jornada_horas %}
+                                J ({{ horario_dia.jornada_horas }}h)
+                            {% else %}
+                                {{ horario_dia.estado|default:"" }}
+                            {% endif %}
+                        </td>
+                        {% endwith %}{% endwith %}{% endwith %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-actions">
+        <form method="post" id="tareoForm" style="margin: 0;">
+            {% csrf_token %}
+            <input type="hidden" name="cambios" id="cambiosInput">
+            <button type="submit" class="btn-action btn-success" aria-label="Guardar Cambios" title="Guardar Cambios">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                Guardar Cambios
+            </button>
+        </form>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="pagination-wrapper">
+        {% if page_obj.has_previous %}
+            <a class="pagination-link" href="?mes={{ mes_seleccionado }}{% if busqueda %}&q={{ busqueda }}{% endif %}{% if proyecto_seleccionado_id %}&proyecto={{ proyecto_seleccionado_id }}{% endif %}{% if subproyecto_seleccionado_id %}&subproyecto={{ subproyecto_seleccionado_id }}{% endif %}{% if area_seleccionada_id %}&area={{ area_seleccionada_id }}{% endif %}&page={{ page_obj.previous_page_number }}">Anterior</a>
+        {% endif %}
+
+        <span class="pagination-current">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+
+        {% if page_obj.has_next %}
+            <a class="pagination-link" href="?mes={{ mes_seleccionado }}{% if busqueda %}&q={{ busqueda }}{% endif %}{% if proyecto_seleccionado_id %}&proyecto={{ proyecto_seleccionado_id }}{% endif %}{% if subproyecto_seleccionado_id %}&subproyecto={{ subproyecto_seleccionado_id }}{% endif %}{% if area_seleccionada_id %}&area={{ area_seleccionada_id }}{% endif %}&page={{ page_obj.next_page_number }}">Siguiente</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div id="context-menu">
+        <ul>
+            <li data-value="C"><strong>C:</strong> Trabajo en Campo</li>
+            <li data-value="O"><strong>O:</strong> Oficina</li>
+            <li data-value="P"><strong>P:</strong> Horario Personalizado</li>
+            <li data-value="J"><strong>J:</strong> Jornada por Horas</li>
+            <li data-value="D"><strong>.:</strong> Día Libre</li>
+            <li style="border-top: 1px solid #e2e8f0; margin-top: 5px;"></li>
+            <li data-value="Z"><strong>Z:</strong> No fiscalizado</li>
+            <li data-value="F" style="color: #dc2626;"><strong>F:</strong> Falta</li>
+            <li data-value="">🧹 Borrar celda</li>
+        </ul>
+    </div>
+
+    <div id="horarioModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 style="margin-top:0; color:#1e293b;">Horario Personalizado</h3>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label for="hora_entrada">Hora de Entrada:</label>
+                <input type="time" id="hora_entrada" class="filter-input">
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label for="hora_salida">Hora de Salida:</label>
+                <input type="time" id="hora_salida" class="filter-input">
+            </div>
+            <button id="guardarHorarioBtn" class="btn-action btn-primary" style="width: 100%; justify-content: center;">Confirmar Horario</button>
+        </div>
+    </div>
+    
+    <div id="jornadaModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 style="margin-top:0; color:#1e293b;">Jornada por Horas</h3>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label for="jornada_horas">Horas a cumplir en el día:</label>
+                <input type="number" id="jornada_horas" class="filter-input" step="0.5" min="1" placeholder="Ej: 8.5">
+            </div>
+            <button id="guardarJornadaBtn" class="btn-action btn-primary" style="width: 100%; justify-content: center;">Confirmar Jornada</button>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // ==========================================
+    // MAGIA DEL BUSCADOR EN VIVO
+    // ==========================================
+    const buscadorInput = document.getElementById('buscadorTrabajador');
+    const filterForm = document.getElementById('filterForm');
+    const limpiarFiltrosBtn = document.getElementById('limpiarFiltrosBtn');
+    const proyectoInput = document.getElementById('proyecto');
+    const subproyectoInput = document.getElementById('subproyecto');
+    const areaInput = document.getElementById('area');
+    
+    let searchDebounce;
+    buscadorInput.addEventListener('input', function() {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+            filterForm.querySelector('input[name="page"]')?.remove();
+            filterForm.submit();
+        }, 350);
+    });
+
+    limpiarFiltrosBtn.addEventListener('click', function() {
+        buscadorInput.value = '';
+        if (proyectoInput) proyectoInput.value = '';
+        if (subproyectoInput) subproyectoInput.value = '';
+        if (areaInput) areaInput.value = '';
+        filterForm.submit();
+    });
+
+    // ==========================================
+    // LÓGICA DE TABLA (Mantenida intacta)
+    // ==========================================
+    const tareoTable = document.querySelector('.tareo-table');
+    const tareoForm = document.getElementById('tareoForm');
+    const cambiosInput = document.getElementById('cambiosInput');
+    const contextMenu = document.getElementById('context-menu');
+    const menuItems = contextMenu.querySelectorAll('li');
+
+    const horarioModal = document.getElementById('horarioModal');
+    const guardarHorarioBtn = document.getElementById('guardarHorarioBtn');
+    const horaEntradaInput = document.getElementById('hora_entrada');
+    const horaSalidaInput = document.getElementById('hora_salida');
+
+    const jornadaModal = document.getElementById('jornadaModal');
+    const guardarJornadaBtn = document.getElementById('guardarJornadaBtn');
+    const jornadaHorasInput = document.getElementById('jornada_horas');
+
+    let isMouseDown = false;
+    let startCell = null;
+    let cambios = {};
+
+    tareoTable.addEventListener('mousedown', function(e) {
+        if (e.button === 0 && e.target.classList.contains('tareo-cell')) {
+            isMouseDown = true;
+            if (!e.ctrlKey && !e.shiftKey) clearSelection();
+            startCell = e.target;
+            e.target.classList.add('selected');
+            e.preventDefault();
+        }
+    });
+
+    tareoTable.addEventListener('mouseover', function(e) {
+        if (isMouseDown && e.target.classList.contains('tareo-cell')) {
+            highlightRange(startCell, e.target);
+        }
+    });
+
+    document.addEventListener('mouseup', () => { isMouseDown = false; startCell = null; });
+
+    tareoTable.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        if (e.target.classList.contains('tareo-cell')) {
+            if (!e.target.classList.contains('selected')) {
+                if (!e.ctrlKey) clearSelection();
+                e.target.classList.add('selected');
+            }
+            contextMenu.style.top = `${e.pageY}px`;
+            contextMenu.style.left = `${e.pageX}px`;
+            contextMenu.style.display = 'block';
+        }
+    });
+
+    document.addEventListener('click', () => { contextMenu.style.display = 'none'; });
+
+    menuItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            const selectedCells = document.querySelectorAll('.tareo-cell.selected');
+            if (selectedCells.length === 0) return;
+            const targetLi = e.target.closest('li'); 
+            const newValue = targetLi.dataset.value;
+            
+            if (newValue === 'P') {
+                horaEntradaInput.value = ''; horaSalidaInput.value = '';
+                horarioModal.style.display = 'block';
+            } else if (newValue === 'J') {
+                jornadaHorasInput.value = '';
+                jornadaModal.style.display = 'block';
+                jornadaHorasInput.focus();
+            } else {
+                updateSelectedCells({ estado: newValue, horario: null, jornada_horas: null });
+            }
+        });
+    });
+
+    document.querySelectorAll('.modal .close-button').forEach(btn => {
+        btn.onclick = () => btn.closest('.modal').style.display = 'none';
+    });
+    
+    window.onclick = (event) => {
+        if (event.target.classList.contains('modal')) event.target.style.display = "none";
+    };
+
+    guardarHorarioBtn.addEventListener('click', function() {
+        if (!horaEntradaInput.value || !horaSalidaInput.value) {
+            alert("Por favor, ingrese ambas horas."); return;
+        }
+        updateSelectedCells({ estado: 'P', horario: { entrada: horaEntradaInput.value, salida: horaSalidaInput.value }, jornada_horas: null });
+        horarioModal.style.display = 'none';
+    });
+    
+    guardarJornadaBtn.addEventListener('click', function() {
+        const horas = parseFloat(jornadaHorasInput.value);
+        if (isNaN(horas) || horas <= 0) {
+            alert("Ingrese un número válido mayor a cero."); return;
+        }
+        updateSelectedCells({ estado: 'J', jornada_horas: horas, horario: null });
+        jornadaModal.style.display = 'none';
+    });
+
+    function updateSelectedCells(data) {
+        document.querySelectorAll('.tareo-cell.selected').forEach(cell => {
+            const dni = cell.dataset.dni;
+            const dia = cell.dataset.dia;
+            
+            if (data.estado === 'J' && data.jornada_horas) {
+                cell.textContent = `J (${data.jornada_horas}h)`;
+            } else {
+                cell.textContent = data.estado || '';
+            }
+            cell.classList.add('changed');
+            
+            if (!cambios[dni]) cambios[dni] = {};
+            cambios[dni][dia] = {
+                estado: data.estado,
+                horario: data.horario || null,
+                jornada_horas: data.jornada_horas || null
+            };
+        });
+    }
+
+    function highlightRange(start, end) {
+        const table = start.closest('table');
+        if (!table) return;
+        const startCoords = { row: start.parentElement.rowIndex, col: start.cellIndex };
+        const endCoords = { row: end.parentElement.rowIndex, col: end.cellIndex };
+        const minRow = Math.min(startCoords.row, endCoords.row);
+        const maxRow = Math.max(startCoords.row, endCoords.row);
+        const minCol = Math.min(startCoords.col, endCoords.col);
+        const maxCol = Math.max(startCoords.col, endCoords.col);
+        
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                const cell = table.rows[r]?.cells[c];
+                if (cell && cell.classList.contains('tareo-cell')) cell.classList.add('selected');
+            }
+        }
+    }
+
+    function clearSelection() { document.querySelectorAll('.tareo-cell.selected').forEach(c => c.classList.remove('selected')); }
+
+    tareoForm.addEventListener('submit', function(e) {
+        cambiosInput.value = JSON.stringify(cambios);
+    });
+});
+</script>
+{% endblock %}

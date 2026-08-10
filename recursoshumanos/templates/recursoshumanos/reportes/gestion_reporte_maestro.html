@@ -1,0 +1,415 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Gestión de Reportes{% endblock %}
+
+{% block extra_head %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <style>
+        /* Select2 (buscador de personal) con la misma pinta que los demas campos */
+        .filter-row .select2-container { width: 100% !important; }
+        .filter-row .select2-container .select2-selection--single {
+            height: 42px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+        }
+        .filter-row .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: 40px;
+            padding-left: 1rem;
+            font-size: 1rem;
+            color: #212529;
+        }
+        .filter-row .select2-container .select2-selection--single .select2-selection__arrow {
+            height: 40px;
+        }
+        .report-section {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+            border: 1px solid #e9ecef;
+        }
+        .report-section h2 {
+            margin-top: 0;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 1rem;
+            font-size: 1.5rem;
+            color: #343a40;
+        }
+        .report-form {
+            display: flex;
+            align-items: flex-end;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+        .report-form .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .report-form label {
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #495057;
+            font-size: 0.9rem;
+        }
+        .report-form input[type="date"],
+        .report-form input[type="month"],
+        .report-form select {
+            padding: 0.6rem 1rem;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-family: inherit;
+            min-width: 200px;
+        }
+        .filter-row {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px dashed #dee2e6;
+        }
+        .filter-row .form-group {
+            flex: 1;
+            min-width: 180px;
+        }
+        .filter-label-optional {
+            font-size: 0.75rem;
+            color: #6c757d;
+            margin-left: 4px;
+        }
+        .report-form .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.7rem 1.2rem;
+            font-weight: 500;
+            border-radius: 6px;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <h1>Gestión de Reportes</h1>
+    <p>Descarga los informes de asistencia diarios o mensuales directamente desde aquí.</p>
+
+    <!-- ============================================= -->
+    <!--     SECCIÓN PARA REPORTES DIARIOS             -->
+    <!-- ============================================= -->
+    <div class="report-section">
+        <h2>Reportes Diarios</h2>
+        <form id="daily-report-form" class="report-form" onsubmit="return false;">
+            <div class="form-group">
+                <label for="reporte-diario-fecha">Selecciona una fecha:</label>
+                <input type="date" id="reporte-diario-fecha" name="fecha" required>
+            </div>
+            <button type="button" class="btn btn-primary" data-url="{% url 'recursoshumanos:exportar_reporte_diario' %}">
+                <i data-feather="download"></i>
+                <span>Descargar Marcas del Día</span>
+            </button>
+        </form>
+        <div class="filter-row">
+            <div class="form-group">
+                <label for="diario-ubicacion">Ubicación <span class="filter-label-optional">(opcional)</span></label>
+                <select id="diario-ubicacion">
+                    <option value="">— Todas —</option>
+                    {% for ub in ubicaciones %}
+                    <option value="{{ ub.id }}">{{ ub.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="diario-proyecto">Proyecto <span class="filter-label-optional">(opcional)</span></label>
+                <select id="diario-proyecto">
+                    <option value="">— Todos —</option>
+                    {% for proy in proyectos %}
+                    <option value="{{ proy.id }}">{% if proy.codigo %}[{{ proy.codigo }}] {% endif %}{{ proy.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="diario-trabajador">Personal <span class="filter-label-optional">(opcional)</span></label>
+                <select id="diario-trabajador">
+                    <option value="">— Todo el personal —</option>
+                    {% for t in trabajadores_lista %}
+                    <option value="{{ t.id }}">{{ t.apellido_paterno }} {{ t.apellido_materno }}, {{ t.nombres }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="diario-origen">Medio de marcación <span class="filter-label-optional">(opcional)</span></label>
+                <select id="diario-origen">
+                    <option value="">— Todos —</option>
+                    {% for codigo, etiqueta in origenes %}
+                    <option value="{{ codigo }}">{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================= -->
+    <!--     SECCIÓN PARA REPORTES SEMANALES           -->
+    <!-- ============================================= -->
+    <div class="report-section">
+        <h2>Reportes Semanales</h2>
+        <form id="weekly-report-form" class="report-form" onsubmit="return false;">
+            <div class="form-group">
+                <label for="reporte-semanal-fecha">Selecciona una fecha:</label>
+                <input type="date" id="reporte-semanal-fecha" name="fecha" required>
+            </div>
+            <button type="button" class="btn btn-primary" data-url="{% url 'recursoshumanos:exportar_reporte_semanal' %}">
+                <i data-feather="calendar"></i>
+                <span>Descargar Marcas de la Semana</span>
+            </button>
+        </form>
+        <div class="filter-row">
+            <div class="form-group">
+                <label for="semanal-ubicacion">Ubicación <span class="filter-label-optional">(opcional)</span></label>
+                <select id="semanal-ubicacion">
+                    <option value="">— Todas —</option>
+                    {% for ub in ubicaciones %}
+                    <option value="{{ ub.id }}">{{ ub.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="semanal-proyecto">Proyecto <span class="filter-label-optional">(opcional)</span></label>
+                <select id="semanal-proyecto">
+                    <option value="">— Todos —</option>
+                    {% for proy in proyectos %}
+                    <option value="{{ proy.id }}">{% if proy.codigo %}[{{ proy.codigo }}] {% endif %}{{ proy.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="semanal-trabajador">Personal <span class="filter-label-optional">(opcional)</span></label>
+                <select id="semanal-trabajador">
+                    <option value="">— Todo el personal —</option>
+                    {% for t in trabajadores_lista %}
+                    <option value="{{ t.id }}">{{ t.apellido_paterno }} {{ t.apellido_materno }}, {{ t.nombres }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="semanal-origen">Medio de marcación <span class="filter-label-optional">(opcional)</span></label>
+                <select id="semanal-origen">
+                    <option value="">— Todos —</option>
+                    {% for codigo, etiqueta in origenes %}
+                    <option value="{{ codigo }}">{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================= -->
+    <!--     SECCIÓN PARA REPORTES MENSUALES (UNIFICADA) -->
+    <!-- ============================================= -->
+    <div class="report-section">
+        <h2>Reportes Mensuales</h2>
+        <form id="monthly-report-form" class="report-form" onsubmit="return false;">
+            <div class="form-group">
+                <label for="reporte-mensual-mes">Selecciona un mes:</label>
+                <input type="month" id="reporte-mensual-mes" name="mes" required>
+            </div>
+            <button type="button" class="btn btn-primary" data-url="{% url 'recursoshumanos:exportar_reporte_maestro' %}" data-supports-origen="true">
+                <i data-feather="file-text"></i>
+                <span>Generar Reporte Maestro</span>
+            </button>
+            <button type="button" class="btn btn-secondary" data-url="{% url 'recursoshumanos:exportar_formato_planilla' %}">
+                <i data-feather="layout"></i>
+                <span>Descargar Formato Planilla</span>
+            </button>
+            <button type="button" class="btn btn-outline-primary" data-url="{% url 'recursoshumanos:reporte_justificaciones_rrhh' %}" data-no-filters="true">
+                <i data-feather="check-square"></i>
+                <span>Ver Justificaciones RRHH</span>
+            </button>
+        </form>
+        <div class="filter-row">
+            <div class="form-group">
+                <label for="mensual-ubicacion">Ubicación <span class="filter-label-optional">(opcional)</span></label>
+                <select id="mensual-ubicacion">
+                    <option value="">— Todas —</option>
+                    {% for ub in ubicaciones %}
+                    <option value="{{ ub.id }}">{{ ub.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="mensual-proyecto">Proyecto <span class="filter-label-optional">(opcional)</span></label>
+                <select id="mensual-proyecto">
+                    <option value="">— Todos —</option>
+                    {% for proy in proyectos %}
+                    <option value="{{ proy.id }}">{% if proy.codigo %}[{{ proy.codigo }}] {% endif %}{{ proy.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="mensual-trabajador">Personal <span class="filter-label-optional">(opcional)</span></label>
+                <select id="mensual-trabajador">
+                    <option value="">— Todo el personal —</option>
+                    {% for t in trabajadores_lista %}
+                    <option value="{{ t.id }}">{{ t.apellido_paterno }} {{ t.apellido_materno }}, {{ t.nombres }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="mensual-origen">Medio de marcación <span class="filter-label-optional">(opcional)</span></label>
+                <select id="mensual-origen">
+                    <option value="">— Todos —</option>
+                    {% for codigo, etiqueta in origenes %}
+                    <option value="{{ codigo }}">{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+                <small id="mensual-origen-aviso" style="display:none; color:#9C5700; font-size:0.78rem; margin-top:4px;">
+                    Con filtro activo no se calculan los totales del mes (no usar para planilla).
+                </small>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    // Convierte los selectores de personal en campos buscables: con cientos de
+    // trabajadores, escribir es mucho mas rapido que desplazar la lista.
+    // Select2 mantiene sincronizado el <select> original, asi que leer
+    // .value mas abajo sigue funcionando igual.
+    if (window.jQuery && jQuery.fn.select2) {
+        ['#diario-trabajador', '#semanal-trabajador', '#mensual-trabajador'].forEach(function(sel) {
+            const $el = jQuery(sel);
+            if (!$el.length) return;
+            $el.select2({
+                width: '100%',
+                language: {
+                    noResults: function() { return 'Sin resultados'; },
+                    searching: function() { return 'Buscando...'; }
+                }
+            });
+        });
+    }
+
+    function buildParams(params) {
+        return Object.entries(params)
+            .filter(([, v]) => v)
+            .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+            .join('&');
+    }
+
+    // --- REPORTES DIARIOS ---
+    const dailyForm = document.getElementById('daily-report-form');
+    if (dailyForm) {
+        const dateInput = document.getElementById('reporte-diario-fecha');
+        if (!dateInput.value) dateInput.valueAsDate = new Date();
+
+        dailyForm.querySelector('button').addEventListener('click', function() {
+            const selectedDate = dateInput.value;
+            if (!selectedDate) { alert('Por favor, selecciona una fecha.'); return; }
+
+            const params = buildParams({
+                fecha:         selectedDate,
+                ubicacion_id:  document.getElementById('diario-ubicacion').value,
+                proyecto_id:   document.getElementById('diario-proyecto').value,
+                trabajador_id: document.getElementById('diario-trabajador').value,
+                origen:        document.getElementById('diario-origen').value,
+            });
+            window.location.href = `${this.dataset.url}?${params}`;
+        });
+    }
+
+    // --- REPORTES SEMANALES ---
+    const weeklyForm = document.getElementById('weekly-report-form');
+    if (weeklyForm) {
+        const weekDateInput = document.getElementById('reporte-semanal-fecha');
+        if (!weekDateInput.value) weekDateInput.valueAsDate = new Date();
+
+        weeklyForm.querySelector('button').addEventListener('click', function() {
+            const selectedDate = weekDateInput.value;
+            if (!selectedDate) { alert('Por favor, selecciona una fecha.'); return; }
+
+            const params = buildParams({
+                fecha:         selectedDate,
+                ubicacion_id:  document.getElementById('semanal-ubicacion').value,
+                proyecto_id:   document.getElementById('semanal-proyecto').value,
+                trabajador_id: document.getElementById('semanal-trabajador').value,
+                origen:        document.getElementById('semanal-origen').value,
+            });
+            window.location.href = `${this.dataset.url}?${params}`;
+        });
+    }
+
+    // Aviso visible cuando se filtra el mensual por medio: los totales del mes
+    // no se calculan en vista filtrada.
+    const mensualOrigen = document.getElementById('mensual-origen');
+    const mensualOrigenAviso = document.getElementById('mensual-origen-aviso');
+    if (mensualOrigen && mensualOrigenAviso) {
+        const toggleAviso = () => {
+            mensualOrigenAviso.style.display = mensualOrigen.value ? 'block' : 'none';
+        };
+        mensualOrigen.addEventListener('change', toggleAviso);
+        toggleAviso();
+    }
+
+    // --- REPORTES MENSUALES ---
+    const monthlyForm = document.getElementById('monthly-report-form');
+    if (monthlyForm) {
+        const monthInput = document.getElementById('reporte-mensual-mes');
+        if (!monthInput.value) {
+            const now = new Date();
+            monthInput.value = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}`;
+        }
+
+        monthlyForm.querySelectorAll('button').forEach(button => {
+            button.addEventListener('click', function() {
+                const selectedMonth = monthInput.value;
+                if (!selectedMonth) { alert('Por favor, selecciona un mes.'); return; }
+
+                // El botón de Justificaciones no usa filtros de personal
+                if (this.dataset.noFilters) {
+                    window.location.href = `${this.dataset.url}?mes=${selectedMonth}`;
+                    return;
+                }
+
+                // El filtro por medio solo aplica al Reporte Maestro. El
+                // Formato Planilla es la base de nomina y debe salir siempre
+                // completo, sin filtrar por medio de marcacion.
+                const origenSeleccionado = document.getElementById('mensual-origen').value;
+                const aplicaOrigen = this.dataset.supportsOrigen === 'true';
+
+                if (origenSeleccionado && !aplicaOrigen) {
+                    const seguir = confirm(
+                        'El filtro por medio de marcación NO se aplica al Formato Planilla ' +
+                        '(es la base para nómina y debe incluir todas las marcas).\n\n' +
+                        '¿Descargar el Formato Planilla completo, sin filtrar?'
+                    );
+                    if (!seguir) return;
+                }
+
+                const params = buildParams({
+                    mes:           selectedMonth,
+                    ubicacion_id:  document.getElementById('mensual-ubicacion').value,
+                    proyecto_id:   document.getElementById('mensual-proyecto').value,
+                    trabajador_id: document.getElementById('mensual-trabajador').value,
+                    origen:        aplicaOrigen ? origenSeleccionado : '',
+                });
+                window.location.href = `${this.dataset.url}?${params}`;
+            });
+        });
+    }
+
+    if (typeof feather !== 'undefined') feather.replace();
+});
+</script>
+{% endblock %}

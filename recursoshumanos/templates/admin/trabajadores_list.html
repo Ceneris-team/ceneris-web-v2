@@ -1,0 +1,28 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1>{{ title }}</h1>
+<!-- Aquí iría un formulario para añadir nuevos trabajadores -->
+<p>Funcionalidad para añadir/editar trabajadores se añadirá próximamente.</p>
+<table>
+    <thead>
+        <tr>
+            <th>DNI</th>
+            <th>Nombre</th>
+            <th>Cargo</th>
+            <th>Activo</th>
+            <th>Device ID Vinculado</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for trabajador in trabajadores %}
+        <tr>
+            <td>{{ trabajador.dni }}</td>
+            <td>{{ trabajador.nombre }}</td>
+            <td>{{ trabajador.cargo }}</td>
+            <td>{{ trabajador.activo }}</td>
+            <td>{{ trabajador.deviceIdVinculado|default:"No vinculado" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

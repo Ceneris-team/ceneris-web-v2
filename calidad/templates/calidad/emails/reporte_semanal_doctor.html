@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:Arial,Helvetica,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;padding:30px 0;">
+  <tr>
+    <td align="center">
+      <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid #e0e0e0;">
+
+        <!-- HEADER -->
+        <tr>
+          <td bgcolor="#4a148c" style="background-color:#4a148c;background:linear-gradient(135deg,#6a1b9a 0%,#4a148c 100%);padding:28px 32px;text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">{% if nuevo_emo %}Nuevo EMO Programado{% else %}Resumen Semanal de EMOs{% endif %}</h1>
+            <p style="margin:8px 0 0;color:#f3e5f5;font-size:14px;font-weight:600;">{{ hoy|date:"l d \d\e F \d\e Y" }}</p>
+          </td>
+        </tr>
+
+        <!-- SALUDO -->
+        <tr>
+          <td style="padding:24px 32px 8px;">
+            <p style="margin:0;color:#444;font-size:15px;">
+              Hola. A continuación encontrás el resumen de los <strong>Exámenes Médicos Ocupacionales (EMOs)</strong>.
+            </p>
+          </td>
+        </tr>
+
+        <!-- NUEVO EMO PROGRAMADO -->
+        {% if nuevo_emo %}
+        <tr>
+          <td style="padding:8px 32px 0;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#ede7f6;border-radius:8px;border-left:4px solid #5e35b1;">
+              <tr>
+                <td style="padding:16px 18px;">
+                  <div style="font-size:11px;color:#5e35b1;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">EMO Recién Programado</div>
+                  <div style="font-size:15px;color:#311b92;font-weight:700;">
+                    {{ nuevo_emo.trabajador.apellido_paterno }} {{ nuevo_emo.trabajador.apellido_materno }}, {{ nuevo_emo.trabajador.nombres }}
+                    <span style="color:#7e57c2;font-weight:400;font-size:12px;">(DNI {{ nuevo_emo.trabajador.dni }})</span>
+                  </div>
+                  <div style="font-size:13px;color:#4527a0;margin-top:6px;">
+                    {{ nuevo_emo.get_tipo_emo_display }} · {{ nuevo_emo.empresa.nombre|default:"-" }} · {{ nuevo_emo.cargo.nombre|default:"-" }}
+                  </div>
+                  <div style="font-size:13px;color:#4527a0;margin-top:2px;">
+                    Clínica: {{ nuevo_emo.lugar_examen.nombre|default:"-" }} ·
+                    Fecha programada: <strong>{{ nuevo_emo.fecha_programada|date:"d/m/Y"|default:"Sin fecha" }}</strong>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- TARJETAS DE RESUMEN -->
+        <tr>
+          <td style="padding:20px 32px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+
+                <!-- Total -->
+                <td width="32%" style="background:#f3e5f5;border-radius:8px;padding:16px 12px;text-align:center;border-top:4px solid #7b1fa2;">
+                  <div style="font-size:32px;font-weight:700;color:#4a148c;">{{ total }}</div>
+                  <div style="font-size:12px;color:#7b1fa2;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Total Programados</div>
+                </td>
+
+                <td width="2%"></td>
+
+                <!-- Programados (amarillo) -->
+                <td width="32%" style="background:#fff8e1;border-radius:8px;padding:16px 12px;text-align:center;border-top:4px solid #f9a825;">
+                  <div style="font-size:32px;font-weight:700;color:#e65100;">{{ total_programados }}</div>
+                  <div style="font-size:12px;color:#f9a825;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Programados</div>
+                </td>
+
+                <td width="2%"></td>
+
+                <!-- Sin registrar resultado y/o lectura (rojo) -->
+                <td width="32%" style="background:#ffebee;border-radius:8px;padding:16px 12px;text-align:center;border-top:4px solid #c62828;">
+                  <div style="font-size:32px;font-weight:700;color:#b71c1c;">{{ total_vencidos }}</div>
+                  <div style="font-size:12px;color:#c62828;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Vencidos</div>
+                </td>
+
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- SECCIÓN: SIN REGISTRAR RESULTADO Y/O LECTURA (VENCIDOS) -->
+        {% if emos_vencidos %}
+        <tr>
+          <td style="padding:8px 32px 0;">
+            <h2 style="margin:0 0 12px;font-size:15px;color:#b71c1c;border-left:4px solid #c62828;padding-left:10px;">
+              EMOs sin Registrar Resultado y/o Lectura ({{ total_vencidos }})
+            </h2>
+            <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;border-collapse:collapse;">
+              <thead>
+                <tr style="background:#ffebee;">
+                  <th style="padding:9px 10px;text-align:left;color:#c62828;font-weight:600;border-bottom:2px solid #ef9a9a;">Trabajador</th>
+                  <th style="padding:9px 10px;text-align:left;color:#c62828;font-weight:600;border-bottom:2px solid #ef9a9a;">Empresa</th>
+                  <th style="padding:9px 10px;text-align:left;color:#c62828;font-weight:600;border-bottom:2px solid #ef9a9a;">Tipo</th>
+                  <th style="padding:9px 10px;text-align:left;color:#c62828;font-weight:600;border-bottom:2px solid #ef9a9a;">Clínica</th>
+                  <th style="padding:9px 10px;text-align:center;color:#c62828;font-weight:600;border-bottom:2px solid #ef9a9a;">F. Programada</th>
+                  <th style="padding:9px 10px;text-align:center;color:#c62828;font-weight:600;border-bottom:2px solid #ef9a9a;">Días</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for emo in emos_vencidos %}
+                <tr style="background:{% cycle '#fff5f5' '#ffffff' %};">
+                  <td style="padding:8px 10px;border-bottom:1px solid #ffcdd2;">
+                    <strong>{{ emo.trabajador.apellido_paterno }} {{ emo.trabajador.apellido_materno }}, {{ emo.trabajador.nombres }}</strong><br>
+                    <span style="color:#999;font-size:11px;">{{ emo.trabajador.dni }}</span>
+                  </td>
+                  <td style="padding:8px 10px;border-bottom:1px solid #ffcdd2;color:#555;">{{ emo.empresa.nombre|default:"-" }}</td>
+                  <td style="padding:8px 10px;border-bottom:1px solid #ffcdd2;color:#555;">{{ emo.get_tipo_emo_display }}</td>
+                  <td style="padding:8px 10px;border-bottom:1px solid #ffcdd2;color:#555;">{{ emo.lugar_examen.nombre|default:"-" }}</td>
+                  <td style="padding:8px 10px;border-bottom:1px solid #ffcdd2;text-align:center;">
+                    <span style="background:#ffcdd2;color:#b71c1c;padding:2px 8px;border-radius:10px;font-weight:700;font-size:12px;">
+                      {{ emo.fecha_programada|date:"d/m/Y" }}
+                    </span>
+                  </td>
+                  <td style="padding:8px 10px;border-bottom:1px solid #ffcdd2;text-align:center;color:#b71c1c;font-weight:700;">
+                    {{ emo.dias_diferencia }} d
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- SECCIÓN: PROGRAMADOS (AMARILLO, FUSIÓN DE POR VENCER + CON TIEMPO) -->
+        {% if emos_programados %}
+        <tr>
+          <td style="padding:20px 32px 0;">
+            <h2 style="margin:0 0 12px;font-size:15px;color:#e65100;border-left:4px solid #f9a825;padding-left:10px;">
+              EMOs Programados Hasta la Fecha — {{ hoy|date:"d/m/Y" }} ({{ total_programados }})
+            </h2>
+            <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;border-collapse:collapse;">
+              <thead>
+                <tr style="background:#fff8e1;">
+                  <th style="padding:9px 10px;text-align:left;color:#e65100;font-weight:600;border-bottom:2px solid #ffe082;">Trabajador</th>
+                  <th style="padding:9px 10px;text-align:left;color:#e65100;font-weight:600;border-bottom:2px solid #ffe082;">Empresa</th>
+                  <th style="padding:9px 10px;text-align:left;color:#e65100;font-weight:600;border-bottom:2px solid #ffe082;">Tipo</th>
+                  <th style="padding:9px 10px;text-align:left;color:#e65100;font-weight:600;border-bottom:2px solid #ffe082;">Clínica</th>
+                  <th style="padding:9px 10px;text-align:center;color:#e65100;font-weight:600;border-bottom:2px solid #ffe082;">F. Programada</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for emo in emos_programados %}
+                <tr style="background:{% cycle '#fffde7' '#ffffff' %};">
+                  <td style="padding:8px 10px;border-bottom:1px solid #fff9c4;">
+                    <strong>{{ emo.trabajador.apellido_paterno }} {{ emo.trabajador.apellido_materno }}, {{ emo.trabajador.nombres }}</strong><br>
+                    <span style="color:#999;font-size:11px;">{{ emo.trabajador.dni }}</span>
+                  </td>
+                  <td style="padding:8px 10px;border-bottom:1px solid #fff9c4;color:#555;">{{ emo.empresa.nombre|default:"-" }}</td>
+                  <td style="padding:8px 10px;border-bottom:1px solid #fff9c4;color:#555;">{{ emo.get_tipo_emo_display }}</td>
+                  <td style="padding:8px 10px;border-bottom:1px solid #fff9c4;color:#555;">{{ emo.lugar_examen.nombre|default:"-" }}</td>
+                  <td style="padding:8px 10px;border-bottom:1px solid #fff9c4;text-align:center;">
+                    <span style="background:#ffe082;color:#e65100;padding:2px 8px;border-radius:10px;font-weight:700;font-size:12px;">
+                      {{ emo.fecha_programada|date:"d/m/Y"|default:"Sin fecha" }}
+                    </span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- SIN EMOS -->
+        {% if not total %}
+        <tr>
+          <td style="padding:32px;text-align:center;">
+            <p style="color:#999;font-size:15px;">No hay EMOs en estado Programado al dia de hoy.</p>
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- FOOTER -->
+        <tr>
+          <td style="padding:24px 32px;border-top:1px solid #eeeeee;margin-top:20px;">
+            <p style="margin:0;font-size:12px;color:#aaa;text-align:center;">
+              Este correo fue generado automaticamente el {{ hoy|date:"d/m/Y" }} por el Sistema SSOMA de CENERIS.<br>
+              No responder a este mensaje.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

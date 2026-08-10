@@ -1,0 +1,583 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+
+{% block title %}Soporte - Plataforma Ceneris{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">Panel de Soporte Técnico</h1>
+        <div class="flex flex-row gap-2">
+            
+            <a href="{% url 'proyecto_monitoreo_smcv:crear_diagnostico' %}" 
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow flex items-center">
+                <i class="fas fa-plus mr-2"></i> Nuevo Diagnóstico
+            </a>
+
+            <a href="{% url 'proyecto_monitoreo_smcv:crear_mantenimiento' %}" 
+            class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow flex items-center">
+                <i class="fas fa-plus mr-2"></i> Nuevo Mantenimiento
+            </a>
+
+            <a href="{% url 'proyecto_monitoreo_smcv:crear_calibracion' %}" 
+            class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded shadow flex items-center">
+                <i class="fas fa-plus mr-2"></i> Nuevo Certificado
+            </a>
+
+            <a href="{% url 'proyecto_monitoreo_smcv:crear_operatividad' %}" 
+            class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded shadow flex items-center">
+                <i class="fas fa-plus mr-2"></i> Nueva Verificación
+            </a>
+            
+            <div class="relative inline-block text-left" id="dropdownContainer">
+                <button onclick="toggleDropdown()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow flex items-center focus:outline-none">
+                    <i class="fas fa-plus mr-2"></i> Nueva Inspección
+                    <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                </button>
+
+                <!-- Menú Oculto -->
+                <div id="dropdownMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                    <a href="{% url 'proyecto_monitoreo_smcv:crear_inspeccion_especifica' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700">
+                        <i class="fas fa-file-alt mr-2 text-red-500"></i> Específica (1 Equipo)
+                    </a>
+                    <a href="{% url 'proyecto_monitoreo_smcv:crear_inspeccion_conjunta' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700">
+                        <i class="fas fa-table mr-2 text-blue-500"></i> Conjunta (Múltiples)
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+
+    <!-- Grid Resumen -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        
+        <!-- Tabla Resumen Diagnósticos -->
+        <div class="bg-white shadow-md rounded-lg p-6 border-t-4 border-blue-500">
+            <h2 class="text-xl font-bold mb-4 text-gray-700 flex items-center"><i class="fas fa-microscope mr-2 text-blue-500"></i>Últimos Diagnósticos</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Equipo</th>
+                            <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha Rev.</th>
+                            <th class="px-4 py-2 bg-gray-50 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Reporte</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for diag in diagnosticos %}
+                        <tr class="border-b border-gray-100 hover:bg-blue-50 transition-colors">
+                            <td class="px-4 py-3 text-sm font-medium text-gray-700">
+                                {{ diag.dispositivo.nombre }}
+                                <span class="block text-xs text-gray-400">{{ diag.dispositivo.serie }}</span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-600">{{ diag.fecha_revision|date:"d/m/Y" }}</td>
+                            <td class="px-4 py-3 text-sm text-right">
+                                <a href="{% url 'proyecto_monitoreo_smcv:pdf_diagnostico' diag.id %}" 
+                                    class="text-blue-600 hover:text-blue-900 font-bold border border-blue-200 hover:border-blue-600 bg-blue-50 hover:bg-white px-2 py-1 rounded transition-colors" 
+                                    target="_blank"> <!-- target="_blank" abre el PDF en nueva pestaña -->
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="px-4 py-2 text-center text-gray-500">No hay diagnósticos recientes.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 text-right">
+                <a href="{% url 'proyecto_monitoreo_smcv:historial_diagnosticos' %}" class="text-xs text-blue-600 hover:underline">Ver historial completo &rarr;</a>
+            </div>
+        </div>
+        <div class="bg-white shadow-md rounded-lg p-6 border-t-4 border-green-500">
+            <h2 class="text-xl font-bold mb-4 text-gray-700 flex items-center">
+                <i class="fas fa-tools mr-2 text-green-500"></i> Últimos Mantenimientos
+            </h2>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Equipo</th>
+                            <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha</th>
+                            <th class="px-4 py-2 bg-gray-50 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Reporte</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mant in mantenimientos %}
+                        <tr class="border-b border-gray-100 hover:bg-green-50 transition-colors">
+                            <td class="px-4 py-3 text-sm font-medium text-gray-700">
+                                {{ mant.dispositivo.nombre }}
+                                <span class="block text-xs text-gray-400">{{ mant.dispositivo.serie }}</span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-600">
+                                {{ mant.created_at|date:"d/m/Y" }}
+                            </td>
+                            <td class="px-4 py-3 text-sm text-right">
+                                <!-- AQUÍ ESTÁ EL BOTÓN DE DESCARGA -->
+                                <a href="{% url 'proyecto_monitoreo_smcv:pdf_mantenimiento' mant.id %}" 
+                                    class="text-green-600 hover:text-green-800 font-bold text-xs border border-green-200 hover:border-green-600 bg-green-50 hover:bg-white px-2 py-1 rounded transition-colors"
+                                    target="_blank">
+                                    <i class="fas fa-file-pdf mr-1"></i> PDF
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="px-4 py-4 text-center text-sm text-gray-400 italic">
+                                No se han registrado mantenimientos aún.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Botón ver todos (Opcional) -->
+            <div class="mt-4 text-right">
+                <a href="{% url 'proyecto_monitoreo_smcv:historial_mantenimientos' %}" class="text-xs text-green-600 hover:underline">Ver historial completo &rarr;</a>
+            </div>
+        </div>
+
+        <div class="bg-white shadow-md rounded-lg p-6 border-t-4 border-purple-500 mt-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-700 flex items-center">
+                <i class="fas fa-clipboard-check mr-2 text-purple-500"></i> Ultimas Calibraciones
+            </h2>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Equipo</th>
+                            <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha Calib.</th>
+                            <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Estado Final</th>
+                            <th class="px-4 py-2 bg-gray-50 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Reportes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cal in calibraciones %}
+                        <tr class="border-b border-gray-100 hover:bg-purple-50 transition-colors">
+                            <td class="px-4 py-3 text-sm font-medium text-gray-700">
+                                {{ cal.dispositivo.nombre }}
+                                <span class="block text-xs text-gray-400">{{ cal.dispositivo.serie }}</span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-600">
+                                {{ cal.fecha_calibracion|date:"d/m/Y" }}
+                            </td>
+                            <td class="px-4 py-3 text-sm">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                                    {{ cal.estado_final }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-right">
+                                <!-- BOTÓN DE DESCARGA PDF -->
+                                <a href="{% url 'proyecto_monitoreo_smcv:pdf_calibracion' cal.id %}" 
+                                class="text-purple-600 hover:text-purple-800 font-bold text-xs border border-purple-200 hover:border-purple-600 bg-purple-50 hover:bg-white px-2 py-1 rounded transition-colors"
+                                target="_blank">
+                                    <i class="fas fa-file-pdf mr-1"></i> PDF
+                                </a>
+                                <a href="{% url 'proyecto_monitoreo_smcv:excel_calibracion' cal.id %}" 
+                                    class="ml-2 text-purple-600 hover:text-purple-800 font-bold text-xs border border-purple-200 hover:border-green-600 bg-green-50 hover:bg-white px-2 py-1 rounded transition-colors">
+                                    <i class="fas fa-file-excel mr-1"></i> Excel
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-4 py-4 text-center text-sm text-gray-400 italic">
+                                No se han registrado verificaciones aún.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 text-right">
+                <a href="{% url 'proyecto_monitoreo_smcv:historial_calibraciones' %}" class="text-xs text-purple-600 hover:underline">Ver historial completo &rarr;</a>
+            </div>
+        </div>
+
+        <div class="bg-white shadow-md rounded-lg p-6 border-t-4 border-teal-500 mt-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-700 flex items-center">
+                <i class="fas fa-clipboard-check mr-2 text-teal-500"></i> Verificaciones de Operatividad
+            </h2>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Equipo</th>
+                            <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha Verif.</th>
+                            <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Estado Final</th>
+                            <th class="px-4 py-2 bg-gray-50 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Certificado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for op in operatividades %}
+                        <tr class="border-b border-gray-100 hover:bg-teal-50 transition-colors">
+                            <td class="px-4 py-3 text-sm font-medium text-gray-700">
+                                {{ op.dispositivo.nombre }}
+                                <span class="block text-xs text-gray-400">{{ op.dispositivo.serie }}</span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-600">
+                                {{ op.fecha_operatividad|date:"d/m/Y" }}
+                            </td>
+                            <td class="px-4 py-3 text-sm">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-teal-100 text-teal-800">
+                                    {{ op.estado_final }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-right">
+                                <!-- BOTÓN DE DESCARGA PDF -->
+                                <a href="{% url 'proyecto_monitoreo_smcv:pdf_operatividad' op.id %}" 
+                                class="text-teal-600 hover:text-teal-800 font-bold text-xs border border-teal-200 hover:border-teal-600 bg-teal-50 hover:bg-white px-2 py-1 rounded transition-colors"
+                                target="_blank">
+                                    <i class="fas fa-file-pdf mr-1"></i> PDF
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-4 py-4 text-center text-sm text-gray-400 italic">
+                                No se han registrado verificaciones aún.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 text-right">
+                <a href="{% url 'proyecto_monitoreo_smcv:historial_operatividad' %}" class="text-xs text-teal-600 hover:underline">Ver historial completo &rarr;</a>
+            </div>
+        </div>
+        <!-- Lista de Dispositivos Recientes -->
+        <!-- <div class="bg-white shadow-md rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">Dispositivos Ingresados</h2>
+            <ul class="divide-y divide-gray-200">
+                {% for disp in dispositivos %}
+                <li class="py-3 flex justify-between">
+                    <span class="text-gray-800">{{ disp.nombre }} ({{ disp.marca }})</span>
+                    <span class="text-sm px-2 inline-flex leading-5 font-semibold rounded-full 
+                        {% if disp.estado == 'Operativo' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                        {{ disp.estado }}
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>-->
+        <div class="bg-white shadow-md rounded-lg p-6 border-t-4 border-red-500 mt-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-700 flex items-center">
+                <i class="fas fa-clipboard-check mr-2 text-red-500"></i> Ultimas Inspecciones Específicas
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Equipo</th>
+                            <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha</th>
+                            <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Responsable</th>
+                            <th class="px-4 py-2 bg-gray-50 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Reporte</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for insp in ultimas_inspecciones %}
+                        <tr class="bg-white border-b hover:bg-gray-50">
+                            <td class="px-4 py-3 text-sm font-medium text-gray-700">
+                                {% for det in insp.detalles.all %}
+                                    {{ det.dispositivo.nombre }}
+                                    <span class="block text-xs text-gray-400">{{ det.dispositivo.serie }}</span>
+                                {% endfor %}
+                            </td>
+                            <td class="px-4 py-3 font-medium text-gray-900">{{ insp.fecha_inspeccion|date:"d/m/Y" }}</td>
+                            <td class="px-4 py-3">{{ insp.responsable.nombre }}</td>
+                            <td class="px-4 py-3 text-right">
+                                <a href="{% url 'proyecto_monitoreo_smcv:pdf_inspeccion_especifica' insp.id %}" target="_blank" class="text-red-600 hover:text-red-800 font-bold">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="px-4 py-4 text-center">No hay inspecciones recientes.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 text-right">
+                <a href="{% url 'proyecto_monitoreo_smcv:historial_inspecciones' %}" class="text-xs text-red-600 hover:underline">Ver historial completo &rarr;</a>
+            </div>
+        </div>
+        <div class="mt-8 bg-white rounded-xl shadow-lg border border-gray-200 p-6 border-t-4 border-indigo-500">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                    <i class="fas fa-tasks text-indigo-500 mr-2"></i> Inspecciones Conjuntas (Masivas)
+                </h3>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm text-left">
+                    <thead class="text-xs text-indigo-900 uppercase bg-indigo-50">
+                        <tr>
+                            <th class="px-4 py-3 rounded-tl-lg">Fecha</th>
+                            <th class="px-4 py-3">Código Doc.</th>
+                            <th class="px-4 py-3 text-center">Total Equipos</th>
+                            <th class="px-4 py-3 text-center">Muestra</th>
+                            <th class="px-4 py-3">Responsable</th>
+                            <th class="px-4 py-3 text-right rounded-tr-lg">Reporte</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for insp in ultimas_inspecciones_conjuntas %}
+                        <tr class="hover:bg-indigo-50 transition-colors group">
+                            <!-- Fecha -->
+                            <td class="px-4 py-3 font-medium text-gray-700">
+                                {{ insp.fecha_inspeccion|date:"d/m/Y" }}
+                            </td>
+                            
+                            <!-- Código Documento -->
+                            <td class="px-4 py-3 text-xs text-gray-500">
+                                {{ insp.codigo_documento }}
+                            </td>
+
+                            <!-- Cantidades (Badges) -->
+                            <td class="px-4 py-3 text-center">
+                                <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                                    {{ insp.total_equipos }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                                    {{ insp.cant_muestra }}
+                                </span>
+                            </td>
+
+                            <!-- Responsable -->
+                            <td class="px-4 py-3 text-gray-600">
+                                <div class="flex items-center">
+                                    <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 mr-2">
+                                        {{ insp.responsable.nombre|slice:":1" }}
+                                    </div>
+                                    {{ insp.responsable.nombre }}
+                                </div>
+                            </td>
+
+                            <!-- Botón PDF -->
+                            <td class="px-4 py-3 text-right">
+                                <a href="{% url 'proyecto_monitoreo_smcv:pdf_inspeccion_conjunta' insp.id %}" target="_blank" 
+                                class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition shadow-sm" 
+                                title="Descargar PDF">
+                                    <i class="fas fa-file-pdf fa-lg"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-400 italic bg-gray-50 rounded-b-lg">
+                                No hay inspecciones conjuntas recientes.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 text-right">
+                <a href="{% url 'proyecto_monitoreo_smcv:historial_inspecciones' %}" class="text-xs text-indigo-600 hover:underline">Ver historial completo &rarr;</a>
+            </div>
+        </div>
+    </div>
+    <div class="mt-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 px-1">Módulos del Sistema</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
+            <!-- TARJETA 1: (Ejemplo: Próxima Tabla) -->
+            <a href="{% url 'proyecto_monitoreo_smcv:inventario_general' %}" class="group relative bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 ease-out hover:-translate-y-1 overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-blue-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+                
+                <div class="relative z-10">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-500/30 mb-4 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-list-alt text-xl transition-transform duration-700 group-hover:rotate-[720deg]"></i> 
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">
+                        Equipos de Monitoreo
+                    </h3>
+                    <p class="text-sm text-gray-500 leading-relaxed mb-4">
+                        Consula todos los dispositivos registrados en el sistema.
+                    </p>
+
+                    <div class="flex items-center text-blue-500 text-sm font-semibold group-hover:translate-x-2 transition-transform duration-300">
+                        Acceder <i class="fas fa-arrow-right ml-2"></i>
+                    </div>
+                </div>
+            </a>
+
+            <!-- TARJETA 2 (Placeholder) -->
+            <a href="{% url 'proyecto_monitoreo_smcv:matriz_mantenimiento' %}" class="group relative bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 ease-out hover:-translate-y-1 overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-purple-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+                
+                <div class="relative z-10">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-purple-500/30 mb-4 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-tools text-xl transition-transform duration-700 group-hover:rotate-[720deg]"></i>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-purple-600 transition-colors">
+                        Matriz de Mantenimiento
+                    </h3>
+                    <p class="text-sm text-gray-500 leading-relaxed mb-4">
+                        Vizualiza el rendimiento y métricas clave.
+                    </p>
+
+                    <div class="flex items-center text-purple-500 text-sm font-semibold group-hover:translate-x-2 transition-transform duration-300">
+                        Ver más <i class="fas fa-arrow-right ml-2"></i>
+                    </div>
+                </div>
+            </a>
+
+            <!-- TARJETA 3 (Placeholder) -->
+            <a href="{% url 'proyecto_monitoreo_smcv:vibrometros_view' %}" class="group relative bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 ease-out hover:-translate-y-1 overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-orange-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+                
+                <div class="relative z-10">
+                    <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-orange-500/30 mb-4 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-wave-square text-xl transition-transform duration-700 group-hover:rotate-[720deg]"></i>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">
+                        Accesorios Vibrómetros
+                    </h3>
+                    <p class="text-sm text-gray-500 leading-relaxed mb-4">
+                        Administra trabajadores y proveedores.
+                    </p>
+
+                    <div class="flex items-center text-orange-500 text-sm font-semibold group-hover:translate-x-2 transition-transform duration-300">
+                        Gestionar <i class="fas fa-arrow-right ml-2"></i>
+                    </div>
+                </div>
+            </a>
+
+            <a href="{% url 'proyecto_monitoreo_smcv:dosimetros_view' %}" class="group relative bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 ease-out hover:-translate-y-1 overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-orange-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+                
+                <div class="relative z-10">
+                    <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-orange-500/30 mb-4 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-microphone-alt transition-transform duration-700 group-hover:rotate-[720deg]"></i>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">
+                        Accesorios Dosímetros
+                    </h3>
+                    <p class="text-sm text-gray-500 leading-relaxed mb-4">
+                        Administra trabajadores y proveedores.
+                    </p>
+
+                    <div class="flex items-center text-orange-500 text-sm font-semibold group-hover:translate-x-2 transition-transform duration-300">
+                        Gestionar <i class="fas fa-arrow-right ml-2"></i>
+                    </div>
+                </div>
+            </a>
+
+            <a href="{% url 'proyecto_monitoreo_smcv:bombas_view' %}" class="group relative bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 ease-out hover:-translate-y-1 overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-orange-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+                
+                <div class="relative z-10">
+                    <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-orange-500/30 mb-4 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-filter text-xl transition-transform duration-700 group-hover:rotate-[720deg]"></i>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">
+                        Accesorios Bombas
+                    </h3>
+                    <p class="text-sm text-gray-500 leading-relaxed mb-4">
+                        Administra trabajadores y proveedores.
+                    </p>
+
+                    <div class="flex items-center text-orange-500 text-sm font-semibold group-hover:translate-x-2 transition-transform duration-300">
+                        Gestionar <i class="fas fa-arrow-right ml-2"></i>
+                    </div>
+                </div>
+            </a>
+            <a href="{% url 'proyecto_monitoreo_smcv:inventario_repuestos' %}" class="group relative bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 ease-out hover:-translate-y-1 overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-orange-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+                
+                <div class="relative z-10">
+                    <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-orange-500/30 mb-4 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-cogs text-xl transition-transform duration-700 group-hover:rotate-[720deg]"></i>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">
+                        Inventario de Repuestos
+                    </h3>
+                    <p class="text-sm text-gray-500 leading-relaxed mb-4">
+                        Vizualiza y administra los repuestos disponibles.
+                    </p>
+
+                    <div class="flex items-center text-orange-500 text-sm font-semibold group-hover:translate-x-2 transition-transform duration-300">
+                        Gestionar <i class="fas fa-arrow-right ml-2"></i>
+                    </div>
+                </div>
+            </a>
+
+            <!-- TARJETA: Gestión de Ubicaciones -->
+            <a href="{% url 'proyecto_monitoreo_smcv:lista_ubicaciones' %}" class="group relative bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 ease-out hover:-translate-y-1 overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-teal-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+                
+                <div class="relative z-10">
+                    <div class="w-12 h-12 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-teal-500/30 mb-4 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-map-marker-alt text-xl transition-transform duration-700 group-hover:rotate-[720deg]"></i>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-teal-600 transition-colors">
+                        Gestión de Ubicaciones
+                    </h3>
+                    <p class="text-sm text-gray-500 leading-relaxed mb-4">
+                        Registra y administra las ubicaciones donde operan los equipos de medición.
+                    </p>
+
+                    <div class="flex items-center text-teal-500 text-sm font-semibold group-hover:translate-x-2 transition-transform duration-300">
+                        Gestionar <i class="fas fa-arrow-right ml-2"></i>
+                    </div>
+                </div>
+            </a>
+
+            <a href="{% url 'proyecto_monitoreo_smcv:lista_programas' %}" class="group relative bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 ease-out hover:-translate-y-1 overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-orange-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+                
+                <div class="relative z-10">
+                    <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-orange-500/30 mb-4 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-calendar-check text-xl"></i>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">
+                        Programa Anual
+                    </h3>
+                    <p class="text-sm text-gray-500 leading-relaxed mb-4">
+                        Cronograma de mantenimiento preventivo y ejecución (P/E).
+                    </p>
+
+                    <div class="flex items-center justify-between mt-4">
+                        <span class="text-orange-500 text-sm font-semibold group-hover:translate-x-2 transition-transform duration-300">
+                            Ver Programas <i class="fas fa-arrow-right ml-1"></i>
+                        </span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleDropdown() {
+        document.getElementById('dropdownMenu').classList.toggle('hidden');
+    }
+    // Cerrar si clic fuera
+    window.addEventListener('click', function(e) {
+        const container = document.getElementById('dropdownContainer');
+        if (!container.contains(e.target)) {
+            document.getElementById('dropdownMenu').classList.add('hidden');
+        }
+    });
+</script>
+{% endblock %}

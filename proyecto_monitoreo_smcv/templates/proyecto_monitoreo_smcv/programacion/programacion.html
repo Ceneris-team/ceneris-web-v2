@@ -1,0 +1,66 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+
+{% block title %}Programación - Plataforma Ceneris{% endblock %}
+
+{% block content %}
+<div class="container mx-auto">
+    
+    <!-- Título de la Sección -->
+    <div class="mb-6 border-b pb-4 border-gray-200">
+        <h1 class="text-3xl font-bold text-gray-800">
+            Módulo de Programación
+        </h1>
+        <p class="text-gray-600 mt-1">Gestión de Planes Mensuales, Semanales y Diarios.</p>
+    </div>
+
+    <!-- Tarjetas de Acceso Rápido (Dentro del módulo) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- 1. Plan Mensual -->
+        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition cursor-pointer border-l-4 border-blue-500">
+            <div class="flex items-center mb-4">
+                <div class="bg-blue-100 p-3 rounded-full text-blue-600 mr-4">
+                    <i class="fas fa-calendar-alt text-xl"></i> <!-- Icono -->
+                </div>
+                <h3 class="text-xl font-bold text-gray-800">Plan Mensual</h3>
+            </div>
+            <p class="text-gray-600 text-sm mb-4">Define las metas de monitoreo por puesto y agente para el mes.</p>
+            <button class="text-blue-600 font-semibold hover:underline">Gestionar &rarr;</button>
+        </div>
+
+        <!-- 2. Plan Semanal -->
+        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition cursor-pointer border-l-4 border-indigo-500">
+            <div class="flex items-center mb-4">
+                <div class="bg-indigo-100 p-3 rounded-full text-indigo-600 mr-4">
+                    <i class="fas fa-calendar-week text-xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800">Plan Semanal</h3>
+            </div>
+            <p class="text-gray-600 text-sm mb-4">Distribuye la carga mensual en semanas específicas.</p>
+            <button class="text-indigo-600 font-semibold hover:underline">Gestionar &rarr;</button>
+        </div>
+
+        <!-- 3. Diario / Ejecución -->
+        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition cursor-pointer border-l-4 border-orange-500">
+            <div class="flex items-center mb-4">
+                <div class="bg-orange-100 p-3 rounded-full text-brand-600 mr-4">
+                    <i class="fas fa-clipboard-check text-xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800">Programación Diaria</h3>
+            </div>
+            <p class="text-gray-600 text-sm mb-4">La hoja de ruta del día y registro de ejecución (No Planeados).</p>
+            <button class="text-brand-600 font-semibold hover:underline">Gestionar &rarr;</button>
+        </div>
+
+    </div>
+
+    <!-- Área para gráficos futuros o resumen -->
+    <div class="mt-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h4 class="text-lg font-bold text-gray-700 mb-4">Resumen de Avance (Octubre)</h4>
+        <div class="h-64 bg-gray-50 rounded flex items-center justify-center text-gray-400">
+            Aquí irá el gráfico de cumplimiento de metas...
+        </div>
+    </div>
+
+</div>
+{% endblock %}

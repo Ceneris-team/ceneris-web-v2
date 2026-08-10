@@ -1,0 +1,375 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Gestionar Sedes de Trabajadores{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/filtros_maestros.css' %}">
+<style>
+    .main-container {
+        max-width: 100% !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+    }
+
+    .panel-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .card-sede {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 5px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    .card-title {
+        margin: 0 0 0.35rem;
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #1f2937;
+    }
+
+    .card-subtitle {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.92rem;
+    }
+
+    .form-inline-grid {
+        margin-top: 0.9rem;
+        display: grid;
+        grid-template-columns: 1.2fr 2fr auto;
+        gap: 0.75rem;
+        align-items: end;
+    }
+
+    .form-inline-grid input {
+        width: 100%;
+        height: 42px;
+        border: 1px solid #cfd8e3;
+        border-radius: 9px;
+        padding: 0 0.8rem;
+    }
+
+    .btn-primary-soft {
+        border: 0;
+        border-radius: 9px;
+        height: 42px;
+        padding: 0 1rem;
+        background: linear-gradient(135deg, #d45b04, #ef7c1a);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .btn-primary-soft:hover {
+        filter: brightness(0.96);
+    }
+
+    .btn-outline-soft {
+        border: 1px solid #cbd5e1;
+        border-radius: 9px;
+        height: 42px;
+        padding: 0 1rem;
+        background: #fff;
+        color: #334155;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .filtros {
+        margin-top: 0.85rem;
+        display: grid;
+        grid-template-columns: minmax(260px, 1.8fr) minmax(220px, 1fr) auto auto;
+        gap: 0.75rem;
+        align-items: end;
+    }
+
+    .filtros label {
+        display: block;
+        margin-bottom: 0.3rem;
+        font-weight: 700;
+        color: #334155;
+    }
+
+    .filtros input[type="text"],
+    .filtros select {
+        width: 100%;
+        height: 42px;
+        border: 1px solid #cfd8e3;
+        border-radius: 9px;
+        padding: 0 0.8rem;
+        background: #fff;
+    }
+
+    .check-box {
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 9px;
+        padding: 0 0.85rem;
+        background: #fff;
+        color: #334155;
+        font-weight: 600;
+    }
+
+    .acciones-filtros {
+        display: inline-flex;
+        gap: 0.55rem;
+    }
+
+    .tabla-wrap {
+        margin-top: 1rem;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    thead th {
+        background: #f8fafc;
+        color: #607089;
+        font-size: 0.77rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.2px;
+        padding: 0.72rem 0.8rem;
+        border-bottom: 1px solid #e8edf5;
+    }
+
+    tbody td {
+        padding: 0.72rem 0.8rem;
+        border-bottom: 1px solid #eef2f7;
+        color: #1f2937;
+        vertical-align: middle;
+    }
+
+    tbody tr:nth-child(even) td {
+        background: #fcfdff;
+    }
+
+    tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .estado-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.74rem;
+        font-weight: 800;
+    }
+
+    .estado-activo {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+
+    .estado-inactivo {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    .form-asignacion {
+        display: inline-flex;
+        gap: 0.45rem;
+        align-items: center;
+    }
+
+    .form-asignacion select {
+        min-width: 190px;
+        height: 36px;
+        border: 1px solid #cfd8e3;
+        border-radius: 8px;
+        padding: 0 0.55rem;
+        background: #fff;
+    }
+
+    .btn-guardar {
+        border: 0;
+        border-radius: 8px;
+        height: 36px;
+        padding: 0 0.9rem;
+        background: #2563eb;
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .vacio {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #64748b;
+        font-weight: 600;
+    }
+
+    @media (max-width: 1100px) {
+        .form-inline-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filtros {
+            grid-template-columns: 1fr;
+        }
+
+        .acciones-filtros {
+            justify-content: flex-start;
+        }
+
+        .form-asignacion {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .form-asignacion select,
+        .btn-guardar {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 1rem;">
+    <div>
+        <h1>Gestionar sedes de trabajadores</h1>
+        <p style="margin: 0;">Crea sedes y asigna una sede a cada trabajador desde un solo panel.</p>
+    </div>
+    <div>
+        <a href="{% url 'calidad:gestion_empleados' %}" class="btn-outline-soft">&larr; Volver a panel</a>
+    </div>
+</div>
+
+<div class="panel-grid">
+    <div class="card-sede">
+        <h2 class="card-title">Crear nueva sede</h2>
+        <p class="card-subtitle">Si el nombre ya existe, se reactiva/actualiza su direccion.</p>
+
+        <form method="post" class="form-inline-grid">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="crear_sede">
+            <input type="hidden" name="querystring" value="{{ querystring_actual }}">
+
+            <div>
+                <label for="nombre_sede" style="display:block; margin-bottom:0.3rem; font-weight:700; color:#334155;">Nombre sede</label>
+                <input id="nombre_sede" type="text" name="nombre_sede" placeholder="Ejemplo: Sede Sur" required>
+            </div>
+
+            <div>
+                <label for="direccion_sede" style="display:block; margin-bottom:0.3rem; font-weight:700; color:#334155;">Direccion (opcional)</label>
+                <input id="direccion_sede" type="text" name="direccion_sede" placeholder="Direccion de referencia">
+            </div>
+
+            <button type="submit" class="btn-primary-soft">Crear sede</button>
+        </form>
+    </div>
+
+    <div class="card-sede">
+        <h2 class="card-title">Lista de trabajadores</h2>
+        <p class="card-subtitle">Asigna o retira la sede de cada trabajador.</p>
+
+        <form method="get" class="filtros">
+            <div>
+                <label for="search">Buscar trabajador</label>
+                <input id="search" type="text" name="search" value="{{ filtro_busqueda }}" placeholder="Nombre, apellido o DNI...">
+            </div>
+
+            <div>
+                <label for="sede">Filtrar por sede</label>
+                <select id="sede" name="sede">
+                    <option value="" {% if not filtro_sede %}selected{% endif %}>Todas</option>
+                    <option value="sin_sede" {% if filtro_sede == 'sin_sede' %}selected{% endif %}>Sin sede</option>
+                    {% for sede in opciones_sedes %}
+                    <option value="{{ sede.id }}" {% if filtro_sede == sede.id|stringformat:'s' %}selected{% endif %}>{{ sede.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <label class="check-box" for="solo_activos">
+                <input id="solo_activos" type="checkbox" name="solo_activos" {% if solo_activos %}checked{% endif %}>
+                Solo activos
+            </label>
+
+            <div class="acciones-filtros">
+                <button type="submit" class="btn-primary-soft">Aplicar</button>
+                <a href="{% url 'calidad:gestionar_sedes_trabajadores' %}" class="btn-outline-soft">Limpiar</a>
+            </div>
+        </form>
+
+        <div class="tabla-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:56px; text-align:center;">N°</th>
+                        <th>DNI</th>
+                        <th>Trabajador</th>
+                        <th>Empresa</th>
+                        <th>Area</th>
+                        <th>Estado</th>
+                        <th>Sede actual</th>
+                        <th style="min-width:300px;">Asignar sede</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trabajador in trabajadores %}
+                    <tr>
+                        <td style="text-align:center; font-weight:800;">{{ forloop.counter }}</td>
+                        <td>{{ trabajador.dni }}</td>
+                        <td>
+                            <div style="font-weight:700;">{{ trabajador.nombres }} {{ trabajador.apellido_paterno }}</div>
+                            <div style="font-size:0.8rem; color:#64748b;">{{ trabajador.apellido_materno|default:'' }}</div>
+                        </td>
+                        <td>{{ trabajador.empresa.nombre|default:'--' }}</td>
+                        <td>{{ trabajador.area.nombre|default:'--' }}</td>
+                        <td>
+                            {% if trabajador.activo %}
+                                <span class="estado-badge estado-activo">Activo</span>
+                            {% else %}
+                                <span class="estado-badge estado-inactivo">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ trabajador.sede.nombre|default:'Sin sede' }}</td>
+                        <td>
+                            <form method="post" class="form-asignacion">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="asignar_sede">
+                                <input type="hidden" name="trabajador_id" value="{{ trabajador.id }}">
+                                <input type="hidden" name="querystring" value="{{ querystring_actual }}">
+                                <select name="sede_asignada">
+                                    <option value="">Sin sede</option>
+                                    {% for sede in opciones_sedes %}
+                                    <option value="{{ sede.id }}" {% if trabajador.sede_id == sede.id %}selected{% endif %}>{{ sede.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn-guardar">Guardar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="vacio">No se encontraron trabajadores con los filtros aplicados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

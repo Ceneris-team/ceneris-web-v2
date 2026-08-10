@@ -1,0 +1,28 @@
+<!-- recursoshumanos/areas/gestion_areas.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load custom_filters_rrhh %}
+
+{% block title %}Gestión de Áreas{% endblock %}
+
+{% block content %}
+    <h1>Gestión de Áreas</h1>
+    <p>Administra las áreas y departamentos de la empresa.</p>
+    
+    <div class="dashboard-grid">
+        <!-- TARJETA 1: REGISTRAR -->
+        <a href="{% url 'recursoshumanos:crear_area' %}" class="card">
+            <div class="card__icon">🏢</div>
+            <h2 class="card__title">Registrar Área</h2>
+            <p class="card__description">Añade un nuevo departamento o área funcional a la organización.</p>
+            <div class="card__footer">Registrar Nueva &rarr;</div>
+        </a>
+        
+        <!-- TARJETA 2: LISTAR -->
+        <a href="{% url 'recursoshumanos:lista_areas' %}" class="card">
+            <div class="card__icon">📑</div>
+            <h2 class="card__title">Ver Áreas</h2>
+            <p class="card__description">Consulta, edita o elimina las áreas existentes en el sistema.</p>
+            <div class="card__footer">Ver Listado &rarr;</div>
+        </a>
+    </div>
+{% endblock %}

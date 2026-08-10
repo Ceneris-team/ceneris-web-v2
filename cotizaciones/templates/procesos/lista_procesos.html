@@ -1,0 +1,59 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Lista de Procesos de Cotización{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1>Procesos de Cotización</h1>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    {% if procesos %}
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th scope="col">Empresa</th>
+            <th scope="col">Fecha Citación</th>
+            <th scope="col">Agendado por</th>
+            <th scope="col">Fecha Encuentro</th>
+            <th scope="col">Estado de la cotizacion</th>
+            <th scope="col">Estado del Proceso</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for proceso in procesos %}
+          <tr>
+            <td>{{ proceso.empresa.nombre }}</td>
+            <td>{{ proceso.fecha_citacion|date:"d/m/Y H:i" }}</td>
+            <td>{{ proceso.usuario_agenda.username|default:"-" }}</td>
+            <td>{{ proceso.fecha_encuentro|date:"d/m/Y H:i"|default:"Pendiente" }}</td>
+            <td>
+                {% if proceso.cotizacion_final %}
+                    <span class="badge bg-success">{{ proceso.cotizacion_final.get_estado_display }}</span>
+                {% else %}
+                    <span class="badge bg-secondary">No generada</span>
+                {% endif %}
+            </td>
+            <td>
+            <!-- Usamos los nuevos métodos del modelo -->
+            <span class="badge {{ proceso.get_estado_badge_class }}">
+                {{ proceso.get_estado_proceso_display }}
+            </span>
+            </td>
+            <td>
+              <a href="{% url 'cotizaciones:detalle_proceso' pk=proceso.pk %}" class="btn btn-sm btn-info">Ver Detalles</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="alert alert-info">
+        No hay procesos de cotización registrados. ¡Comienza agendando una nueva cita!
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

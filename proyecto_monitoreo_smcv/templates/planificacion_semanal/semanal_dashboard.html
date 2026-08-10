@@ -1,0 +1,158 @@
+{% extends 'proyecto_monitoreo_smcv/base.html' %}
+
+{% block title %}Control Semanal{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    
+    <!-- HEADER Y NAVEGACIÓN DE MES -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Control de Cumplimiento Semanal</h1>
+            <p class="text-sm text-gray-500">Monitoreo de avance Meta vs Ejecutado.</p>
+        </div>
+        
+        <div class="flex items-center bg-white rounded-lg shadow-sm border border-gray-200">
+            <a href="{% url 'proyecto_monitoreo_smcv:control_semanal' prev_anio prev_mes 1 %}" class="px-3 py-2 hover:bg-gray-50 border-r text-gray-600">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            <span class="px-4 py-2 font-bold text-gray-800 w-40 text-center">{{ nombre_mes }} {{ anio }}</span>
+            <a href="{% url 'proyecto_monitoreo_smcv:control_semanal' next_anio next_mes 1 %}" class="px-3 py-2 hover:bg-gray-50 border-l text-gray-600">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- PESTAÑAS DE SEMANAS -->
+    <div class="flex space-x-2 mb-6 overflow-x-auto pb-2">
+        {% for num in semanas_nav %}
+        <a href="{% url 'proyecto_monitoreo_smcv:control_semanal' anio mes num %}" 
+           class="px-6 py-2 rounded-full font-bold text-sm transition shadow-sm border
+                  {% if num == semana_actual %}
+                    bg-brand-600 text-white border-brand-600
+                  {% else %}
+                    bg-white text-gray-600 hover:bg-gray-50 border-gray-200
+                  {% endif %}">
+            Semana {{ num }}
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- RESUMEN DE LA SEMANA -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+                <p class="text-xs text-gray-500 uppercase font-bold">Fecha Corte</p>
+                <p class="font-medium text-gray-800">{{ fecha_inicio|date:"d M" }} - {{ fecha_fin|date:"d M" }}</p>
+            </div>
+            <div class="bg-blue-50 p-2 rounded-lg text-blue-600"><i class="far fa-calendar-alt text-xl"></i></div>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+                <p class="text-xs text-gray-500 uppercase font-bold">Meta Semanal</p>
+                <p class="text-2xl font-bold text-gray-800">{{ total_meta }} <span class="text-xs text-gray-400 font-normal">pts</span></p>
+            </div>
+            <div class="bg-purple-50 p-2 rounded-lg text-purple-600"><i class="fas fa-tasks text-xl"></i></div>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+                <p class="text-xs text-gray-500 uppercase font-bold">Ejecutado Real</p>
+                <p class="text-2xl font-bold {% if total_real >= total_meta %}text-green-600{% else %}text-orange-500{% endif %}">
+                    {{ total_real }} <span class="text-xs text-gray-400 font-normal">pts</span>
+                </p>
+            </div>
+            <div class="{% if total_real >= total_meta %}bg-green-50 text-green-600{% else %}bg-orange-50 text-orange-600{% endif %} p-2 rounded-lg">
+                <i class="fas fa-chart-pie text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA DE CONTROL -->
+    <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
+        
+        {% if tabla_control %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left font-bold text-gray-500 uppercase">Ubicación / Puesto</th>
+                        <th class="px-6 py-3 text-left font-bold text-gray-500 uppercase">Agente</th>
+                        <th class="px-6 py-3 text-center font-bold text-gray-500 uppercase">Meta</th>
+                        <th class="px-6 py-3 text-center font-bold text-gray-500 uppercase">Real</th>
+                        <th class="px-6 py-3 text-left font-bold text-gray-500 uppercase w-1/4">Progreso</th>
+                        <th class="px-6 py-3 text-right font-bold text-gray-500 uppercase">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for item in tabla_control %}
+                    <tr class="hover:bg-gray-50 transition">
+                        <!-- Ubicación -->
+                        <td class="px-6 py-4">
+                            <div class="text-xs text-gray-500 font-bold uppercase mb-1">{{ item.puesto.superintendencia.nombre }}</div>
+                            <div class="font-bold text-gray-900">{{ item.puesto.nombre }}</div>
+                        </td>
+                        
+                        <!-- Agente -->
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {{ item.agente.nombre }}
+                            </span>
+                        </td>
+                        
+                        <!-- Meta -->
+                        <td class="px-6 py-4 text-center font-bold text-gray-600">
+                            {{ item.meta }}
+                        </td>
+                        
+                        <!-- Real -->
+                        <td class="px-6 py-4 text-center font-bold text-gray-900">
+                            {{ item.real }}
+                        </td>
+                        
+                        <!-- Barra Progreso -->
+                        <td class="px-6 py-4 align-middle">
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 mb-1">
+                                <div class="h-2.5 rounded-full {% if item.porcentaje >= 100 %}bg-green-500{% else %}bg-orange-500{% endif %}" 
+                                     style="width: {{ item.porcentaje }}%"></div>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="{{ item.estado_color }} px-1 rounded">{{ item.estado_texto }}</span>
+                                <span class="font-bold text-gray-500">{{ item.porcentaje }}%</span>
+                            </div>
+                        </td>
+
+                        <!-- Acción Rápida -->
+                        <td class="px-6 py-4 text-right">
+                            {% if item.pendiente > 0 %}
+                                <!-- Botón que lleva a crear programa para HOY con ese puesto (Idea futura) -->
+                                <a href="{% url 'proyecto_monitoreo_smcv:crear_prog_diaria' fecha_inicio|date:'Y-m-d' %}" class="text-brand-600 hover:text-brand-900 font-bold text-xs border border-brand-200 px-3 py-1 rounded hover:bg-brand-50 transition">
+                                    Programar Hoy
+                                </a>
+                            {% else %}
+                                <span class="text-green-500 font-bold text-lg"><i class="fas fa-check"></i></span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-16">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                <i class="far fa-calendar-times text-3xl text-gray-400"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900">Semana sin carga asignada</h3>
+            <p class="text-gray-500 mt-2 max-w-sm mx-auto">No se han definido metas para esta semana en el Plan Mensual.</p>
+            <div class="mt-6">
+                <!-- Botón que te lleva al Plan Mensual para distribuir -->
+                <a href="{% url 'proyecto_monitoreo_smcv:tablero_mensual' anio mes %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-600 hover:bg-brand-700">
+                    Ir a Distribuir Carga Mensual
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
