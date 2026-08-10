@@ -1,18 +1,28 @@
+import os
+import sys
 import psycopg2
 import firebase_admin
 from firebase_admin import credentials, firestore
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # --- CONFIGURACIÓN ---
 
 # 1. Inicializa Firebase Admin SDK
-# Reemplaza 'ruta/a/tu/firebase-credentials.json' con el nombre de tu archivo de credenciales.
-cred = credentials.Certificate('asistenciaceneris-app-firebase-adminsdk-fbsvc-85dac4d12d.json')
+cred = credentials.Certificate('secrets/asistenciaceneris-app-firebase-adminsdk-fbsvc-85dac4d12d.json')
 firebase_admin.initialize_app(cred)
 db_firestore = firestore.client()
 
-# 2. Configura la conexión a PostgreSQL
-# Pega aquí la URL de conexión externa que obtuviste de Render.
-POSTGRES_URL = "postgresql://ceneris_db_2h87_user:4qXCDyJhefDfecdnYr0ZyzA8ik5X2yrl@dpg-d3l9kel6ubrc73968mk0-a.virginia-postgres.render.com/ceneris_db_2h87"
+# 2. Configura la conexión a PostgreSQL — se lee de la variable de entorno
+# POSTGRES_MIGRATION_URL (o del DATABASE_URL del .env). Nunca hardcodear
+# credenciales en este archivo.
+POSTGRES_URL = os.environ.get('POSTGRES_MIGRATION_URL') or os.environ.get('DATABASE_URL')
+if not POSTGRES_URL:
+    sys.exit(
+        "ERROR: definir POSTGRES_MIGRATION_URL (o DATABASE_URL) en el .env "
+        "antes de ejecutar la migración."
+    )
 
 # 3. Define el nombre de la colección en Firestore donde se guardarán los trabajadores.
 COLECCION_TRABAJADORES = "trabajadores" # Puedes cambiar este nombre si lo deseas

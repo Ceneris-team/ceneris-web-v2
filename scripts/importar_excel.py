@@ -8,9 +8,9 @@ import pytz
 
 
 # --- 1. CONFIGURACIÓN INICIAL ---
-NOMBRE_ARCHIVO_EXCEL = 'reporte_asistencias.xlsx'
+NOMBRE_ARCHIVO_EXCEL = 'data/reporte_asistencias.xlsx'
 # Como todos los meses están en una sola hoja, podemos eliminar la variable de la hoja
-SERVICE_ACCOUNT_KEY_PATH = 'firebase-service-account.json'
+SERVICE_ACCOUNT_KEY_PATH = 'secrets/firebase-service-account.json'
 COLECCION_TRABAJADORES = 'trabajadores'
 COLECCION_ASISTENCIAS = 'asistencias'
 HORA_BASE_ENTRADA = time(8, 30, 0) # La hora base: 08:30:00

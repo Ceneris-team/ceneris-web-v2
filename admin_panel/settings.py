@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import os
+import sys
 import dj_database_url
 from datetime import timedelta
 import base64
@@ -30,6 +31,13 @@ if USE_FIRESTORE:
 # Definiciones Base
 # ==============================================================================
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Todas las apps del proyecto viven en apps/. Inyectar esa carpeta en sys.path
+# permite mantener los nombres cortos en INSTALLED_APPS (p.ej. 'calidad'),
+# sin invalidar los app_label de migraciones ya aplicadas en produccion.
+APPS_DIR = BASE_DIR / 'apps'
+if str(APPS_DIR) not in sys.path:
+    sys.path.insert(0, str(APPS_DIR))
 
 # ==============================================================================
 # Configuración de Seguridad y Despliegue
@@ -273,7 +281,7 @@ if USE_FIRESTORE and (firebase_admin is not None):
         service_account_info = json.loads(decoded_creds)
         cred = credentials.Certificate(service_account_info)
     else:
-        SERVICE_ACCOUNT_KEY_PATH = os.path.join(BASE_DIR, 'firebase-service-account.json')
+        SERVICE_ACCOUNT_KEY_PATH = os.path.join(BASE_DIR, 'secrets', 'firebase-service-account.json')
         if os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
             cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
         else:

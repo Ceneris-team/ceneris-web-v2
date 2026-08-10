@@ -126,7 +126,7 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
-- # Pyre type checker
+# Pyre type checker
 .pyre/
 
 # pytype static type analyzer
@@ -135,18 +135,41 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-firebase-service-account.json
-*.env
-# Ignorar virtualenv local
+# ============================================================
+# Secretos y credenciales — NUNCA versionar
+# ============================================================
+secrets/
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+
+# Credenciales Firebase (patrones específicos, no *.json global)
+firebase-service-account*.json
+asistenciaceneris-*firebase-adminsdk*.json
+*serviceAccount*.json
+*service-account*.json
+
+# ============================================================
+# Virtualenvs
+# ============================================================
 .venv311/
 
-asistenciaceneris-app-firebase-adminsdk-*.json
-.env
+# ============================================================
+# Datos generados / temporales
+# ============================================================
+media/
+tmp_import/
+*.sqlite3
+*.sqlite3-journal
 
-asistenciaceneris-*.json
-.env
+# Salida de 'manage.py collectstatic' (se regenera en cada deploy)
+staticfiles/
 
-asistenciaceneris-*.json
-*.json
-.env
+# ============================================================
+# Backups / artefactos de pip
+# ============================================================
+requirements.txt.bak
+installed_packages.txt
 
