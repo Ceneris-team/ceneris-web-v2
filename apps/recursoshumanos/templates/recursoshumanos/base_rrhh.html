@@ -386,6 +386,9 @@
                     <li class="navbar__item {% if current_view == 'gestion_horarios' %}active{% endif %}">
                         <a href="{% url 'recursoshumanos:gestion_tareo' %}" class="navbar__link"><i data-feather="calendar"></i><span>Tareo</span></a>
                     </li>
+                    <li class="navbar__item {% if current_view == 'gestion_feriados' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:gestion_feriados' %}" class="navbar__link"><i data-feather="sun"></i><span>Feriados</span></a>
+                    </li>
                     <li class="navbar__item {% if current_view == 'gestion_reportes' %}active{% endif %}">
                         <a href="{% url 'recursoshumanos:gestion_reportes' %}" class="navbar__link"><i data-feather="download"></i><span>Reportes</span></a>
                     </li>
@@ -416,6 +419,11 @@
                      <li class="navbar__item {% if current_view == 'dashboard_estadistico' %}active{% endif %}">
                         <a href="{% url 'administracion:dashboard_estadistico' %}" class="navbar__link">
                             <i data-feather="grid"></i><span>Dashboard</span>
+                        </a>
+                    </li>
+                     <li class="navbar__item {% if current_view == 'gestion_feriados' %}active{% endif %}">
+                        <a href="{% url 'administracion:gestion_feriados' %}" class="navbar__link">
+                            <i data-feather="calendar"></i><span>Feriados</span>
                         </a>
                     </li>
                      {# ... resto de items ... #}
