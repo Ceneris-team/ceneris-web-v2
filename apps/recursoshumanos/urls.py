@@ -4,11 +4,18 @@ from django.urls import include, path
 from . import views
 from recursoshumanos.views import reporte_faltas_web
 from . import api_views
+# Alias de la Gestión de Feriados: el módulo vive en la app administracion,
+# pero se expone también bajo /recursoshumanos/ para mantener consistente el
+# menú de RRHH. Reutiliza la misma vista (la API sigue en administracion:).
+from administracion import views_feriados as feriados_views
 
 app_name = 'recursoshumanos'
 
 
 urlpatterns = [
+
+    # --- GESTIÓN DE FERIADOS (alias hacia administracion) ---
+    path('feriados/', feriados_views.gestion_feriados, name='gestion_feriados'),
 
     # --- DASHBOARD Y REPORTES ---
     path('', views.estadisticas_general, name='dashboard'),
