@@ -42,6 +42,11 @@ urlpatterns = [
     # --- ¡NUEVAS RUTAS PARA la gestion de HORARIOS! ---
     path('horarios/', views.gestion_horarios, name='gestion_horarios'),
 
+    # --- HU-06 (CAV-15): TOLERANCIA DE HORARIO ---
+    path('tolerancia/', views.gestion_tolerancia, name='gestion_tolerancia'),
+    path('api/tolerancia/', api_views.ConfiguracionToleranciaListCreateView.as_view(), name='api_tolerancia_list_create'),
+    path('api/tolerancia/<int:pk>/', api_views.ConfiguracionToleranciaDetailView.as_view(), name='api_tolerancia_detail'),
+
     # --- ¡NUEVAS RUTAS PARA la gestion de Ubicaciones! ---
     path('ubicaciones/', views.gestion_ubicaciones, name='gestion_ubicaciones'),
     path('ubicaciones/lista/', views.lista_ubicaciones, name='lista_ubicaciones'),

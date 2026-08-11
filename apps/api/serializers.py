@@ -8,6 +8,8 @@ from recursoshumanos.models import (
     Asistencia,
     Justificacion,
     TareoDiario,
+    ConfiguracionTolerancia,
+    ToleranciaAuditoria,
 )
 
 
@@ -135,3 +137,39 @@ class CrearJustificacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Justificacion
         fields = ['tareo', 'motivo', 'descripcion', 'archivo_evidencia']
+
+
+class ToleranciaAuditoriaSerializer(serializers.ModelSerializer):
+    usuario_nombre = serializers.SerializerMethodField()
+    tipo_horario_display = serializers.CharField(source='get_tipo_horario_display', read_only=True)
+
+    class Meta:
+        model = ToleranciaAuditoria
+        fields = [
+            'id', 'sede_nombre', 'tipo_horario', 'tipo_horario_display',
+            'minutos_anteriores', 'minutos_nuevos', 'usuario_nombre', 'creado_en',
+        ]
+        read_only_fields = fields
+
+    def get_usuario_nombre(self, obj):
+        return obj.usuario.username if obj.usuario else 'Sistema'
+
+
+class ConfiguracionToleranciaSerializer(serializers.ModelSerializer):
+    sede_nombre = serializers.CharField(source='sede.nombre', read_only=True)
+    tipo_horario_display = serializers.CharField(source='get_tipo_horario_display', read_only=True)
+
+    class Meta:
+        model = ConfiguracionTolerancia
+        fields = [
+            'id', 'sede', 'sede_nombre', 'tipo_horario', 'tipo_horario_display',
+            'minutos_tolerancia', 'activo', 'creado_en', 'actualizado_en',
+        ]
+        read_only_fields = ['id', 'sede_nombre', 'tipo_horario_display', 'creado_en', 'actualizado_en']
+
+    def validate_minutos_tolerancia(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Los minutos de tolerancia no pueden ser negativos.")
+        if value > 180:
+            raise serializers.ValidationError("Los minutos de tolerancia no pueden superar 180.")
+        return value

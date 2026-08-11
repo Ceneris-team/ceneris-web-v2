@@ -1,9 +1,97 @@
 from datetime import datetime, date, time, timedelta
+from django.db import transaction
 from django.utils import timezone # <--- ESTO ES VITAL
-from .models import TareoDiario, Asistencia, SolicitudHorasExtra
+from .models import (
+    TareoDiario,
+    Asistencia,
+    SolicitudHorasExtra,
+    ConfiguracionTolerancia,
+    ToleranciaAuditoria,
+)
 
 
 TOLERANCIA_TARDANZA_MINUTOS = 15
+
+
+# ==============================================================================
+# HU-06 (CAV-15): CONFIGURACIÓN DE TOLERANCIA DE HORARIO
+# ==============================================================================
+
+def listar_tolerancias(sede_id=None):
+    """Lista las configuraciones de tolerancia, opcionalmente filtradas por sede."""
+    qs = ConfiguracionTolerancia.objects.select_related('sede').all()
+    if sede_id:
+        qs = qs.filter(sede_id=sede_id)
+    return qs
+
+
+@transaction.atomic
+def actualizar_tolerancia(configuracion_id, minutos_nuevos, usuario):
+    """
+    Actualiza los minutos de tolerancia de una configuración existente y deja
+    registro en ToleranciaAuditoria en la misma transacción, para que nunca
+    quede un cambio de minutos sin su historial correspondiente.
+    """
+    configuracion = ConfiguracionTolerancia.objects.select_for_update().get(pk=configuracion_id)
+    minutos_anteriores = configuracion.minutos_tolerancia
+
+    if minutos_anteriores != minutos_nuevos:
+        configuracion.minutos_tolerancia = minutos_nuevos
+        configuracion.save(update_fields=['minutos_tolerancia', 'actualizado_en'])
+
+        ToleranciaAuditoria.objects.create(
+            configuracion=configuracion,
+            sede_nombre=configuracion.sede.nombre,
+            tipo_horario=configuracion.tipo_horario,
+            minutos_anteriores=minutos_anteriores,
+            minutos_nuevos=minutos_nuevos,
+            usuario=usuario,
+        )
+
+    return configuracion
+
+
+@transaction.atomic
+def crear_o_actualizar_tolerancia(sede_id, tipo_horario, minutos_tolerancia, usuario):
+    """
+    Crea la configuración de tolerancia para (sede, tipo_horario) si no existe,
+    o actualiza sus minutos (con auditoría) si ya existía.
+    """
+    configuracion, creada = ConfiguracionTolerancia.objects.get_or_create(
+        sede_id=sede_id,
+        tipo_horario=tipo_horario,
+        defaults={'minutos_tolerancia': minutos_tolerancia},
+    )
+
+    if creada:
+        ToleranciaAuditoria.objects.create(
+            configuracion=configuracion,
+            sede_nombre=configuracion.sede.nombre,
+            tipo_horario=configuracion.tipo_horario,
+            minutos_anteriores=0,
+            minutos_nuevos=minutos_tolerancia,
+            usuario=usuario,
+        )
+        return configuracion
+
+    return actualizar_tolerancia(configuracion.pk, minutos_tolerancia, usuario)
+
+
+def obtener_minutos_tolerancia(sede, tipo_horario, default=TOLERANCIA_TARDANZA_MINUTOS):
+    """
+    Consulta la tolerancia vigente directamente en BD (sin caché ni valores en
+    memoria), de forma que un cambio guardado desde la pantalla administrativa
+    (CAV-72) se refleje de inmediato en el cálculo de asistencia, sin
+    necesidad de reiniciar el servidor.
+    """
+    if not sede or not tipo_horario:
+        return default
+
+    minutos = ConfiguracionTolerancia.objects.filter(
+        sede=sede, tipo_horario=tipo_horario, activo=True
+    ).values_list('minutos_tolerancia', flat=True).first()
+
+    return minutos if minutos is not None else default
 
 def recalcular_asistencia_diaria(tareo: TareoDiario):
     """
@@ -77,9 +165,16 @@ def recalcular_asistencia_diaria(tareo: TareoDiario):
             # Usamos la hora real ya convertida (Local)
             dt_prog = datetime.combine(date.today(), h_programada)
             dt_real = datetime.combine(date.today(), tareo.hora_entrada_real)
-            
+
             diff_min = (dt_real - dt_prog).total_seconds() / 60
-            
+
+            # CAV-154: la tolerancia se consulta en vivo (ConfiguracionTolerancia)
+            # según la Sede del trabajador y el horario/turno del día, en vez de
+            # usar una constante fija, para que los cambios de HU-06 apliquen
+            # de inmediato.
+            minutos_tolerancia = obtener_minutos_tolerancia(tareo.trabajador.sede, tareo.estado)
+            diff_min -= minutos_tolerancia
+
             if diff_min > 0:
                 # Convertimos minutos a horas decimales
                 tareo.horas_tardanza = round(diff_min / 60, 2)
