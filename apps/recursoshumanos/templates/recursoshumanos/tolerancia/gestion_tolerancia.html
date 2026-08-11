@@ -1,0 +1,261 @@
+<!-- recursoshumanos/tolerancia/gestion_tolerancia.html -->
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Tolerancia de Horario{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <style>
+        .tolerancia-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: flex-end;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .tolerancia-form .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .tolerancia-form label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #495057;
+        }
+        .tolerancia-form select,
+        .tolerancia-form input {
+            padding: 8px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            min-width: 180px;
+        }
+        .minutos-input {
+            width: 90px !important;
+            min-width: 90px !important;
+        }
+        .btn-guardar-fila {
+            background: #FF6B35;
+            color: #fff;
+            border: 0;
+            border-radius: 5px;
+            padding: 6px 14px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-guardar-fila:hover { background: #e65a26; }
+        .badge-activo { color: #2e7d32; font-weight: 600; }
+        .badge-inactivo { color: #c62828; font-weight: 600; }
+        .auditoria-panel {
+            margin-top: 35px;
+        }
+        .auditoria-panel h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .auditoria-table td, .auditoria-table th {
+            font-size: 13px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1><i data-feather="clock" style="vertical-align: -3px; margin-right: 8px;"></i> Tolerancia de Horario</h1>
+            <p style="margin: 0; color: #6c757d;">Configura los minutos de tolerancia de tardanza por Sede y horario/turno. Los cambios aplican de inmediato al recalcular la asistencia.</p>
+        </div>
+    </div>
+
+    <!-- Formulario para registrar tolerancia en una nueva Sede/Horario -->
+    <form id="form-nueva-tolerancia" class="tolerancia-form">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="id_sede">Sede</label>
+            <select id="id_sede" name="sede" required>
+                <option value="">Seleccionar Sede</option>
+                {% for sede in sedes %}
+                    <option value="{{ sede.pk }}">{{ sede.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="id_tipo_horario">Horario / Turno</label>
+            <select id="id_tipo_horario" name="tipo_horario" required>
+                <option value="">Seleccionar Horario</option>
+                {% for valor, etiqueta in tipos_horario %}
+                    <option value="{{ valor }}">{{ etiqueta }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="id_minutos">Minutos de Tolerancia</label>
+            <input type="number" id="id_minutos" name="minutos_tolerancia" class="minutos-input" min="0" max="180" value="15" required>
+        </div>
+        <div class="form-group">
+            <button type="submit" class="btn-guardar-fila">Guardar Configuración</button>
+        </div>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Sede</th>
+                <th>Horario / Turno</th>
+                <th>Minutos de Tolerancia</th>
+                <th>Estado</th>
+                <th style="text-align:center;">Acción</th>
+            </tr>
+        </thead>
+        <tbody id="tabla-tolerancias">
+            {% for config in configuraciones %}
+                <tr data-id="{{ config.pk }}">
+                    <td>{{ config.sede.nombre }}</td>
+                    <td>{{ config.get_tipo_horario_display }}</td>
+                    <td>
+                        <input type="number" class="minutos-input fila-minutos" min="0" max="180" value="{{ config.minutos_tolerancia }}">
+                    </td>
+                    <td>
+                        {% if config.activo %}
+                            <span class="badge-activo">Activo</span>
+                        {% else %}
+                            <span class="badge-inactivo">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:center;">
+                        <button type="button" class="btn-guardar-fila btn-guardar-minutos">Guardar</button>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" style="text-align:center; padding:30px; color:#6c757d;">Aún no hay configuraciones de tolerancia registradas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="auditoria-panel">
+        <h2><i data-feather="list" style="vertical-align:-3px; margin-right:6px;"></i> Últimos cambios</h2>
+        <table class="auditoria-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Sede</th>
+                    <th>Horario</th>
+                    <th>Minutos Anteriores</th>
+                    <th>Minutos Nuevos</th>
+                    <th>Usuario</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for auditoria in auditorias_recientes %}
+                    <tr>
+                        <td>{{ auditoria.creado_en|date:"d/m/Y H:i" }}</td>
+                        <td>{{ auditoria.sede_nombre }}</td>
+                        <td>{{ auditoria.get_tipo_horario_display }}</td>
+                        <td>{{ auditoria.minutos_anteriores }}</td>
+                        <td>{{ auditoria.minutos_nuevos }}</td>
+                        <td>{{ auditoria.usuario.username|default:"Sistema" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="6" style="text-align:center; padding:20px; color:#6c757d;">Sin cambios registrados aún.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    if (typeof feather !== 'undefined') feather.replace();
+
+    const API_LIST_CREATE_URL = "{% url 'recursoshumanos:api_tolerancia_list_create' %}";
+    function urlDetalle(pk) {
+        return API_LIST_CREATE_URL + pk + '/';
+    }
+
+    function getCsrfToken() {
+        return document.querySelector('#form-nueva-tolerancia [name=csrfmiddlewaretoken]').value;
+    }
+
+    function mostrarError(mensaje) {
+        Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: mensaje });
+    }
+
+    function mostrarExito(mensaje) {
+        Swal.fire({ icon: 'success', title: mensaje, timer: 1800, showConfirmButton: false });
+    }
+
+    document.getElementById('form-nueva-tolerancia').addEventListener('submit', function (event) {
+        event.preventDefault();
+        const sede = document.getElementById('id_sede').value;
+        const tipoHorario = document.getElementById('id_tipo_horario').value;
+        const minutos = document.getElementById('id_minutos').value;
+
+        if (!sede || !tipoHorario || minutos === '') {
+            mostrarError('Selecciona la sede, el horario y los minutos de tolerancia.');
+            return;
+        }
+
+        fetch(API_LIST_CREATE_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify({
+                sede: sede,
+                tipo_horario: tipoHorario,
+                minutos_tolerancia: parseInt(minutos, 10),
+            }),
+        })
+            .then(async (response) => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || JSON.stringify(data));
+                }
+                mostrarExito('Configuración guardada. Recargando listado...');
+                setTimeout(() => window.location.reload(), 1200);
+            })
+            .catch((error) => mostrarError(error.message));
+    });
+
+    document.getElementById('tabla-tolerancias').addEventListener('click', function (event) {
+        const boton = event.target.closest('.btn-guardar-minutos');
+        if (!boton) return;
+
+        const fila = boton.closest('tr');
+        const pk = fila.getAttribute('data-id');
+        const minutosInput = fila.querySelector('.fila-minutos');
+        const minutos = parseInt(minutosInput.value, 10);
+
+        if (Number.isNaN(minutos) || minutos < 0) {
+            mostrarError('Ingresa un número de minutos válido.');
+            return;
+        }
+
+        fetch(urlDetalle(pk), {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify({ minutos_tolerancia: minutos }),
+        })
+            .then(async (response) => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || JSON.stringify(data));
+                }
+                mostrarExito('Tolerancia actualizada.');
+                setTimeout(() => window.location.reload(), 1200);
+            })
+            .catch((error) => mostrarError(error.message));
+    });
+</script>
+{% endblock %}
