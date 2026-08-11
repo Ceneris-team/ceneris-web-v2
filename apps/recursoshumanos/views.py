@@ -21,6 +21,8 @@ from .forms import TrabajadorForm, UbicacionForm, JustificacionForm, EmpresaForm
 from .models import Cargo, Empresa, Proyecto, Trabajador, CentroCosto, Ubicacion, TareoDiario
 import pandas as pd
 from recursoshumanos.services import recalcular_asistencia_diaria
+from .models import Sede, ConfiguracionTolerancia, ToleranciaAuditoria
+from .services import listar_tolerancias, crear_o_actualizar_tolerancia, actualizar_tolerancia
 from firebase_admin import firestore
 from google.cloud import firestore
 from google.cloud.firestore_v1.field_path import FieldPath
@@ -1011,6 +1013,34 @@ def actualizar_asignacion_ubicacion(request):
         return JsonResponse({'status': 'ok'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+#=================================================================================
+# --- VISTAS DE GESTIÓN DE TOLERANCIA DE HORARIO (HU-06 / CAV-15) ---
+#=================================================================================
+
+@login_required
+@group_required("Recursos Humanos", "Gerencia", "Administracion")
+def gestion_tolerancia(request):
+    """
+    Pantalla administrativa (CAV-72) para configurar los minutos de tolerancia
+    de tardanza por Sede y horario/turno. La edición se hace de forma visual
+    mediante AJAX contra los endpoints API de CAV-71 (sin recargar la página),
+    para que el cambio surta efecto de inmediato en el cálculo de asistencia
+    (CAV-154), sin reiniciar el servidor.
+    """
+    configuraciones = listar_tolerancias().order_by('sede__nombre', 'tipo_horario')
+    sedes = Sede.objects.filter(activo=True).order_by('nombre')
+    auditorias_recientes = ToleranciaAuditoria.objects.select_related('usuario').all()[:20]
+
+    context = {
+        'configuraciones': configuraciones,
+        'sedes': sedes,
+        'tipos_horario': ConfiguracionTolerancia.TipoHorario.choices,
+        'auditorias_recientes': auditorias_recientes,
+        'current_view': 'gestion_tolerancia',
+    }
+    return render(request, 'recursoshumanos/tolerancia/gestion_tolerancia.html', context)
+
 #vista para reporte mensual
 
 @login_required
