@@ -18,6 +18,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import FeriadoForm
 from .models import Feriado
+from .services.feriados import MSG_TAREO_CERRADO, tiene_tareos_cerrados
 
 MESES_ES_FERIADOS = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -71,9 +72,10 @@ def gestion_feriados(request):
 
 @login_required
 def feriados_api_list(request):
-    """GET feriados/api/?anio=YYYY&mes=MM&q=texto -> listado JSON."""
+    """GET feriados/api/?anio=YYYY&mes=MM&tipo=X&q=texto -> listado JSON."""
     anio = request.GET.get('anio')
     mes = request.GET.get('mes')
+    tipo = request.GET.get('tipo')
     busqueda = request.GET.get('q', '').strip()
 
     feriados_qs = Feriado.objects.all()
@@ -89,6 +91,11 @@ def feriados_api_list(request):
             feriados_qs = feriados_qs.filter(fecha__month=int(mes))
         except ValueError:
             pass
+
+    # Un tipo desconocido se ignora (no filtra) en vez de romper el listado,
+    # igual que anio y mes.
+    if tipo in Feriado.Tipo.values:
+        feriados_qs = feriados_qs.filter(tipo=tipo)
 
     if busqueda:
         feriados_qs = feriados_qs.filter(Q(nombre__icontains=busqueda))
@@ -118,8 +125,18 @@ def feriado_api_crear(request):
 @login_required
 @require_POST
 def feriado_api_editar(request, pk):
-    """POST feriados/api/<id>/editar/ -> edita un feriado existente."""
+    """POST feriados/api/<id>/editar/ -> edita un feriado existente (CAV-57)."""
     feriado = get_object_or_404(Feriado, pk=pk)
+
+    # Se guarda antes de instanciar el form: el ModelForm escribe los datos
+    # nuevos sobre `feriado` al validar, y despues de eso ya no se puede saber
+    # cual era la fecha original.
+    fecha_original = feriado.fecha
+
+    # Regla de negocio HU-02: si la fecha actual ya tiene tareos cerrados, el
+    # feriado esta congelado y no se toca.
+    if tiene_tareos_cerrados(fecha_original):
+        return JsonResponse({'status': 'error', 'message': MSG_TAREO_CERRADO}, status=403)
 
     try:
         data = json.loads(request.body or '{}')
@@ -130,6 +147,12 @@ def feriado_api_editar(request, pk):
     if not form.is_valid():
         return JsonResponse({'status': 'error', 'message': _primer_error(form)}, status=400)
 
+    # Tampoco se puede mover un feriado hacia un dia que ya fue tareado: eso
+    # afectaria la asistencia consolidada de la fecha destino.
+    fecha_destino = form.cleaned_data['fecha']
+    if fecha_destino != fecha_original and tiene_tareos_cerrados(fecha_destino):
+        return JsonResponse({'status': 'error', 'message': MSG_TAREO_CERRADO}, status=403)
+
     feriado = form.save()
     messages.success(request, f'Feriado "{feriado.nombre}" actualizado correctamente.')
     return JsonResponse({'status': 'ok', 'feriado': _feriado_to_dict(feriado)})
@@ -138,8 +161,13 @@ def feriado_api_editar(request, pk):
 @login_required
 @require_POST
 def feriado_api_eliminar(request, pk):
-    """POST feriados/api/<id>/eliminar/ -> elimina un feriado."""
+    """POST feriados/api/<id>/eliminar/ -> elimina un feriado (CAV-57)."""
     feriado = get_object_or_404(Feriado, pk=pk)
+
+    # Regla de negocio HU-02: no se borra un feriado que ya afecta tareos.
+    if tiene_tareos_cerrados(feriado.fecha):
+        return JsonResponse({'status': 'error', 'message': MSG_TAREO_CERRADO}, status=403)
+
     feriado.delete()
     messages.success(request, 'Feriado eliminado correctamente.')
     return JsonResponse({'status': 'ok'})

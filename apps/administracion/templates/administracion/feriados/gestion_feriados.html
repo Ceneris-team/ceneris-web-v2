@@ -367,6 +367,15 @@
             </select>
         </div>
         <div class="form-group">
+            <label for="filtroTipo">Tipo</label>
+            <select id="filtroTipo" class="filter-input">
+                <option value="">Todos los tipos</option>
+                {% for valor, etiqueta in tipos_feriado %}
+                    <option value="{{ valor }}">{{ etiqueta }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
             <label for="filtroBusqueda">Búsqueda Rápida</label>
             <div class="search-wrapper">
                 <span class="search-icon">
@@ -473,6 +482,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const filtroAnio = document.getElementById('filtroAnio');
     const filtroMes = document.getElementById('filtroMes');
+    const filtroTipo = document.getElementById('filtroTipo');
     const filtroBusqueda = document.getElementById('filtroBusqueda');
     const tablaBody = document.getElementById('tablaFeriadosBody');
     const contador = document.getElementById('contadorFeriados');
@@ -528,6 +538,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const params = new URLSearchParams();
         if (filtroAnio.value) params.set('anio', filtroAnio.value);
         if (filtroMes.value) params.set('mes', filtroMes.value);
+        if (filtroTipo.value) params.set('tipo', filtroTipo.value);
         if (filtroBusqueda.value.trim()) params.set('q', filtroBusqueda.value.trim());
         return params.toString();
     }
@@ -645,6 +656,7 @@ document.addEventListener('DOMContentLoaded', function () {
         cargarFeriados();
         navegarCalendarioAFiltro();
     });
+    filtroTipo.addEventListener('change', cargarFeriados);
     filtroBusqueda.addEventListener('input', function () {
         clearTimeout(searchDebounce);
         searchDebounce = setTimeout(cargarFeriados, 350);
