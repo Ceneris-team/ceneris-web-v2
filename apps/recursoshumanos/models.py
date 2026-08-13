@@ -3,6 +3,8 @@ from django.core.validators import RegexValidator
 from django.utils import timezone
 from django.conf import settings
 
+from .motor_reglas import EstadoMarca
+
 # Validador para DNI
 dni_validator = RegexValidator(
     regex=r'^\d{8}$',
@@ -444,6 +446,18 @@ class TareoDiario(models.Model):
     
     # Para saber si se aplicó descuento automático de almuerzo
     descuento_almuerzo_aplicado = models.BooleanField(default=False)
+
+    # Clasificación de la marca del día que produce el motor de reglas
+    # (CAV-167): NORMAL, TARDANZA, FERIADO, FUERA_HORARIO, etc. Es distinto de
+    # `estado` (tipo de jornada) y de `resultado` (F/A/J). Nace en null hasta
+    # que el motor evalúa el día.
+    etiqueta_estado = models.CharField(
+        max_length=20,
+        choices=EstadoMarca.choices,
+        null=True,
+        blank=True,
+        verbose_name="Etiqueta de la marca",
+    )
 
     # Opcional: Ubicación asignada
     ubicacion = models.ForeignKey(Ubicacion, on_delete=models.SET_NULL, null=True, blank=True)
