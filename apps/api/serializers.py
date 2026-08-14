@@ -155,6 +155,20 @@ class ToleranciaAuditoriaSerializer(serializers.ModelSerializer):
         return obj.usuario.username if obj.usuario else 'Sistema'
 
 
+class UsuarioAutorizadoSerializer(serializers.Serializer):
+    """
+    CAV-182: Representa una fila de la lista de usuarios autorizados
+    que se sincroniza de forma incremental al dispositivo movil.
+    No incluye password ni ningun dato sensible: solo lo minimo
+    necesario para que el cliente sepa "quien esta autorizado".
+    """
+    dni = serializers.CharField()
+    username = serializers.CharField()
+    nombre_completo = serializers.CharField()
+    activo = serializers.BooleanField()
+    actualizado_en = serializers.DateTimeField()
+
+
 class ConfiguracionToleranciaSerializer(serializers.ModelSerializer):
     sede_nombre = serializers.CharField(source='sede.nombre', read_only=True)
     tipo_horario_display = serializers.CharField(source='get_tipo_horario_display', read_only=True)
