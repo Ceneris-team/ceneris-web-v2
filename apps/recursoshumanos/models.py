@@ -183,6 +183,9 @@ class Trabajador(models.Model):
     # Estado Global
     aptitud_actual = models.CharField(max_length=50, default='Sin Evaluación', editable=False)
     activo = models.BooleanField(default=True)
+    # Usado por CAV-182 (sincronizacion incremental de usuarios autorizados):
+    # se actualiza solo en cada guardado, permite consultar "que cambio desde X fecha".
+    actualizado_en = models.DateTimeField(auto_now=True)
 
     @property
     def nombre_completo(self):
