@@ -379,13 +379,28 @@ class RegistrarAsistenciaView(APIView):
                 )
                 
                 # 4. CÁLCULO AUTOMÁTICO
+                advertencia = None
                 try:
                     recalcular_asistencia_diaria(tareo_hoy)
                     print(f"✅ Asistencia registrada y procesada para {trabajador}")
+
+                    tareo_hoy.refresh_from_db()
+                    if tareo_hoy.etiqueta_estado in ('FUERA_HORARIO', 'TARDANZA'):
+                        advertencia = {
+                            'tipo': tareo_hoy.etiqueta_estado,
+                            'mensaje': (
+                                f'Tu marcación fue clasificada como '
+                                f'{tareo_hoy.get_etiqueta_estado_display()}.'
+                            ),
+                            'detalle': tareo_hoy.detalle_marca or '',
+                        }
                 except Exception as e:
                     print(f"⚠️ Error en el cálculo matemático: {e}")
 
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                response_data = dict(serializer.data)
+                if advertencia:
+                    response_data['advertencia'] = advertencia
+                return Response(response_data, status=status.HTTP_201_CREATED)
             
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

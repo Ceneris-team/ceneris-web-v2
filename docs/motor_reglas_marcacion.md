@@ -36,6 +36,7 @@ memoria, sin volver a consultar. Por eso es una función pura y se prueba sin BD
 | `etiqueta` | Etiqueta principal (`EstadoMarca`). Se persiste en `TareoDiario.etiqueta_estado`. |
 | `etiquetas` | Todas las etiquetas aplicables (p. ej. TARDANZA + FUERA_DE_HORARIO). |
 | `horas_tardanza` / `minutos_tardanza` | Tardanza tras aplicar la tolerancia. |
+| `detalle` | Motivo legible de la clasificación (p. ej. "Tardanza de 15 min (tolerancia: 15 min); Salida posterior"). Se persiste en `TareoDiario.detalle_marca`. |
 
 ## Etiquetas de estado (`EstadoMarca`)
 
@@ -44,7 +45,7 @@ memoria, sin volver a consultar. Por eso es una función pura y se prueba sin BD
 | `NORMAL` | Día normal con marcas, dentro de horario y de tolerancia. |
 | `TARDANZA` | Entrada real posterior a `entrada_programada + tolerancia`. |
 | `FERIADO` | El día es feriado (con o sin marcas). |
-| `FUERA_DE_HORARIO` | La entrada real cae antes del inicio, o la salida real después del fin, del horario programado. |
+| `FUERA_DE_HORARIO` | La entrada real cae antes de `entrada_programada - tolerancia`, la salida real después de `salida_programada + tolerancia`, o la salida real antes de `salida_programada - tolerancia`. |
 | `FALTA` | Día normal sin ninguna marca. |
 | `JUSTIFICADO` | El día ya estaba justificado (aprobado por RRHH o vía ERP). |
 | `DIA_LIBRE` | El día estaba programado como libre (`estado = 'D'`). |

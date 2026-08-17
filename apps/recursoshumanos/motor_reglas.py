@@ -16,7 +16,7 @@ El orden de prioridad de las reglas está documentado en
 ``evaluar_marcacion``.
 """
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
 from django.db import models
 
@@ -72,6 +72,7 @@ class ResultadoEvaluacion:
     etiquetas: tuple[str, ...]          # todas las etiquetas aplicables
     horas_tardanza: float
     minutos_tardanza: int
+    detalle: str = ''                   # motivo legible de la clasificación
 
 
 def _normalizar_resultado(valor: str) -> str:
@@ -101,16 +102,33 @@ def _minutos_tardanza(
     return int(diff_min) if diff_min > 0 else 0
 
 
-def _fuera_de_horario(ctx: ContextoMarcacion) -> bool:
-    """True si la entrada real cae antes del inicio programado o la salida
-    real después del fin programado (marca fuera del rango del turno)."""
+def _fuera_de_horario(ctx: ContextoMarcacion) -> list[str]:
+    """Detecta marcas fuera del rango del turno, aplicando la tolerancia.
+
+    Devuelve una lista de motivos (vacía si todo está dentro del rango):
+      - 'Entrada anticipada' si la entrada real < entrada_programada - tolerancia.
+      - 'Salida posterior'   si la salida real  > salida_programada + tolerancia.
+      - 'Salida anticipada'  si la salida real  < salida_programada - tolerancia.
+    """
+    motivos: list[str] = []
+    base = date.today()
+    tol = timedelta(minutes=ctx.minutos_tolerancia)
+
     if ctx.hora_entrada_real and ctx.hora_entrada_programada:
-        if ctx.hora_entrada_real < ctx.hora_entrada_programada:
-            return True
+        limite_entrada = (datetime.combine(base, ctx.hora_entrada_programada) - tol).time()
+        if ctx.hora_entrada_real < limite_entrada:
+            motivos.append('Entrada anticipada')
+
     if ctx.hora_salida_real and ctx.hora_salida_programada:
-        if ctx.hora_salida_real > ctx.hora_salida_programada:
-            return True
-    return False
+        limite_salida_max = (datetime.combine(base, ctx.hora_salida_programada) + tol).time()
+        if ctx.hora_salida_real > limite_salida_max:
+            motivos.append('Salida posterior')
+
+        limite_salida_min = (datetime.combine(base, ctx.hora_salida_programada) - tol).time()
+        if ctx.hora_salida_real < limite_salida_min:
+            motivos.append('Salida anticipada')
+
+    return motivos
 
 
 def evaluar_marcacion(ctx: ContextoMarcacion) -> ResultadoEvaluacion:
@@ -134,6 +152,7 @@ def evaluar_marcacion(ctx: ContextoMarcacion) -> ResultadoEvaluacion:
             etiquetas=(EstadoMarca.JUSTIFICADO,),
             horas_tardanza=0.0,
             minutos_tardanza=0,
+            detalle='Justificación aprobada por RRHH o ERP',
         )
 
     # 2. Día libre programado: no se evalúa tardanza aunque haya marcas sueltas.
@@ -145,6 +164,7 @@ def evaluar_marcacion(ctx: ContextoMarcacion) -> ResultadoEvaluacion:
             etiquetas=(EstadoMarca.DIA_LIBRE,),
             horas_tardanza=0.0,
             minutos_tardanza=0,
+            detalle='Día programado como libre',
         )
 
     # 3. Sin marcas reales: feriado no penaliza; en día normal es Falta.
@@ -156,6 +176,7 @@ def evaluar_marcacion(ctx: ContextoMarcacion) -> ResultadoEvaluacion:
                 etiquetas=(EstadoMarca.FERIADO,),
                 horas_tardanza=0.0,
                 minutos_tardanza=0,
+                detalle='Día feriado sin marcación',
             )
         return ResultadoEvaluacion(
             resultado=RESULTADO_FALTA,
@@ -163,6 +184,7 @@ def evaluar_marcacion(ctx: ContextoMarcacion) -> ResultadoEvaluacion:
             etiquetas=(EstadoMarca.FALTA,),
             horas_tardanza=0.0,
             minutos_tardanza=0,
+            detalle='Sin marcación registrada',
         )
 
     # Hay marcas reales -> el trabajador asistió.
@@ -174,10 +196,12 @@ def evaluar_marcacion(ctx: ContextoMarcacion) -> ResultadoEvaluacion:
             etiquetas=(EstadoMarca.FERIADO,),
             horas_tardanza=0.0,
             minutos_tardanza=0,
+            detalle='Asistencia en día feriado',
         )
 
     # 5. Día normal con marcas.
     etiquetas: list[str] = []
+    detalles: list[str] = []
 
     # Sin horario programado no se puede juzgar tardanza ni rango.
     if ctx.hora_entrada_programada is None:
@@ -187,6 +211,7 @@ def evaluar_marcacion(ctx: ContextoMarcacion) -> ResultadoEvaluacion:
             etiquetas=(EstadoMarca.SIN_HORARIO,),
             horas_tardanza=0.0,
             minutos_tardanza=0,
+            detalle='Sin horario de entrada programado',
         )
 
     minutos_tardanza = _minutos_tardanza(
@@ -194,12 +219,19 @@ def evaluar_marcacion(ctx: ContextoMarcacion) -> ResultadoEvaluacion:
     )
     if minutos_tardanza > 0:
         etiquetas.append(EstadoMarca.TARDANZA)
+        detalles.append(
+            f'Tardanza de {minutos_tardanza} min '
+            f'(tolerancia: {ctx.minutos_tolerancia} min)'
+        )
 
-    if _fuera_de_horario(ctx):
+    motivos_fuera = _fuera_de_horario(ctx)
+    if motivos_fuera:
         etiquetas.append(EstadoMarca.FUERA_DE_HORARIO)
+        detalles.extend(motivos_fuera)
 
     if not etiquetas:
         etiquetas.append(EstadoMarca.NORMAL)
+        detalles.append('Marca dentro de horario y tolerancia')
 
     return ResultadoEvaluacion(
         resultado=RESULTADO_ASISTIO,
@@ -207,4 +239,5 @@ def evaluar_marcacion(ctx: ContextoMarcacion) -> ResultadoEvaluacion:
         etiquetas=tuple(etiquetas),
         horas_tardanza=round(minutos_tardanza / 60, 2),
         minutos_tardanza=minutos_tardanza,
+        detalle='; '.join(detalles),
     )

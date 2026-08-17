@@ -494,6 +494,13 @@ class TareoDiario(models.Model):
         verbose_name="Etiqueta de la marca",
     )
 
+    detalle_marca = models.TextField(
+        blank=True,
+        default='',
+        verbose_name="Motivo de la clasificación",
+        help_text="Razón legible que produjo la etiqueta (ej. 'Tardanza de 15 min; Salida posterior').",
+    )
+
     # Opcional: Ubicación asignada
     ubicacion = models.ForeignKey(Ubicacion, on_delete=models.SET_NULL, null=True, blank=True)
 

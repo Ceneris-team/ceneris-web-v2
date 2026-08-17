@@ -22,6 +22,7 @@ from .models import Cargo, Empresa, Proyecto, Trabajador, CentroCosto, Ubicacion
 import pandas as pd
 from recursoshumanos.services import recalcular_asistencia_diaria
 from .models import Sede, ConfiguracionTolerancia, ToleranciaAuditoria
+from .motor_reglas import EstadoMarca
 from .services import listar_tolerancias, crear_o_actualizar_tolerancia, actualizar_tolerancia
 from firebase_admin import firestore
 from google.cloud import firestore
@@ -4953,9 +4954,10 @@ def consulta_asistencias_view(request):
     trabajador_id  = request.GET.get('trabajador', '').strip()
     fecha_inicio   = request.GET.get('inicio', '').strip()
     fecha_fin      = request.GET.get('fin', '').strip()
+    etiqueta       = request.GET.get('etiqueta', '').strip()
     page_number    = request.GET.get('page', 1)
 
-    busqueda_realizada = any([empresa_id, proyecto_id, subproyecto_id, area_id, trabajador_id, fecha_inicio, fecha_fin])
+    busqueda_realizada = any([empresa_id, proyecto_id, subproyecto_id, area_id, trabajador_id, fecha_inicio, fecha_fin, etiqueta])
     hoy = timezone.localdate()
 
     page_obj = None
@@ -4980,6 +4982,8 @@ def consulta_asistencias_view(request):
             qs = qs.filter(fecha__gte=fecha_inicio)
         if fecha_fin:
             qs = qs.filter(fecha__lte=fecha_fin)
+        if etiqueta:
+            qs = qs.filter(etiqueta_estado=etiqueta)
 
         paginator = Paginator(qs, 20)
         page_obj  = paginator.get_page(page_number)
@@ -5000,5 +5004,7 @@ def consulta_asistencias_view(request):
         'current_trabajador': int(trabajador_id) if trabajador_id else '',
         'current_inicio': fecha_inicio,
         'current_fin': fecha_fin,
+        'current_etiqueta': etiqueta,
+        'opciones_etiqueta': EstadoMarca.choices,
     }
     return render(request, 'recursoshumanos/consulta_asistencias/lista_consulta.html', context)
