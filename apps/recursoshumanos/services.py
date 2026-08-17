@@ -189,6 +189,7 @@ def recalcular_asistencia_diaria(tareo: TareoDiario):
     tareo.resultado = evaluacion.resultado
     tareo.horas_tardanza = evaluacion.horas_tardanza
     tareo.etiqueta_estado = evaluacion.etiqueta
+    tareo.detalle_marca = evaluacion.detalle
 
     # 6. VALIDAR HORAS EXTRA Y TOPES
     horas_reales = round(minutos_raw / 60, 2)
