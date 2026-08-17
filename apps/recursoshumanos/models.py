@@ -412,6 +412,38 @@ class Dispositivo(models.Model):
     def __str__(self):
         return f"{self.nombre} ({self.id})"
 
+
+class EventoLoginOffline(models.Model):
+    """
+    CAV-83: registro de auditoria de un login que ocurrio SIN conexion
+    (validado localmente en el celular contra el hash cifrado guardado).
+    El dispositivo lo reporta a este endpoint recien cuando recupera
+    señal; por eso existen dos fechas distintas: cuando paso realmente
+    (en el celular) y cuando el servidor se entero (al sincronizar).
+    """
+    trabajador = models.ForeignKey(
+        Trabajador,
+        on_delete=models.CASCADE,
+        related_name='eventos_login_offline',
+    )
+    device_id = models.CharField(max_length=255)
+    fecha_hora_offline = models.DateTimeField(
+        help_text="Momento en que el login offline ocurrio en el dispositivo"
+    )
+    fecha_hora_reportado = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Momento en que el servidor recibio este reporte",
+    )
+
+    class Meta:
+        ordering = ['-fecha_hora_offline']
+        verbose_name = 'Evento de login offline'
+        verbose_name_plural = 'Eventos de login offline'
+
+    def __str__(self):
+        return f"{self.trabajador} - offline {self.fecha_hora_offline.isoformat()}"
+
+
 class TareoDiario(models.Model):
     trabajador = models.ForeignKey(Trabajador, on_delete=models.CASCADE, related_name='dias_tareo')
     fecha = models.DateField(db_index=True)

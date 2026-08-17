@@ -4,10 +4,11 @@ import json
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from recursoshumanos.models import Trabajador
+from recursoshumanos.models import EventoLoginOffline, Trabajador
 
 # Create your tests here.
 
@@ -147,3 +148,75 @@ class UsuariosAutorizadosSyncTests(TestCase):
         ).hexdigest()
 
         self.assertEqual(checksum_recalculado_por_cliente, payload['checksum'])
+
+
+class EventoLoginOfflineTests(TestCase):
+    """
+    CAV-148 (backend): pruebas del endpoint de auditoria de login
+    offline (CAV-83).
+    """
+
+    def setUp(self):
+        User = get_user_model()
+
+        self.user = User.objects.create_user(username='offline_user', password='x')
+        self.trabajador = Trabajador.objects.create(
+            dni='20000001',
+            apellido_paterno='Offline',
+            apellido_materno='Test',
+            nombres='Usuario',
+            user=self.user,
+        )
+
+        self.client = APIClient()
+        token = RefreshToken.for_user(self.user).access_token
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        self.url = reverse('evento-login-offline')
+
+    def test_requiere_autenticacion(self):
+        client = APIClient()
+        response = client.post(self.url, {}, format='json')
+        self.assertEqual(response.status_code, 401)
+
+    def test_registra_el_evento_correctamente(self):
+        payload = {
+            'device_id': 'device-abc-123',
+            'fecha_hora_offline': '2026-08-01T09:15:00Z',
+        }
+        response = self.client.post(self.url, payload, format='json')
+        self.assertEqual(response.status_code, 201)
+
+        evento = EventoLoginOffline.objects.get(pk=response.data['id'])
+        self.assertEqual(evento.trabajador, self.trabajador)
+        self.assertEqual(evento.device_id, 'device-abc-123')
+        self.assertIsNotNone(evento.fecha_hora_reportado)
+
+    def test_falla_si_faltan_campos(self):
+        response = self.client.post(self.url, {}, format='json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_falla_si_el_usuario_no_tiene_trabajador_vinculado(self):
+        User = get_user_model()
+        user_sin_trabajador = User.objects.create_user(username='sin_trabajador', password='x')
+        client = APIClient()
+        token = RefreshToken.for_user(user_sin_trabajador).access_token
+        client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+
+        payload = {
+            'device_id': 'device-xyz',
+            'fecha_hora_offline': timezone.now().isoformat(),
+        }
+        response = client.post(self.url, payload, format='json')
+        self.assertEqual(response.status_code, 404)
+
+    def test_multiples_eventos_del_mismo_trabajador_se_acumulan(self):
+        for i in range(3):
+            self.client.post(self.url, {
+                'device_id': f'device-{i}',
+                'fecha_hora_offline': timezone.now().isoformat(),
+            }, format='json')
+
+        self.assertEqual(
+            EventoLoginOffline.objects.filter(trabajador=self.trabajador).count(),
+            3,
+        )
