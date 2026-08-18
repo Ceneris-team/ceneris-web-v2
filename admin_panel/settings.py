@@ -124,6 +124,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
+    # CAV-186: debe ir despues de AuthenticationMiddleware (necesita
+    # request.user ya resuelto) y despues de SessionMiddleware.
+    'accesos.middleware.PlatformAccessMiddleware',
 ]
 
 # ==============================================================================
