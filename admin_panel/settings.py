@@ -109,6 +109,7 @@ INSTALLED_APPS = [
     'metricas_ceneris',
     'accesos',
     'api',
+    'notificaciones',
 ]
 
 # ==============================================================================
@@ -196,6 +197,15 @@ EMAIL_COPIA_EMOS = os.environ.get('EMAIL_COPIA_EMOS', 'notificaciones@ceneris.co
 # EMAIL_HOST_USER = notificaciones.ceneris@gmail.com
 # EMAIL_HOST_PASSWORD = ugjumjmspstprtca (contraseña de aplicación sin espacios)
 # EMAIL_COPIA_EMOS = notificaciones@ceneris.com (opcional)
+
+# ==============================================================================
+# SendGrid (correo transaccional — HT-12)
+# ==============================================================================
+SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
+SENDGRID_FROM_EMAIL = os.environ.get(
+    'SENDGRID_FROM_EMAIL', 'desarrollo@ceneris.com'
+)
+SENDGRID_MAX_REINTENTOS = int(os.environ.get('SENDGRID_MAX_REINTENTOS', '5'))
 
 # ==============================================================================
 # Archivos Estáticos (Configuración para Render con WhiteNoise)

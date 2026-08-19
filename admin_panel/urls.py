@@ -58,6 +58,7 @@ urlpatterns = [
     path('inventario/', include('inventario.urls', namespace='inventario')),
     path('personal/', include('personal.urls', namespace='personal')),
     path('metricas_ceneris/', include('metricas_ceneris.urls', namespace='metricas_ceneris')),
+    path('notificaciones/', include('notificaciones.urls', namespace='notificaciones')),
 ]
 
 if settings.DEBUG:
