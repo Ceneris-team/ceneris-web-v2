@@ -70,7 +70,7 @@ class FeriadoForm(forms.ModelForm):
 
     class Meta:
         model = Feriado
-        fields = ['fecha', 'nombre', 'tipo', 'ambito']
+        fields = ['fecha', 'nombre', 'tipo', 'ambito', 'sede', 'empresa']
         widgets = {
             'fecha': forms.DateInput(
                 attrs={'type': 'date', 'class': 'modal-input'},
@@ -82,6 +82,8 @@ class FeriadoForm(forms.ModelForm):
             ),
             'tipo': forms.Select(attrs={'class': 'modal-input'}),
             'ambito': forms.Select(attrs={'class': 'modal-input'}),
+            'sede': forms.Select(attrs={'class': 'modal-input'}),
+            'empresa': forms.Select(attrs={'class': 'modal-input'}),
         }
 
     def clean_fecha(self):
@@ -100,4 +102,32 @@ class FeriadoForm(forms.ModelForm):
                 "Ya existe un feriado registrado para la fecha seleccionada"
             )
         return fecha
+
+    def clean(self):
+        """Coherencia entre ámbito y scope (CAV-13).
+
+        Un feriado regional/local exige Sede; uno de empresa exige Empresa; el
+        nacional no debe llevar ninguno (aplica a todos).
+        """
+        cleaned = super().clean()
+        ambito = cleaned.get('ambito')
+        sede = cleaned.get('sede')
+        empresa = cleaned.get('empresa')
+
+        if ambito in (Feriado.Ambito.REGIONAL, Feriado.Ambito.LOCAL):
+            if not sede:
+                self.add_error('sede', 'Un feriado regional/local requiere una sede.')
+            if empresa:
+                self.add_error('empresa', 'Un feriado regional/local no lleva empresa.')
+        elif ambito == Feriado.Ambito.EMPRESA:
+            if not empresa:
+                self.add_error('empresa', 'Un feriado de empresa requiere una empresa.')
+            if sede:
+                self.add_error('sede', 'Un feriado de empresa no lleva sede.')
+        elif ambito == Feriado.Ambito.NACIONAL:
+            if sede:
+                self.add_error('sede', 'Un feriado nacional aplica a todos: deje la sede vacía.')
+            if empresa:
+                self.add_error('empresa', 'Un feriado nacional aplica a todos: deje la empresa vacía.')
+        return cleaned
 
