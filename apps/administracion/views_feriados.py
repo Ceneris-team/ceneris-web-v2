@@ -36,6 +36,10 @@ def _feriado_to_dict(feriado):
         'tipo_display': feriado.get_tipo_display(),
         'ambito': feriado.ambito,
         'ambito_display': feriado.get_ambito_display(),
+        'sede': feriado.sede_id or '',
+        'sede_display': feriado.sede.nombre if feriado.sede_id else '',
+        'empresa': feriado.empresa_id or '',
+        'empresa_display': feriado.empresa.nombre if feriado.empresa_id else '',
     }
 
 
@@ -59,12 +63,18 @@ def gestion_feriados(request):
     anio_max = max(anios_registrados + [anio_actual + 5])
     anios_disponibles = list(range(anio_min, anio_max + 1))
 
+    # Import local: evita cualquier problema de orden de carga entre apps
+    # (recursoshumanos.services ya importa administracion de forma diferida).
+    from recursoshumanos.models import Empresa, Sede
+
     context = {
         'anio_actual': anio_actual,
         'anios_disponibles': anios_disponibles,
         'meses': list(enumerate(MESES_ES_FERIADOS, start=1)),
         'tipos_feriado': Feriado.Tipo.choices,
         'ambitos_feriado': Feriado.Ambito.choices,
+        'sedes': Sede.objects.filter(activo=True).order_by('nombre'),
+        'empresas': Empresa.objects.order_by('nombre'),
         'current_view': 'gestion_feriados',
     }
     return render(request, 'administracion/feriados/gestion_feriados.html', context)

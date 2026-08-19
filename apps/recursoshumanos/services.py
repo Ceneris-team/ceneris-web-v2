@@ -118,7 +118,7 @@ def recalcular_asistencia_diaria(tareo: TareoDiario):
     """
     # Import local: administracion.services.feriados hace import diferido de
     # este mismo app, así evitamos cualquier ciclo al cargar las apps.
-    from administracion.services.feriados import es_feriado
+    from administracion.services.feriados import obtener_feriado
     from .motor_reglas import ContextoMarcacion, evaluar_marcacion
 
     # 1. OBTENER MARCAS DEL DÍA
@@ -172,6 +172,11 @@ def recalcular_asistencia_diaria(tareo: TareoDiario):
     # resuelve contra la tabla oficial (CAV-11), todo en esta única pasada.
     h_programada = _a_time(tareo.hora_entrada)
 
+    # El feriado se resuelve según el scope del trabajador (CAV-13): un feriado
+    # regional/de empresa solo aplica a su sede/empresa; el nacional a todos.
+    trabajador = tareo.trabajador
+    feriado = obtener_feriado(tareo.fecha, sede=trabajador.sede, empresa=trabajador.empresa)
+
     contexto = ContextoMarcacion(
         fecha=tareo.fecha,
         estado_jornada=tareo.estado,
@@ -180,8 +185,10 @@ def recalcular_asistencia_diaria(tareo: TareoDiario):
         hora_salida_programada=_a_time(tareo.hora_salida),
         hora_entrada_real=tareo.hora_entrada_real,
         hora_salida_real=tareo.hora_salida_real,
-        minutos_tolerancia=obtener_minutos_tolerancia(tareo.trabajador.sede, tareo.estado),
-        es_feriado=es_feriado(tareo.fecha),
+        minutos_tolerancia=obtener_minutos_tolerancia(trabajador.sede, tareo.estado),
+        es_feriado=feriado is not None,
+        nombre_feriado=feriado.nombre if feriado else None,
+        ambito_feriado=feriado.get_ambito_display() if feriado else None,
         tiene_marcas=True,
     )
     evaluacion = evaluar_marcacion(contexto)

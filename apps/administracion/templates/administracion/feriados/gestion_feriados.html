@@ -457,6 +457,24 @@
                         {% endfor %}
                     </select>
                 </div>
+                <div class="form-group" id="grupoFeriadoSede" style="display:none;">
+                    <label for="feriadoSede">Sede (feriado regional/local)</label>
+                    <select id="feriadoSede" class="modal-input">
+                        <option value="">— Selecciona una sede —</option>
+                        {% for sede in sedes %}
+                            <option value="{{ sede.id }}">{{ sede.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" id="grupoFeriadoEmpresa" style="display:none;">
+                    <label for="feriadoEmpresa">Empresa (feriado de empresa)</label>
+                    <select id="feriadoEmpresa" class="modal-input">
+                        <option value="">— Selecciona una empresa —</option>
+                        {% for empresa in empresas %}
+                            <option value="{{ empresa.id }}">{{ empresa.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
             <div class="modal-error" id="feriadoModalError"></div>
             <div class="modal-footer">
@@ -496,9 +514,28 @@ document.addEventListener('DOMContentLoaded', function () {
     const feriadoFechaInput = document.getElementById('feriadoFecha');
     const feriadoTipoInput = document.getElementById('feriadoTipo');
     const feriadoAmbitoInput = document.getElementById('feriadoAmbito');
+    const feriadoSedeInput = document.getElementById('feriadoSede');
+    const feriadoEmpresaInput = document.getElementById('feriadoEmpresa');
+    const grupoFeriadoSede = document.getElementById('grupoFeriadoSede');
+    const grupoFeriadoEmpresa = document.getElementById('grupoFeriadoEmpresa');
 
     let calendar;
     let searchDebounce;
+
+    // Muestra Sede u Empresa según el ámbito (CAV-13). Regional/Local -> Sede;
+    // Empresa -> Empresa; Nacional -> ninguno (aplica a todos). Al ocultar un
+    // campo se limpia para no enviar un scope incoherente al backend.
+    function actualizarScopePorAmbito() {
+        const ambito = feriadoAmbitoInput.value;
+        const esSede = (ambito === 'REGIONAL' || ambito === 'LOCAL');
+        const esEmpresa = (ambito === 'EMPRESA');
+        grupoFeriadoSede.style.display = esSede ? 'block' : 'none';
+        grupoFeriadoEmpresa.style.display = esEmpresa ? 'block' : 'none';
+        if (!esSede) feriadoSedeInput.value = '';
+        if (!esEmpresa) feriadoEmpresaInput.value = '';
+    }
+
+    feriadoAmbitoInput.addEventListener('change', actualizarScopePorAmbito);
 
     function abrirModal(feriado) {
         feriadoModalError.style.display = 'none';
@@ -511,10 +548,14 @@ document.addEventListener('DOMContentLoaded', function () {
             feriadoFechaInput.value = feriado.fecha;
             feriadoTipoInput.value = feriado.tipo;
             feriadoAmbitoInput.value = feriado.ambito;
+            actualizarScopePorAmbito();
+            feriadoSedeInput.value = feriado.sede || '';
+            feriadoEmpresaInput.value = feriado.empresa || '';
         } else {
             feriadoModalTitulo.textContent = 'Nuevo Feriado';
             feriadoForm.reset();
             feriadoIdInput.value = '';
+            actualizarScopePorAmbito();
         }
         feriadoModal.classList.add('is-open');
     }
@@ -737,6 +778,8 @@ document.addEventListener('DOMContentLoaded', function () {
             fecha: feriadoFechaInput.value,
             tipo: feriadoTipoInput.value,
             ambito: feriadoAmbitoInput.value,
+            sede: feriadoSedeInput.value || '',
+            empresa: feriadoEmpresaInput.value || '',
         };
 
         const url = id ? urls.editar(id) : urls.crear;
