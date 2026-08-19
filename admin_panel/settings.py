@@ -200,7 +200,7 @@ EMAIL_COPIA_EMOS = os.environ.get('EMAIL_COPIA_EMOS', 'notificaciones@ceneris.co
 # ==============================================================================
 SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
 SENDGRID_FROM_EMAIL = os.environ.get(
-    'SENDGRID_FROM_EMAIL', 'desarrollo@ceneris.com'
+    'SENDGRID_FROM_EMAIL', 'notificaciones.ceneris@gmail.com'
 )
 SENDGRID_MAX_REINTENTOS = int(os.environ.get('SENDGRID_MAX_REINTENTOS', '5'))
 
