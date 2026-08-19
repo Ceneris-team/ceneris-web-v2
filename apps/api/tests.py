@@ -13,6 +13,58 @@ from recursoshumanos.models import EventoLoginOffline, Trabajador
 # Create your tests here.
 
 
+class EstadoTrabajadorFeriadoTests(TestCase):
+    """CAV-13/CAV-64: el endpoint de estado expone el feriado del día para que
+    la app móvil pueda mostrar el banner "Día Feriado"."""
+
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username='estado_user', password='x')
+        self.trabajador = Trabajador.objects.create(
+            dni='30000001',
+            apellido_paterno='Estado',
+            apellido_materno='Test',
+            nombres='Usuario',
+            user=self.user,
+        )
+        self.client = APIClient()
+        token = RefreshToken.for_user(self.user).access_token
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        self.url = reverse('trabajador-estado')
+
+    def test_requiere_autenticacion(self):
+        response = APIClient().get(self.url)
+        self.assertEqual(response.status_code, 401)
+
+    def test_dia_feriado_expone_es_feriado_y_nombre(self):
+        from administracion.models import Feriado
+
+        Feriado.objects.create(
+            fecha=timezone.localdate(),
+            nombre='Fiestas Patrias',
+            tipo=Feriado.Tipo.NACIONAL,
+            ambito=Feriado.Ambito.NACIONAL,
+        )
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data['es_feriado'])
+        self.assertEqual(response.data['nombre_feriado'], 'Fiestas Patrias')
+
+    def test_dia_normal_sin_feriado(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data['es_feriado'])
+        self.assertIsNone(response.data['nombre_feriado'])
+
+    def test_no_rompe_los_campos_existentes(self):
+        response = self.client.get(self.url)
+        for campo in ('ultimoTipoMarcacion', 'ubicacionesPermitidas',
+                      'tiene_horario', 'es_por_horas', 'meta_horas',
+                      'horario_entrada', 'horario_salida', 'es_tardanza',
+                      'mensaje_aviso'):
+            self.assertIn(campo, response.data)
+
+
 class UsuariosAutorizadosSyncTests(TestCase):
     """
     CAV-184: pruebas del endpoint de sincronizacion (CAV-182) y de su

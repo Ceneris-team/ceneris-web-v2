@@ -26,6 +26,7 @@ from recursoshumanos.models import (
     SolicitudHorasExtra, Trabajador, Dispositivo, Asistencia,
     Justificacion, TareoDiario, IntentoFraude, EventoLoginOffline
 )
+from administracion.services.feriados import obtener_feriado
 
 # Importaciones de serializers
 from .serializers import (
@@ -185,6 +186,10 @@ class EstadoTrabajadorView(APIView):
         except Trabajador.DoesNotExist:
             return Response({"error": "Sin perfil"}, status=status.HTTP_404_NOT_FOUND)
 
+        # Feriado del día para ESTE trabajador (scope nacional/regional/empresa,
+        # CAV-13). El móvil usa esto para el banner "Día Feriado" (CAV-64).
+        feriado_hoy = obtener_feriado(hoy_fecha, sede=trabajador.sede, empresa=trabajador.empresa)
+
         # 2. Última marcación
         ultimo_tipo = "Salida"
         try:
@@ -255,7 +260,10 @@ class EstadoTrabajadorView(APIView):
             'horario_entrada': horario_entrada,
             'horario_salida': horario_salida,
             'es_tardanza': es_tardanza,
-            'mensaje_aviso': mensaje
+            'mensaje_aviso': mensaje,
+            # Feriado (CAV-13/CAV-64): el móvil muestra el banner con estos campos.
+            'es_feriado': feriado_hoy is not None,
+            'nombre_feriado': feriado_hoy.nombre if feriado_hoy else None,
         }, status=status.HTTP_200_OK)
 
 
