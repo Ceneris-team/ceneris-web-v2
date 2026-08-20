@@ -19,6 +19,7 @@ import hashlib
 from django.conf import settings as django_settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 
@@ -408,7 +409,31 @@ class RegistrarAsistenciaView(APIView):
                 return Response({'detail': str(motivo_bloqueo_app)}, status=status.HTTP_403_FORBIDDEN)
             
             # =================================================================
-            # --- 2. FECHA DE NEGOCIO: el día de la MARCA, no el de la subida ---
+            # --- 2. IDEMPOTENCIA: ¿ya registramos esta misma marca? ---
+            # =================================================================
+            # El worker offline reintenta cuando pierde la respuesta, cosa que
+            # sobre una conexión de faena es la norma y no la excepción. El
+            # `client_uuid` lo genera el móvil al ENCOLAR la marca y lo persiste
+            # localmente, así que sobrevive a los reintentos e identifica la
+            # misma marcación aunque el POST llegue tres veces.
+            #
+            # Va ANTES de cualquier validación a propósito: un reintento no debe
+            # volver a validar turno, ni recalcular el tareo, ni poder producir
+            # un 403 sobre una marca que en el primer intento ya se guardó bien.
+            # Se acepta camelCase además de snake_case para que un desajuste de
+            # nomenclatura con el móvil no repita el bug de ignorarlo en silencio.
+            client_uuid = request.data.get('client_uuid') or request.data.get('clientUuid')
+            if client_uuid:
+                marca_existente = Asistencia.objects.filter(client_uuid=client_uuid).first()
+                if marca_existente:
+                    print(f"[API] Reintento idempotente de {client_uuid}: se devuelve la marca #{marca_existente.pk}")
+                    return Response(
+                        AsistenciaSerializer(marca_existente).data,
+                        status=status.HTTP_200_OK
+                    )
+
+            # =================================================================
+            # --- 3. FECHA DE NEGOCIO: el día de la MARCA, no el de la subida ---
             # =================================================================
             # localdate() usa America/Lima; con now().date() (UTC en el servidor)
             # a partir de las 19:00 de Lima se buscaba el tareo del día siguiente
@@ -452,7 +477,7 @@ class RegistrarAsistenciaView(APIView):
             es_marca_atrasada = fecha_negocio < hoy
 
             # =================================================================
-            # --- 3. CANDADO DE SEGURIDAD: VALIDAR ASIGNACIÓN DE TURNO ---
+            # --- 4. CANDADO DE SEGURIDAD: VALIDAR ASIGNACIÓN DE TURNO ---
             # =================================================================
             if es_marca_atrasada:
                 # Tras meses en faena el tareo de ese día puede no existir: RRHH
@@ -501,16 +526,38 @@ class RegistrarAsistenciaView(APIView):
                     }, status=status.HTTP_403_FORBIDDEN)
             # =================================================================
 
-            # 4. Guardar la Asistencia (Solo si pasó todas las validaciones y no hubo fraude)
-            serializer = AsistenciaSerializer(data=request.data)
+            # 5. Guardar la Asistencia (Solo si pasó todas las validaciones y no hubo fraude)
+            # Se normaliza el client_uuid al nombre del modelo para que también
+            # se persista cuando el móvil lo manda en camelCase.
+            datos_marca = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+            if client_uuid:
+                datos_marca['client_uuid'] = client_uuid
+
+            serializer = AsistenciaSerializer(data=datos_marca)
             if serializer.is_valid():
                 # ---> AQUÍ AGREGAMOS EL CAMPO ORIGEN <---
-                serializer.save(
-                    usuario=usuario_actual,
-                    origen='APP'  # Le decimos explícitamente que viene de la aplicación
-                )
+                try:
+                    serializer.save(
+                        usuario=usuario_actual,
+                        origen='APP'  # Le decimos explícitamente que viene de la aplicación
+                    )
+                except IntegrityError:
+                    # Dos reintentos simultáneos del worker pueden pasar ambos el
+                    # filtro de arriba y chocar recién contra el unique de la BD,
+                    # que es la garantía real de idempotencia. Traducimos ese
+                    # choque a la misma respuesta que el reintento secuencial.
+                    marca_existente = (
+                        Asistencia.objects.filter(client_uuid=client_uuid).first()
+                        if client_uuid else None
+                    )
+                    if marca_existente:
+                        return Response(
+                            AsistenciaSerializer(marca_existente).data,
+                            status=status.HTTP_200_OK
+                        )
+                    raise
 
-                # 5. CÁLCULO AUTOMÁTICO (sobre el tareo del día de la MARCA)
+                # 6. CÁLCULO AUTOMÁTICO (sobre el tareo del día de la MARCA)
                 advertencia = None
                 try:
                     recalcular_asistencia_diaria(tareo)

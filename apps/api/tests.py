@@ -1,9 +1,12 @@
 import hashlib
 import json
+import uuid
 from datetime import datetime, time as dt_time, timedelta
 
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -497,3 +500,110 @@ class MarcacionOfflineFechaRealTests(_MarcacionBaseTests):
 
         self.assertEqual(respuesta.status_code, 403)
         self.assertEqual(IntentoFraude.objects.count(), 1)
+
+
+class MarcacionIdempotenciaTests(_MarcacionBaseTests):
+    """Reenviar la misma marca no duplica planilla.
+
+    Al volver de faena se suben cientos de marcas sobre una conexión mala: las
+    respuestas perdidas a mitad de camino son la norma, y sin idempotencia cada
+    reintento del worker creaba un registro nuevo.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.fecha = timezone.localdate() - timedelta(days=10)
+        self.uuid = str(uuid.uuid4())
+
+    def test_reenviar_el_mismo_client_uuid_no_duplica(self):
+        primera = self._marcar(
+            timestamp=self._instante(self.fecha, 8, 0), client_uuid=self.uuid
+        )
+        segunda = self._marcar(
+            timestamp=self._instante(self.fecha, 8, 0), client_uuid=self.uuid
+        )
+
+        self.assertEqual(primera.status_code, 201)
+        self.assertEqual(segunda.status_code, 200)
+        self.assertEqual(Asistencia.objects.count(), 1)
+        self.assertEqual(segunda.data['id'], primera.data['id'])
+
+    def test_client_uuid_en_camelcase_tambien_deduplica(self):
+        primera = self._marcar(
+            timestamp=self._instante(self.fecha, 8, 0), clientUuid=self.uuid
+        )
+        segunda = self._marcar(
+            timestamp=self._instante(self.fecha, 8, 0), clientUuid=self.uuid
+        )
+
+        self.assertEqual(primera.status_code, 201)
+        self.assertEqual(segunda.status_code, 200)
+        self.assertEqual(Asistencia.objects.count(), 1)
+        self.assertEqual(str(Asistencia.objects.get().client_uuid), self.uuid)
+
+    def test_marca_sin_client_uuid_sigue_funcionando(self):
+        """Biométrico y manual no traen client_uuid; no deben romperse."""
+        respuesta = self._marcar(timestamp=self._instante(self.fecha, 8, 0))
+
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(Asistencia.objects.count(), 1)
+        self.assertIsNone(Asistencia.objects.get().client_uuid)
+
+    def test_varias_marcas_sin_client_uuid_conviven(self):
+        """El unique es nullable: varios NULL no chocan entre sí."""
+        self._marcar(timestamp=self._instante(self.fecha, 8, 0))
+        self._marcar(timestamp=self._instante(self.fecha, 17, 0), tipo='Salida')
+
+        self.assertEqual(Asistencia.objects.count(), 2)
+
+    def test_el_reintento_no_vuelve_a_recalcular_el_tareo(self):
+        """El corte por idempotencia va antes de toda la lógica: un reintento no
+        debe poder alterar el tareo ni generar un 403 sobre una marca ya buena."""
+        self._marcar(timestamp=self._instante(self.fecha, 8, 0), client_uuid=self.uuid)
+        tareo = TareoDiario.objects.get(trabajador=self.trabajador, fecha=self.fecha)
+        entrada_original = tareo.hora_entrada_real
+
+        # Entre el primer envío y el reintento, RRHH marca el día como libre.
+        tareo.estado = 'D'
+        tareo.save()
+
+        segunda = self._marcar(
+            timestamp=self._instante(self.fecha, 8, 0), client_uuid=self.uuid
+        )
+
+        self.assertEqual(segunda.status_code, 200)
+        tareo.refresh_from_db()
+        self.assertEqual(tareo.hora_entrada_real, entrada_original)
+        self.assertEqual(Asistencia.objects.count(), 1)
+
+
+class MarcacionCargaFaenaTests(_MarcacionBaseTests):
+    """Volver de faena no es subir una marca: son cientos de golpe."""
+
+    def test_500_marcas_de_meses_distintos_no_degradan_el_recalculo(self):
+        hoy = timezone.localdate()
+        fechas = [hoy - timedelta(days=3 * (i + 1)) for i in range(500)]
+
+        with CaptureQueriesContext(connection) as primera:
+            self._marcar(timestamp=self._instante(fechas[0], 8, 0),
+                         client_uuid=str(uuid.uuid4()))
+
+        for fecha in fechas[1:-1]:
+            respuesta = self._marcar(timestamp=self._instante(fecha, 8, 0),
+                                     client_uuid=str(uuid.uuid4()))
+            self.assertEqual(respuesta.status_code, 201)
+
+        with CaptureQueriesContext(connection) as ultima:
+            self._marcar(timestamp=self._instante(fechas[-1], 8, 0),
+                         client_uuid=str(uuid.uuid4()))
+
+        self.assertEqual(Asistencia.objects.count(), 500)
+        self.assertEqual(TareoDiario.objects.count(), 500)
+
+        # El costo por marca no debe crecer con el volumen ya acumulado: si
+        # alguien reintroduce un N+1 o una consulta que barre toda la tabla,
+        # este assert lo detecta antes que producción.
+        self.assertLessEqual(
+            len(ultima.captured_queries), len(primera.captured_queries),
+            'El costo por marca crece con el volumen acumulado.',
+        )

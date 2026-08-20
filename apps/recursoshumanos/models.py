@@ -359,6 +359,19 @@ class Asistencia(models.Model):
         verbose_name="Medio de Marcación"
     )
 
+    # UUID v4 que el móvil genera al ENCOLAR la marca y persiste localmente, de
+    # forma que sobrevive a los reintentos del worker offline. Es la clave de
+    # idempotencia: si la respuesta se pierde en la red (lo normal en faena) y
+    # el worker reintenta, el mismo client_uuid identifica la marca ya guardada
+    # en vez de duplicar planilla. Nullable porque los registros históricos y
+    # los de origen BIOMETRICO/MANUAL no lo tienen.
+    client_uuid = models.UUIDField(
+        null=True,
+        blank=True,
+        unique=True,
+        verbose_name="UUID de cliente (idempotencia)",
+    )
+
     # Este campo se llenará automáticamente con la fecha y hora de creación del registro en la BD
     # Es además la fecha de RECEPCIÓN en servidor: el desfase contra `timestamp`
     # (la fecha real de la marcación) identifica una marca sincronizada tarde.
