@@ -502,7 +502,8 @@
             toast: true,
             position: 'top-end',
             showConfirmButton: false,
-            timer: 3000,
+            width: '26rem',
+            timer: 7000,
             timerProgressBar: true,
             didOpen: (toast) => {
                 toast.addEventListener('mouseenter', Swal.stopTimer)
@@ -514,7 +515,7 @@
                 var type = "{{ message.tags }}";
                 if (type === 'debug') type = 'info';
                 if (type === 'danger') type = 'error'; 
-                Toast.fire({ icon: type, title: "{{ message }}" });
+                Toast.fire({ icon: type, title: "{{ message|escapejs }}" });
             {% endfor %}
         {% endif %}
     </script>
