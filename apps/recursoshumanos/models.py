@@ -360,6 +360,9 @@ class Asistencia(models.Model):
     )
 
     # Este campo se llenará automáticamente con la fecha y hora de creación del registro en la BD
+    # Es además la fecha de RECEPCIÓN en servidor: el desfase contra `timestamp`
+    # (la fecha real de la marcación) identifica una marca sincronizada tarde.
+    # Solo para auditoría de RRHH; nunca se usa para calcular asistencia.
     creado_en = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
@@ -369,6 +372,13 @@ class Asistencia(models.Model):
     class Meta:
         # Ordena las asistencias de la más reciente a la más antigua por defecto
         ordering = ['-timestamp']
+        # `recalcular_asistencia_diaria` busca las marcas de un trabajador en un
+        # día acotando por rango de timestamp; sin este índice esa consulta
+        # escanea la tabla entera, y al volver de faena se ejecuta una vez por
+        # cada día sincronizado.
+        indexes = [
+            models.Index(fields=['usuario', 'timestamp']),
+        ]
 
 
 class IntentoFraude(models.Model):

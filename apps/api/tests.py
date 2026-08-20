@@ -1,5 +1,6 @@
 import hashlib
 import json
+from datetime import datetime, time as dt_time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -8,7 +9,15 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from recursoshumanos.models import EventoLoginOffline, Trabajador
+from recursoshumanos.models import (
+    Asistencia,
+    ConfiguracionTolerancia,
+    EventoLoginOffline,
+    IntentoFraude,
+    Sede,
+    TareoDiario,
+    Trabajador,
+)
 
 # Create your tests here.
 
@@ -272,3 +281,219 @@ class EventoLoginOfflineTests(TestCase):
             EventoLoginOffline.objects.filter(trabajador=self.trabajador).count(),
             3,
         )
+
+
+class _MarcacionBaseTests(TestCase):
+    """Infraestructura común de las pruebas del endpoint de marcación."""
+
+    DEVICE_ID = 'device-faena-001'
+
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username='marcador', password='x')
+        self.sede = Sede.objects.create(nombre='Faena Cerro Verde')
+        self.trabajador = Trabajador.objects.create(
+            dni='40000001',
+            apellido_paterno='Quispe',
+            apellido_materno='Mamani',
+            nombres='Juan',
+            user=self.user,
+            sede=self.sede,
+        )
+        self.client = APIClient()
+        token = RefreshToken.for_user(self.user).access_token
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        self.url = reverse('registrar-asistencia')
+
+    def _instante(self, fecha, hora=8, minuto=0):
+        """Devuelve un datetime aware en America/Lima para esa fecha y hora."""
+        return timezone.make_aware(datetime.combine(fecha, dt_time(hora, minuto)))
+
+    def _payload(self, timestamp=None, tipo='Entrada', **extra):
+        datos = {
+            'device_id': self.DEVICE_ID,
+            'tipo_marcacion': tipo,
+            'latitud': -16.4,
+            'longitud': -71.5,
+            'nombre_ubicacion': 'Campamento',
+        }
+        if timestamp is not None:
+            datos['timestamp'] = timestamp.isoformat()
+        datos.update(extra)
+        return datos
+
+    def _marcar(self, **kwargs):
+        return self.client.post(self.url, self._payload(**kwargs), format='json')
+
+
+class MarcacionOfflineFechaRealTests(_MarcacionBaseTests):
+    """La marca se valida y recalcula contra el día en que se MARCÓ, no contra
+    el día en que el worker offline logró subirla.
+
+    Antes todo colgaba de `timezone.localdate()`, así que una marca sincronizada
+    con retraso se validaba contra el turno del día de subida: si ese día era
+    libre o no tenía turno, respondía 403, registraba un fraude falso y el dato
+    de planilla se perdía.
+    """
+
+    def test_marca_de_hace_3_dias_se_imputa_al_tareo_de_esa_fecha(self):
+        fecha = timezone.localdate() - timedelta(days=3)
+        tareo_real = TareoDiario.objects.create(
+            trabajador=self.trabajador, fecha=fecha, estado='O',
+            hora_entrada=dt_time(8, 0), hora_salida=dt_time(17, 0),
+        )
+        tareo_hoy = TareoDiario.objects.create(
+            trabajador=self.trabajador, fecha=timezone.localdate(), estado='O',
+        )
+
+        respuesta = self._marcar(timestamp=self._instante(fecha, 8, 0))
+
+        self.assertEqual(respuesta.status_code, 201)
+        tareo_real.refresh_from_db()
+        tareo_hoy.refresh_from_db()
+        # El recálculo tocó el tareo del día de la marca...
+        self.assertEqual(tareo_real.hora_entrada_real, dt_time(8, 0))
+        # ...y dejó intacto el del día de sincronización.
+        self.assertIsNone(tareo_hoy.hora_entrada_real)
+
+    def test_marca_de_hace_14_meses_se_acepta_igual(self):
+        """No hay caducidad por antigüedad: en faena se está meses sin señal."""
+        fecha = timezone.localdate() - timedelta(days=425)
+
+        respuesta = self._marcar(timestamp=self._instante(fecha, 7, 30))
+
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(Asistencia.objects.count(), 1)
+        self.assertTrue(
+            TareoDiario.objects.filter(trabajador=self.trabajador, fecha=fecha).exists()
+        )
+
+    def test_dia_de_sincronizacion_es_dia_libre_ya_no_rechaza(self):
+        """El caso que rompía la sincronización: subir el miércoles (libre) una
+        marca hecha el lunes (laborable)."""
+        fecha_marca = timezone.localdate() - timedelta(days=2)
+        TareoDiario.objects.create(
+            trabajador=self.trabajador, fecha=fecha_marca, estado='O',
+            hora_entrada=dt_time(8, 0),
+        )
+        TareoDiario.objects.create(
+            trabajador=self.trabajador, fecha=timezone.localdate(), estado='D',
+        )
+
+        respuesta = self._marcar(timestamp=self._instante(fecha_marca, 8, 0))
+
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(IntentoFraude.objects.count(), 0)
+
+    def test_marca_atrasada_sin_tareo_lo_crea_y_no_registra_fraude(self):
+        """Si RRHH nunca cargó ese turno la marca no se pierde: el tareo se crea
+        al vuelo, igual que ya hace la importación biométrica."""
+        fecha = timezone.localdate() - timedelta(days=240)
+
+        respuesta = self._marcar(timestamp=self._instante(fecha, 6, 45))
+
+        self.assertEqual(respuesta.status_code, 201)
+        tareo = TareoDiario.objects.get(trabajador=self.trabajador, fecha=fecha)
+        self.assertEqual(tareo.estado, 'O')
+        self.assertEqual(Asistencia.objects.count(), 1)
+        # Un desfase de sincronización no es fraude.
+        self.assertEqual(IntentoFraude.objects.count(), 0)
+
+    def test_marca_atrasada_en_dia_libre_real_se_acepta(self):
+        """El motor de reglas ya admite marcas en día libre (ASISTIÓ +
+        DIA_LIBRE, sin tardanza); rechazarlas aquí perdería planilla."""
+        fecha = timezone.localdate() - timedelta(days=5)
+        TareoDiario.objects.create(
+            trabajador=self.trabajador, fecha=fecha, estado='D',
+        )
+
+        respuesta = self._marcar(timestamp=self._instante(fecha, 9, 0))
+
+        self.assertEqual(respuesta.status_code, 201)
+        tareo = TareoDiario.objects.get(trabajador=self.trabajador, fecha=fecha)
+        self.assertEqual(tareo.etiqueta_estado, 'DIA_LIBRE')
+        self.assertEqual(tareo.resultado, 'A')
+        self.assertEqual(IntentoFraude.objects.count(), 0)
+
+    def test_tareo_sintetico_sin_horario_no_fabrica_tardanza(self):
+        """El `estado` que adivinamos al crear el tareo debe ser inerte: sin
+        horario programado el motor corta antes de evaluar tolerancia, así que
+        no puede inventar una tardanza retroactiva."""
+        ConfiguracionTolerancia.objects.create(
+            sede=self.sede, tipo_horario='O', minutos_tolerancia=0,
+        )
+        fecha = timezone.localdate() - timedelta(days=30)
+
+        respuesta = self._marcar(timestamp=self._instante(fecha, 11, 30))
+
+        self.assertEqual(respuesta.status_code, 201)
+        tareo = TareoDiario.objects.get(trabajador=self.trabajador, fecha=fecha)
+        self.assertEqual(tareo.etiqueta_estado, 'SIN_HORARIO')
+        self.assertEqual(tareo.resultado, 'A')
+        self.assertEqual(float(tareo.horas_tardanza), 0.0)
+
+    def test_timestamp_futuro_se_rechaza_sin_registrar_fraude(self):
+        """Un reloj adelantado tras meses sin NTP no es prueba de manipulación."""
+        futuro = timezone.now() + timedelta(days=2)
+
+        respuesta = self._marcar(timestamp=futuro)
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertEqual(respuesta.data['codigo'], 'MARCA_FUTURA')
+        self.assertEqual(Asistencia.objects.count(), 0)
+        self.assertEqual(IntentoFraude.objects.count(), 0)
+
+    def test_marca_nocturna_se_imputa_al_dia_de_lima(self):
+        """Regresión del bug ya corregido en este archivo: a las 20:00 de Lima
+        el UTC ya es el día siguiente, y `.date()` sobre el datetime crudo
+        imputaría la marca al día equivocado."""
+        fecha = timezone.localdate() - timedelta(days=3)
+        TareoDiario.objects.create(
+            trabajador=self.trabajador, fecha=fecha, estado='O',
+        )
+
+        respuesta = self._marcar(timestamp=self._instante(fecha, 20, 0), tipo='Salida')
+
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertFalse(
+            TareoDiario.objects.filter(
+                trabajador=self.trabajador, fecha=fecha + timedelta(days=1)
+            ).exists(),
+            'La marca de las 20:00 de Lima se imputó al día siguiente (UTC).',
+        )
+
+    def test_marca_en_tiempo_real_en_dia_libre_sigue_siendo_fraude(self):
+        """El control antifraude no se debilita para las marcas de hoy."""
+        TareoDiario.objects.create(
+            trabajador=self.trabajador, fecha=timezone.localdate(), estado='D',
+        )
+
+        respuesta = self._marcar(timestamp=timezone.now())
+
+        self.assertEqual(respuesta.status_code, 403)
+        self.assertEqual(IntentoFraude.objects.count(), 1)
+        self.assertEqual(
+            IntentoFraude.objects.first().motivo_detectado,
+            'Intento de marcacion en dia libre',
+        )
+
+    def test_marca_en_tiempo_real_sin_turno_sigue_siendo_fraude(self):
+        respuesta = self._marcar(timestamp=timezone.now())
+
+        self.assertEqual(respuesta.status_code, 403)
+        self.assertEqual(IntentoFraude.objects.count(), 1)
+        self.assertEqual(
+            IntentoFraude.objects.first().motivo_detectado,
+            'Intento de marcacion sin turno programado',
+        )
+
+    def test_sin_timestamp_cae_a_hoy_y_conserva_el_candado(self):
+        """Sin timestamp en el payload el comportamiento previo se mantiene."""
+        respuesta = self.client.post(
+            self.url,
+            {'device_id': self.DEVICE_ID, 'tipo_marcacion': 'Entrada'},
+            format='json',
+        )
+
+        self.assertEqual(respuesta.status_code, 403)
+        self.assertEqual(IntentoFraude.objects.count(), 1)
