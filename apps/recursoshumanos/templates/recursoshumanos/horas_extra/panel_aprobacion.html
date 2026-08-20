@@ -44,6 +44,35 @@
             font-weight: 600;
             display: inline-block;
         }
+        /* Banner con el flujo de aprobación */
+        .flow-banner {
+            background-color: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 18px;
+        }
+        .flow-steps {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .flow-step {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            background-color: #e2e8f0;
+            color: #64748b;
+        }
+        .flow-step.done { background-color: #d1e7dd; color: #0f5132; }
+        .flow-step.current { background-color: #cfe2ff; color: #084298; }
+        .flow-arrow { color: #94a3b8; font-weight: 700; }
+        .flow-text { margin: 0; color: #475569; font-size: 0.88rem; }
+
         .st-blue { background-color: #cfe2ff; color: #084298; }
         .st-green { background-color: #d1e7dd; color: #0f5132; }
         .st-red { background-color: #f8d7da; color: #842029; }
@@ -91,6 +120,27 @@
             <p style="margin: 4px 0 0; color: #64748b;">Gestiona las solicitudes pendientes de tu aprobación.</p>
         </div>
     </div>
+
+    {# Indicador del flujo de aprobación: Supervisión -> RRHH -> Gerencia #}
+    {% if paso_actual %}
+    <div class="flow-banner">
+        <div class="flow-steps">
+            <span class="flow-step {% if paso_actual == 1 %}current{% elif paso_actual > 1 %}done{% endif %}">1. Supervisión</span>
+            <span class="flow-arrow">&rarr;</span>
+            <span class="flow-step {% if paso_actual == 2 %}current{% elif paso_actual > 2 %}done{% endif %}">2. Recursos Humanos</span>
+            <span class="flow-arrow">&rarr;</span>
+            <span class="flow-step {% if paso_actual == 3 %}current{% endif %}">3. Gerencia</span>
+        </div>
+        <p class="flow-text">
+            Estás en el paso {{ paso_actual }} de 3 ({{ nivel_actual }}).
+            {% if siguiente_nivel %}
+                Al aprobar, la solicitud se enviará a <strong>{{ siguiente_nivel }}</strong> para su aprobación.
+            {% else %}
+                Tu aprobación es la <strong>final</strong>: cierra el proceso y las horas se suman al tareo del trabajador.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
 
     <h4 style="margin: 0 0 12px; color: #334155;">Solicitudes Pendientes de Aprobación</h4>
 
@@ -270,11 +320,18 @@
             feather.replace();
         }
 
+        // Texto del siguiente paso del flujo (Supervisión -> RRHH -> Gerencia)
+        const SIGUIENTE_NIVEL = "{{ siguiente_nivel|escapejs }}";
+
         // 1. Confirmación simple para Aprobar
         function confirmAction(formId, actionType) {
+            const detalle = SIGUIENTE_NIVEL
+                ? 'Se registrará tu aprobación y la solicitud se enviará a ' + SIGUIENTE_NIVEL + ' para su aprobación.'
+                : 'Esta es la aprobación final: el proceso se cerrará y las horas se sumarán al tareo del trabajador.';
+
             Swal.fire({
                 title: '¿Confirmar Aprobación?',
-                text: "Se registrará tu aprobación para esta solicitud.",
+                text: detalle,
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#198754',
@@ -294,6 +351,7 @@
 
             const { value: text, isDismissed } = await Swal.fire({
                 title: 'Rechazar Solicitud',
+                text: 'Al rechazar, el flujo se detiene aquí y la solicitud no continúa a los siguientes niveles.',
                 input: 'textarea',
                 inputLabel: 'Motivo del rechazo',
                 inputPlaceholder: 'Escribe aquí la razón...',

@@ -126,13 +126,21 @@ class SolicitudHorasExtraCreateAPIView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        # Esta lógica se mantiene igual
         try:
             trabajador = Trabajador.objects.get(user=self.request.user)
-            serializer.save(trabajador=trabajador)
+            solicitud = serializer.save(trabajador=trabajador)
         except Trabajador.DoesNotExist:
-            # Esto se atrapará en el método create de abajo si falla
             raise serializers.ValidationError("El usuario no tiene un Trabajador asignado.")
+
+        try:
+            from notificaciones.notificadores import notificar_solicitud_horas_extra
+            notificar_solicitud_horas_extra(solicitud, request=self.request)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(
+                'No se pudo enviar notificación de solicitud #%s: %s',
+                solicitud.pk, exc,
+            )
 
     # --- AQUI ESTA LA MAGIA DEL DEBUG ---
     def create(self, request, *args, **kwargs):

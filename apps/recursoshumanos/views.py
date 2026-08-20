@@ -507,7 +507,7 @@ def lista_trabajadores(request):
 # --- VISTAS DE CREACIÓN Y EDICIÓN DE TRABAJADORES ---
 
 @login_required
-@group_required('Recursos Humanos', 'Calidad')
+@group_required('Recursos Humanos', 'Calidad', 'Supervisores', 'Gerencia')
 def gestion_empleados(request):
     """Muestra el dashboard de tarjetas para la gestión de empleados."""
     context = {'current_view': 'gestion_empleados'}
@@ -1897,9 +1897,9 @@ class CustomLoginView(LoginView):
             return False
 
         grupos_administrativos = [
-            'Administrador', 'Metricas', 'Recursos Humanos', 'Calidad', 
+            'Administrador', 'Metricas', 'Recursos Humanos', 'Calidad',
             'Administracion', 'Gases', 'Proyectos', 'Cotizaciones',
-            'proyecto_monitoreo_smcv', 'Yeni_admin'
+            'proyecto_monitoreo_smcv', 'Yeni_admin', 'Supervisores', 'Gerencia'
         ]
         es_admin_o_grupo = user.is_superuser or user.groups.filter(name__in=grupos_administrativos).exists()
         tiene_perfil = hasattr(user, 'trabajador')
@@ -1968,7 +1968,10 @@ class CustomLoginView(LoginView):
 
         if tiene_rrhh:
             return reverse_lazy('recursoshumanos:dashboard')
-        
+
+        elif 'Supervisores' in grupos or 'Gerencia' in grupos:
+            return reverse_lazy('recursoshumanos:dashboard')
+
         elif 'Administracion' in grupos:
             return reverse_lazy('administracion:dashboard_estadistico')
 
@@ -4678,22 +4681,38 @@ def panel_aprobacion_horas_extra(request):
     )
 
     solicitudes_pendientes = base_query.none()
-    
+
     # Banderas para usar en el template
     is_gerente = user.groups.filter(name='Gerencia').exists()
     is_rrhh = user.groups.filter(name='Recursos Humanos').exists()
+    is_supervisor = user.groups.filter(name='Supervisores').exists()
 
-    if user.groups.filter(name='Supervisores').exists():
+    # Etiquetas del flujo (Supervisión -> RRHH -> Gerencia) para informar al usuario
+    # en qué paso está y a quién le llega la solicitud después de su aprobación.
+    nivel_actual = ''
+    paso_actual = 0
+    siguiente_nivel = ''
+
+    if is_supervisor:
         # Supervisor ve PENDIENTE_OPERADOR
         solicitudes_pendientes = base_query.filter(estado=SolicitudHorasExtra.Estado.PENDIENTE_OPERADOR)
-    
+        nivel_actual = 'Supervisión'
+        paso_actual = 1
+        siguiente_nivel = 'Recursos Humanos'
+
     elif is_rrhh:
         # RRHH ve PENDIENTE_ADMIN
         solicitudes_pendientes = base_query.filter(estado=SolicitudHorasExtra.Estado.PENDIENTE_ADMIN)
-    
+        nivel_actual = 'Recursos Humanos'
+        paso_actual = 2
+        siguiente_nivel = 'Gerencia'
+
     elif is_gerente:
         # Gerencia ve PENDIENTE_GERENTE (y necesita ver quién aprobó antes)
         solicitudes_pendientes = base_query.filter(estado=SolicitudHorasExtra.Estado.PENDIENTE_GERENTE)
+        nivel_actual = 'Gerencia'
+        paso_actual = 3
+        siguiente_nivel = ''  # Último nivel: su aprobación cierra el flujo
 
     historial_qs = base_query.filter(
         estado__in=[
@@ -4713,7 +4732,10 @@ def panel_aprobacion_horas_extra(request):
         'current_view': 'panel_aprobacion_he',
         'is_gerente': is_gerente, # Pasamos esto para activar la columna extra en HTML
         'is_rrhh': is_rrhh,       # Opcional: por si RRHH también quiere ver quién fue el operador
-        'is_supervisor': user.groups.filter(name='Supervisores').exists(),
+        'is_supervisor': is_supervisor,
+        'nivel_actual': nivel_actual,
+        'paso_actual': paso_actual,
+        'siguiente_nivel': siguiente_nivel,
     }
     return render(request, 'recursoshumanos/horas_extra/panel_aprobacion.html', context)
 
@@ -4729,11 +4751,14 @@ def procesar_solicitud_horas_extra(request, solicitud_id, accion):
     """
     solicitud = get_object_or_404(SolicitudHorasExtra, pk=solicitud_id)
     user = request.user
-    
+
     # Pre-cargamos permisos
     es_supervisor = user.groups.filter(name='Supervisores').exists()
     es_rrhh = user.groups.filter(name='Recursos Humanos').exists()
     es_gerente = user.groups.filter(name='Gerencia').exists()
+
+    # Nombre del trabajador para que el mensaje indique sobre qué solicitud se actuó
+    nombre_trabajador = str(solicitud.trabajador)
 
     # --- LÓGICA DE APROBACIÓN ---
     if accion == 'aprobar':
@@ -4745,7 +4770,11 @@ def procesar_solicitud_horas_extra(request, solicitud_id, accion):
                 solicitud.fecha_aprobacion_operador = timezone.now()
                 solicitud.estado = SolicitudHorasExtra.Estado.PENDIENTE_ADMIN
                 solicitud.save()
-                messages.success(request, 'Aprobado por Operaciones. Enviado a RRHH.')
+                messages.success(
+                    request,
+                    f'Paso 1 de 3 completado: aprobaste la solicitud de {nombre_trabajador}. '
+                    'Se envió a Recursos Humanos para su aprobación.'
+                )
             else:
                 messages.error(request, 'No tienes permisos de Supervisor.')
 
@@ -4756,7 +4785,11 @@ def procesar_solicitud_horas_extra(request, solicitud_id, accion):
                 solicitud.fecha_aprobacion_admin = timezone.now()
                 solicitud.estado = SolicitudHorasExtra.Estado.PENDIENTE_GERENTE
                 solicitud.save()
-                messages.success(request, 'Aprobado por RRHH. Enviado a Gerencia.')
+                messages.success(
+                    request,
+                    f'Paso 2 de 3 completado: Recursos Humanos aprobó la solicitud de {nombre_trabajador}. '
+                    'Se envió a Gerencia para la aprobación final.'
+                )
             else:
                 messages.error(request, 'No tienes permisos de RRHH.')
 
@@ -4778,12 +4811,23 @@ def procesar_solicitud_horas_extra(request, solicitud_id, accion):
                         fecha=solicitud.fecha_horas_extra
                     )
                     recalcular_asistencia_diaria(tareo)
-                    messages.success(request, '¡Solicitud aprobada y horas recalculadas en el sistema!')
+                    messages.success(
+                        request,
+                        f'Paso 3 de 3 completado: Gerencia dio la aprobación final a la solicitud de '
+                        f'{nombre_trabajador}. El proceso terminó y las horas ya se sumaron a su tareo.'
+                    )
                 except TareoDiario.DoesNotExist:
                     # Si no existe tareo (ej: pidieron hora extra para un día futuro), solo aprobamos la solicitud.
-                    messages.success(request, 'Solicitud aprobada (El tareo aún no existe para recalcular).')
+                    messages.success(
+                        request,
+                        f'Paso 3 de 3 completado: Gerencia dio la aprobación final a la solicitud de '
+                        f'{nombre_trabajador}. Las horas se sumarán cuando exista el tareo de ese día.'
+                    )
                 except Exception as e:
-                    messages.warning(request, f'Solicitud aprobada, pero hubo error recalculando: {e}')
+                    messages.warning(
+                        request,
+                        f'Solicitud aprobada por Gerencia, pero hubo un error recalculando el tareo: {e}'
+                    )
             else:
                 messages.error(request, 'No tienes permisos de Gerencia.')
         
@@ -4797,14 +4841,17 @@ def procesar_solicitud_horas_extra(request, solicitud_id, accion):
 
         # Trazabilidad de quién rechazó
         if estado_actual == SolicitudHorasExtra.Estado.PENDIENTE_OPERADOR and es_supervisor:
-            solicitud.aprobado_por_operador = user 
+            solicitud.aprobado_por_operador = user
             solicitud.fecha_aprobacion_operador = timezone.now()
+            nivel_rechazo = 'Supervisión'
         elif estado_actual == SolicitudHorasExtra.Estado.PENDIENTE_ADMIN and es_rrhh:
             solicitud.aprobado_por_admin = user
             solicitud.fecha_aprobacion_admin = timezone.now()
+            nivel_rechazo = 'Recursos Humanos'
         elif estado_actual == SolicitudHorasExtra.Estado.PENDIENTE_GERENTE and es_gerente:
             solicitud.aprobado_por_gerente = user
             solicitud.fecha_aprobacion_gerente = timezone.now()
+            nivel_rechazo = 'Gerencia'
         else:
             messages.error(request, 'No tienes permisos para rechazar esta solicitud en su estado actual.')
             return redirect('recursoshumanos:panel_aprobacion_he')
@@ -4818,7 +4865,11 @@ def procesar_solicitud_horas_extra(request, solicitud_id, accion):
         # también deberíamos recalcular para quitarle las horas. 
         # Pero en este flujo lineal (Pendiente->Aprobado) no es estrictamente necesario.
         
-        messages.warning(request, 'La solicitud ha sido rechazada.')
+        messages.warning(
+            request,
+            f'Solicitud de {nombre_trabajador} rechazada en el nivel de {nivel_rechazo}. '
+            'El flujo se detiene aquí y no continúa a los siguientes niveles.'
+        )
 
     return redirect('recursoshumanos:panel_aprobacion_he')
 
