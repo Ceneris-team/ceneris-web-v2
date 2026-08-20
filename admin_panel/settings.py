@@ -100,6 +100,7 @@ INSTALLED_APPS = [
     # django-crispy-forms (renderiza formularios con plantillas Bootstrap)
     'crispy_forms',
     'crispy_bootstrap5',
+    'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
     'proyectos',
@@ -119,6 +120,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -374,3 +376,8 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
+
+# ==============================================================================
+# CORS - Permitir peticiones desde la app Flutter Web/Movil
+# ==============================================================================
+CORS_ALLOW_ALL_ORIGINS = True

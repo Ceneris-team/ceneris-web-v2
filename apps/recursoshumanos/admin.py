@@ -2,7 +2,7 @@
 from django.contrib import admin, messages
 from admin_panel.settings import db
 from django.shortcuts import render
-from .models import Sede, Area, Empresa, Cargo, CentroCosto, ConfiguracionTolerancia, ToleranciaAuditoria
+from .models import Sede, Area, Empresa, Cargo, CentroCosto, ConfiguracionTolerancia, ToleranciaAuditoria, Trabajador
 
 # Creamos una acción personalizada para desvincular dispositivos
 @admin.action(description="Desvincular dispositivo seleccionado")
@@ -39,12 +39,13 @@ class TrabajadorAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj=None): return False
     def has_delete_permission(self, request, obj=None): return False
 
-# Aún necesitamos un modelo "espejo" para la interfaz
-#from .models import Trabajador
-#@admin.register(Trabajador)
-#class TrabajadorAdminInterface(admin.ModelAdmin):
- #   list_display = ('dni', 'nombre', 'cargo', 'activo')
-  #  actions = [desvincular_dispositivo]
+@admin.register(Trabajador)
+class TrabajadorAdminInterface(admin.ModelAdmin):
+    list_display = ('dni', 'nombre_completo', 'cargo', 'area', 'user', 'activo')
+    list_filter = ('activo', 'area', 'sede')
+    search_fields = ('dni', 'nombres', 'apellido_paterno', 'apellido_materno', 'user__username')
+    raw_id_fields = ('user',)
+    autocomplete_fields = ['area', 'sede']
 
 # Registrar modelos básicos para gestión
 @admin.register(Sede)

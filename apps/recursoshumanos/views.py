@@ -507,7 +507,7 @@ def lista_trabajadores(request):
 # --- VISTAS DE CREACIÓN Y EDICIÓN DE TRABAJADORES ---
 
 @login_required
-@group_required('Recursos Humanos', 'Calidad')
+@group_required('Recursos Humanos', 'Calidad', 'Supervisores', 'Gerencia')
 def gestion_empleados(request):
     """Muestra el dashboard de tarjetas para la gestión de empleados."""
     context = {'current_view': 'gestion_empleados'}
@@ -1897,9 +1897,9 @@ class CustomLoginView(LoginView):
             return False
 
         grupos_administrativos = [
-            'Administrador', 'Metricas', 'Recursos Humanos', 'Calidad', 
+            'Administrador', 'Metricas', 'Recursos Humanos', 'Calidad',
             'Administracion', 'Gases', 'Proyectos', 'Cotizaciones',
-            'proyecto_monitoreo_smcv', 'Yeni_admin'
+            'proyecto_monitoreo_smcv', 'Yeni_admin', 'Supervisores', 'Gerencia'
         ]
         es_admin_o_grupo = user.is_superuser or user.groups.filter(name__in=grupos_administrativos).exists()
         tiene_perfil = hasattr(user, 'trabajador')
@@ -1968,7 +1968,10 @@ class CustomLoginView(LoginView):
 
         if tiene_rrhh:
             return reverse_lazy('recursoshumanos:dashboard')
-        
+
+        elif 'Supervisores' in grupos or 'Gerencia' in grupos:
+            return reverse_lazy('recursoshumanos:dashboard')
+
         elif 'Administracion' in grupos:
             return reverse_lazy('administracion:dashboard_estadistico')
 
