@@ -2,7 +2,7 @@
 from django.contrib import admin, messages
 from admin_panel.settings import db
 from django.shortcuts import render
-from .models import Sede, Area, Empresa, Cargo, CentroCosto, ConfiguracionTolerancia, ToleranciaAuditoria, Trabajador
+from .models import Sede, Area, Empresa, Cargo, CentroCosto, ConfiguracionTolerancia, ToleranciaAuditoria, Trabajador, EventoLoginOffline
 
 # Creamos una acción personalizada para desvincular dispositivos
 @admin.action(description="Desvincular dispositivo seleccionado")
@@ -88,6 +88,22 @@ class ToleranciaAuditoriaAdmin(admin.ModelAdmin):
     list_filter = ['tipo_horario']
     search_fields = ['sede_nombre']
     ordering = ['-creado_en']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(EventoLoginOffline)
+class EventoLoginOfflineAdmin(admin.ModelAdmin):
+    """CAV-83: auditoria de logins realizados sin conexion (solo lectura)."""
+    list_display = ['trabajador', 'device_id', 'fecha_hora_offline', 'fecha_hora_reportado']
+    list_filter = ['fecha_hora_offline']
+    search_fields = ['trabajador__dni', 'trabajador__nombres', 'trabajador__apellido_paterno', 'device_id']
+    ordering = ['-fecha_hora_offline']
+    readonly_fields = ['trabajador', 'device_id', 'fecha_hora_offline', 'fecha_hora_reportado']
 
     def has_add_permission(self, request):
         return False

@@ -17,6 +17,7 @@ from .views import (
     ListarMarcacionesLogView,
     actualizar_nombre,
     UsuariosAutorizadosSyncView,
+    RegistrarEventoLoginOfflineView,
 )
 
 urlpatterns = [
@@ -47,4 +48,7 @@ urlpatterns = [
 
     # --- CAV-182: SINCRONIZACIÓN DE USUARIOS AUTORIZADOS ---
     path('usuarios-autorizados/sync/', UsuariosAutorizadosSyncView.as_view(), name='usuarios-autorizados-sync'),
+
+    # --- CAV-83: AUDITORÍA DE LOGIN OFFLINE ---
+    path('eventos/login-offline/', RegistrarEventoLoginOfflineView.as_view(), name='evento-login-offline'),
 ]

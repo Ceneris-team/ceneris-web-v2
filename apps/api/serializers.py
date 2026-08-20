@@ -169,6 +169,16 @@ class UsuarioAutorizadoSerializer(serializers.Serializer):
     actualizado_en = serializers.DateTimeField()
 
 
+class EventoLoginOfflineSerializer(serializers.Serializer):
+    """
+    CAV-83: payload que manda el celular al reportar (una vez que
+    recupera conexion) que hubo un inicio de sesion validado localmente
+    mientras estaba sin señal.
+    """
+    device_id = serializers.CharField(max_length=255)
+    fecha_hora_offline = serializers.DateTimeField()
+
+
 class ConfiguracionToleranciaSerializer(serializers.ModelSerializer):
     sede_nombre = serializers.CharField(source='sede.nombre', read_only=True)
     tipo_horario_display = serializers.CharField(source='get_tipo_horario_display', read_only=True)

@@ -25,8 +25,16 @@ memoria, sin volver a consultar. Por eso es una función pura y se prueba sin BD
 | `hora_entrada_programada` / `hora_salida_programada` | Horario planificado del día. |
 | `hora_entrada_real` / `hora_salida_real` | Primera marca de Entrada y última de Salida reales. |
 | `minutos_tolerancia` | Minutos de gracia configurados por **Sede × tipo de horario** (`ConfiguracionTolerancia`, CAV-15). |
-| `es_feriado` | Si la fecha está en la tabla oficial de feriados (`administracion.Feriado`). |
+| `es_feriado` | Si la fecha es feriado **para ese trabajador**, resuelto por scope (ver abajo). |
+| `nombre_feriado` / `ambito_feriado` | Nombre y ámbito del feriado aplicable, solo para el detalle legible. |
 | `tiene_marcas` | Si hubo alguna marcación real ese día. |
+
+**Scope del feriado (CAV-13).** El servicio `obtener_feriado(fecha, sede, empresa)`
+decide si un feriado aplica al trabajador según el ámbito (`Feriado.aplica_a`):
+`NACIONAL` (sin sede/empresa) aplica a todos; `REGIONAL`/`LOCAL` solo a su sede;
+`EMPRESA` solo a su empresa. Como `Feriado.fecha` es única, hay a lo sumo un
+feriado por día. El `detalle_marca` incluye el nombre y ámbito (ej.
+*"Asistencia en día feriado: Inti Raymi (Regional)"*).
 
 ### Salidas (`ResultadoEvaluacion`)
 

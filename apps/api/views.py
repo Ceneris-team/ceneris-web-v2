@@ -23,15 +23,17 @@ from django.contrib.auth.decorators import login_required
 
 # Importaciones de modelos
 from recursoshumanos.models import (
-    SolicitudHorasExtra, Trabajador, Dispositivo, Asistencia, 
-    Justificacion, TareoDiario, IntentoFraude
+    SolicitudHorasExtra, Trabajador, Dispositivo, Asistencia,
+    Justificacion, TareoDiario, IntentoFraude, EventoLoginOffline
 )
+from administracion.services.feriados import obtener_feriado
 
 # Importaciones de serializers
 from .serializers import (
     MyTokenObtainPairSerializer, AsistenciaSerializer,
     FaltaPendienteSerializer, CrearJustificacionSerializer,
-    SolicitudHorasExtraSerializer, UsuarioAutorizadoSerializer
+    SolicitudHorasExtraSerializer, UsuarioAutorizadoSerializer,
+    EventoLoginOfflineSerializer
 )
 
 # Importaciones de servicios
@@ -192,6 +194,10 @@ class EstadoTrabajadorView(APIView):
         except Trabajador.DoesNotExist:
             return Response({"error": "Sin perfil"}, status=status.HTTP_404_NOT_FOUND)
 
+        # Feriado del día para ESTE trabajador (scope nacional/regional/empresa,
+        # CAV-13). El móvil usa esto para el banner "Día Feriado" (CAV-64).
+        feriado_hoy = obtener_feriado(hoy_fecha, sede=trabajador.sede, empresa=trabajador.empresa)
+
         # 2. Última marcación
         ultimo_tipo = "Salida"
         try:
@@ -262,7 +268,10 @@ class EstadoTrabajadorView(APIView):
             'horario_entrada': horario_entrada,
             'horario_salida': horario_salida,
             'es_tardanza': es_tardanza,
-            'mensaje_aviso': mensaje
+            'mensaje_aviso': mensaje,
+            # Feriado (CAV-13/CAV-64): el móvil muestra el banner con estos campos.
+            'es_feriado': feriado_hoy is not None,
+            'nombre_feriado': feriado_hoy.nombre if feriado_hoy else None,
         }, status=status.HTTP_200_OK)
 
 
@@ -736,3 +745,43 @@ class UsuariosAutorizadosSyncView(APIView):
             'checksum': checksum,
             'usuarios': usuarios_data,
         }, status=status.HTTP_200_OK)
+
+
+# ==============================================================================
+# CAV-83: Reporte de eventos de login offline (auditoria)
+# ==============================================================================
+class RegistrarEventoLoginOfflineView(APIView):
+    """
+    CAV-83: recibe el reporte de que el usuario autenticado inicio sesion
+    en modo offline (validado localmente contra el hash cifrado, CAV-81),
+    una vez que el dispositivo recupera conexion.
+
+    Es puramente informativo/de auditoria: no crea ninguna sesion nueva
+    ni emite tokens. Para llegar aqui el dispositivo ya debe tener un
+    JWT valido (el mismo de su ultimo login online), asi que
+    'request.user' identifica de forma segura a quien reporta el evento.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = EventoLoginOfflineSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            trabajador = Trabajador.objects.get(user=request.user)
+        except Trabajador.DoesNotExist:
+            return Response(
+                {"error": "No se encontró el trabajador asociado a este usuario."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        evento = EventoLoginOffline.objects.create(
+            trabajador=trabajador,
+            device_id=serializer.validated_data['device_id'],
+            fecha_hora_offline=serializer.validated_data['fecha_hora_offline'],
+        )
+
+        return Response(
+            {"mensaje": "Evento de login offline registrado.", "id": evento.id},
+            status=status.HTTP_201_CREATED,
+        )
