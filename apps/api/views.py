@@ -16,8 +16,10 @@ import pytz
 import json
 import hashlib
 
+from django.conf import settings as django_settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 
@@ -43,6 +45,54 @@ from admin_panel.settings import db
 # Constantes
 TARDANZA_MINIMA_HORAS = Decimal('0.25')
 TOLERANCIA_TARDANZA_MINUTOS = 3
+
+# Tope absoluto de antiguedad para una marca sincronizada. NO es una caducidad
+# de sincronizacion: en faena minera un trabajador puede pasar meses o anios sin
+# senal y su cola sigue siendo valida al volver, asi que el valor por defecto se
+# mide en anios y solo existe como red de seguridad contra un reloj corrupto.
+ASISTENCIA_ANTIGUEDAD_MAXIMA_DIAS = getattr(
+    django_settings, 'ASISTENCIA_ANTIGUEDAD_MAXIMA_DIAS', 3650
+)
+
+# Margen de tolerancia para relojes adelantados antes de considerar futura una
+# marca. Tras meses sin sincronizar NTP la deriva del reloj es esperable.
+ASISTENCIA_MARGEN_RELOJ_FUTURO_MINUTOS = getattr(
+    django_settings, 'ASISTENCIA_MARGEN_RELOJ_FUTURO_MINUTOS', 15
+)
+
+
+def _fecha_negocio_de_marca(raw_timestamp):
+    """Deriva la fecha de negocio (America/Lima) del timestamp que envia el movil.
+
+    Es la correccion central de este fix: una marca pertenece al dia en que se
+    hizo, no al dia en que el worker offline logro subirla. Devuelve la tupla
+    ``(fecha, datetime_aware)``; si el payload no trae timestamp o es ilegible
+    cae a ``localdate()``, que es el comportamiento correcto para una marca en
+    tiempo real.
+
+    Usa ``localtime()`` y NUNCA ``.date()`` sobre el datetime crudo: el servidor
+    corre en UTC y a partir de las 19:00 de Lima ``.date()`` devuelve el dia
+    siguiente. Ese bug ya se corrigio una vez en este archivo (ver el candado de
+    turno mas abajo); no reintroducirlo.
+    """
+    if not raw_timestamp:
+        return timezone.localdate(), None
+
+    if isinstance(raw_timestamp, datetime):
+        dt = raw_timestamp
+    else:
+        try:
+            dt = parse_datetime(str(raw_timestamp))
+        except (TypeError, ValueError):
+            dt = None
+
+    if dt is None:
+        return timezone.localdate(), None
+
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt)
+
+    return timezone.localtime(dt).date(), dt
 LOCAL_TIMEZONE = pytz.timezone('America/Lima')
 
 
@@ -359,56 +409,169 @@ class RegistrarAsistenciaView(APIView):
                 return Response({'detail': str(motivo_bloqueo_app)}, status=status.HTTP_403_FORBIDDEN)
             
             # =================================================================
-            # --- 2. CANDADO DE SEGURIDAD: VALIDAR ASIGNACIÓN DE TURNO ---
+            # --- 2. IDEMPOTENCIA: ¿ya registramos esta misma marca? ---
+            # =================================================================
+            # El worker offline reintenta cuando pierde la respuesta, cosa que
+            # sobre una conexión de faena es la norma y no la excepción. El
+            # `client_uuid` lo genera el móvil al ENCOLAR la marca y lo persiste
+            # localmente, así que sobrevive a los reintentos e identifica la
+            # misma marcación aunque el POST llegue tres veces.
+            #
+            # Va ANTES de cualquier validación a propósito: un reintento no debe
+            # volver a validar turno, ni recalcular el tareo, ni poder producir
+            # un 403 sobre una marca que en el primer intento ya se guardó bien.
+            # Se acepta camelCase además de snake_case para que un desajuste de
+            # nomenclatura con el móvil no repita el bug de ignorarlo en silencio.
+            client_uuid = request.data.get('client_uuid') or request.data.get('clientUuid')
+            if client_uuid:
+                marca_existente = Asistencia.objects.filter(client_uuid=client_uuid).first()
+                if marca_existente:
+                    print(f"[API] Reintento idempotente de {client_uuid}: se devuelve la marca #{marca_existente.pk}")
+                    return Response(
+                        AsistenciaSerializer(marca_existente).data,
+                        status=status.HTTP_200_OK
+                    )
+
+            # =================================================================
+            # --- 3. FECHA DE NEGOCIO: el día de la MARCA, no el de la subida ---
             # =================================================================
             # localdate() usa America/Lima; con now().date() (UTC en el servidor)
             # a partir de las 19:00 de Lima se buscaba el tareo del día siguiente
             # y se bloqueaban las marcaciones de la tarde/noche.
             hoy = timezone.localdate()
-            
-            try:
-                # Buscamos el tareo asignado para hoy
-                tareo_hoy = TareoDiario.objects.get(trabajador=trabajador, fecha=hoy)
-                
-                # Restricción 1: Si es Día Libre ('D')
-                if tareo_hoy.estado == 'D':
-                    registrar_fraude_bd('Intento de marcacion en dia libre')
+
+            # Antes toda la validación colgaba de `hoy`, o sea del día en que
+            # LLEGABA la petición. Una marca hecha offline el lunes y subida el
+            # miércoles se validaba contra el turno del miércoles: si ese día era
+            # libre o no tenía turno, respondía 403 y el dato de planilla del
+            # lunes se perdía para siempre, además de registrar un fraude falso.
+            fecha_negocio, timestamp_marca = _fecha_negocio_de_marca(request.data.get('timestamp'))
+
+            if timestamp_marca is not None:
+                # Al derivar la fecha del payload, el reloj del celular pasa a
+                # determinar planilla. Tras meses sin NTP puede haber derivado, o
+                # haber sido movido a mano. Un timestamp futuro no puede ser una
+                # marca real; aun así NO se registra IntentoFraude, porque la
+                # deriva de reloj no es prueba de manipulación y grabar fraude
+                # ahí repetiría justo el error que este fix viene a corregir.
+                margen_reloj = timedelta(minutes=ASISTENCIA_MARGEN_RELOJ_FUTURO_MINUTOS)
+                if timestamp_marca > timezone.now() + margen_reloj:
                     return Response({
-                        'detail': 'Hoy está registrado como tu Día Libre. No se permite marcar.'
+                        'codigo': 'MARCA_FUTURA',
+                        'detail': 'La marcación tiene fecha futura. Revisa la hora de tu dispositivo.',
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                # Red de seguridad, no caducidad: el tope se mide en años (ver la
+                # constante). Una marca de hace 14 meses entra sin problema.
+                if (hoy - fecha_negocio).days > ASISTENCIA_ANTIGUEDAD_MAXIMA_DIAS:
+                    return Response({
+                        'codigo': 'MARCA_EXPIRADA',
+                        'detail': (
+                            'La marcación es demasiado antigua para registrarse '
+                            'automáticamente. Contacta a Recursos Humanos.'
+                        ),
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Si el día de la marca ya pasó, viene de la cola offline. Eso es
+            # desfase de sincronización, no fraude, y se trata distinto.
+            es_marca_atrasada = fecha_negocio < hoy
+
+            # =================================================================
+            # --- 4. CANDADO DE SEGURIDAD: VALIDAR ASIGNACIÓN DE TURNO ---
+            # =================================================================
+            if es_marca_atrasada:
+                # Tras meses en faena el tareo de ese día puede no existir: RRHH
+                # nunca cargó el turno, el trabajador se incorporó después, o el
+                # tareo se archivó. Antes eso caía en DoesNotExist -> 403 y la
+                # marca se perdía igual, sólo que por otra razón.
+                #
+                # Lo creamos al vuelo, que es exactamente lo que ya hace la
+                # importación biométrica ante el mismo problema (ver
+                # recursoshumanos/servicios_asistencias.py). El estado 'O' es
+                # explícito y obligatorio: sin él el tareo podría nacer con un
+                # estado que lo haga caer en la validación de día libre y volver
+                # a dar 403. Un tareo así no tiene horario, y el motor de reglas
+                # lo clasifica ASISTIÓ + SIN_HORARIO sin tardanza, dejándolo
+                # visible para que RRHH lo concilie.
+                tareo, _ = TareoDiario.objects.get_or_create(
+                    trabajador=trabajador,
+                    fecha=fecha_negocio,
+                    defaults={'estado': 'O', 'resultado': 'F'},
+                )
+                # Deliberadamente NO se corta por estado 'D': el motor de reglas
+                # ya acepta marcas en día libre (ASISTIÓ + etiqueta DIA_LIBRE,
+                # sin evaluar tardanza), así que rechazarlas aquí contradiría una
+                # regla que el dominio ya tiene escrita y perdería planilla.
+                # Tampoco se registra IntentoFraude en esta rama.
+            else:
+                # Marca en tiempo real: el control antifraude queda INTACTO.
+                # Intentar marcar HOY en tu día libre o sin turno asignado sigue
+                # siendo sospechoso y se sigue registrando como tal.
+                try:
+                    # Buscamos el tareo asignado para hoy
+                    tareo = TareoDiario.objects.get(trabajador=trabajador, fecha=fecha_negocio)
+
+                    # Restricción 1: Si es Día Libre ('D')
+                    if tareo.estado == 'D':
+                        registrar_fraude_bd('Intento de marcacion en dia libre')
+                        return Response({
+                            'detail': 'Hoy está registrado como tu Día Libre. No se permite marcar.'
+                        }, status=status.HTTP_403_FORBIDDEN)
+
+                except TareoDiario.DoesNotExist:
+                    # Restricción 2: No existe turno asignado en la web
+                    registrar_fraude_bd('Intento de marcacion sin turno programado')
+                    return Response({
+                        'detail': 'No tienes un turno programado para hoy. Por favor contacta a tu supervisor.'
                     }, status=status.HTTP_403_FORBIDDEN)
-                    
-            except TareoDiario.DoesNotExist:
-                # Restricción 2: No existe turno asignado en la web
-                registrar_fraude_bd('Intento de marcacion sin turno programado')
-                return Response({
-                    'detail': 'No tienes un turno programado para hoy. Por favor contacta a tu supervisor.'
-                }, status=status.HTTP_403_FORBIDDEN)
             # =================================================================
 
-            # 3. Guardar la Asistencia (Solo si pasó todas las validaciones y no hubo fraude)
-            serializer = AsistenciaSerializer(data=request.data)
+            # 5. Guardar la Asistencia (Solo si pasó todas las validaciones y no hubo fraude)
+            # Se normaliza el client_uuid al nombre del modelo para que también
+            # se persista cuando el móvil lo manda en camelCase.
+            datos_marca = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+            if client_uuid:
+                datos_marca['client_uuid'] = client_uuid
+
+            serializer = AsistenciaSerializer(data=datos_marca)
             if serializer.is_valid():
                 # ---> AQUÍ AGREGAMOS EL CAMPO ORIGEN <---
-                serializer.save(
-                    usuario=usuario_actual,
-                    origen='APP'  # Le decimos explícitamente que viene de la aplicación
-                )
-                
-                # 4. CÁLCULO AUTOMÁTICO
+                try:
+                    serializer.save(
+                        usuario=usuario_actual,
+                        origen='APP'  # Le decimos explícitamente que viene de la aplicación
+                    )
+                except IntegrityError:
+                    # Dos reintentos simultáneos del worker pueden pasar ambos el
+                    # filtro de arriba y chocar recién contra el unique de la BD,
+                    # que es la garantía real de idempotencia. Traducimos ese
+                    # choque a la misma respuesta que el reintento secuencial.
+                    marca_existente = (
+                        Asistencia.objects.filter(client_uuid=client_uuid).first()
+                        if client_uuid else None
+                    )
+                    if marca_existente:
+                        return Response(
+                            AsistenciaSerializer(marca_existente).data,
+                            status=status.HTTP_200_OK
+                        )
+                    raise
+
+                # 6. CÁLCULO AUTOMÁTICO (sobre el tareo del día de la MARCA)
                 advertencia = None
                 try:
-                    recalcular_asistencia_diaria(tareo_hoy)
+                    recalcular_asistencia_diaria(tareo)
                     print(f"✅ Asistencia registrada y procesada para {trabajador}")
 
-                    tareo_hoy.refresh_from_db()
-                    if tareo_hoy.etiqueta_estado in ('FUERA_HORARIO', 'TARDANZA'):
+                    tareo.refresh_from_db()
+                    if tareo.etiqueta_estado in ('FUERA_HORARIO', 'TARDANZA'):
                         advertencia = {
-                            'tipo': tareo_hoy.etiqueta_estado,
+                            'tipo': tareo.etiqueta_estado,
                             'mensaje': (
                                 f'Tu marcación fue clasificada como '
-                                f'{tareo_hoy.get_etiqueta_estado_display()}.'
+                                f'{tareo.get_etiqueta_estado_display()}.'
                             ),
-                            'detalle': tareo_hoy.detalle_marca or '',
+                            'detalle': tareo.detalle_marca or '',
                         }
                 except Exception as e:
                     print(f"⚠️ Error en el cálculo matemático: {e}")

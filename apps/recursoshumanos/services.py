@@ -122,9 +122,21 @@ def recalcular_asistencia_diaria(tareo: TareoDiario):
     from .motor_reglas import ContextoMarcacion, evaluar_marcacion
 
     # 1. OBTENER MARCAS DEL DÍA
+    # Se acota por RANGO de instante en vez de `timestamp__date=`: bajo USE_TZ
+    # ese lookup aplica una conversion de zona horaria sobre la columna, que un
+    # indice btree no puede aprovechar, asi que cada recalculo escanea la tabla
+    # entera de asistencias. Al volver de faena esta funcion corre una vez por
+    # cada dia sincronizado, de modo que el escaneo se multiplica por cientos.
+    # El rango es equivalente (ambos delimitan el dia en America/Lima) pero si
+    # usa el indice (usuario, timestamp) declarado en el modelo.
+    inicio_dia = timezone.make_aware(datetime.combine(tareo.fecha, time.min))
+    fin_dia = timezone.make_aware(
+        datetime.combine(tareo.fecha + timedelta(days=1), time.min)
+    )
     marcas = Asistencia.objects.filter(
         usuario=tareo.trabajador.user,
-        timestamp__date=tareo.fecha
+        timestamp__gte=inicio_dia,
+        timestamp__lt=fin_dia,
     ).order_by('timestamp')
 
     if not marcas.exists():
