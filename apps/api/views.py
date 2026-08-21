@@ -159,15 +159,15 @@ def _registrar_intento_fraude(request, reason, trabajador=None):
                 raw_payload=payload,
             )
         except Exception as sql_exc:
-            print(f"⚠️ No se pudo registrar intento de fraude en SQL: {sql_exc}")
+            print(f"[WARN] No se pudo registrar intento de fraude en SQL: {sql_exc}")
 
         # 2) Guardado en Firestore (si está disponible).
         try:
             db.collection('asistencias_fraudulentas').add(payload)
         except Exception as fs_exc:
-            print(f"⚠️ No se pudo registrar intento de fraude en Firestore: {fs_exc}")
+            print(f"[WARN] No se pudo registrar intento de fraude en Firestore: {fs_exc}")
     except Exception as log_exc:
-        print(f"⚠️ No se pudo registrar intento de fraude: {log_exc}")
+        print(f"[WARN] No se pudo registrar intento de fraude: {log_exc}")
 
 
 class SolicitudHorasExtraCreateAPIView(generics.CreateAPIView):
@@ -195,17 +195,17 @@ class SolicitudHorasExtraCreateAPIView(generics.CreateAPIView):
     # --- AQUI ESTA LA MAGIA DEL DEBUG ---
     def create(self, request, *args, **kwargs):
         print("\n" + "="*50)
-        print("🚨 DEBUG: INICIO DE SOLICITUD DE HORAS EXTRA")
-        print(f"👤 Usuario autenticado: {request.user.username}")
+        print("[ALERTA] DEBUG: INICIO DE SOLICITUD DE HORAS EXTRA")
+        print(f"[USER] Usuario autenticado: {request.user.username}")
         
         # 1. Ver qué datos llegaron realmente desde Flutter
-        print(f"📦 Datos recibidos (request.data): {json.dumps(request.data, indent=2)}")
+        print(f"[DATA] Datos recibidos (request.data): {json.dumps(request.data, indent=2)}")
 
         serializer = self.get_serializer(data=request.data)
         
         # 2. Validar y si falla, IMPRIMIR EL ERROR
         if not serializer.is_valid():
-            print("❌ ERROR DE VALIDACIÓN:")
+            print("[ERROR] ERROR DE VALIDACIÓN:")
             print(json.dumps(serializer.errors, indent=2)) # Esto nos dirá EXACTAMENTE qué campo falla
             print("="*50 + "\n")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -214,13 +214,13 @@ class SolicitudHorasExtraCreateAPIView(generics.CreateAPIView):
         try:
             self.perform_create(serializer)
         except Exception as e:
-            print(f"❌ ERROR AL GUARDAR (perform_create): {str(e)}")
+            print(f"[ERROR] ERROR AL GUARDAR (perform_create): {str(e)}")
             print("="*50 + "\n")
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         # 4. Éxito
         headers = self.get_success_headers(serializer.data)
-        print("✅ SOLICITUD CREADA CON ÉXITO")
+        print("[OK] SOLICITUD CREADA CON ÉXITO")
         print("="*50 + "\n")
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
@@ -280,7 +280,7 @@ class EstadoTrabajadorView(APIView):
                 
                 # Mensaje dinámico según avance
                 if tareo_hoy.horas_trabajadas_validas >= meta_horas:
-                    mensaje = "Meta cumplida ✅"
+                    mensaje = "Meta cumplida [OK]"
                 elif ultimo_tipo == 'Entrada':
                     mensaje = "Jornada en curso..."
                 else:
@@ -561,7 +561,7 @@ class RegistrarAsistenciaView(APIView):
                 advertencia = None
                 try:
                     recalcular_asistencia_diaria(tareo)
-                    print(f"✅ Asistencia registrada y procesada para {trabajador}")
+                    print(f"[OK] Asistencia registrada y procesada para {trabajador}")
 
                     tareo.refresh_from_db()
                     if tareo.etiqueta_estado in ('FUERA_HORARIO', 'TARDANZA'):
@@ -574,7 +574,7 @@ class RegistrarAsistenciaView(APIView):
                             'detalle': tareo.detalle_marca or '',
                         }
                 except Exception as e:
-                    print(f"⚠️ Error en el cálculo matemático: {e}")
+                    print(f"[WARN] Error en el cálculo matemático: {e}")
 
                 response_data = dict(serializer.data)
                 if advertencia:
@@ -621,7 +621,7 @@ class CrearJustificacionView(generics.CreateAPIView):
     parser_classes = (JSONParser, MultiPartParser, FormParser) 
 
     def create(self, request, *args, **kwargs):
-        print("🔍 INTENTO DE JUSTIFICACIÓN DESDE FLUTTER")
+        print("[DEBUG] INTENTO DE JUSTIFICACIÓN DESDE FLUTTER")
         
         # 1. Obtenemos los datos (mutable para poder inyectar el ID del tareo)
         data = request.data.copy()
@@ -647,7 +647,7 @@ class CrearJustificacionView(generics.CreateAPIView):
         # 3. Validación Estándar del Serializer
         serializer = self.get_serializer(data=data)
         if not serializer.is_valid():
-            print("❌ Error de validación:", serializer.errors)
+            print("[ERROR] Error de validación:", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         self.perform_create(serializer)
