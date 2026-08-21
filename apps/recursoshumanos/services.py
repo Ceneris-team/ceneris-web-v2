@@ -229,7 +229,7 @@ def recalcular_asistencia_diaria(tareo: TareoDiario):
                 dt_s = datetime.combine(date.today(), h_salida_prog)
                 horas_objetivo = max(0, ((dt_s - dt_e).total_seconds() / 3600) - 1)
     except Exception as e:
-         print(f"⚠️ Error calculando objetivo: {e}")
+         print(f"[WARN] Error calculando objetivo: {e}")
 
     # Sumar Extras
     solicitud = SolicitudHorasExtra.objects.filter(
