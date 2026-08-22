@@ -5,8 +5,8 @@ services:
     name: ceneris-web
     runtime: docker
     
-    repo: https://github.com/DEV-Ceneris/ceneris-web.git
-    branch: main
+    repo: https://github.com/Ceneris-team/ceneris-web-v2.git
+    branch: main   # OJO: apuntar a la rama con el codigo listo para prod (main de v2). develop tiene lo ultimo; mergear a main antes de desplegar.
     
     dockerfilePath: ./Dockerfile
 
@@ -25,6 +25,10 @@ services:
           name: ceneris-db
           property: connectionString
       - key: SECRET_KEY
+        # NO generar uno nuevo para el cutover: SimpleJWT firma con SECRET_KEY.
+        # Si cambia, TODOS los tokens que ya tienen los celulares (emitidos por
+        # v1) quedan invalidos y se fuerza re-login masivo. Reusar el SECRET_KEY
+        # de la v1 en produccion (setearlo a mano en el dashboard, sync: false).
         generateValue: true
       - key: PYTHON_VERSION
         value: "3.11.9" # O tu versión específica
