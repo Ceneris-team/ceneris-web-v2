@@ -1,0 +1,81 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Detalle de horas · {{ trabajador.nombre_completo }}{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>{{ trabajador.apellido_paterno }} {{ trabajador.apellido_materno }}, {{ trabajador.nombres }}</h1>
+            <p style="margin: 0;">Detalle día a día del {{ fecha_inicio|date:"d/m/Y" }} al {{ fecha_fin|date:"d/m/Y" }}.</p>
+        </div>
+        <a href="{% url 'recursoshumanos:reporte_horas_periodo' %}?{{ querystring_periodo }}"
+           style="color: #2563eb; text-decoration: none; font-weight: bold;">&laquo; Volver al reporte</a>
+    </div>
+
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+        <div style="flex: 1; min-width: 220px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+            <div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Horas totales del período</div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #0f172a;">{{ total_horas }} h</div>
+        </div>
+        <div style="flex: 1; min-width: 220px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+            <div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Días listados</div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #0f172a;">{{ dias|length }}</div>
+        </div>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <thead style="background-color: #f1f5f9; text-align: left; border-bottom: 2px solid #e2e8f0;">
+            <tr>
+                <th style="padding: 1rem;">Fecha</th>
+                <th style="padding: 1rem; text-align: center;">Jornada</th>
+                <th style="padding: 1rem;">Programado</th>
+                <th style="padding: 1rem;">Entrada real</th>
+                <th style="padding: 1rem;">Salida real</th>
+                <th style="padding: 1rem; text-align: right;">Horas válidas</th>
+                <th style="padding: 1rem; text-align: center;">Marcación</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in dias %}
+            <tr style="border-bottom: 1px solid #f1f5f9;{% if d.hora_entrada_real and not d.hora_salida_real %} background: #fffbeb;{% endif %}">
+                <td style="padding: 1rem;"><strong>{{ d.fecha|date:"d/m/Y" }}</strong> <span style="color: #94a3b8; font-size: 0.85rem;">{{ d.fecha|date:"D" }}</span></td>
+                <td style="padding: 1rem; text-align: center; color: #64748b;">{{ d.estado }}</td>
+                <td style="padding: 1rem; color: #64748b; font-size: 0.9rem;">
+                    {% if d.hora_entrada %}{{ d.hora_entrada|time:"H:i" }} – {{ d.hora_salida|time:"H:i"|default:"--:--" }}
+                    {% elif d.jornada_horas %}{{ d.jornada_horas }} h
+                    {% else %}-{% endif %}
+                </td>
+                <td style="padding: 1rem;">{{ d.hora_entrada_real_calculada|time:"H:i"|default:"--:--" }}</td>
+                <td style="padding: 1rem;">
+                    {% if d.hora_salida_real_calculada %}
+                        {{ d.hora_salida_real_calculada|time:"H:i" }}
+                    {% elif d.hora_entrada_real_calculada %}
+                        <span style="color: #b45309; font-weight: bold;">sin marcar</span>
+                    {% else %}
+                        --:--
+                    {% endif %}
+                </td>
+                <td style="padding: 1rem; text-align: right; font-weight: bold;">{{ d.horas_trabajadas_validas }} h</td>
+                <td style="padding: 1rem; text-align: center;" title="{{ d.detalle_marca }}">
+                    {% if d.etiqueta_estado %}
+                        <span style="background-color: #e2e8f0; color: #475569; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">{{ d.get_etiqueta_estado_display }}</span>
+                    {% else %}
+                        <span style="color: #94a3b8;">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 4rem 2rem; color: #64748b;">
+                    Sin días de tareo en este período.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p style="margin-top: 1.5rem; font-size: 0.85rem; color: #64748b; line-height: 1.6;">
+        Las filas resaltadas en ámbar tienen entrada marcada pero <strong>no salida</strong>: sin ese par el día suma 0 h,
+        aunque la persona haya trabajado. Corrige la marcación antes de decidir el pago del período.
+    </p>
+{% endblock %}

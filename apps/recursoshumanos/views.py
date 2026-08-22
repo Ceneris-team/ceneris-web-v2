@@ -12,7 +12,7 @@ from metricas_ceneris.views import _calcular_asistencia_por_periodo, _hora_refer
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from .models import Area, IntentoFraude, Trabajador, Empresa # ... etc
 from django.shortcuts import render, get_object_or_404, redirect
 from rest_framework import permissions
@@ -24,6 +24,7 @@ from recursoshumanos.services import recalcular_asistencia_diaria
 from .models import Sede, ConfiguracionTolerancia, ToleranciaAuditoria
 from .motor_reglas import EstadoMarca
 from .services import listar_tolerancias, crear_o_actualizar_tolerancia, actualizar_tolerancia
+from . import servicios_horas
 from firebase_admin import firestore
 from google.cloud import firestore
 from google.cloud.firestore_v1.field_path import FieldPath
@@ -5059,3 +5060,124 @@ def consulta_asistencias_view(request):
         'opciones_etiqueta': EstadoMarca.choices,
     }
     return render(request, 'recursoshumanos/consulta_asistencias/lista_consulta.html', context)
+
+# ==============================================================================
+# HORAS ACUMULADAS POR PERÍODO
+# ==============================================================================
+
+def _parsear_fecha_get(valor):
+    """Convierte 'YYYY-MM-DD' de un <input type=date> a `date`, o None."""
+    if not valor:
+        return None
+    try:
+        return datetime.strptime(valor.strip(), '%Y-%m-%d').date()
+    except (ValueError, AttributeError):
+        return None
+
+
+@login_required
+@group_required("Recursos Humanos", "Gerencia", "Administracion")
+def reporte_horas_periodo(request):
+    """Horas acumuladas por trabajador en el rango de fechas que fija RRHH.
+
+    RRHH elige el período y el reporte suma `TareoDiario.horas_trabajadas_validas`
+    de cada trabajador en ese rango. No decide si el total es suficiente: esa
+    lectura depende de la modalidad de cada persona y la hace RRHH.
+    """
+    inicio_str = request.GET.get('inicio', '').strip()
+    fin_str = request.GET.get('fin', '').strip()
+
+    empresa_id = request.GET.get('empresa', '').strip()
+    area_id = request.GET.get('area', '').strip()
+    sede_id = request.GET.get('sede', '').strip()
+    proyecto_id = request.GET.get('proyecto', '').strip()
+    trabajador_id = request.GET.get('trabajador', '').strip()
+    solo_con_alerta = request.GET.get('solo_con_alerta') == '1'
+
+    fecha_inicio = _parsear_fecha_get(inicio_str)
+    fecha_fin = _parsear_fecha_get(fin_str)
+
+    hoy = timezone.localdate()
+    resumenes = []
+    totales = None
+    busqueda_realizada = bool(inicio_str or fin_str)
+    periodo_recortado = False
+
+    if busqueda_realizada:
+        if not fecha_inicio or not fecha_fin:
+            messages.error(request, "Indica la fecha de inicio y la fecha de fin del período.")
+            busqueda_realizada = False
+        elif fecha_inicio > fecha_fin:
+            messages.error(request, "La fecha de inicio no puede ser posterior a la fecha de fin.")
+            busqueda_realizada = False
+        else:
+            # Los días futuros ya existen como tareo programado con 0 horas;
+            # incluirlos ensuciaría el conteo de días con jornadas que todavía
+            # no ocurrieron. El servicio los recorta y aquí se avisa.
+            periodo_recortado = fecha_fin > hoy
+
+            resumenes = servicios_horas.resumen_horas_por_periodo(
+                fecha_inicio,
+                fecha_fin,
+                empresa_id=empresa_id or None,
+                area_id=area_id or None,
+                sede_id=sede_id or None,
+                proyecto_id=proyecto_id or None,
+                trabajador_id=trabajador_id or None,
+                solo_con_alerta=solo_con_alerta,
+            )
+            totales = servicios_horas.totales_generales(resumenes)
+
+    context = {
+        'empresas': Empresa.objects.all().order_by('nombre'),
+        'areas': Area.objects.all().order_by('nombre'),
+        'sedes': Sede.objects.all().order_by('nombre'),
+        'proyectos': Proyecto.objects.filter(parent__isnull=True, activo=True).order_by('nombre'),
+        'trabajadores': Trabajador.objects.filter(activo=True).order_by('apellido_paterno', 'nombres'),
+        'resumenes': resumenes,
+        'totales': totales,
+        'busqueda_realizada': busqueda_realizada,
+        'periodo_recortado': periodo_recortado,
+        'hoy': hoy,
+        'current_inicio': inicio_str,
+        'current_fin': fin_str,
+        'current_empresa': empresa_id,
+        'current_area': area_id,
+        'current_sede': sede_id,
+        'current_proyecto': proyecto_id,
+        'current_trabajador': trabajador_id,
+        'solo_con_alerta': solo_con_alerta,
+        'current_view': 'reporte_horas_periodo',
+    }
+    return render(request, 'recursoshumanos/reportes/horas_periodo.html', context)
+
+
+@login_required
+@group_required("Recursos Humanos", "Gerencia", "Administracion")
+def detalle_horas_trabajador(request, trabajador_id):
+    """Desglose día a día del acumulado de un trabajador en el mismo período.
+
+    Es la vista a la que RRHH entra desde el reporte cuando el total no le
+    cuadra: muestra qué aportó cada día y cuáles quedaron sin salida marcada.
+    """
+    trabajador = get_object_or_404(Trabajador, pk=trabajador_id)
+
+    fecha_inicio = _parsear_fecha_get(request.GET.get('inicio'))
+    fecha_fin = _parsear_fecha_get(request.GET.get('fin'))
+
+    if not fecha_inicio or not fecha_fin or fecha_inicio > fecha_fin:
+        messages.error(request, "Período inválido. Vuelve a hacer la consulta.")
+        return redirect('recursoshumanos:reporte_horas_periodo')
+
+    dias = servicios_horas.detalle_dias_trabajador(trabajador.id, fecha_inicio, fecha_fin)
+    total_horas = sum((d.horas_trabajadas_validas or Decimal('0')) for d in dias)
+
+    return render(request, 'recursoshumanos/reportes/horas_periodo_detalle.html', {
+        'trabajador': trabajador,
+        'dias': dias,
+        'total_horas': total_horas,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'querystring_periodo': request.GET.urlencode(),
+        'current_view': 'reporte_horas_periodo',
+    })

@@ -406,6 +406,9 @@
                         <li class="navbar__item {% if current_view == 'lista_consulta' %}active{% endif %}">
                             <a href="{% url 'recursoshumanos:lista_consulta' %}" class="navbar__link"><i data-feather="search"></i><span>Consulta Asistencias</span></a>
                         </li>
+                    <li class="navbar__item {% if current_view == 'reporte_horas_periodo' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:reporte_horas_periodo' %}" class="navbar__link"><i data-feather="clock"></i><span>Horas por Período</span></a>
+                    </li>
                     <li class="navbar__item {% if current_view == 'reporte_justificaciones_rrhh' %}active{% endif %}">
                         <a href="{% url 'recursoshumanos:reporte_justificaciones_rrhh' %}" class="navbar__link"><i data-feather="check-square"></i><span>Justificaciones</span></a>
                     </li>

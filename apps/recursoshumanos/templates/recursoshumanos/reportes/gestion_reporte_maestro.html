@@ -102,6 +102,23 @@
     <p>Descarga los informes de asistencia diarios o mensuales directamente desde aquí.</p>
 
     <!-- ============================================= -->
+    <!--     HORAS ACUMULADAS POR PERÍODO              -->
+    <!-- ============================================= -->
+    <div class="report-section">
+        <h2>Horas Acumuladas por Período</h2>
+        <p style="margin: 1rem 0 0; color: #495057;">
+            Elige un rango de fechas y revisa el <strong>total de horas trabajadas</strong> de cada
+            trabajador en ese período, con el desglose día a día.
+        </p>
+        <div class="report-form">
+            <a href="{% url 'recursoshumanos:reporte_horas_periodo' %}" class="btn btn-primary">
+                <i data-feather="clock"></i>
+                <span>Abrir reporte de horas</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- ============================================= -->
     <!--     SECCIÓN PARA REPORTES DIARIOS             -->
     <!-- ============================================= -->
     <div class="report-section">

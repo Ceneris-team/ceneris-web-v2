@@ -1,0 +1,192 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Horas Acumuladas por Período{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Horas Acumuladas por Período</h1>
+            <p style="margin: 0;">Elige un rango de fechas y revisa el total de horas trabajadas de cada trabajador.</p>
+        </div>
+    </div>
+
+    <div style="background-color: #f8fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid #e2e8f0;">
+        <form method="GET" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+
+            <div style="flex: 1; min-width: 150px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Desde *</label>
+                <input type="date" name="inicio" required value="{{ current_inicio }}"
+                       style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+            </div>
+
+            <div style="flex: 1; min-width: 150px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Hasta *</label>
+                <input type="date" name="fin" required value="{{ current_fin }}"
+                       style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+            </div>
+
+            <div style="flex: 1; min-width: 180px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Empresa</label>
+                <select name="empresa" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="">-- Todas --</option>
+                    {% for e in empresas %}
+                        <option value="{{ e.id }}" {% if current_empresa == e.id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 180px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Sede</label>
+                <select name="sede" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="">-- Todas --</option>
+                    {% for s in sedes %}
+                        <option value="{{ s.id }}" {% if current_sede == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 180px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Área</label>
+                <select name="area" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="">-- Todas --</option>
+                    {% for a in areas %}
+                        <option value="{{ a.id }}" {% if current_area == a.id|stringformat:"s" %}selected{% endif %}>{{ a.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 180px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Proyecto</label>
+                <select name="proyecto" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="">-- Todos --</option>
+                    {% for p in proyectos %}
+                        <option value="{{ p.id }}" {% if current_proyecto == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Trabajador</label>
+                <select name="trabajador" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="">-- Todos --</option>
+                    {% for t in trabajadores %}
+                        <option value="{{ t.id }}" {% if current_trabajador == t.id|stringformat:"s" %}selected{% endif %}>{{ t.apellido_paterno }} {{ t.nombres }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="min-width: 210px; padding-bottom: 0.5rem;">
+                <label style="font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                    <input type="checkbox" name="solo_con_alerta" value="1" {% if solo_con_alerta %}checked{% endif %}>
+                    Ver solo marcaciones incompletas
+                </label>
+            </div>
+
+            <div>
+                <button type="submit" style="background-color: #2563eb; color: white; padding: 0.6rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    Calcular horas
+                </button>
+                <a href="{% url 'recursoshumanos:reporte_horas_periodo' %}" style="margin-left: 0.5rem; color: #64748b; text-decoration: none; font-size: 0.9rem;">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    {% if not busqueda_realizada %}
+        <div style="text-align: center; padding: 4rem 2rem; color: #64748b; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">⏱️</div>
+            <h3 style="margin: 0 0 0.5rem;">Elige el período a consultar</h3>
+            <p style="margin: 0;">Indica <strong>Desde</strong> y <strong>Hasta</strong> para ver las horas totales de cada trabajador.</p>
+        </div>
+    {% else %}
+
+        {% if periodo_recortado %}
+            <div style="background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; padding: 0.9rem 1.2rem; border-radius: 6px; margin-bottom: 1.5rem; font-size: 0.9rem;">
+                El período incluye días futuros. El cálculo se hizo <strong>hasta hoy ({{ hoy|date:"d/m/Y" }})</strong>: los días que aún no ocurren no suman horas.
+            </div>
+        {% endif %}
+
+        {% if totales %}
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+            <div style="flex: 1; min-width: 180px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+                <div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em;">Trabajadores</div>
+                <div style="font-size: 1.8rem; font-weight: bold; color: #0f172a;">{{ totales.trabajadores }}</div>
+            </div>
+            <div style="flex: 1; min-width: 180px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+                <div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em;">Horas del período</div>
+                <div style="font-size: 1.8rem; font-weight: bold; color: #0f172a;">{{ totales.total_horas }} h</div>
+            </div>
+            <div style="flex: 1; min-width: 180px; background: white; border: 1px solid {% if totales.con_alerta %}#fcd34d{% else %}#e2e8f0{% endif %}; border-radius: 8px; padding: 1rem;">
+                <div style="font-size: 0.8rem; color: #b45309; text-transform: uppercase; letter-spacing: 0.03em;">Con marcación incompleta</div>
+                <div style="font-size: 1.8rem; font-weight: bold; color: #b45309;">{{ totales.con_alerta }}</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <thead style="background-color: #f1f5f9; text-align: left; border-bottom: 2px solid #e2e8f0;">
+                <tr>
+                    <th style="padding: 1rem;">Trabajador</th>
+                    <th style="padding: 1rem;">DNI</th>
+                    <th style="padding: 1rem;">Área</th>
+                    <th style="padding: 1rem; text-align: center;">Días trabajados</th>
+                    <th style="padding: 1rem; text-align: right;">Promedio diario</th>
+                    <th style="padding: 1rem; text-align: right;">Horas totales</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in resumenes %}
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 1rem;">
+                        <a href="{% url 'recursoshumanos:detalle_horas_trabajador' trabajador_id=r.trabajador.id %}?inicio={{ current_inicio }}&amp;fin={{ current_fin }}"
+                           style="text-decoration: none; color: #2563eb; font-weight: bold;">
+                            {{ r.trabajador.apellido_paterno }} {{ r.trabajador.apellido_materno }}, {{ r.trabajador.nombres }}
+                        </a>
+                        {% if r.tiene_alerta %}
+                            <div style="font-size: 0.75rem; color: #b45309; margin-top: 3px;">
+                                ⚠️ {{ r.dias_incompletos }} día{{ r.dias_incompletos|pluralize }} sin salida marcada (suman 0 h)
+                            </div>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 1rem; color: #64748b;">{{ r.trabajador.dni }}</td>
+                    <td style="padding: 1rem; color: #64748b; font-size: 0.9rem;">{{ r.trabajador.area.nombre|default:"-" }}</td>
+
+                    <td style="padding: 1rem; text-align: center; font-size: 0.9rem; color: #64748b;">
+                        {{ r.dias_con_horas }} / {{ r.dias_esperados }}
+                        {% if r.dias_sin_marca %}
+                            <div style="font-size: 0.75rem; color: #b91c1c;">{{ r.dias_sin_marca }} sin marcar</div>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 1rem; text-align: right; color: #64748b;">{{ r.promedio_diario }} h</td>
+                    <td style="padding: 1rem; text-align: right;">
+                        <span style="font-size: 1.25rem; font-weight: bold; color: #0f172a;">{{ r.total_horas }}</span>
+                        <span style="color: #64748b;"> h</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 4rem 2rem; color: #64748b;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                        <h3>Sin resultados</h3>
+                        <p>Ningún trabajador tiene tareo registrado en ese período con los filtros aplicados.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if resumenes %}
+            <tfoot style="background-color: #f8fafc; border-top: 2px solid #e2e8f0;">
+                <tr>
+                    <td colspan="5" style="padding: 1rem; text-align: right; font-weight: bold; color: #475569;">Total del período</td>
+                    <td style="padding: 1rem; text-align: right; font-size: 1.25rem; font-weight: bold; color: #0f172a;">{{ totales.total_horas }} h</td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+
+        <p style="margin-top: 1.5rem; font-size: 0.85rem; color: #64748b; line-height: 1.6;">
+            Las <strong>horas totales</strong> son la suma de las horas válidas de cada día: horas realmente marcadas,
+            topeadas al horario programado, con el descuento de almuerzo aplicado y las horas extra aprobadas ya incluidas.
+            <strong>Días trabajados</strong> muestra días con horas sobre días en que tocaba trabajar (los días libres no cuentan).
+            Los trabajadores marcados con ⚠️ tienen días sin salida registrada: su total está por debajo de lo real hasta corregir la marcación.
+        </p>
+    {% endif %}
+{% endblock %}

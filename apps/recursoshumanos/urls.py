@@ -31,6 +31,9 @@ urlpatterns = [
     # --- REPORTES EXCEL ASISTENCIA ---
     path('reportes/', views.gestion_reporte_maestro, name='gestion_reportes'),
     path('reportes/justificaciones/', views.reporte_justificaciones_rrhh, name='reporte_justificaciones_rrhh'),
+    # Horas acumuladas en el periodo que fija RRHH
+    path('reportes/horas-periodo/', views.reporte_horas_periodo, name='reporte_horas_periodo'),
+    path('reportes/horas-periodo/<int:trabajador_id>/', views.detalle_horas_trabajador, name='detalle_horas_trabajador'),
     path('exportar-diario/', views.exportar_reporte_diario, name='exportar_reporte_diario'),
     path('exportar-semanal/', views.exportar_reporte_semanal, name='exportar_reporte_semanal'),
     path('exportar-planilla/', views.exportar_formato_planilla, name='exportar_formato_planilla'),
