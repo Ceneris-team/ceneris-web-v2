@@ -5139,6 +5139,10 @@ def reporte_horas_periodo(request):
         'busqueda_realizada': busqueda_realizada,
         'periodo_recortado': periodo_recortado,
         'hoy': hoy,
+        # Fechas ya parseadas para mostrarlas en formato local; las `current_*`
+        # se quedan en ISO porque son las que rellenan los <input type="date">.
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
         'current_inicio': inicio_str,
         'current_fin': fin_str,
         'current_empresa': empresa_id,

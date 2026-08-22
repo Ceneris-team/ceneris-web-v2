@@ -2,191 +2,1044 @@
 
 {% block title %}Horas Acumuladas por Período{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* ================================================================= */
+    /*  Horas Acumuladas por Período                                     */
+    /*  Prefijo hp- para no chocar con los estilos globales del panel.   */
+    /* ================================================================= */
+
+    .hp-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.5rem;
+    }
+    .hp-header__title { display: flex; align-items: center; gap: 1rem; }
+    .hp-header__icon {
+        width: 48px; height: 48px; flex-shrink: 0;
+        border-radius: 12px;
+        background: #fff3e0; color: #e65100;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .hp-header__icon svg { width: 24px; height: 24px; }
+    .hp-header h1 { margin: 0; font-size: 1.65rem; color: #1e293b; line-height: 1.2; }
+    .hp-header p { margin: 0.25rem 0 0; color: #64748b; font-size: 0.92rem; }
+
+    /* ------------------------------------------------------------------
+       OJO con el `!important` de los colores de texto en esta pantalla.
+       static/css/style.css:248 aplica `color: white !important` a TODO
+       <button>, pensando en botones de fondo oscuro. Mis botones son de
+       fondo claro, así que sin `!important` el texto sale blanco sobre
+       blanco y se ven como pastillas vacías. Un `!important` solo se
+       vence con otro: subir la especificidad no basta.
+       ------------------------------------------------------------------ */
+
+    /* --- Atajos de período --- */
+    .hp-atajos {
+        display: flex; flex-direction: column;
+        align-items: flex-end; gap: 0.6rem;
+    }
+    .hp-quick { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+
+    /* Quincena: el mes manda, por eso va junto a los dos botones. */
+    .hp-quincena {
+        display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;
+        background: #fff; border: 1px solid #e2e8f0;
+        border-radius: 999px;
+        padding: 0.3rem 0.35rem 0.3rem 0.9rem;
+    }
+    .hp-quincena label {
+        font-size: 0.74rem; font-weight: 700; color: #64748b;
+        text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .hp-quincena input[type="month"] {
+        border: 1px solid #cbd5e1; border-radius: 999px;
+        padding: 0.28rem 0.6rem;
+        font-size: 0.82rem; font-family: inherit; color: #1e293b;
+        background: #fff;
+    }
+    .hp-quincena input[type="month"]:focus {
+        outline: none; border-color: #e65100;
+        box-shadow: 0 0 0 3px rgba(230, 81, 0, 0.12);
+    }
+
+    .hp-quick button,
+    .hp-quincena button {
+        background: #fff; border: 1px solid #cbd5e1;
+        color: #475569 !important;
+        padding: 0.45rem 0.85rem; border-radius: 999px;
+        font-size: 0.82rem; font-weight: 600; line-height: 1.35;
+        cursor: pointer; white-space: nowrap;
+        transition: all 0.15s ease;
+    }
+    .hp-quick button:hover,
+    .hp-quincena button:hover {
+        border-color: #e65100; color: #e65100 !important; background: #fff8f2;
+        transform: translateY(-2px);
+        opacity: 1;   /* anula el `button:hover { opacity: .85 }` global */
+        box-shadow: 0 4px 10px rgba(230, 81, 0, 0.15);
+    }
+    .hp-quick button:active,
+    .hp-quincena button:active { transform: translateY(0) scale(0.97); }
+
+    /* Atajo que coincide con el período consultado. */
+    .hp-quick button.hp-activo,
+    .hp-quincena button.hp-activo {
+        border-color: #e65100; background: #fff3e0;
+        color: #c2410c !important;
+        box-shadow: inset 0 0 0 1px #e65100;
+    }
+
+    /* --- Panel de filtros --- */
+    .hp-panel {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    .hp-panel__main {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        align-items: end;
+    }
+    .hp-panel__more {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: #f8fafc;
+        border-top: 1px dashed #dee2e6;
+        align-items: end;
+        /* Plegado animado: max-height generoso, nunca alcanzado por el contenido. */
+        max-height: 640px;
+        overflow: hidden;
+        transition: max-height 0.35s ease, opacity 0.3s ease,
+                    padding 0.35s ease, border-top-width 0.35s ease, visibility 0s;
+    }
+    .hp-panel__more.hp-collapsed {
+        max-height: 0;
+        opacity: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        border-top-width: 0;
+        visibility: hidden;
+        transition: max-height 0.35s ease, opacity 0.25s ease,
+                    padding 0.35s ease, border-top-width 0.35s ease, visibility 0s 0.35s;
+    }
+    .hp-field { display: flex; flex-direction: column; min-width: 0; }
+    .hp-field label {
+        font-size: 0.78rem; font-weight: 700; color: #475569;
+        text-transform: uppercase; letter-spacing: 0.03em;
+        margin-bottom: 0.4rem;
+    }
+    .hp-field input[type="date"],
+    .hp-field select {
+        width: 100%;
+        padding: 0.55rem 0.7rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 0.92rem;
+        font-family: inherit;
+        color: #1e293b;
+        background: #fff;
+    }
+    .hp-field input[type="date"]:focus,
+    .hp-field select:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+    .hp-actions { display: flex; align-items: center; gap: 0.75rem; }
+    .hp-btn {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        background: #2563eb; color: #fff !important;
+        border: none; border-radius: 8px;
+        padding: 0.6rem 1.25rem;
+        font-size: 0.92rem; font-weight: 600; cursor: pointer;
+        white-space: nowrap;
+    }
+    .hp-btn:hover {
+        background: #1d4ed8;
+        transform: translateY(-1px);
+        opacity: 1;
+        box-shadow: 0 5px 14px rgba(37, 99, 235, 0.3);
+    }
+    .hp-btn:active { transform: translateY(0) scale(0.98); }
+    .hp-btn svg { width: 16px; height: 16px; }
+    .hp-link {
+        color: #64748b; text-decoration: none; font-size: 0.88rem; font-weight: 500;
+    }
+    .hp-link:hover { color: #1e293b; text-decoration: underline; }
+    .hp-check {
+        display: flex; align-items: center; gap: 0.5rem;
+        font-size: 0.88rem; color: #475569; cursor: pointer;
+        padding-bottom: 0.55rem;
+    }
+    .hp-toggle {
+        display: flex; align-items: center; gap: 0.4rem;
+        width: 100%; background: #f8fafc; border: none;
+        border-top: 1px solid #f1f5f9;
+        padding: 0.7rem 1.5rem;
+        font-size: 0.85rem; font-weight: 600;
+        color: #475569 !important;
+        cursor: pointer; text-align: left;
+    }
+    .hp-toggle:hover { color: #1e293b !important; background: #f1f5f9; opacity: 1; }
+    .hp-toggle svg { width: 15px; height: 15px; transition: transform 0.2s ease; }
+    .hp-toggle[aria-expanded="true"] svg.hp-chevron { transform: rotate(180deg); }
+
+    /* --- Tarjetas resumen --- */
+    .hp-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .hp-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-left: 4px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 1.1rem 1.25rem;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    }
+    .hp-card--main { border-left-color: #2563eb; }
+    .hp-card--warn { border-left-color: #f59e0b; background: #fffbeb; }
+    .hp-card--ok { border-left-color: #10b981; }
+    .hp-card__label {
+        font-size: 0.75rem; color: #64748b; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.04em;
+        display: flex; align-items: center; gap: 0.4rem;
+    }
+    .hp-card__label svg { width: 14px; height: 14px; }
+    .hp-card__value {
+        font-size: 1.9rem; font-weight: 700; color: #0f172a;
+        margin-top: 0.35rem; line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+    }
+    .hp-card__value small { font-size: 1rem; font-weight: 600; color: #64748b; }
+    .hp-card__hint { font-size: 0.78rem; color: #94a3b8; margin-top: 0.25rem; }
+    .hp-card--warn .hp-card__value { color: #b45309; }
+    .hp-card--warn .hp-card__label { color: #b45309; }
+    .hp-card--ok .hp-card__value { color: #047857; }
+
+    /* --- Barra de herramientas de la tabla --- */
+    .hp-toolbar {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 1rem; flex-wrap: wrap;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .hp-search {
+        position: relative; flex: 1; max-width: 320px; min-width: 200px;
+    }
+    .hp-search input {
+        width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.2rem;
+        border: 1px solid #cbd5e1; border-radius: 8px;
+        font-size: 0.9rem; font-family: inherit;
+    }
+    .hp-search input:focus {
+        outline: none; border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+    .hp-search svg {
+        position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%);
+        width: 16px; height: 16px; color: #94a3b8;
+    }
+    .hp-btn-ghost {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        background: #fff; border: 1px solid #cbd5e1;
+        color: #475569 !important;
+        border-radius: 8px; padding: 0.5rem 0.9rem;
+        font-size: 0.85rem; font-weight: 600; cursor: pointer;
+        white-space: nowrap;
+    }
+    .hp-btn-ghost:hover {
+        border-color: #94a3b8; color: #1e293b !important;
+        background: #f8fafc; opacity: 1;
+    }
+    .hp-btn-ghost svg { width: 15px; height: 15px; }
+
+    /* --- Tabla --- */
+    .hp-table-wrap {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+    }
+    .hp-scroll { overflow-x: auto; }
+    .hp-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    .hp-table thead th {
+        position: sticky; top: 0; z-index: 2;
+        background: #f8fafc;
+        text-align: left;
+        padding: 0.8rem 1rem;
+        font-size: 0.74rem; font-weight: 700; color: #475569;
+        text-transform: uppercase; letter-spacing: 0.05em;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
+    }
+    .hp-table th.hp-sortable { cursor: pointer; user-select: none; }
+    .hp-table th.hp-sortable:hover { color: #1e293b; background: #f1f5f9; }
+    .hp-sort-mark { color: #94a3b8; margin-left: 3px; font-size: 0.7rem; }
+    .hp-table th[data-dir="asc"] .hp-sort-mark,
+    .hp-table th[data-dir="desc"] .hp-sort-mark { color: #2563eb; }
+    .hp-table tbody td {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    .hp-table tbody tr:hover { background: #f8fafc; }
+    .hp-table tbody tr.hp-row--warn { background: #fffdf5; }
+    .hp-table tbody tr.hp-row--warn:hover { background: #fef9e7; }
+
+    .hp-person { display: flex; align-items: center; gap: 0.7rem; }
+    .hp-avatar {
+        width: 34px; height: 34px; flex-shrink: 0;
+        border-radius: 50%;
+        background: #e2e8f0; color: #475569;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.76rem; font-weight: 700; letter-spacing: 0.02em;
+    }
+    .hp-person__name {
+        color: #1e40af; text-decoration: none; font-weight: 600;
+    }
+    .hp-person__name:hover { text-decoration: underline; }
+
+    .hp-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .hp-center { text-align: center; }
+    .hp-muted { color: #64748b; }
+    .hp-dni { font-variant-numeric: tabular-nums; color: #64748b; }
+
+    .hp-total { display: flex; align-items: baseline; justify-content: flex-end; gap: 0.3rem; }
+    .hp-total strong { font-size: 1.2rem; font-weight: 700; color: #0f172a; }
+    .hp-total span { color: #94a3b8; font-size: 0.85rem; }
+    .hp-bar {
+        height: 4px; border-radius: 999px; background: #e2e8f0;
+        margin-top: 6px; overflow: hidden;
+    }
+    .hp-bar i {
+        display: block; height: 100%; background: #2563eb; border-radius: 999px;
+        width: 0;   /* el ancho real lo pone el JS: así crece desde cero */
+        transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .hp-row--warn .hp-bar i { background: #f59e0b; }
+
+    .hp-progress { display: inline-flex; align-items: baseline; gap: 0.25rem; font-weight: 600; color: #334155; }
+    .hp-progress small { color: #94a3b8; font-weight: 500; }
+
+    .hp-tag {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        background: #fef3c7; color: #92400e;
+        border-radius: 6px; padding: 2px 7px;
+        font-size: 0.72rem; font-weight: 700;
+        margin-top: 4px;
+    }
+    .hp-tag svg { width: 12px; height: 12px; }
+
+    .hp-table tfoot td {
+        background: #f8fafc;
+        border-top: 2px solid #e2e8f0;
+        padding: 1rem;
+        font-weight: 700; color: #334155;
+    }
+
+    /* --- Estados vacíos --- */
+    .hp-empty {
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+        padding: 4rem 2rem; text-align: center; color: #64748b;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    }
+    .hp-empty__icon {
+        width: 64px; height: 64px; margin: 0 auto 1.25rem;
+        border-radius: 50%; background: #f1f5f9; color: #94a3b8;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .hp-empty__icon svg { width: 28px; height: 28px; }
+    .hp-empty h3 { margin: 0 0 0.5rem; color: #334155; font-size: 1.15rem; }
+    .hp-empty p { margin: 0; font-size: 0.92rem; }
+
+    .hp-note {
+        background: #fef3c7; border: 1px solid #fcd34d; color: #92400e;
+        padding: 0.85rem 1.15rem; border-radius: 10px;
+        margin-bottom: 1.5rem; font-size: 0.88rem;
+        display: flex; align-items: flex-start; gap: 0.6rem;
+    }
+    .hp-note svg { width: 17px; height: 17px; flex-shrink: 0; margin-top: 2px; }
+
+    .hp-foot-help {
+        margin-top: 1.25rem; font-size: 0.84rem; color: #64748b; line-height: 1.65;
+    }
+    .hp-foot-help strong { color: #475569; }
+
+    /* ================================================================= */
+    /*  Animaciones                                                      */
+    /* ================================================================= */
+
+    @keyframes hp-fade-up {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: none; }
+    }
+    @keyframes hp-fade {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    @keyframes hp-pop {
+        0%   { opacity: 0; transform: scale(0.94); }
+        65%  { opacity: 1; transform: scale(1.02); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes hp-float {
+        0%, 100% { transform: translateY(0); }
+        50%      { transform: translateY(-7px); }
+    }
+    @keyframes hp-latido {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35); }
+        60%      { box-shadow: 0 0 0 9px rgba(245, 158, 11, 0); }
+    }
+
+    /* --- Entrada de la página ---
+       fill-mode `backwards` y no `both`: al terminar, el elemento vuelve a sus
+       estilos normales. Con `both` el transform final quedaría fijado por la
+       animación y ganaría al :hover, que dejaría de moverse. */
+    .hp-header      { animation: hp-fade-up 0.45s backwards; }
+    .hp-panel       { animation: hp-fade-up 0.45s 0.06s backwards; }
+    .hp-note        { animation: hp-fade-up 0.4s backwards; }
+    .hp-table-wrap  { animation: hp-fade-up 0.5s 0.18s backwards; }
+    .hp-foot-help   { animation: hp-fade 0.6s 0.4s backwards; }
+
+    .hp-quincena { animation: hp-fade-up 0.4s 0.05s backwards; }
+    .hp-quick button { animation: hp-fade-up 0.4s backwards; }
+    .hp-quick button:nth-child(1) { animation-delay: 0.12s; }
+    .hp-quick button:nth-child(2) { animation-delay: 0.18s; }
+    .hp-quick button:nth-child(3) { animation-delay: 0.24s; }
+    .hp-quick button:nth-child(4) { animation-delay: 0.30s; }
+
+    .hp-card { animation: hp-pop 0.45s backwards; }
+    .hp-card:nth-child(1) { animation-delay: 0.10s; }
+    .hp-card:nth-child(2) { animation-delay: 0.18s; }
+    .hp-card:nth-child(3) { animation-delay: 0.26s; }
+
+    /* Filas: el retardo escalonado lo inyecta el JS en --d. */
+    .hp-table tbody tr.hp-anim-in {
+        animation: hp-fade-up 0.38s backwards;
+        animation-delay: var(--d, 0s);
+    }
+    /* Reordenar la tabla: refresco breve para que se note el cambio. */
+    .hp-table tbody tr.hp-reordenada {
+        animation: hp-fade 0.3s backwards;
+        animation-delay: var(--d, 0s);
+    }
+
+    /* --- Interacción --- */
+    .hp-quick button,
+    .hp-btn,
+    .hp-btn-ghost,
+    .hp-link,
+    .hp-toggle,
+    .hp-person__name,
+    .hp-field input[type="date"],
+    .hp-field select,
+    .hp-search input {
+        transition: all 0.18s ease;
+    }
+    .hp-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .hp-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10);
+    }
+    .hp-btn-ghost:hover { transform: translateY(-1px); }
+    .hp-btn-ghost:active { transform: translateY(0) scale(0.98); }
+
+    .hp-table tbody tr { transition: background-color 0.18s ease; }
+    .hp-avatar { transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease; }
+    .hp-table tbody tr:hover .hp-avatar {
+        transform: scale(1.09);
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    .hp-table tbody tr.hp-row--warn:hover .hp-avatar {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .hp-person__name:hover { color: #2563eb; }
+
+    /* Flecha de orden: gira al pasar a ascendente. */
+    .hp-sort-mark {
+        display: inline-block;
+        transition: transform 0.2s ease, color 0.2s ease;
+    }
+    .hp-table th[data-dir="asc"] .hp-sort-mark { transform: rotate(180deg); }
+
+    /* Chevron de "Más filtros" (la regla de rotación ya existe arriba). */
+    .hp-toggle svg.hp-chevron { transition: transform 0.3s ease; }
+
+    /* La etiqueta de marcación incompleta se anuncia sola. */
+    .hp-tag {
+        animation: hp-pop 0.4s 0.3s backwards, hp-latido 2.2s 0.8s 3;
+    }
+
+    /* Estado vacío: el ícono flota despacio. */
+    .hp-empty__icon { animation: hp-float 3.5s ease-in-out infinite; }
+
+    @media (max-width: 640px) {
+        .hp-header { flex-direction: column; }
+        .hp-panel__main, .hp-panel__more { padding: 1rem; }
+        .hp-atajos { align-items: stretch; width: 100%; }
+        .hp-quick { justify-content: flex-start; }
+        .hp-quincena { border-radius: 14px; padding: 0.6rem 0.75rem; }
+    }
+
+    /* --- Quien pidió menos movimiento, no ve movimiento --- */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+        .hp-card:hover, .hp-btn:hover, .hp-btn-ghost:hover, .hp-quick button:hover {
+            transform: none;
+        }
+    }
+
+    /* --- Impresión: solo los datos --- */
+    @media print {
+        #sidebar, .hp-quick, .hp-panel, .hp-toolbar, .hp-foot-help { display: none !important; }
+        #content { background: #fff !important; }
+        .hp-table-wrap, .hp-card { box-shadow: none; }
+        .hp-table thead th { position: static; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-    <div class="page-header">
-        <div>
-            <h1>Horas Acumuladas por Período</h1>
-            <p style="margin: 0;">Elige un rango de fechas y revisa el total de horas trabajadas de cada trabajador.</p>
+    <div class="hp-header">
+        <div class="hp-header__title">
+            <div class="hp-header__icon"><i data-feather="clock"></i></div>
+            <div>
+                <h1>Horas Acumuladas por Período</h1>
+                <p>Elige un rango de fechas y revisa el total de horas trabajadas de cada trabajador.</p>
+            </div>
+        </div>
+        <div class="hp-atajos">
+            <div class="hp-quincena">
+                <label for="hp-mes">Quincena de</label>
+                <input type="month" id="hp-mes" value="{{ fecha_inicio|date:'Y-m' }}"
+                       aria-label="Mes de la quincena">
+                <button type="button" data-quincena="1" aria-pressed="false">1.ª · 1–15</button>
+                <button type="button" data-quincena="2" aria-pressed="false">2.ª · 16–fin</button>
+            </div>
+            <div class="hp-quick">
+                <button type="button" data-rango="semana" aria-pressed="false">Esta semana</button>
+                <button type="button" data-rango="semana_pasada" aria-pressed="false">Semana pasada</button>
+                <button type="button" data-rango="mes" aria-pressed="false">Este mes</button>
+                <button type="button" data-rango="mes_pasado" aria-pressed="false">Mes pasado</button>
+            </div>
         </div>
     </div>
 
-    <div style="background-color: #f8fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid #e2e8f0;">
-        <form method="GET" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
-
-            <div style="flex: 1; min-width: 150px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Desde *</label>
-                <input type="date" name="inicio" required value="{{ current_inicio }}"
-                       style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+    {% with filtros_activos=current_empresa|add:current_sede|add:current_area|add:current_proyecto %}
+    <form method="GET" id="hp-form" class="hp-panel">
+        <div class="hp-panel__main">
+            <div class="hp-field">
+                <label for="hp-inicio">Desde *</label>
+                <input type="date" id="hp-inicio" name="inicio" required value="{{ current_inicio }}">
             </div>
-
-            <div style="flex: 1; min-width: 150px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Hasta *</label>
-                <input type="date" name="fin" required value="{{ current_fin }}"
-                       style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+            <div class="hp-field">
+                <label for="hp-fin">Hasta *</label>
+                <input type="date" id="hp-fin" name="fin" required value="{{ current_fin }}">
             </div>
-
-            <div style="flex: 1; min-width: 180px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Empresa</label>
-                <select name="empresa" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
-                    <option value="">-- Todas --</option>
-                    {% for e in empresas %}
-                        <option value="{{ e.id }}" {% if current_empresa == e.id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div style="flex: 1; min-width: 180px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Sede</label>
-                <select name="sede" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
-                    <option value="">-- Todas --</option>
-                    {% for s in sedes %}
-                        <option value="{{ s.id }}" {% if current_sede == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nombre }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div style="flex: 1; min-width: 180px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Área</label>
-                <select name="area" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
-                    <option value="">-- Todas --</option>
-                    {% for a in areas %}
-                        <option value="{{ a.id }}" {% if current_area == a.id|stringformat:"s" %}selected{% endif %}>{{ a.nombre }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div style="flex: 1; min-width: 180px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Proyecto</label>
-                <select name="proyecto" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
-                    <option value="">-- Todos --</option>
-                    {% for p in proyectos %}
-                        <option value="{{ p.id }}" {% if current_proyecto == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div style="flex: 1; min-width: 200px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Trabajador</label>
-                <select name="trabajador" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+            <div class="hp-field">
+                <label for="hp-trabajador">Trabajador</label>
+                <select id="hp-trabajador" name="trabajador">
                     <option value="">-- Todos --</option>
                     {% for t in trabajadores %}
                         <option value="{{ t.id }}" {% if current_trabajador == t.id|stringformat:"s" %}selected{% endif %}>{{ t.apellido_paterno }} {{ t.nombres }}</option>
                     {% endfor %}
                 </select>
             </div>
-
-            <div style="min-width: 210px; padding-bottom: 0.5rem;">
-                <label style="font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
-                    <input type="checkbox" name="solo_con_alerta" value="1" {% if solo_con_alerta %}checked{% endif %}>
-                    Ver solo marcaciones incompletas
-                </label>
-            </div>
-
-            <div>
-                <button type="submit" style="background-color: #2563eb; color: white; padding: 0.6rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                    Calcular horas
+            <div class="hp-actions">
+                <button type="submit" class="hp-btn">
+                    <i data-feather="bar-chart-2"></i> Calcular horas
                 </button>
-                <a href="{% url 'recursoshumanos:reporte_horas_periodo' %}" style="margin-left: 0.5rem; color: #64748b; text-decoration: none; font-size: 0.9rem;">Limpiar</a>
+                <a href="{% url 'recursoshumanos:reporte_horas_periodo' %}" class="hp-link">Limpiar</a>
             </div>
-        </form>
-    </div>
+        </div>
+
+        <div class="hp-panel__more{% if not filtros_activos and not solo_con_alerta %} hp-collapsed{% endif %}" id="hp-more">
+            <div class="hp-field">
+                <label for="hp-empresa">Empresa</label>
+                <select id="hp-empresa" name="empresa">
+                    <option value="">-- Todas --</option>
+                    {% for e in empresas %}
+                        <option value="{{ e.id }}" {% if current_empresa == e.id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="hp-field">
+                <label for="hp-sede">Sede</label>
+                <select id="hp-sede" name="sede">
+                    <option value="">-- Todas --</option>
+                    {% for s in sedes %}
+                        <option value="{{ s.id }}" {% if current_sede == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="hp-field">
+                <label for="hp-area">Área</label>
+                <select id="hp-area" name="area">
+                    <option value="">-- Todas --</option>
+                    {% for a in areas %}
+                        <option value="{{ a.id }}" {% if current_area == a.id|stringformat:"s" %}selected{% endif %}>{{ a.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="hp-field">
+                <label for="hp-proyecto">Proyecto</label>
+                <select id="hp-proyecto" name="proyecto">
+                    <option value="">-- Todos --</option>
+                    {% for p in proyectos %}
+                        <option value="{{ p.id }}" {% if current_proyecto == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <label class="hp-check">
+                <input type="checkbox" name="solo_con_alerta" value="1" {% if solo_con_alerta %}checked{% endif %}>
+                Ver solo marcaciones incompletas
+            </label>
+        </div>
+
+        <button type="button" class="hp-toggle" id="hp-toggle"
+                aria-controls="hp-more"
+                aria-expanded="{% if filtros_activos or solo_con_alerta %}true{% else %}false{% endif %}">
+            <i data-feather="sliders"></i>
+            <span id="hp-toggle-text">{% if filtros_activos or solo_con_alerta %}Ocultar filtros{% else %}Más filtros{% endif %}</span>
+            <i data-feather="chevron-down" class="hp-chevron"></i>
+        </button>
+    </form>
+    {% endwith %}
 
     {% if not busqueda_realizada %}
-        <div style="text-align: center; padding: 4rem 2rem; color: #64748b; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">⏱️</div>
-            <h3 style="margin: 0 0 0.5rem;">Elige el período a consultar</h3>
-            <p style="margin: 0;">Indica <strong>Desde</strong> y <strong>Hasta</strong> para ver las horas totales de cada trabajador.</p>
+        <div class="hp-empty">
+            <div class="hp-empty__icon"><i data-feather="calendar"></i></div>
+            <h3>Elige el período a consultar</h3>
+            <p>Indica <strong>Desde</strong> y <strong>Hasta</strong> —o usa un atajo— para ver las horas totales de cada trabajador.</p>
         </div>
     {% else %}
 
         {% if periodo_recortado %}
-            <div style="background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; padding: 0.9rem 1.2rem; border-radius: 6px; margin-bottom: 1.5rem; font-size: 0.9rem;">
-                El período incluye días futuros. El cálculo se hizo <strong>hasta hoy ({{ hoy|date:"d/m/Y" }})</strong>: los días que aún no ocurren no suman horas.
+            <div class="hp-note">
+                <i data-feather="alert-triangle"></i>
+                <div>El período incluye días futuros. El cálculo se hizo <strong>hasta hoy ({{ hoy|date:"d/m/Y" }})</strong>: los días que aún no ocurren no suman horas.</div>
             </div>
         {% endif %}
 
         {% if totales %}
-        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
-            <div style="flex: 1; min-width: 180px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
-                <div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em;">Trabajadores</div>
-                <div style="font-size: 1.8rem; font-weight: bold; color: #0f172a;">{{ totales.trabajadores }}</div>
+        <div class="hp-cards">
+            <div class="hp-card">
+                <div class="hp-card__label"><i data-feather="users"></i> Trabajadores</div>
+                <div class="hp-card__value"><span data-contador="{{ totales.trabajadores|stringformat:'s' }}" data-decimales="0">{{ totales.trabajadores }}</span></div>
+                <div class="hp-card__hint">con tareo en el período</div>
             </div>
-            <div style="flex: 1; min-width: 180px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
-                <div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em;">Horas del período</div>
-                <div style="font-size: 1.8rem; font-weight: bold; color: #0f172a;">{{ totales.total_horas }} h</div>
+            <div class="hp-card hp-card--main">
+                <div class="hp-card__label"><i data-feather="clock"></i> Horas del período</div>
+                <div class="hp-card__value"><span data-contador="{{ totales.total_horas|stringformat:'s' }}" data-decimales="2">{{ totales.total_horas }}</span> <small>h</small></div>
+                <div class="hp-card__hint">{{ fecha_inicio|date:"d/m/Y" }} &rarr; {{ fecha_fin|date:"d/m/Y" }}</div>
             </div>
-            <div style="flex: 1; min-width: 180px; background: white; border: 1px solid {% if totales.con_alerta %}#fcd34d{% else %}#e2e8f0{% endif %}; border-radius: 8px; padding: 1rem;">
-                <div style="font-size: 0.8rem; color: #b45309; text-transform: uppercase; letter-spacing: 0.03em;">Con marcación incompleta</div>
-                <div style="font-size: 1.8rem; font-weight: bold; color: #b45309;">{{ totales.con_alerta }}</div>
+            <div class="hp-card {% if totales.con_alerta %}hp-card--warn{% else %}hp-card--ok{% endif %}">
+                <div class="hp-card__label">
+                    <i data-feather="{% if totales.con_alerta %}alert-triangle{% else %}check-circle{% endif %}"></i>
+                    Con marcación incompleta
+                </div>
+                <div class="hp-card__value"><span data-contador="{{ totales.con_alerta|stringformat:'s' }}" data-decimales="0">{{ totales.con_alerta }}</span></div>
+                <div class="hp-card__hint">{% if totales.con_alerta %}revísalas antes de decidir el pago{% else %}todas las marcaciones están cerradas{% endif %}</div>
             </div>
         </div>
         {% endif %}
 
-        <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-            <thead style="background-color: #f1f5f9; text-align: left; border-bottom: 2px solid #e2e8f0;">
-                <tr>
-                    <th style="padding: 1rem;">Trabajador</th>
-                    <th style="padding: 1rem;">DNI</th>
-                    <th style="padding: 1rem;">Área</th>
-                    <th style="padding: 1rem; text-align: center;">Días trabajados</th>
-                    <th style="padding: 1rem; text-align: right;">Promedio diario</th>
-                    <th style="padding: 1rem; text-align: right;">Horas totales</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for r in resumenes %}
-                <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 1rem;">
-                        <a href="{% url 'recursoshumanos:detalle_horas_trabajador' trabajador_id=r.trabajador.id %}?inicio={{ current_inicio }}&amp;fin={{ current_fin }}"
-                           style="text-decoration: none; color: #2563eb; font-weight: bold;">
-                            {{ r.trabajador.apellido_paterno }} {{ r.trabajador.apellido_materno }}, {{ r.trabajador.nombres }}
-                        </a>
-                        {% if r.tiene_alerta %}
-                            <div style="font-size: 0.75rem; color: #b45309; margin-top: 3px;">
-                                ⚠️ {{ r.dias_incompletos }} día{{ r.dias_incompletos|pluralize }} sin salida marcada (suman 0 h)
-                            </div>
-                        {% endif %}
-                    </td>
-                    <td style="padding: 1rem; color: #64748b;">{{ r.trabajador.dni }}</td>
-                    <td style="padding: 1rem; color: #64748b; font-size: 0.9rem;">{{ r.trabajador.area.nombre|default:"-" }}</td>
-
-                    <td style="padding: 1rem; text-align: center; font-size: 0.9rem; color: #64748b;">
-                        {{ r.dias_con_horas }} / {{ r.dias_esperados }}
-                        {% if r.dias_sin_marca %}
-                            <div style="font-size: 0.75rem; color: #b91c1c;">{{ r.dias_sin_marca }} sin marcar</div>
-                        {% endif %}
-                    </td>
-                    <td style="padding: 1rem; text-align: right; color: #64748b;">{{ r.promedio_diario }} h</td>
-                    <td style="padding: 1rem; text-align: right;">
-                        <span style="font-size: 1.25rem; font-weight: bold; color: #0f172a;">{{ r.total_horas }}</span>
-                        <span style="color: #64748b;"> h</span>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" style="text-align: center; padding: 4rem 2rem; color: #64748b;">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
-                        <h3>Sin resultados</h3>
-                        <p>Ningún trabajador tiene tareo registrado en ese período con los filtros aplicados.</p>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
+        <div class="hp-table-wrap">
             {% if resumenes %}
-            <tfoot style="background-color: #f8fafc; border-top: 2px solid #e2e8f0;">
-                <tr>
-                    <td colspan="5" style="padding: 1rem; text-align: right; font-weight: bold; color: #475569;">Total del período</td>
-                    <td style="padding: 1rem; text-align: right; font-size: 1.25rem; font-weight: bold; color: #0f172a;">{{ totales.total_horas }} h</td>
-                </tr>
-            </tfoot>
+            <div class="hp-toolbar">
+                <div class="hp-search">
+                    <i data-feather="search"></i>
+                    <input type="search" id="hp-buscar" placeholder="Buscar por nombre, DNI o área..." autocomplete="off">
+                </div>
+                <button type="button" class="hp-btn-ghost" id="hp-imprimir">
+                    <i data-feather="printer"></i> Imprimir
+                </button>
+            </div>
             {% endif %}
-        </table>
 
-        <p style="margin-top: 1.5rem; font-size: 0.85rem; color: #64748b; line-height: 1.6;">
+            <div class="hp-scroll">
+            <table class="hp-table" id="hp-tabla">
+                <thead>
+                    <tr>
+                        <th class="hp-sortable" data-col="0" data-tipo="texto">Trabajador <span class="hp-sort-mark">&#9662;</span></th>
+                        <th class="hp-sortable" data-col="1" data-tipo="texto">DNI <span class="hp-sort-mark">&#9662;</span></th>
+                        <th class="hp-sortable" data-col="2" data-tipo="texto">Área <span class="hp-sort-mark">&#9662;</span></th>
+                        <th class="hp-sortable hp-center" data-col="3" data-tipo="num">Días trabajados <span class="hp-sort-mark">&#9662;</span></th>
+                        <th class="hp-sortable hp-num" data-col="4" data-tipo="num">Promedio diario <span class="hp-sort-mark">&#9662;</span></th>
+                        <th class="hp-sortable hp-num" data-col="5" data-tipo="num">Horas totales <span class="hp-sort-mark">&#9662;</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in resumenes %}
+                    <tr class="{% if r.tiene_alerta %}hp-row--warn{% endif %}"
+                        data-buscar="{{ r.trabajador.apellido_paterno }} {{ r.trabajador.apellido_materno }} {{ r.trabajador.nombres }} {{ r.trabajador.dni }} {{ r.trabajador.area.nombre|default:'' }}">
+                        <td>
+                            <div class="hp-person">
+                                <div class="hp-avatar">{{ r.trabajador.apellido_paterno|slice:":1" }}{{ r.trabajador.nombres|slice:":1" }}</div>
+                                <div>
+                                    <a class="hp-person__name"
+                                       href="{% url 'recursoshumanos:detalle_horas_trabajador' trabajador_id=r.trabajador.id %}?inicio={{ current_inicio }}&amp;fin={{ current_fin }}">
+                                        {{ r.trabajador.apellido_paterno }} {{ r.trabajador.apellido_materno }}, {{ r.trabajador.nombres }}
+                                    </a>
+                                    {% if r.tiene_alerta %}
+                                        <div>
+                                            <span class="hp-tag">
+                                                <i data-feather="alert-triangle"></i>
+                                                {{ r.dias_incompletos }} día{{ r.dias_incompletos|pluralize }} sin salida marcada
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="hp-dni" data-orden="{{ r.trabajador.dni }}">{{ r.trabajador.dni }}</td>
+                        <td class="hp-muted" data-orden="{{ r.trabajador.area.nombre|default:'' }}">{{ r.trabajador.area.nombre|default:"-" }}</td>
+                        <td class="hp-center" data-orden="{{ r.dias_con_horas }}">
+                            <span class="hp-progress">{{ r.dias_con_horas }} <small>/ {{ r.dias_esperados }}</small></span>
+                            {% if r.dias_sin_marca %}
+                                <div style="font-size: 0.75rem; color: #b91c1c; margin-top: 2px;">{{ r.dias_sin_marca }} sin marcar</div>
+                            {% endif %}
+                        </td>
+                        <td class="hp-num hp-muted" data-orden="{{ r.promedio_diario|stringformat:'s' }}">{{ r.promedio_diario }} h</td>
+                        <td class="hp-num" data-orden="{{ r.total_horas|stringformat:'s' }}" data-horas="{{ r.total_horas|stringformat:'s' }}">
+                            <div class="hp-total"><strong>{{ r.total_horas }}</strong><span>h</span></div>
+                            <div class="hp-bar"><i style="width: 0%"></i></div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">
+                            <div class="hp-empty" style="border: none; box-shadow: none; padding: 3.5rem 2rem;">
+                                <div class="hp-empty__icon"><i data-feather="inbox"></i></div>
+                                <h3>Sin resultados</h3>
+                                <p>Ningún trabajador tiene tareo registrado en ese período con los filtros aplicados.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr id="hp-sin-coincidencias" hidden>
+                        <td colspan="6" style="text-align: center; padding: 2.5rem; color: #64748b;">
+                            Ningún trabajador coincide con la búsqueda.
+                        </td>
+                    </tr>
+                </tbody>
+                {% if resumenes %}
+                <tfoot>
+                    <tr>
+                        <td colspan="5" style="text-align: right;">Total del período</td>
+                        <td class="hp-num" style="font-size: 1.2rem; color: #0f172a;">{{ totales.total_horas }} h</td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+            </div>
+        </div>
+
+        <p class="hp-foot-help">
             Las <strong>horas totales</strong> son la suma de las horas válidas de cada día: horas realmente marcadas,
             topeadas al horario programado, con el descuento de almuerzo aplicado y las horas extra aprobadas ya incluidas.
             <strong>Días trabajados</strong> muestra días con horas sobre días en que tocaba trabajar (los días libres no cuentan).
-            Los trabajadores marcados con ⚠️ tienen días sin salida registrada: su total está por debajo de lo real hasta corregir la marcación.
+            Las filas resaltadas tienen días sin salida registrada: su total está por debajo de lo real hasta corregir la marcación.
         </p>
     {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    'use strict';
+
+    var form = document.getElementById('hp-form');
+    var inputInicio = document.getElementById('hp-inicio');
+    var inputFin = document.getElementById('hp-fin');
+
+    // --- Atajos de período: rellenan las fechas y lanzan la consulta ---
+    function iso(fecha) {
+        var mes = String(fecha.getMonth() + 1).padStart(2, '0');
+        var dia = String(fecha.getDate()).padStart(2, '0');
+        return fecha.getFullYear() + '-' + mes + '-' + dia;
+    }
+
+    function rango(clave) {
+        var hoy = new Date();
+        var lunes = new Date(hoy);
+        // getDay(): 0 = domingo. Se retrocede hasta el lunes de esta semana.
+        lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
+
+        if (clave === 'semana') {
+            return [lunes, hoy];
+        }
+        if (clave === 'semana_pasada') {
+            var lunesPasado = new Date(lunes);
+            lunesPasado.setDate(lunes.getDate() - 7);
+            var domingoPasado = new Date(lunes);
+            domingoPasado.setDate(lunes.getDate() - 1);
+            return [lunesPasado, domingoPasado];
+        }
+        if (clave === 'mes') {
+            return [new Date(hoy.getFullYear(), hoy.getMonth(), 1), hoy];
+        }
+        // mes_pasado: el dia 0 del mes actual es el ultimo del mes anterior.
+        return [
+            new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1),
+            new Date(hoy.getFullYear(), hoy.getMonth(), 0)
+        ];
+    }
+
+    // --- Quincenas ---
+    var inputMes = document.getElementById('hp-mes');
+
+    function mesElegido() {
+        var partes = /^(\d{4})-(\d{2})$/.exec(inputMes.value || '');
+        if (!partes) { return null; }
+        return { anio: parseInt(partes[1], 10), mes: parseInt(partes[2], 10) - 1 };
+    }
+
+    function rangoQuincena(cual) {
+        var m = mesElegido();
+        if (!m) { return null; }
+        if (cual === '1') {
+            return [new Date(m.anio, m.mes, 1), new Date(m.anio, m.mes, 15)];
+        }
+        // La 2.ª va del 16 al último día real del mes: el día 0 del mes
+        // siguiente resuelve 28, 29, 30 y 31 sin tablas ni casos especiales.
+        return [new Date(m.anio, m.mes, 16), new Date(m.anio, m.mes + 1, 0)];
+    }
+
+    // Sin mes elegido, el control arranca en el mes en curso.
+    if (!mesElegido()) {
+        var ahora = new Date();
+        inputMes.value = iso(ahora).slice(0, 7);
+    }
+
+    function aplicar(fechas) {
+        if (!fechas) { return; }
+        inputInicio.value = iso(fechas[0]);
+        inputFin.value = iso(fechas[1]);
+        form.submit();
+    }
+
+    document.querySelectorAll('.hp-quick button').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            aplicar(rango(boton.dataset.rango));
+        });
+    });
+
+    document.querySelectorAll('.hp-quincena button').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            aplicar(rangoQuincena(boton.dataset.quincena));
+        });
+    });
+
+    // --- Resalta el atajo que coincide con lo que se está viendo ---
+    function marcarAtajoActivo() {
+        var actual = inputInicio.value + '|' + inputFin.value;
+        var hayPeriodo = inputInicio.value && inputFin.value;
+
+        function evaluar(boton, fechas) {
+            var coincide = !!(hayPeriodo && fechas &&
+                              iso(fechas[0]) + '|' + iso(fechas[1]) === actual);
+            boton.classList.toggle('hp-activo', coincide);
+            boton.setAttribute('aria-pressed', String(coincide));
+        }
+
+        document.querySelectorAll('.hp-quick button').forEach(function (b) {
+            evaluar(b, rango(b.dataset.rango));
+        });
+        document.querySelectorAll('.hp-quincena button').forEach(function (b) {
+            evaluar(b, rangoQuincena(b.dataset.quincena));
+        });
+    }
+
+    marcarAtajoActivo();
+    // Cambiar de mes puede volver activa (o no) una quincena ya consultada.
+    inputMes.addEventListener('change', marcarAtajoActivo);
+    inputInicio.addEventListener('change', marcarAtajoActivo);
+    inputFin.addEventListener('change', marcarAtajoActivo);
+
+    // Si el sistema pide menos movimiento, todo se aplica de golpe.
+    var menosMovimiento = window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // --- Filtros adicionales plegables ---
+    var toggle = document.getElementById('hp-toggle');
+    var more = document.getElementById('hp-more');
+    var toggleText = document.getElementById('hp-toggle-text');
+    if (toggle && more) {
+        toggle.addEventListener('click', function () {
+            var abierto = toggle.getAttribute('aria-expanded') === 'true';
+            toggle.setAttribute('aria-expanded', String(!abierto));
+            more.classList.toggle('hp-collapsed', abierto);
+            toggleText.textContent = abierto ? 'Más filtros' : 'Ocultar filtros';
+        });
+    }
+
+    var imprimir = document.getElementById('hp-imprimir');
+    if (imprimir) {
+        imprimir.addEventListener('click', function () { window.print(); });
+    }
+
+    // --- Contadores de las tarjetas ---
+    function animarContador(el) {
+        var objetivo = parseFloat(el.dataset.contador);
+        var original = el.textContent;
+        if (!isFinite(objetivo) || objetivo <= 0 || menosMovimiento) { return; }
+
+        var decimales = parseInt(el.dataset.decimales, 10) || 0;
+        // El separador decimal lo dicta lo que ya pintó Django, no el locale
+        // del navegador: así el conteo y el valor final se ven iguales.
+        var separador = original.indexOf(',') !== -1 ? ',' : '.';
+        var duracion = 800;
+        var arranque = null;
+
+        function paso(marca) {
+            if (arranque === null) { arranque = marca; }
+            var avance = Math.min((marca - arranque) / duracion, 1);
+            if (avance < 1) {
+                var suave = 1 - Math.pow(1 - avance, 3);  // easeOutCubic
+                el.textContent = (objetivo * suave).toFixed(decimales).replace('.', separador);
+                requestAnimationFrame(paso);
+            } else {
+                el.textContent = original;  // el valor final es el del servidor, intacto
+            }
+        }
+        requestAnimationFrame(paso);
+    }
+
+    document.querySelectorAll('[data-contador]').forEach(animarContador);
+
+    var tabla = document.getElementById('hp-tabla');
+    if (!tabla) { return; }
+    var cuerpo = tabla.tBodies[0];
+    var filas = Array.prototype.slice.call(cuerpo.querySelectorAll('tr[data-buscar]'));
+    if (!filas.length) { return; }
+
+    // --- Entrada escalonada de las filas ---
+    if (!menosMovimiento) {
+        filas.forEach(function (fila, i) {
+            fila.style.setProperty('--d', (250 + Math.min(i * 35, 450)) + 'ms');
+            fila.classList.add('hp-anim-in');
+        });
+        setTimeout(function () {
+            filas.forEach(function (fila) {
+                fila.classList.remove('hp-anim-in');
+                fila.style.removeProperty('--d');
+            });
+        }, 250 + Math.min(filas.length * 35, 450) + 500);
+    }
+
+    // --- Barra proporcional: relativa a quien mas horas acumulo ---
+    var maximo = 0;
+    filas.forEach(function (fila) {
+        var horas = parseFloat(fila.querySelector('[data-horas]').dataset.horas) || 0;
+        if (horas > maximo) { maximo = horas; }
+    });
+    function pintarBarras() {
+        filas.forEach(function (fila) {
+            var celda = fila.querySelector('[data-horas]');
+            var horas = parseFloat(celda.dataset.horas) || 0;
+            var ancho = maximo > 0 ? (horas / maximo) * 100 : 0;
+            celda.querySelector('.hp-bar i').style.width = ancho.toFixed(1) + '%';
+        });
+    }
+    // Las barras arrancan en 0 por CSS; se pintan una vez las filas ya entraron,
+    // de modo que la transición de ancho se vea crecer.
+    if (menosMovimiento) {
+        pintarBarras();
+    } else {
+        setTimeout(pintarBarras, 400);
+    }
+
+    // --- Buscador sobre la tabla ya cargada ---
+    var buscador = document.getElementById('hp-buscar');
+    var sinCoincidencias = document.getElementById('hp-sin-coincidencias');
+    if (buscador) {
+        buscador.addEventListener('input', function () {
+            var texto = buscador.value.trim().toLowerCase();
+            var visibles = 0;
+            filas.forEach(function (fila) {
+                var coincide = !texto || fila.dataset.buscar.toLowerCase().indexOf(texto) !== -1;
+                fila.hidden = !coincide;
+                if (coincide) { visibles++; }
+            });
+            sinCoincidencias.hidden = visibles !== 0;
+        });
+    }
+
+    // --- Ordenamiento por columna ---
+    function valorOrden(fila, indice) {
+        var celda = fila.cells[indice];
+        return (celda.dataset.orden !== undefined ? celda.dataset.orden : celda.textContent).trim();
+    }
+
+    tabla.querySelectorAll('th.hp-sortable').forEach(function (cabecera) {
+        cabecera.addEventListener('click', function () {
+            var indice = parseInt(cabecera.dataset.col, 10);
+            var numerica = cabecera.dataset.tipo === 'num';
+            var desc = cabecera.dataset.dir !== 'desc';
+
+            tabla.querySelectorAll('th.hp-sortable').forEach(function (otra) {
+                if (otra !== cabecera) { delete otra.dataset.dir; }
+            });
+            cabecera.dataset.dir = desc ? 'desc' : 'asc';
+
+            filas.sort(function (a, b) {
+                var va = valorOrden(a, indice);
+                var vb = valorOrden(b, indice);
+                var comparacion = numerica
+                    ? (parseFloat(va) || 0) - (parseFloat(vb) || 0)
+                    : va.localeCompare(vb, 'es', { sensitivity: 'base' });
+                return desc ? -comparacion : comparacion;
+            });
+
+            filas.forEach(function (fila) { cuerpo.insertBefore(fila, sinCoincidencias); });
+            animarReordenadas();
+        });
+    });
+
+    // Refresco breve tras reordenar, para que se vea que la tabla cambió.
+    function animarReordenadas() {
+        if (menosMovimiento) { return; }
+        var visibles = filas.filter(function (fila) { return !fila.hidden; });
+
+        visibles.forEach(function (fila) { fila.classList.remove('hp-reordenada'); });
+        void cuerpo.offsetWidth;  // fuerza un reflow para reiniciar la animación
+
+        visibles.forEach(function (fila, i) {
+            fila.style.setProperty('--d', Math.min(i * 18, 260) + 'ms');
+            fila.classList.add('hp-reordenada');
+        });
+
+        setTimeout(function () {
+            visibles.forEach(function (fila) {
+                fila.classList.remove('hp-reordenada');
+                fila.style.removeProperty('--d');
+            });
+        }, 260 + 350);
+    }
+})();
+</script>
 {% endblock %}
