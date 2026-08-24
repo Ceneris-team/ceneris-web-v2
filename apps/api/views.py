@@ -839,9 +839,17 @@ def _calcular_checksum_usuarios(usuarios_data):
     respuesta (orden de claves tal como se construyen los dicts), porque
     el cliente recalcula el checksum a partir de lo que recibio por HTTP,
     no de una version re-ordenada que nunca viaja por la red.
+
+    Por la misma razon va ensure_ascii=False: DRF renderiza con
+    UNICODE_JSON=True, o sea que manda los acentos como UTF-8 literal
+    ("Jose Martinez" con tilde viaja como bytes \\xc3\\xad). El default de
+    json.dumps los escaparia a "\\u00ed" y el checksum dejaria de
+    corresponder a lo que realmente sale por la red. El cliente Dart usa
+    jsonEncode, que tampoco escapa, asi que sin esto ningun dataset con
+    tildes o enies coincide nunca.
     """
     normalizados = sorted(usuarios_data, key=lambda u: u['dni'])
-    canonical = json.dumps(normalizados, separators=(',', ':'))
+    canonical = json.dumps(normalizados, separators=(',', ':'), ensure_ascii=False)
     return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
 
 
