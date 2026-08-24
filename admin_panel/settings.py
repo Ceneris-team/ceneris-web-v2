@@ -56,26 +56,33 @@ MONITOREO_WEB_URL = os.environ.get('MONITOREO_WEB_URL')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 print(f"VALOR DE DEBUG LEÍDO: {os.environ.get('DJANGO_DEBUG', 'No definido')}, RESULTADO FINAL DE DEBUG: {DEBUG}")
 
+def _lista_desde_env(nombre):
+    """Lee una variable de entorno separada por comas y la vuelve lista."""
+    crudo = os.environ.get(nombre, '')
+    return [item.strip() for item in crudo.split(',') if item.strip()]
+
+
+# Hosts de desarrollo, siempre presentes. Los de cada despliegue se agregan por
+# DJANGO_ALLOWED_HOSTS (separados por comas), que es lo que se usa en Lightsail:
+#   DJANGO_ALLOWED_HOSTS=52.1.2.3
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.10.42']
+for _host in _lista_desde_env('DJANGO_ALLOWED_HOSTS'):
+    if _host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_host)
+
+# Origenes de confianza para POST del panel web. Con IP y puerto hay que incluir
+# el esquema y el puerto: DJANGO_CSRF_TRUSTED_ORIGINS=http://52.1.2.3:8000
+CSRF_TRUSTED_ORIGINS = _lista_desde_env('DJANGO_CSRF_TRUSTED_ORIGINS')
 
 # Si la app se despliega en Render, RENDER_EXTERNAL_HOSTNAME será agregado.
+# Se conserva para no romper esa ruta si algún día se vuelve a Render.
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     if RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
-
-CSRF_TRUSTED_ORIGINS = [
-    # Puedes añadir tus orígenes de desarrollo si usas HTTPS localmente
-    # 'https://localhost:8000',
-    # 'https://127.0.0.1:8000',
-]
-
-if RENDER_EXTERNAL_HOSTNAME:
-    # Construimos la URL completa para el origen de confianza
     trusted_origin = f'https://{RENDER_EXTERNAL_HOSTNAME}'
     if trusted_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(trusted_origin)
-# --- FIN DEL BLOQUE AÑADIDO ---
 # ==============================================================================
 # Aplicaciones Instaladas
 # ==============================================================================
