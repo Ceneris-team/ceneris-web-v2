@@ -21,7 +21,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - datos_postgres:/var/lib/postgresql/data
+      # OJO: en postgres:18+ el montaje va en /var/lib/postgresql, NO en
+      # /var/lib/postgresql/data como en las versiones anteriores. La imagen
+      # ahora guarda los datos en un subdirectorio por version mayor, y si se
+      # monta en /data arranca y muere con "unused mount/volume".
+      - datos_postgres:/var/lib/postgresql
     # Sin "ports": la base no se expone a internet. Para restaurar el dump se
     # entra con "docker compose exec db ...".
     healthcheck:
