@@ -164,6 +164,36 @@ class UsuariosAutorizadosSyncTests(TestCase):
             _calcular_checksum_usuarios(manipulado),
         )
 
+    def test_checksum_coincide_con_los_bytes_que_se_envian(self):
+        """Regresion: el checksum tiene que ser el hash de lo que realmente
+        sale por la red, no de otra representacion.
+
+        DRF renderiza con UNICODE_JSON=True, o sea acentos en UTF-8 literal.
+        El default de json.dumps los escapaba a secuencias \\uXXXX, asi que
+        cualquier lista con tildes o enies daba un checksum distinto al que
+        el movil recalculaba sobre lo recibido: lanzaba IntegrityException,
+        descartaba la lista y nunca marcaba el dispositivo como sincronizado.
+        Resultado: el login offline respondia "este dispositivo nunca se ha
+        conectado a internet" con todo dataset real de nombres en castellano.
+        Los tests previos no lo detectaban porque solo usaban ASCII.
+        """
+        import hashlib
+
+        from rest_framework.renderers import JSONRenderer
+
+        from api.views import _calcular_checksum_usuarios
+
+        usuarios = [
+            {'dni': '2', 'username': 'mnunez', 'nombre': 'María Núñez'},
+            {'dni': '1', 'username': 'jmartinez', 'nombre': 'José Martínez'},
+        ]
+        # Exactamente lo que el cliente recibe y sobre lo que recalcula.
+        enviado = JSONRenderer().render(sorted(usuarios, key=lambda u: u['dni']))
+        self.assertEqual(
+            _calcular_checksum_usuarios(usuarios),
+            hashlib.sha256(enviado).hexdigest(),
+        )
+
     def test_sync_incremental_con_since_futuro_no_devuelve_nada(self):
         response = self.client.get(self.url, {'since': '2999-01-01T00:00:00Z'})
         self.assertEqual(response.status_code, 200)
