@@ -3,7 +3,7 @@
 from django import forms
 from decimal import Decimal, InvalidOperation
 import datetime
-from .models import Requerimiento, RegistroConsumo, Agente
+from .models import Requerimiento, RegistroConsumo, Agente, Feriado
 
 class RequerimientoForm(forms.ModelForm):
     # --- ¡CAMBIO CLAVE AQUÍ! ---
@@ -63,4 +63,71 @@ class RegistroConsumoForm(forms.ModelForm):
                 except InvalidOperation:
                     raise forms.ValidationError('Ingrese un número válido (p. ej. 150.50).')
             raise forms.ValidationError('Ingrese un número válido.')
+
+
+class FeriadoForm(forms.ModelForm):
+    """Formulario de registro/edición de feriados (HU-01 CAV-10)."""
+
+    class Meta:
+        model = Feriado
+        fields = ['fecha', 'nombre', 'tipo', 'ambito', 'sede', 'empresa']
+        widgets = {
+            'fecha': forms.DateInput(
+                attrs={'type': 'date', 'class': 'modal-input'},
+                format='%Y-%m-%d',
+            ),
+            'nombre': forms.TextInput(
+                attrs={'class': 'modal-input', 'maxlength': 150,
+                       'placeholder': 'Ej: Año Nuevo'}
+            ),
+            'tipo': forms.Select(attrs={'class': 'modal-input'}),
+            'ambito': forms.Select(attrs={'class': 'modal-input'}),
+            'sede': forms.Select(attrs={'class': 'modal-input'}),
+            'empresa': forms.Select(attrs={'class': 'modal-input'}),
+        }
+
+    def clean_fecha(self):
+        """Valida que no exista otro feriado en la misma fecha (CAV-54).
+
+        El texto del error es el exigido literalmente por la HU. Al levantar
+        aquí, 'fecha' sale de cleaned_data y se evita que la validación unique
+        automática del modelo agregue un segundo mensaje distinto.
+        """
+        fecha = self.cleaned_data['fecha']
+        qs = Feriado.objects.filter(fecha=fecha)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(
+                "Ya existe un feriado registrado para la fecha seleccionada"
+            )
+        return fecha
+
+    def clean(self):
+        """Coherencia entre ámbito y scope (CAV-13).
+
+        Un feriado regional/local exige Sede; uno de empresa exige Empresa; el
+        nacional no debe llevar ninguno (aplica a todos).
+        """
+        cleaned = super().clean()
+        ambito = cleaned.get('ambito')
+        sede = cleaned.get('sede')
+        empresa = cleaned.get('empresa')
+
+        if ambito in (Feriado.Ambito.REGIONAL, Feriado.Ambito.LOCAL):
+            if not sede:
+                self.add_error('sede', 'Un feriado regional/local requiere una sede.')
+            if empresa:
+                self.add_error('empresa', 'Un feriado regional/local no lleva empresa.')
+        elif ambito == Feriado.Ambito.EMPRESA:
+            if not empresa:
+                self.add_error('empresa', 'Un feriado de empresa requiere una empresa.')
+            if sede:
+                self.add_error('sede', 'Un feriado de empresa no lleva sede.')
+        elif ambito == Feriado.Ambito.NACIONAL:
+            if sede:
+                self.add_error('sede', 'Un feriado nacional aplica a todos: deje la sede vacía.')
+            if empresa:
+                self.add_error('empresa', 'Un feriado nacional aplica a todos: deje la empresa vacía.')
+        return cleaned
 

@@ -1,0 +1,349 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+
+{% block title %}Detalle de horas · {{ trabajador.nombre_completo }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Mismo lenguaje visual que el reporte de horas por período (prefijo hp-). */
+
+    .hp-back {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        color: #64748b; text-decoration: none;
+        font-size: 0.88rem; font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    .hp-back:hover { color: #1e293b; }
+    .hp-back svg { width: 15px; height: 15px; }
+
+    .hp-header {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+    }
+    .hp-header__title { display: flex; align-items: center; gap: 1rem; }
+    .hp-avatar-lg {
+        width: 52px; height: 52px; flex-shrink: 0;
+        border-radius: 50%;
+        background: #fff3e0; color: #e65100;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.05rem; font-weight: 700;
+    }
+    .hp-header h1 { margin: 0; font-size: 1.55rem; color: #1e293b; line-height: 1.2; }
+    .hp-header p { margin: 0.25rem 0 0; color: #64748b; font-size: 0.9rem; }
+
+    .hp-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .hp-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-left: 4px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 1.1rem 1.25rem;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    }
+    .hp-card--main { border-left-color: #2563eb; }
+    .hp-card--warn { border-left-color: #f59e0b; background: #fffbeb; }
+    .hp-card__label {
+        font-size: 0.75rem; color: #64748b; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.04em;
+        display: flex; align-items: center; gap: 0.4rem;
+    }
+    .hp-card__label svg { width: 14px; height: 14px; }
+    .hp-card__value {
+        font-size: 1.9rem; font-weight: 700; color: #0f172a;
+        margin-top: 0.35rem; line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+    }
+    .hp-card__value small { font-size: 1rem; font-weight: 600; color: #64748b; }
+    .hp-card--warn .hp-card__label, .hp-card--warn .hp-card__value { color: #b45309; }
+
+    .hp-table-wrap {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+    }
+    .hp-scroll { overflow-x: auto; }
+    .hp-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    .hp-table thead th {
+        background: #f8fafc; text-align: left;
+        padding: 0.8rem 1rem;
+        font-size: 0.74rem; font-weight: 700; color: #475569;
+        text-transform: uppercase; letter-spacing: 0.05em;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
+    }
+    .hp-table tbody td {
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    .hp-table tbody tr:hover { background: #f8fafc; }
+    .hp-table tbody tr.hp-row--warn { background: #fffdf5; }
+    .hp-table tbody tr.hp-row--warn:hover { background: #fef9e7; }
+    .hp-table tbody tr.hp-row--libre td { color: #94a3b8; }
+
+    .hp-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .hp-center { text-align: center; }
+    .hp-muted { color: #64748b; }
+    .hp-hora { font-variant-numeric: tabular-nums; }
+    .hp-fecha strong { color: #1e293b; }
+    .hp-fecha span { color: #94a3b8; font-size: 0.82rem; text-transform: capitalize; }
+
+    .hp-chip {
+        display: inline-block;
+        background: #f1f5f9; color: #475569;
+        border-radius: 6px; padding: 3px 8px;
+        font-size: 0.75rem; font-weight: 700;
+    }
+    .hp-chip--warn { background: #fef3c7; color: #92400e; }
+    .hp-horas { font-weight: 700; color: #0f172a; }
+    .hp-horas--cero { color: #cbd5e1; font-weight: 500; }
+
+    .hp-empty {
+        text-align: center; padding: 4rem 2rem; color: #64748b;
+    }
+    .hp-empty__icon {
+        width: 64px; height: 64px; margin: 0 auto 1.25rem;
+        border-radius: 50%; background: #f1f5f9; color: #94a3b8;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .hp-empty__icon svg { width: 28px; height: 28px; }
+    .hp-empty h3 { margin: 0 0 0.5rem; color: #334155; font-size: 1.1rem; }
+
+    .hp-foot-help {
+        margin-top: 1.25rem; font-size: 0.84rem; color: #64748b; line-height: 1.65;
+    }
+    .hp-foot-help strong { color: #475569; }
+
+    /* ================================================================= */
+    /*  Animaciones (mismas que el reporte de horas por período)         */
+    /* ================================================================= */
+
+    @keyframes hp-fade-up {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: none; }
+    }
+    @keyframes hp-fade {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    @keyframes hp-pop {
+        0%   { opacity: 0; transform: scale(0.94); }
+        65%  { opacity: 1; transform: scale(1.02); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes hp-float {
+        0%, 100% { transform: translateY(0); }
+        50%      { transform: translateY(-7px); }
+    }
+
+    /* fill-mode `backwards`: al terminar, el elemento vuelve a sus estilos
+       normales y el :hover sigue funcionando. */
+    .hp-back        { animation: hp-fade 0.4s backwards; }
+    .hp-header      { animation: hp-fade-up 0.45s backwards; }
+    .hp-table-wrap  { animation: hp-fade-up 0.5s 0.18s backwards; }
+    .hp-foot-help   { animation: hp-fade 0.6s 0.4s backwards; }
+
+    .hp-card { animation: hp-pop 0.45s backwards; }
+    .hp-card:nth-child(1) { animation-delay: 0.08s; }
+    .hp-card:nth-child(2) { animation-delay: 0.16s; }
+
+    /* El retardo escalonado de cada fila lo inyecta el JS en --d. */
+    .hp-table tbody tr.hp-anim-in {
+        animation: hp-fade-up 0.38s backwards;
+        animation-delay: var(--d, 0s);
+    }
+
+    .hp-back, .hp-chip { transition: all 0.18s ease; }
+    .hp-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .hp-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10);
+    }
+    .hp-back:hover { transform: translateX(-3px); }
+    .hp-table tbody tr { transition: background-color 0.18s ease; }
+    .hp-avatar-lg { transition: transform 0.25s ease; }
+    .hp-avatar-lg:hover { transform: scale(1.06) rotate(-3deg); }
+    .hp-empty__icon { animation: hp-float 3.5s ease-in-out infinite; }
+
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+        .hp-card:hover, .hp-back:hover, .hp-avatar-lg:hover { transform: none; }
+    }
+
+    @media print {
+        #sidebar, .hp-back, .hp-foot-help { display: none !important; }
+        #content { background: #fff !important; }
+        .hp-table-wrap, .hp-card { box-shadow: none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <a class="hp-back" href="{% url 'recursoshumanos:reporte_horas_periodo' %}?{{ querystring_periodo }}">
+        <i data-feather="arrow-left"></i> Volver al reporte
+    </a>
+
+    <div class="hp-header">
+        <div class="hp-header__title">
+            <div class="hp-avatar-lg">{{ trabajador.apellido_paterno|slice:":1" }}{{ trabajador.nombres|slice:":1" }}</div>
+            <div>
+                <h1>{{ trabajador.apellido_paterno }} {{ trabajador.apellido_materno }}, {{ trabajador.nombres }}</h1>
+                <p>
+                    DNI {{ trabajador.dni }}
+                    {% if trabajador.area %}&middot; {{ trabajador.area.nombre }}{% endif %}
+                    &middot; Detalle día a día del {{ fecha_inicio|date:"d/m/Y" }} al {{ fecha_fin|date:"d/m/Y" }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="hp-cards">
+        <div class="hp-card hp-card--main">
+            <div class="hp-card__label"><i data-feather="clock"></i> Horas totales del período</div>
+            <div class="hp-card__value"><span data-contador="{{ total_horas|stringformat:'s' }}" data-decimales="2">{{ total_horas }}</span> <small>h</small></div>
+        </div>
+        <div class="hp-card">
+            <div class="hp-card__label"><i data-feather="calendar"></i> Días listados</div>
+            <div class="hp-card__value"><span data-contador="{{ dias|length }}" data-decimales="0">{{ dias|length }}</span></div>
+        </div>
+    </div>
+
+    <div class="hp-table-wrap">
+        <div class="hp-scroll">
+        <table class="hp-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th class="hp-center">Jornada</th>
+                    <th>Programado</th>
+                    <th>Entrada real</th>
+                    <th>Salida real</th>
+                    <th class="hp-num">Horas válidas</th>
+                    <th class="hp-center">Marcación</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in dias %}
+                <tr class="{% if d.hora_entrada_real and not d.hora_salida_real %}hp-row--warn{% elif d.estado == 'D' %}hp-row--libre{% endif %}">
+                    <td class="hp-fecha">
+                        <strong>{{ d.fecha|date:"d/m/Y" }}</strong>
+                        <span>{{ d.fecha|date:"D" }}</span>
+                    </td>
+                    <td class="hp-center"><span class="hp-chip">{{ d.estado }}</span></td>
+                    <td class="hp-muted hp-hora">
+                        {% if d.hora_entrada %}{{ d.hora_entrada|time:"H:i" }} – {{ d.hora_salida|time:"H:i"|default:"--:--" }}
+                        {% elif d.jornada_horas %}{{ d.jornada_horas }} h
+                        {% else %}-{% endif %}
+                    </td>
+                    <td class="hp-hora">{{ d.hora_entrada_real_calculada|time:"H:i"|default:"--:--" }}</td>
+                    <td class="hp-hora">
+                        {% if d.hora_salida_real_calculada %}
+                            {{ d.hora_salida_real_calculada|time:"H:i" }}
+                        {% elif d.hora_entrada_real_calculada %}
+                            <span class="hp-chip hp-chip--warn">sin marcar</span>
+                        {% else %}
+                            --:--
+                        {% endif %}
+                    </td>
+                    <td class="hp-num">
+                        <span class="hp-horas {% if not d.horas_trabajadas_validas %}hp-horas--cero{% endif %}">{{ d.horas_trabajadas_validas }} h</span>
+                    </td>
+                    <td class="hp-center" title="{{ d.detalle_marca }}">
+                        {% if d.etiqueta_estado %}
+                            <span class="hp-chip">{{ d.get_etiqueta_estado_display }}</span>
+                        {% else %}
+                            <span class="hp-muted">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">
+                        <div class="hp-empty">
+                            <div class="hp-empty__icon"><i data-feather="inbox"></i></div>
+                            <h3>Sin días de tareo en este período</h3>
+                            <p>No hay jornadas registradas para esta persona en el rango elegido.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <p class="hp-foot-help">
+        Las filas resaltadas tienen entrada marcada pero <strong>no salida</strong>: sin ese par el día suma 0 h,
+        aunque la persona haya trabajado. Corrige la marcación antes de decidir el pago del período.
+    </p>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    'use strict';
+
+    // Si el sistema pide menos movimiento, todo se aplica de golpe.
+    var menosMovimiento = window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // --- Contadores de las tarjetas ---
+    function animarContador(el) {
+        var objetivo = parseFloat(el.dataset.contador);
+        var original = el.textContent;
+        if (!isFinite(objetivo) || objetivo <= 0 || menosMovimiento) { return; }
+
+        var decimales = parseInt(el.dataset.decimales, 10) || 0;
+        // El separador decimal lo dicta lo que ya pintó Django, no el locale
+        // del navegador: así el conteo y el valor final se ven iguales.
+        var separador = original.indexOf(',') !== -1 ? ',' : '.';
+        var duracion = 800;
+        var arranque = null;
+
+        function paso(marca) {
+            if (arranque === null) { arranque = marca; }
+            var avance = Math.min((marca - arranque) / duracion, 1);
+            if (avance < 1) {
+                var suave = 1 - Math.pow(1 - avance, 3);  // easeOutCubic
+                el.textContent = (objetivo * suave).toFixed(decimales).replace('.', separador);
+                requestAnimationFrame(paso);
+            } else {
+                el.textContent = original;  // el valor final es el del servidor, intacto
+            }
+        }
+        requestAnimationFrame(paso);
+    }
+
+    document.querySelectorAll('[data-contador]').forEach(animarContador);
+
+    // --- Entrada escalonada de las filas ---
+    if (menosMovimiento) { return; }
+
+    var filas = Array.prototype.slice.call(
+        document.querySelectorAll('.hp-table tbody tr')
+    );
+    if (!filas.length) { return; }
+
+    filas.forEach(function (fila, i) {
+        fila.style.setProperty('--d', (250 + Math.min(i * 30, 450)) + 'ms');
+        fila.classList.add('hp-anim-in');
+    });
+    setTimeout(function () {
+        filas.forEach(function (fila) {
+            fila.classList.remove('hp-anim-in');
+            fila.style.removeProperty('--d');
+        });
+    }, 250 + Math.min(filas.length * 30, 450) + 500);
+})();
+</script>
+{% endblock %}

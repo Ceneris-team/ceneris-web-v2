@@ -4,11 +4,18 @@ from django.urls import include, path
 from . import views
 from recursoshumanos.views import reporte_faltas_web
 from . import api_views
+# Alias de la Gestión de Feriados: el módulo vive en la app administracion,
+# pero se expone también bajo /recursoshumanos/ para mantener consistente el
+# menú de RRHH. Reutiliza la misma vista (la API sigue en administracion:).
+from administracion import views_feriados as feriados_views
 
 app_name = 'recursoshumanos'
 
 
 urlpatterns = [
+
+    # --- GESTIÓN DE FERIADOS (alias hacia administracion) ---
+    path('feriados/', feriados_views.gestion_feriados, name='gestion_feriados'),
 
     # --- DASHBOARD Y REPORTES ---
     path('', views.estadisticas_general, name='dashboard'),
@@ -24,6 +31,9 @@ urlpatterns = [
     # --- REPORTES EXCEL ASISTENCIA ---
     path('reportes/', views.gestion_reporte_maestro, name='gestion_reportes'),
     path('reportes/justificaciones/', views.reporte_justificaciones_rrhh, name='reporte_justificaciones_rrhh'),
+    # Horas acumuladas en el periodo que fija RRHH
+    path('reportes/horas-periodo/', views.reporte_horas_periodo, name='reporte_horas_periodo'),
+    path('reportes/horas-periodo/<int:trabajador_id>/', views.detalle_horas_trabajador, name='detalle_horas_trabajador'),
     path('exportar-diario/', views.exportar_reporte_diario, name='exportar_reporte_diario'),
     path('exportar-semanal/', views.exportar_reporte_semanal, name='exportar_reporte_semanal'),
     path('exportar-planilla/', views.exportar_formato_planilla, name='exportar_formato_planilla'),
@@ -34,6 +44,11 @@ urlpatterns = [
 
     # --- ¡NUEVAS RUTAS PARA la gestion de HORARIOS! ---
     path('horarios/', views.gestion_horarios, name='gestion_horarios'),
+
+    # --- HU-06 (CAV-15): TOLERANCIA DE HORARIO ---
+    path('tolerancia/', views.gestion_tolerancia, name='gestion_tolerancia'),
+    path('api/tolerancia/', api_views.ConfiguracionToleranciaListCreateView.as_view(), name='api_tolerancia_list_create'),
+    path('api/tolerancia/<int:pk>/', api_views.ConfiguracionToleranciaDetailView.as_view(), name='api_tolerancia_detail'),
 
     # --- ¡NUEVAS RUTAS PARA la gestion de Ubicaciones! ---
     path('ubicaciones/', views.gestion_ubicaciones, name='gestion_ubicaciones'),

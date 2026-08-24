@@ -1,0 +1,821 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+{% block title %}Gestión de Feriados{% endblock %}
+
+{% block extra_head %}
+{{ block.super }}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales/es.global.min.js"></script>
+<style>
+    /* Reutiliza el lenguaje visual del proyecto (cards, paleta naranja #e65100) */
+    .container, .container-fluid, main, .content, .content-wrapper {
+        max-width: 100% !important;
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+        margin: 0 !important;
+    }
+
+    .page-header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 25px;
+        padding-top: 10px;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 15px;
+    }
+
+    .header-titles h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        color: #0f172a;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+    }
+
+    .btn-action {
+        padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer;
+        font-weight: 600; font-size: 0.95rem; transition: all 0.2s;
+        display: inline-flex; align-items: center; gap: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .btn-primary { background-color: #e65100; color: white; }
+    .btn-primary:hover { background-color: #c44600; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(230, 81, 0, 0.25); }
+    .btn-success { background-color: #10b981; color: white; }
+    .btn-success:hover { background-color: #059669; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2); }
+    .btn-clean { background-color: #64748b; color: white; }
+    .btn-clean:hover { background-color: #475569; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(100, 116, 139, 0.2); }
+
+    .filter-card {
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        margin-bottom: 25px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        align-items: end;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label {
+        font-size: 0.75rem; font-weight: 700; color: #64748b;
+        text-transform: uppercase; letter-spacing: 0.05em;
+    }
+
+    .filter-input, .modal-input {
+        padding: 10px 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        background-color: #f8fafc;
+        width: 100%;
+        color: #334155;
+        transition: all 0.2s ease;
+    }
+    .filter-input:focus, .modal-input:focus {
+        outline: none; border-color: #e65100;
+        box-shadow: 0 0 0 3px rgba(230, 81, 0, 0.15);
+        background-color: #ffffff;
+    }
+
+    .search-wrapper { position: relative; width: 100%; display: block; }
+    .search-wrapper .search-icon {
+        position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+        width: 18px; height: 18px; color: #94a3b8;
+        pointer-events: none; display: flex; align-items: center; justify-content: center;
+    }
+    .search-wrapper .search-icon svg { width: 100%; height: 100%; }
+    .search-input { padding-left: 40px !important; }
+
+    /* --- Split view 40 / 60 --- */
+    .feriados-split {
+        display: grid;
+        grid-template-columns: 40% 60%;
+        gap: 20px;
+        align-items: stretch;
+    }
+
+    @media (max-width: 992px) {
+        .feriados-split { grid-template-columns: 1fr; }
+    }
+
+    .panel-card {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 240px);
+        min-height: 520px;
+        overflow: hidden;
+    }
+
+    .panel-card-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .panel-card-header h2 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .panel-card-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 0;
+    }
+
+    #calendarioPanel .panel-card-body {
+        padding: 16px;
+        overflow: hidden;
+    }
+
+    #calendario { height: 100%; }
+    #calendario .fc { height: 100%; }
+    #calendario .fc-view-harness { min-height: 0; }
+
+    /* RESET: static/css/style.css estiliza todo <table>; FullCalendar arma su
+       grilla con tablas anidadas, sin esto las fechas se desalinean. */
+    #calendario table {
+        margin-top: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        background-color: transparent !important;
+        overflow: visible !important;
+    }
+    #calendario th, #calendario td {
+        padding: 0 !important;
+        text-align: center;
+        border-bottom: none;
+    }
+    #calendario thead th {
+        background-color: #f8fafc;
+        text-transform: none;
+        font-size: 0.78rem;
+        color: #475569;
+        padding: 8px 0 !important;
+    }
+    #calendario tbody tr:hover { background-color: transparent; }
+    #calendario .fc-col-header-cell-cushion { padding: 6px 4px; color: #475569; text-decoration: none; }
+    #calendario .fc-daygrid-day-number { text-decoration: none; color: #334155; }
+
+    #calendario .fc-toolbar.fc-header-toolbar { margin-bottom: 12px; }
+    #calendario .fc-toolbar-title { font-size: 1.15rem; color: #0f172a; }
+
+    #calendario .fc-daygrid-day-frame { padding: 2px 3px; }
+    #calendario .fc-daygrid-day-top { justify-content: flex-end; }
+    #calendario .fc-daygrid-day-number { font-size: 0.8rem; padding: 2px 4px; }
+
+    #calendario .fc-daygrid-event {
+        font-size: 0.72rem;
+        padding: 1px 5px;
+        margin: 1px 2px 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: pointer;
+        background-color: #e65100;
+        border-color: #e65100;
+        color: #ffffff;
+        border-radius: 4px;
+    }
+    #calendario .fc-daygrid-event .fc-event-title { font-weight: 600; }
+    #calendario .fc-day-today { background-color: #fff3e0 !important; }
+    #calendario .fc-button-primary {
+        background-color: #e65100; border-color: #e65100;
+        text-transform: capitalize; box-shadow: none;
+    }
+    #calendario .fc-button-primary:hover,
+    #calendario .fc-button-primary:not(:disabled):active,
+    #calendario .fc-button-primary:not(:disabled).fc-button-active {
+        background-color: #c44600; border-color: #c44600;
+    }
+    #calendario .fc-button-primary:focus { box-shadow: 0 0 0 3px rgba(230, 81, 0, 0.25); }
+    #calendario .fc-button-primary:disabled { background-color: #f0a878; border-color: #f0a878; }
+
+    .feriados-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+        margin-top: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+    }
+
+    .feriados-table thead th {
+        position: sticky; top: 0; z-index: 5;
+        background-color: #f8fafc;
+        color: #475569;
+        font-weight: 700;
+        text-align: left;
+        padding: 10px 14px;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .feriados-table tbody td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #1e293b;
+    }
+
+    .feriados-table tbody tr:hover { background-color: #f8fafc; }
+
+    .badge-tipo {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+    .badge-NACIONAL { background-color: #fff3e0; color: #c44600; }
+    .badge-NO_LABORABLE { background-color: #e2e8f0; color: #334155; }
+    .badge-ambito { background-color: #eef2ff; color: #4338ca; }
+
+    .table-actions-cell { display: flex; gap: 6px; justify-content: flex-end; }
+
+    /* static/css/style.css fuerza `button { color: white !important }`; por eso
+       los iconos necesitan color propio con !important y stroke explícito. */
+    .icon-btn {
+        border: 1px solid #e2e8f0; background: #f8fafc !important; cursor: pointer;
+        width: 32px; height: 32px; padding: 0; border-radius: 6px;
+        display: inline-flex; align-items: center; justify-content: center;
+        color: #334155 !important; transition: all 0.15s;
+    }
+    .icon-btn svg { stroke: #334155; width: 16px; height: 16px; display: block; }
+    .icon-btn:hover { background-color: #fff3e0 !important; border-color: #e65100; }
+    .icon-btn:hover svg { stroke: #c44600; }
+    .icon-btn.icon-danger svg { stroke: #dc2626; }
+    .icon-btn.icon-danger:hover { background-color: #ef4444 !important; border-color: #ef4444; }
+    .icon-btn.icon-danger:hover svg { stroke: #ffffff; }
+
+    .empty-state { padding: 40px 20px; text-align: center; color: #94a3b8; font-size: 0.9rem; }
+
+    /* Modal creación/edición */
+    .modal {
+        display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%;
+        background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);
+        align-items: center; justify-content: center; padding: 24px;
+    }
+    .modal.is-open { display: flex; }
+
+    .modal-content {
+        background-color: #ffffff;
+        width: 100%;
+        max-width: 440px;
+        max-height: calc(100vh - 48px);
+        border-radius: 12px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    #feriadoForm {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 24px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;
+    }
+    .modal-header h3 { margin: 0; color: #0f172a; font-size: 1.1rem; }
+
+    .close-button {
+        color: #94a3b8; font-size: 22px; line-height: 1; cursor: pointer;
+        background: transparent; border: none !important; padding: 4px !important;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    .close-button:hover { color: #e65100; }
+
+    .modal-body {
+        padding: 20px 24px;
+        overflow-y: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+    .modal-body .form-group + .form-group { margin-top: 16px; }
+
+    .modal-footer {
+        display: flex; justify-content: flex-end; gap: 10px;
+        padding: 16px 24px; border-top: 1px solid #e2e8f0; flex-shrink: 0;
+        background-color: #f8fafc;
+    }
+    .modal-error { color: #dc2626; font-size: 0.85rem; padding: 8px 24px 0; flex-shrink: 0; display: none; }
+
+    .swal2-container { z-index: 4000 !important; }
+    .swal2-popup { border-radius: 12px; }
+    .swal2-title { font-size: 1.25rem; color: #0f172a; }
+    .swal2-styled:focus { box-shadow: none !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header-container">
+    <div class="header-titles">
+        <h1>Gestión de Feriados</h1>
+    </div>
+    <div class="header-actions">
+        <button type="button" id="btnNuevoFeriado" class="btn-action btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Nuevo Feriado
+        </button>
+    </div>
+</div>
+
+<div class="filter-card">
+    <div class="filter-grid">
+        <div class="form-group">
+            <label for="filtroAnio">Año</label>
+            <select id="filtroAnio" class="filter-input">
+                {% for anio in anios_disponibles %}
+                    <option value="{{ anio }}" {% if anio == anio_actual %}selected{% endif %}>{{ anio }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="filtroMes">Mes</label>
+            <select id="filtroMes" class="filter-input">
+                <option value="">Todos los meses</option>
+                {% for numero, nombre in meses %}
+                    <option value="{{ numero }}">{{ nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="filtroTipo">Tipo</label>
+            <select id="filtroTipo" class="filter-input">
+                <option value="">Todos los tipos</option>
+                {% for valor, etiqueta in tipos_feriado %}
+                    <option value="{{ valor }}">{{ etiqueta }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="filtroBusqueda">Búsqueda Rápida</label>
+            <div class="search-wrapper">
+                <span class="search-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </span>
+                <input type="search" id="filtroBusqueda" class="filter-input search-input" placeholder="Nombre del feriado...">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="feriados-split">
+    <div class="panel-card" id="listadoPanel">
+        <div class="panel-card-header">
+            <h2>Listado de Feriados</h2>
+            <span id="contadorFeriados" style="font-size:0.8rem; color:#64748b; font-weight:600;"></span>
+        </div>
+        <div class="panel-card-body">
+            <table class="feriados-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Ámbito</th>
+                        <th style="text-align:right;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaFeriadosBody">
+                    <tr><td colspan="5" class="empty-state">Cargando feriados...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="panel-card" id="calendarioPanel">
+        <div class="panel-card-header">
+            <h2>Calendario</h2>
+        </div>
+        <div class="panel-card-body">
+            <div id="calendario"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Crear / Editar Feriado -->
+<div id="feriadoModal" class="modal">
+    <div class="modal-content">
+        <form id="feriadoForm">
+            <div class="modal-header">
+                <h3 id="feriadoModalTitulo">Nuevo Feriado</h3>
+                <span class="close-button" data-close-modal>&times;</span>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="feriadoId" value="">
+                <div class="form-group">
+                    <label for="feriadoNombre">Nombre</label>
+                    <input type="text" id="feriadoNombre" class="modal-input" maxlength="150" required>
+                </div>
+                <div class="form-group">
+                    <label for="feriadoFecha">Fecha</label>
+                    <input type="date" id="feriadoFecha" class="modal-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="feriadoTipo">Tipo</label>
+                    <select id="feriadoTipo" class="modal-input">
+                        {% for valor, etiqueta in tipos_feriado %}
+                            <option value="{{ valor }}">{{ etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="feriadoAmbito">Ámbito</label>
+                    <select id="feriadoAmbito" class="modal-input">
+                        {% for valor, etiqueta in ambitos_feriado %}
+                            <option value="{{ valor }}">{{ etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" id="grupoFeriadoSede" style="display:none;">
+                    <label for="feriadoSede">Sede (feriado regional/local)</label>
+                    <select id="feriadoSede" class="modal-input">
+                        <option value="">— Selecciona una sede —</option>
+                        {% for sede in sedes %}
+                            <option value="{{ sede.id }}">{{ sede.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" id="grupoFeriadoEmpresa" style="display:none;">
+                    <label for="feriadoEmpresa">Empresa (feriado de empresa)</label>
+                    <select id="feriadoEmpresa" class="modal-input">
+                        <option value="">— Selecciona una empresa —</option>
+                        {% for empresa in empresas %}
+                            <option value="{{ empresa.id }}">{{ empresa.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-error" id="feriadoModalError"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn-action btn-clean" data-close-modal>Cancelar</button>
+                <button type="submit" class="btn-action btn-success">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const csrfToken = '{{ csrf_token }}';
+    const urls = {
+        list: "{% url 'administracion:feriados_api_list' %}",
+        crear: "{% url 'administracion:feriado_api_crear' %}",
+        editar: function (id) { return "{% url 'administracion:feriado_api_editar' pk=999999 %}".replace('999999', id); },
+        eliminar: function (id) { return "{% url 'administracion:feriado_api_eliminar' pk=999999 %}".replace('999999', id); },
+    };
+
+    const filtroAnio = document.getElementById('filtroAnio');
+    const filtroMes = document.getElementById('filtroMes');
+    const filtroTipo = document.getElementById('filtroTipo');
+    const filtroBusqueda = document.getElementById('filtroBusqueda');
+    const tablaBody = document.getElementById('tablaFeriadosBody');
+    const contador = document.getElementById('contadorFeriados');
+
+    const feriadoModal = document.getElementById('feriadoModal');
+    const feriadoModalTitulo = document.getElementById('feriadoModalTitulo');
+    const feriadoModalError = document.getElementById('feriadoModalError');
+    const feriadoForm = document.getElementById('feriadoForm');
+    const feriadoIdInput = document.getElementById('feriadoId');
+    const feriadoNombreInput = document.getElementById('feriadoNombre');
+    const feriadoFechaInput = document.getElementById('feriadoFecha');
+    const feriadoTipoInput = document.getElementById('feriadoTipo');
+    const feriadoAmbitoInput = document.getElementById('feriadoAmbito');
+    const feriadoSedeInput = document.getElementById('feriadoSede');
+    const feriadoEmpresaInput = document.getElementById('feriadoEmpresa');
+    const grupoFeriadoSede = document.getElementById('grupoFeriadoSede');
+    const grupoFeriadoEmpresa = document.getElementById('grupoFeriadoEmpresa');
+
+    let calendar;
+    let searchDebounce;
+
+    // Muestra Sede u Empresa según el ámbito (CAV-13). Regional/Local -> Sede;
+    // Empresa -> Empresa; Nacional -> ninguno (aplica a todos). Al ocultar un
+    // campo se limpia para no enviar un scope incoherente al backend.
+    function actualizarScopePorAmbito() {
+        const ambito = feriadoAmbitoInput.value;
+        const esSede = (ambito === 'REGIONAL' || ambito === 'LOCAL');
+        const esEmpresa = (ambito === 'EMPRESA');
+        grupoFeriadoSede.style.display = esSede ? 'block' : 'none';
+        grupoFeriadoEmpresa.style.display = esEmpresa ? 'block' : 'none';
+        if (!esSede) feriadoSedeInput.value = '';
+        if (!esEmpresa) feriadoEmpresaInput.value = '';
+    }
+
+    feriadoAmbitoInput.addEventListener('change', actualizarScopePorAmbito);
+
+    function abrirModal(feriado) {
+        feriadoModalError.style.display = 'none';
+        feriadoModalError.textContent = '';
+
+        if (feriado) {
+            feriadoModalTitulo.textContent = 'Editar Feriado';
+            feriadoIdInput.value = feriado.id;
+            feriadoNombreInput.value = feriado.nombre;
+            feriadoFechaInput.value = feriado.fecha;
+            feriadoTipoInput.value = feriado.tipo;
+            feriadoAmbitoInput.value = feriado.ambito;
+            actualizarScopePorAmbito();
+            feriadoSedeInput.value = feriado.sede || '';
+            feriadoEmpresaInput.value = feriado.empresa || '';
+        } else {
+            feriadoModalTitulo.textContent = 'Nuevo Feriado';
+            feriadoForm.reset();
+            feriadoIdInput.value = '';
+            actualizarScopePorAmbito();
+        }
+        feriadoModal.classList.add('is-open');
+    }
+
+    function cerrarModal() {
+        feriadoModal.classList.remove('is-open');
+    }
+
+    document.querySelectorAll('[data-close-modal]').forEach(function (el) {
+        el.addEventListener('click', cerrarModal);
+    });
+    window.addEventListener('click', function (e) {
+        if (e.target === feriadoModal) cerrarModal();
+    });
+
+    document.getElementById('btnNuevoFeriado').addEventListener('click', function () {
+        abrirModal(null);
+    });
+
+    function construirQuery() {
+        const params = new URLSearchParams();
+        if (filtroAnio.value) params.set('anio', filtroAnio.value);
+        if (filtroMes.value) params.set('mes', filtroMes.value);
+        if (filtroTipo.value) params.set('tipo', filtroTipo.value);
+        if (filtroBusqueda.value.trim()) params.set('q', filtroBusqueda.value.trim());
+        return params.toString();
+    }
+
+    function badgeTipo(feriado) {
+        return `<span class="badge-tipo badge-${feriado.tipo}">${feriado.tipo_display}</span>`;
+    }
+
+    function badgeAmbito(feriado) {
+        return `<span class="badge-tipo badge-ambito">${feriado.ambito_display}</span>`;
+    }
+
+    function formatearFecha(fechaIso) {
+        return new Date(fechaIso + 'T00:00:00').toLocaleDateString('es-PE', {
+            day: '2-digit', month: 'long', year: 'numeric',
+        });
+    }
+
+    function renderTabla(feriados) {
+        if (!feriados.length) {
+            tablaBody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay feriados para los filtros seleccionados.</td></tr>';
+            contador.textContent = '';
+            return;
+        }
+
+        contador.textContent = `${feriados.length} registro(s)`;
+
+        tablaBody.innerHTML = feriados.map(function (feriado) {
+            const fechaFmt = new Date(feriado.fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+            return `
+                <tr data-id="${feriado.id}">
+                    <td>${fechaFmt}</td>
+                    <td>${feriado.nombre}</td>
+                    <td>${badgeTipo(feriado)}</td>
+                    <td>${badgeAmbito(feriado)}</td>
+                    <td>
+                        <div class="table-actions-cell">
+                            <button type="button" class="icon-btn btn-editar" data-id="${feriado.id}" title="Editar">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            </button>
+                            <button type="button" class="icon-btn icon-danger btn-eliminar" data-id="${feriado.id}" title="Eliminar">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function renderCalendario(feriados) {
+        const eventos = feriados.map(function (feriado) {
+            return {
+                id: String(feriado.id),
+                title: feriado.nombre,
+                start: feriado.fecha,
+                allDay: true,
+                extendedProps: feriado,
+            };
+        });
+
+        if (!calendar) {
+            calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
+                locale: 'es',
+                initialView: 'dayGridMonth',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+                buttonText: { today: 'Hoy' },
+                height: '100%',
+                expandRows: true,
+                fixedWeekCount: false,
+                dayMaxEvents: false,
+                events: eventos,
+                eventClick: function (info) {
+                    abrirModal(info.event.extendedProps);
+                },
+                dateClick: function (info) {
+                    abrirModal(null);
+                    feriadoFechaInput.value = info.dateStr;
+                },
+            });
+            calendar.render();
+        } else {
+            calendar.removeAllEvents();
+            calendar.addEventSource(eventos);
+        }
+    }
+
+    function navegarCalendarioAFiltro() {
+        if (!calendar) return;
+        const anio = filtroAnio.value || String(new Date().getFullYear());
+        const mes = filtroMes.value ? String(filtroMes.value).padStart(2, '0') : '01';
+        calendar.gotoDate(`${anio}-${mes}-01`);
+    }
+
+    function cargarFeriados() {
+        const query = construirQuery();
+        fetch(`${urls.list}?${query}`)
+            .then(function (resp) { return resp.json(); })
+            .then(function (data) {
+                if (data.status !== 'ok') return;
+                renderTabla(data.feriados);
+                renderCalendario(data.feriados);
+            })
+            .catch(function (err) {
+                console.error('Error cargando feriados:', err);
+                tablaBody.innerHTML = '<tr><td colspan="5" class="empty-state">Error al cargar los feriados.</td></tr>';
+            });
+    }
+
+    filtroAnio.addEventListener('change', function () {
+        cargarFeriados();
+        navegarCalendarioAFiltro();
+    });
+    filtroMes.addEventListener('change', function () {
+        cargarFeriados();
+        navegarCalendarioAFiltro();
+    });
+    filtroTipo.addEventListener('change', cargarFeriados);
+    filtroBusqueda.addEventListener('input', function () {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(cargarFeriados, 350);
+    });
+
+    tablaBody.addEventListener('click', function (e) {
+        const editarBtn = e.target.closest('.btn-editar');
+        const eliminarBtn = e.target.closest('.btn-eliminar');
+
+        if (editarBtn) {
+            const fila = editarBtn.closest('tr');
+            const id = fila.dataset.id;
+            fetch(`${urls.list}?${construirQuery()}`)
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    const feriado = data.feriados.find(function (f) { return String(f.id) === String(id); });
+                    if (feriado) abrirModal(feriado);
+                });
+        }
+
+        if (eliminarBtn) {
+            const fila = eliminarBtn.closest('tr');
+            const id = fila.dataset.id;
+            const nombre = fila.children[1] ? fila.children[1].textContent.trim() : 'este feriado';
+            const fecha = fila.children[0] ? fila.children[0].textContent.trim() : '';
+
+            Swal.fire({
+                title: '¿Eliminar feriado?',
+                html: `Se eliminará <strong>${nombre}</strong><br><span style="color:#64748b; font-size:0.9rem;">${fecha}</span><br><br>Esta acción no se puede deshacer.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                reverseButtons: true,
+                focusCancel: true,
+            }).then(function (result) {
+                if (!result.isConfirmed) return;
+
+                fetch(urls.eliminar(id), {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                })
+                    .then(function (resp) { return resp.json(); })
+                    .then(function (data) {
+                        if (data.status === 'ok') {
+                            cargarFeriados();
+                            Toast.fire({ icon: 'success', title: 'Feriado eliminado' });
+                        } else {
+                            Swal.fire({
+                                title: 'No se pudo eliminar',
+                                text: data.message || 'Ocurrió un error inesperado.',
+                                icon: 'error',
+                                confirmButtonColor: '#e65100',
+                            });
+                        }
+                    })
+                    .catch(function () {
+                        Swal.fire({
+                            title: 'Error de conexión',
+                            text: 'No se pudo contactar con el servidor.',
+                            icon: 'error',
+                            confirmButtonColor: '#e65100',
+                        });
+                    });
+            });
+        }
+    });
+
+    feriadoForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const id = feriadoIdInput.value;
+
+        const payload = {
+            nombre: feriadoNombreInput.value.trim(),
+            fecha: feriadoFechaInput.value,
+            tipo: feriadoTipoInput.value,
+            ambito: feriadoAmbitoInput.value,
+            sede: feriadoSedeInput.value || '',
+            empresa: feriadoEmpresaInput.value || '',
+        };
+
+        const url = id ? urls.editar(id) : urls.crear;
+
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify(payload),
+        })
+            .then(function (resp) { return resp.json(); })
+            .then(function (data) {
+                if (data.status === 'ok') {
+                    cerrarModal();
+                    cargarFeriados();
+                    Swal.fire({
+                        title: id ? '¡Feriado actualizado!' : '¡Feriado registrado!',
+                        html: `<strong>${data.feriado.nombre}</strong><br>` +
+                              `<span style="color:#64748b; font-size:0.9rem;">${formatearFecha(data.feriado.fecha)}</span>`,
+                        icon: 'success',
+                        confirmButtonText: 'Entendido',
+                        confirmButtonColor: '#e65100',
+                        timer: 2600,
+                        timerProgressBar: true,
+                    });
+                } else {
+                    feriadoModalError.textContent = data.message || 'No se pudo guardar el feriado.';
+                    feriadoModalError.style.display = 'block';
+                }
+            })
+            .catch(function () {
+                feriadoModalError.textContent = 'Error de conexión con el servidor.';
+                feriadoModalError.style.display = 'block';
+            });
+    });
+
+    cargarFeriados();
+});
+</script>
+{% endblock %}

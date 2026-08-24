@@ -28,9 +28,6 @@ from django.conf.urls.static import static
 # Vistas de la app de recursos humanos
 from recursoshumanos.views import CustomLoginView
 
-# Vistas de la app de cotizaciones
-from cotizaciones.views import dashboard_auditoria
-
 urlpatterns = [
     path('api/', include('api.urls')),
     path('seguridad/', include('accesos.urls')),
@@ -39,9 +36,6 @@ urlpatterns = [
     path('accounts/login/', CustomLoginView.as_view(), name='login'),
     path('accounts/logout/', LogoutView.as_view(next_page='login'), name='logout'),
     
-    # Ruta principal del dashboard
-    path('cotizaciones/auditoria/', dashboard_auditoria, name='dashboard_auditoria'),
-
     # Panel de administración de Django
     path('admin/', admin.site.urls),
 
@@ -64,6 +58,7 @@ urlpatterns = [
     path('inventario/', include('inventario.urls', namespace='inventario')),
     path('personal/', include('personal.urls', namespace='personal')),
     path('metricas_ceneris/', include('metricas_ceneris.urls', namespace='metricas_ceneris')),
+    path('notificaciones/', include('notificaciones.urls', namespace='notificaciones')),
 ]
 
 if settings.DEBUG:

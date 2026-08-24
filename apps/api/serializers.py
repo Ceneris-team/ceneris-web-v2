@@ -8,6 +8,8 @@ from recursoshumanos.models import (
     Asistencia,
     Justificacion,
     TareoDiario,
+    ConfiguracionTolerancia,
+    ToleranciaAuditoria,
 )
 
 
@@ -104,6 +106,14 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 class AsistenciaSerializer(serializers.ModelSerializer):
+    # `client_uuid` es unique=True en el modelo, asi que DRF le agregaria un
+    # UniqueValidator por defecto y el reintento del worker offline moriria con
+    # un 400 ANTES de que la vista pueda responder con la marca ya registrada.
+    # Lo declaramos sin validadores: la unicidad la sigue garantizando la BD
+    # (mas el except IntegrityError de la vista), y el duplicado se traduce a
+    # una respuesta idempotente en vez de a un error.
+    client_uuid = serializers.UUIDField(required=False, allow_null=True, validators=[])
+
     class Meta:
         model = Asistencia
         fields = [
@@ -114,8 +124,12 @@ class AsistenciaSerializer(serializers.ModelSerializer):
             'longitud',
             'nombre_ubicacion',
             'device_id',
+            'client_uuid',
+            # Fecha de recepcion en servidor. Viaja solo para que RRHH pueda
+            # auditar el desfase contra `timestamp` en las marcas atrasadas.
+            'creado_en',
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'creado_en']
 
 
 class FaltaPendienteSerializer(serializers.ModelSerializer):
@@ -135,3 +149,63 @@ class CrearJustificacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Justificacion
         fields = ['tareo', 'motivo', 'descripcion', 'archivo_evidencia']
+
+
+class ToleranciaAuditoriaSerializer(serializers.ModelSerializer):
+    usuario_nombre = serializers.SerializerMethodField()
+    tipo_horario_display = serializers.CharField(source='get_tipo_horario_display', read_only=True)
+
+    class Meta:
+        model = ToleranciaAuditoria
+        fields = [
+            'id', 'sede_nombre', 'tipo_horario', 'tipo_horario_display',
+            'minutos_anteriores', 'minutos_nuevos', 'usuario_nombre', 'creado_en',
+        ]
+        read_only_fields = fields
+
+    def get_usuario_nombre(self, obj):
+        return obj.usuario.username if obj.usuario else 'Sistema'
+
+
+class UsuarioAutorizadoSerializer(serializers.Serializer):
+    """
+    CAV-182: Representa una fila de la lista de usuarios autorizados
+    que se sincroniza de forma incremental al dispositivo movil.
+    No incluye password ni ningun dato sensible: solo lo minimo
+    necesario para que el cliente sepa "quien esta autorizado".
+    """
+    dni = serializers.CharField()
+    username = serializers.CharField()
+    nombre_completo = serializers.CharField()
+    activo = serializers.BooleanField()
+    actualizado_en = serializers.DateTimeField()
+
+
+class EventoLoginOfflineSerializer(serializers.Serializer):
+    """
+    CAV-83: payload que manda el celular al reportar (una vez que
+    recupera conexion) que hubo un inicio de sesion validado localmente
+    mientras estaba sin señal.
+    """
+    device_id = serializers.CharField(max_length=255)
+    fecha_hora_offline = serializers.DateTimeField()
+
+
+class ConfiguracionToleranciaSerializer(serializers.ModelSerializer):
+    sede_nombre = serializers.CharField(source='sede.nombre', read_only=True)
+    tipo_horario_display = serializers.CharField(source='get_tipo_horario_display', read_only=True)
+
+    class Meta:
+        model = ConfiguracionTolerancia
+        fields = [
+            'id', 'sede', 'sede_nombre', 'tipo_horario', 'tipo_horario_display',
+            'minutos_tolerancia', 'activo', 'creado_en', 'actualizado_en',
+        ]
+        read_only_fields = ['id', 'sede_nombre', 'tipo_horario_display', 'creado_en', 'actualizado_en']
+
+    def validate_minutos_tolerancia(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Los minutos de tolerancia no pueden ser negativos.")
+        if value > 180:
+            raise serializers.ValidationError("Los minutos de tolerancia no pueden superar 180.")
+        return value

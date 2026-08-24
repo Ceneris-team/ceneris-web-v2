@@ -15,7 +15,9 @@ from .views import (
     ListarMisSolicitudesHEView,
     HistorialAsistenciaView,
     ListarMarcacionesLogView,
-    actualizar_nombre
+    actualizar_nombre,
+    UsuariosAutorizadosSyncView,
+    RegistrarEventoLoginOfflineView,
 )
 
 urlpatterns = [
@@ -43,4 +45,10 @@ urlpatterns = [
     # --- RUTAS DE HORAS EXTRA ---
     path('horas-extra/solicitar/', SolicitudHorasExtraCreateAPIView.as_view(), name='solicitar-horas-extra'),
     path('horas-extra/mis-solicitudes/', ListarMisSolicitudesHEView.as_view(), name='mis-solicitudes-he'),
+
+    # --- CAV-182: SINCRONIZACIÓN DE USUARIOS AUTORIZADOS ---
+    path('usuarios-autorizados/sync/', UsuariosAutorizadosSyncView.as_view(), name='usuarios-autorizados-sync'),
+
+    # --- CAV-83: AUDITORÍA DE LOGIN OFFLINE ---
+    path('eventos/login-offline/', RegistrarEventoLoginOfflineView.as_view(), name='evento-login-offline'),
 ]

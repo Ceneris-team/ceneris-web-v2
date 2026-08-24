@@ -14,22 +14,28 @@ from datetime import datetime, timedelta, time, date
 from decimal import Decimal
 import pytz
 import json
+import hashlib
 
+from django.conf import settings as django_settings
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 
 # Importaciones de modelos
 from recursoshumanos.models import (
-    SolicitudHorasExtra, Trabajador, Dispositivo, Asistencia, 
-    Justificacion, TareoDiario, IntentoFraude
+    SolicitudHorasExtra, Trabajador, Dispositivo, Asistencia,
+    Justificacion, TareoDiario, IntentoFraude, EventoLoginOffline
 )
+from administracion.services.feriados import obtener_feriado
 
 # Importaciones de serializers
 from .serializers import (
-    MyTokenObtainPairSerializer, AsistenciaSerializer, 
+    MyTokenObtainPairSerializer, AsistenciaSerializer,
     FaltaPendienteSerializer, CrearJustificacionSerializer,
-    SolicitudHorasExtraSerializer
+    SolicitudHorasExtraSerializer, UsuarioAutorizadoSerializer,
+    EventoLoginOfflineSerializer
 )
 
 # Importaciones de servicios
@@ -39,6 +45,54 @@ from admin_panel.settings import db
 # Constantes
 TARDANZA_MINIMA_HORAS = Decimal('0.25')
 TOLERANCIA_TARDANZA_MINUTOS = 3
+
+# Tope absoluto de antiguedad para una marca sincronizada. NO es una caducidad
+# de sincronizacion: en faena minera un trabajador puede pasar meses o anios sin
+# senal y su cola sigue siendo valida al volver, asi que el valor por defecto se
+# mide en anios y solo existe como red de seguridad contra un reloj corrupto.
+ASISTENCIA_ANTIGUEDAD_MAXIMA_DIAS = getattr(
+    django_settings, 'ASISTENCIA_ANTIGUEDAD_MAXIMA_DIAS', 3650
+)
+
+# Margen de tolerancia para relojes adelantados antes de considerar futura una
+# marca. Tras meses sin sincronizar NTP la deriva del reloj es esperable.
+ASISTENCIA_MARGEN_RELOJ_FUTURO_MINUTOS = getattr(
+    django_settings, 'ASISTENCIA_MARGEN_RELOJ_FUTURO_MINUTOS', 15
+)
+
+
+def _fecha_negocio_de_marca(raw_timestamp):
+    """Deriva la fecha de negocio (America/Lima) del timestamp que envia el movil.
+
+    Es la correccion central de este fix: una marca pertenece al dia en que se
+    hizo, no al dia en que el worker offline logro subirla. Devuelve la tupla
+    ``(fecha, datetime_aware)``; si el payload no trae timestamp o es ilegible
+    cae a ``localdate()``, que es el comportamiento correcto para una marca en
+    tiempo real.
+
+    Usa ``localtime()`` y NUNCA ``.date()`` sobre el datetime crudo: el servidor
+    corre en UTC y a partir de las 19:00 de Lima ``.date()`` devuelve el dia
+    siguiente. Ese bug ya se corrigio una vez en este archivo (ver el candado de
+    turno mas abajo); no reintroducirlo.
+    """
+    if not raw_timestamp:
+        return timezone.localdate(), None
+
+    if isinstance(raw_timestamp, datetime):
+        dt = raw_timestamp
+    else:
+        try:
+            dt = parse_datetime(str(raw_timestamp))
+        except (TypeError, ValueError):
+            dt = None
+
+    if dt is None:
+        return timezone.localdate(), None
+
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt)
+
+    return timezone.localtime(dt).date(), dt
 LOCAL_TIMEZONE = pytz.timezone('America/Lima')
 
 
@@ -105,15 +159,15 @@ def _registrar_intento_fraude(request, reason, trabajador=None):
                 raw_payload=payload,
             )
         except Exception as sql_exc:
-            print(f"⚠️ No se pudo registrar intento de fraude en SQL: {sql_exc}")
+            print(f"[WARN] No se pudo registrar intento de fraude en SQL: {sql_exc}")
 
         # 2) Guardado en Firestore (si está disponible).
         try:
             db.collection('asistencias_fraudulentas').add(payload)
         except Exception as fs_exc:
-            print(f"⚠️ No se pudo registrar intento de fraude en Firestore: {fs_exc}")
+            print(f"[WARN] No se pudo registrar intento de fraude en Firestore: {fs_exc}")
     except Exception as log_exc:
-        print(f"⚠️ No se pudo registrar intento de fraude: {log_exc}")
+        print(f"[WARN] No se pudo registrar intento de fraude: {log_exc}")
 
 
 class SolicitudHorasExtraCreateAPIView(generics.CreateAPIView):
@@ -122,28 +176,36 @@ class SolicitudHorasExtraCreateAPIView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        # Esta lógica se mantiene igual
         try:
             trabajador = Trabajador.objects.get(user=self.request.user)
-            serializer.save(trabajador=trabajador)
+            solicitud = serializer.save(trabajador=trabajador)
         except Trabajador.DoesNotExist:
-            # Esto se atrapará en el método create de abajo si falla
             raise serializers.ValidationError("El usuario no tiene un Trabajador asignado.")
+
+        try:
+            from notificaciones.notificadores import notificar_solicitud_horas_extra
+            notificar_solicitud_horas_extra(solicitud, request=self.request)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(
+                'No se pudo enviar notificación de solicitud #%s: %s',
+                solicitud.pk, exc,
+            )
 
     # --- AQUI ESTA LA MAGIA DEL DEBUG ---
     def create(self, request, *args, **kwargs):
         print("\n" + "="*50)
-        print("🚨 DEBUG: INICIO DE SOLICITUD DE HORAS EXTRA")
-        print(f"👤 Usuario autenticado: {request.user.username}")
+        print("[ALERTA] DEBUG: INICIO DE SOLICITUD DE HORAS EXTRA")
+        print(f"[USER] Usuario autenticado: {request.user.username}")
         
         # 1. Ver qué datos llegaron realmente desde Flutter
-        print(f"📦 Datos recibidos (request.data): {json.dumps(request.data, indent=2)}")
+        print(f"[DATA] Datos recibidos (request.data): {json.dumps(request.data, indent=2)}")
 
         serializer = self.get_serializer(data=request.data)
         
         # 2. Validar y si falla, IMPRIMIR EL ERROR
         if not serializer.is_valid():
-            print("❌ ERROR DE VALIDACIÓN:")
+            print("[ERROR] ERROR DE VALIDACIÓN:")
             print(json.dumps(serializer.errors, indent=2)) # Esto nos dirá EXACTAMENTE qué campo falla
             print("="*50 + "\n")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -152,13 +214,13 @@ class SolicitudHorasExtraCreateAPIView(generics.CreateAPIView):
         try:
             self.perform_create(serializer)
         except Exception as e:
-            print(f"❌ ERROR AL GUARDAR (perform_create): {str(e)}")
+            print(f"[ERROR] ERROR AL GUARDAR (perform_create): {str(e)}")
             print("="*50 + "\n")
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         # 4. Éxito
         headers = self.get_success_headers(serializer.data)
-        print("✅ SOLICITUD CREADA CON ÉXITO")
+        print("[OK] SOLICITUD CREADA CON ÉXITO")
         print("="*50 + "\n")
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
@@ -181,6 +243,10 @@ class EstadoTrabajadorView(APIView):
             trabajador = Trabajador.objects.prefetch_related('ubicaciones_permitidas').get(user=usuario)
         except Trabajador.DoesNotExist:
             return Response({"error": "Sin perfil"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Feriado del día para ESTE trabajador (scope nacional/regional/empresa,
+        # CAV-13). El móvil usa esto para el banner "Día Feriado" (CAV-64).
+        feriado_hoy = obtener_feriado(hoy_fecha, sede=trabajador.sede, empresa=trabajador.empresa)
 
         # 2. Última marcación
         ultimo_tipo = "Salida"
@@ -214,7 +280,7 @@ class EstadoTrabajadorView(APIView):
                 
                 # Mensaje dinámico según avance
                 if tareo_hoy.horas_trabajadas_validas >= meta_horas:
-                    mensaje = "Meta cumplida ✅"
+                    mensaje = "Meta cumplida [OK]"
                 elif ultimo_tipo == 'Entrada':
                     mensaje = "Jornada en curso..."
                 else:
@@ -252,7 +318,10 @@ class EstadoTrabajadorView(APIView):
             'horario_entrada': horario_entrada,
             'horario_salida': horario_salida,
             'es_tardanza': es_tardanza,
-            'mensaje_aviso': mensaje
+            'mensaje_aviso': mensaje,
+            # Feriado (CAV-13/CAV-64): el móvil muestra el banner con estos campos.
+            'es_feriado': feriado_hoy is not None,
+            'nombre_feriado': feriado_hoy.nombre if feriado_hoy else None,
         }, status=status.HTTP_200_OK)
 
 
@@ -305,7 +374,7 @@ class RegistrarAsistenciaView(APIView):
                     latitud_reportada=request.data.get('latitud') or request.data.get('latitude') or request.data.get('lat'),
                     longitud_reportada=request.data.get('longitud') or request.data.get('longitude') or request.data.get('lng')
                 )
-                print(f"🚨 [ALERTA] Fraude guardado en BD: {motivo}")
+                print(f"[ALERTA] Fraude guardado en BD: {motivo}")
 
             # Lógica de Dispositivo (Crear o validar)
             dispositivo, created = Dispositivo.objects.get_or_create(
@@ -340,49 +409,177 @@ class RegistrarAsistenciaView(APIView):
                 return Response({'detail': str(motivo_bloqueo_app)}, status=status.HTTP_403_FORBIDDEN)
             
             # =================================================================
-            # --- 2. CANDADO DE SEGURIDAD: VALIDAR ASIGNACIÓN DE TURNO ---
+            # --- 2. IDEMPOTENCIA: ¿ya registramos esta misma marca? ---
+            # =================================================================
+            # El worker offline reintenta cuando pierde la respuesta, cosa que
+            # sobre una conexión de faena es la norma y no la excepción. El
+            # `client_uuid` lo genera el móvil al ENCOLAR la marca y lo persiste
+            # localmente, así que sobrevive a los reintentos e identifica la
+            # misma marcación aunque el POST llegue tres veces.
+            #
+            # Va ANTES de cualquier validación a propósito: un reintento no debe
+            # volver a validar turno, ni recalcular el tareo, ni poder producir
+            # un 403 sobre una marca que en el primer intento ya se guardó bien.
+            # Se acepta camelCase además de snake_case para que un desajuste de
+            # nomenclatura con el móvil no repita el bug de ignorarlo en silencio.
+            client_uuid = request.data.get('client_uuid') or request.data.get('clientUuid')
+            if client_uuid:
+                marca_existente = Asistencia.objects.filter(client_uuid=client_uuid).first()
+                if marca_existente:
+                    print(f"[API] Reintento idempotente de {client_uuid}: se devuelve la marca #{marca_existente.pk}")
+                    return Response(
+                        AsistenciaSerializer(marca_existente).data,
+                        status=status.HTTP_200_OK
+                    )
+
+            # =================================================================
+            # --- 3. FECHA DE NEGOCIO: el día de la MARCA, no el de la subida ---
             # =================================================================
             # localdate() usa America/Lima; con now().date() (UTC en el servidor)
             # a partir de las 19:00 de Lima se buscaba el tareo del día siguiente
             # y se bloqueaban las marcaciones de la tarde/noche.
             hoy = timezone.localdate()
-            
-            try:
-                # Buscamos el tareo asignado para hoy
-                tareo_hoy = TareoDiario.objects.get(trabajador=trabajador, fecha=hoy)
-                
-                # Restricción 1: Si es Día Libre ('D')
-                if tareo_hoy.estado == 'D':
-                    registrar_fraude_bd('Intento de marcacion en dia libre')
+
+            # Antes toda la validación colgaba de `hoy`, o sea del día en que
+            # LLEGABA la petición. Una marca hecha offline el lunes y subida el
+            # miércoles se validaba contra el turno del miércoles: si ese día era
+            # libre o no tenía turno, respondía 403 y el dato de planilla del
+            # lunes se perdía para siempre, además de registrar un fraude falso.
+            fecha_negocio, timestamp_marca = _fecha_negocio_de_marca(request.data.get('timestamp'))
+
+            if timestamp_marca is not None:
+                # Al derivar la fecha del payload, el reloj del celular pasa a
+                # determinar planilla. Tras meses sin NTP puede haber derivado, o
+                # haber sido movido a mano. Un timestamp futuro no puede ser una
+                # marca real; aun así NO se registra IntentoFraude, porque la
+                # deriva de reloj no es prueba de manipulación y grabar fraude
+                # ahí repetiría justo el error que este fix viene a corregir.
+                margen_reloj = timedelta(minutes=ASISTENCIA_MARGEN_RELOJ_FUTURO_MINUTOS)
+                if timestamp_marca > timezone.now() + margen_reloj:
                     return Response({
-                        'detail': 'Hoy está registrado como tu Día Libre. No se permite marcar.'
+                        'codigo': 'MARCA_FUTURA',
+                        'detail': 'La marcación tiene fecha futura. Revisa la hora de tu dispositivo.',
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                # Red de seguridad, no caducidad: el tope se mide en años (ver la
+                # constante). Una marca de hace 14 meses entra sin problema.
+                if (hoy - fecha_negocio).days > ASISTENCIA_ANTIGUEDAD_MAXIMA_DIAS:
+                    return Response({
+                        'codigo': 'MARCA_EXPIRADA',
+                        'detail': (
+                            'La marcación es demasiado antigua para registrarse '
+                            'automáticamente. Contacta a Recursos Humanos.'
+                        ),
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Si el día de la marca ya pasó, viene de la cola offline. Eso es
+            # desfase de sincronización, no fraude, y se trata distinto.
+            es_marca_atrasada = fecha_negocio < hoy
+
+            # =================================================================
+            # --- 4. CANDADO DE SEGURIDAD: VALIDAR ASIGNACIÓN DE TURNO ---
+            # =================================================================
+            if es_marca_atrasada:
+                # Tras meses en faena el tareo de ese día puede no existir: RRHH
+                # nunca cargó el turno, el trabajador se incorporó después, o el
+                # tareo se archivó. Antes eso caía en DoesNotExist -> 403 y la
+                # marca se perdía igual, sólo que por otra razón.
+                #
+                # Lo creamos al vuelo, que es exactamente lo que ya hace la
+                # importación biométrica ante el mismo problema (ver
+                # recursoshumanos/servicios_asistencias.py). El estado 'O' es
+                # explícito y obligatorio: sin él el tareo podría nacer con un
+                # estado que lo haga caer en la validación de día libre y volver
+                # a dar 403. Un tareo así no tiene horario, y el motor de reglas
+                # lo clasifica ASISTIÓ + SIN_HORARIO sin tardanza, dejándolo
+                # visible para que RRHH lo concilie.
+                tareo, _ = TareoDiario.objects.get_or_create(
+                    trabajador=trabajador,
+                    fecha=fecha_negocio,
+                    defaults={'estado': 'O', 'resultado': 'F'},
+                )
+                # Deliberadamente NO se corta por estado 'D': el motor de reglas
+                # ya acepta marcas en día libre (ASISTIÓ + etiqueta DIA_LIBRE,
+                # sin evaluar tardanza), así que rechazarlas aquí contradiría una
+                # regla que el dominio ya tiene escrita y perdería planilla.
+                # Tampoco se registra IntentoFraude en esta rama.
+            else:
+                # Marca en tiempo real: el control antifraude queda INTACTO.
+                # Intentar marcar HOY en tu día libre o sin turno asignado sigue
+                # siendo sospechoso y se sigue registrando como tal.
+                try:
+                    # Buscamos el tareo asignado para hoy
+                    tareo = TareoDiario.objects.get(trabajador=trabajador, fecha=fecha_negocio)
+
+                    # Restricción 1: Si es Día Libre ('D')
+                    if tareo.estado == 'D':
+                        registrar_fraude_bd('Intento de marcacion en dia libre')
+                        return Response({
+                            'detail': 'Hoy está registrado como tu Día Libre. No se permite marcar.'
+                        }, status=status.HTTP_403_FORBIDDEN)
+
+                except TareoDiario.DoesNotExist:
+                    # Restricción 2: No existe turno asignado en la web
+                    registrar_fraude_bd('Intento de marcacion sin turno programado')
+                    return Response({
+                        'detail': 'No tienes un turno programado para hoy. Por favor contacta a tu supervisor.'
                     }, status=status.HTTP_403_FORBIDDEN)
-                    
-            except TareoDiario.DoesNotExist:
-                # Restricción 2: No existe turno asignado en la web
-                registrar_fraude_bd('Intento de marcacion sin turno programado')
-                return Response({
-                    'detail': 'No tienes un turno programado para hoy. Por favor contacta a tu supervisor.'
-                }, status=status.HTTP_403_FORBIDDEN)
             # =================================================================
 
-            # 3. Guardar la Asistencia (Solo si pasó todas las validaciones y no hubo fraude)
-            serializer = AsistenciaSerializer(data=request.data)
+            # 5. Guardar la Asistencia (Solo si pasó todas las validaciones y no hubo fraude)
+            # Se normaliza el client_uuid al nombre del modelo para que también
+            # se persista cuando el móvil lo manda en camelCase.
+            datos_marca = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+            if client_uuid:
+                datos_marca['client_uuid'] = client_uuid
+
+            serializer = AsistenciaSerializer(data=datos_marca)
             if serializer.is_valid():
                 # ---> AQUÍ AGREGAMOS EL CAMPO ORIGEN <---
-                serializer.save(
-                    usuario=usuario_actual,
-                    origen='APP'  # Le decimos explícitamente que viene de la aplicación
-                )
-                
-                # 4. CÁLCULO AUTOMÁTICO
                 try:
-                    recalcular_asistencia_diaria(tareo_hoy)
-                    print(f"✅ Asistencia registrada y procesada para {trabajador}")
-                except Exception as e:
-                    print(f"⚠️ Error en el cálculo matemático: {e}")
+                    serializer.save(
+                        usuario=usuario_actual,
+                        origen='APP'  # Le decimos explícitamente que viene de la aplicación
+                    )
+                except IntegrityError:
+                    # Dos reintentos simultáneos del worker pueden pasar ambos el
+                    # filtro de arriba y chocar recién contra el unique de la BD,
+                    # que es la garantía real de idempotencia. Traducimos ese
+                    # choque a la misma respuesta que el reintento secuencial.
+                    marca_existente = (
+                        Asistencia.objects.filter(client_uuid=client_uuid).first()
+                        if client_uuid else None
+                    )
+                    if marca_existente:
+                        return Response(
+                            AsistenciaSerializer(marca_existente).data,
+                            status=status.HTTP_200_OK
+                        )
+                    raise
 
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                # 6. CÁLCULO AUTOMÁTICO (sobre el tareo del día de la MARCA)
+                advertencia = None
+                try:
+                    recalcular_asistencia_diaria(tareo)
+                    print(f"[OK] Asistencia registrada y procesada para {trabajador}")
+
+                    tareo.refresh_from_db()
+                    if tareo.etiqueta_estado in ('FUERA_HORARIO', 'TARDANZA'):
+                        advertencia = {
+                            'tipo': tareo.etiqueta_estado,
+                            'mensaje': (
+                                f'Tu marcación fue clasificada como '
+                                f'{tareo.get_etiqueta_estado_display()}.'
+                            ),
+                            'detalle': tareo.detalle_marca or '',
+                        }
+                except Exception as e:
+                    print(f"[WARN] Error en el cálculo matemático: {e}")
+
+                response_data = dict(serializer.data)
+                if advertencia:
+                    response_data['advertencia'] = advertencia
+                return Response(response_data, status=status.HTTP_201_CREATED)
             
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -424,7 +621,7 @@ class CrearJustificacionView(generics.CreateAPIView):
     parser_classes = (JSONParser, MultiPartParser, FormParser) 
 
     def create(self, request, *args, **kwargs):
-        print("🔍 INTENTO DE JUSTIFICACIÓN DESDE FLUTTER")
+        print("[DEBUG] INTENTO DE JUSTIFICACIÓN DESDE FLUTTER")
         
         # 1. Obtenemos los datos (mutable para poder inyectar el ID del tareo)
         data = request.data.copy()
@@ -450,7 +647,7 @@ class CrearJustificacionView(generics.CreateAPIView):
         # 3. Validación Estándar del Serializer
         serializer = self.get_serializer(data=data)
         if not serializer.is_valid():
-            print("❌ Error de validación:", serializer.errors)
+            print("[ERROR] Error de validación:", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         self.perform_create(serializer)
@@ -624,3 +821,130 @@ def actualizar_telefono(request):
         return Response({"mensaje": "Teléfono actualizado.", "nuevo_telefono": nuevo_telefono}, status=200)
     except Trabajador.DoesNotExist:
         return Response({"error": "No se encontró el trabajador."}, status=404)
+
+
+# ==============================================================================
+# CAV-182: Sincronizacion incremental de usuarios autorizados
+# ==============================================================================
+def _calcular_checksum_usuarios(usuarios_data):
+    """
+    Genera un checksum estable (SHA-256) sobre la lista de usuarios ya
+    serializada, ordenada por DNI para que el resultado sea determinista
+    sin importar el orden en que la base de datos devuelva las filas.
+    El cliente movil recalcula este mismo checksum para verificar que
+    la lista no fue alterada/corrompida en el camino (CAV-183).
+
+    IMPORTANTE: NO se usa sort_keys=True aqui. El checksum debe calcularse
+    sobre la MISMA representacion JSON que efectivamente se envia en la
+    respuesta (orden de claves tal como se construyen los dicts), porque
+    el cliente recalcula el checksum a partir de lo que recibio por HTTP,
+    no de una version re-ordenada que nunca viaja por la red.
+    """
+    normalizados = sorted(usuarios_data, key=lambda u: u['dni'])
+    canonical = json.dumps(normalizados, separators=(',', ':'))
+    return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+
+
+class UsuariosAutorizadosSyncView(APIView):
+    """
+    CAV-182: Endpoint de sincronizacion incremental de usuarios autorizados.
+
+    GET /api/usuarios-autorizados/sync/?since=<ISO-8601, opcional>
+
+    - Sin 'since': devuelve TODOS los trabajadores con cuenta de usuario
+      vinculada (sync completo, primera vez que el dispositivo sincroniza).
+    - Con 'since': devuelve solo los que cambiaron (activo, datos, etc.)
+      despues de esa fecha/hora (sync incremental).
+
+    Respuesta:
+    {
+        "version": "<ISO-8601, usar como 'since' en la proxima llamada>",
+        "checksum": "<sha256 de la lista 'usuarios' tal como se envia>",
+        "usuarios": [
+            {"dni": ..., "username": ..., "nombre_completo": ...,
+             "activo": ..., "actualizado_en": ...},
+            ...
+        ]
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        since_raw = request.query_params.get('since')
+        queryset = Trabajador.objects.filter(user__isnull=False).select_related('user')
+
+        if since_raw:
+            since_dt = parse_datetime(since_raw)
+            if since_dt is None:
+                return Response(
+                    {"error": "Parametro 'since' invalido. Debe ser una fecha ISO-8601."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if timezone.is_naive(since_dt):
+                since_dt = timezone.make_aware(since_dt, timezone.get_current_timezone())
+            queryset = queryset.filter(actualizado_en__gt=since_dt)
+
+        queryset = queryset.order_by('dni')
+
+        usuarios_data = [
+            {
+                'dni': t.dni,
+                'username': t.user.username,
+                'nombre_completo': t.nombre_completo,
+                'activo': t.activo,
+                'actualizado_en': t.actualizado_en.isoformat(),
+            }
+            for t in queryset
+        ]
+
+        # Validamos con el serializer para garantizar el contrato de datos
+        serializer = UsuarioAutorizadoSerializer(data=usuarios_data, many=True)
+        serializer.is_valid(raise_exception=True)
+
+        checksum = _calcular_checksum_usuarios(usuarios_data)
+
+        return Response({
+            'version': timezone.now().isoformat(),
+            'checksum': checksum,
+            'usuarios': usuarios_data,
+        }, status=status.HTTP_200_OK)
+
+
+# ==============================================================================
+# CAV-83: Reporte de eventos de login offline (auditoria)
+# ==============================================================================
+class RegistrarEventoLoginOfflineView(APIView):
+    """
+    CAV-83: recibe el reporte de que el usuario autenticado inicio sesion
+    en modo offline (validado localmente contra el hash cifrado, CAV-81),
+    una vez que el dispositivo recupera conexion.
+
+    Es puramente informativo/de auditoria: no crea ninguna sesion nueva
+    ni emite tokens. Para llegar aqui el dispositivo ya debe tener un
+    JWT valido (el mismo de su ultimo login online), asi que
+    'request.user' identifica de forma segura a quien reporta el evento.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = EventoLoginOfflineSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            trabajador = Trabajador.objects.get(user=request.user)
+        except Trabajador.DoesNotExist:
+            return Response(
+                {"error": "No se encontró el trabajador asociado a este usuario."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        evento = EventoLoginOffline.objects.create(
+            trabajador=trabajador,
+            device_id=serializer.validated_data['device_id'],
+            fecha_hora_offline=serializer.validated_data['fecha_hora_offline'],
+        )
+
+        return Response(
+            {"mensaje": "Evento de login offline registrado.", "id": evento.id},
+            status=status.HTTP_201_CREATED,
+        )

@@ -12,7 +12,7 @@ from metricas_ceneris.views import _calcular_asistencia_por_periodo, _hora_refer
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from .models import Area, IntentoFraude, Trabajador, Empresa # ... etc
 from django.shortcuts import render, get_object_or_404, redirect
 from rest_framework import permissions
@@ -21,6 +21,10 @@ from .forms import TrabajadorForm, UbicacionForm, JustificacionForm, EmpresaForm
 from .models import Cargo, Empresa, Proyecto, Trabajador, CentroCosto, Ubicacion, TareoDiario
 import pandas as pd
 from recursoshumanos.services import recalcular_asistencia_diaria
+from .models import Sede, ConfiguracionTolerancia, ToleranciaAuditoria
+from .motor_reglas import EstadoMarca
+from .services import listar_tolerancias, crear_o_actualizar_tolerancia, actualizar_tolerancia
+from . import servicios_horas
 from firebase_admin import firestore
 from google.cloud import firestore
 from google.cloud.firestore_v1.field_path import FieldPath
@@ -504,7 +508,7 @@ def lista_trabajadores(request):
 # --- VISTAS DE CREACIÓN Y EDICIÓN DE TRABAJADORES ---
 
 @login_required
-@group_required('Recursos Humanos', 'Calidad')
+@group_required('Recursos Humanos', 'Calidad', 'Supervisores', 'Gerencia')
 def gestion_empleados(request):
     """Muestra el dashboard de tarjetas para la gestión de empleados."""
     context = {'current_view': 'gestion_empleados'}
@@ -1011,6 +1015,34 @@ def actualizar_asignacion_ubicacion(request):
         return JsonResponse({'status': 'ok'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+#=================================================================================
+# --- VISTAS DE GESTIÓN DE TOLERANCIA DE HORARIO (HU-06 / CAV-15) ---
+#=================================================================================
+
+@login_required
+@group_required("Recursos Humanos", "Gerencia", "Administracion")
+def gestion_tolerancia(request):
+    """
+    Pantalla administrativa (CAV-72) para configurar los minutos de tolerancia
+    de tardanza por Sede y horario/turno. La edición se hace de forma visual
+    mediante AJAX contra los endpoints API de CAV-71 (sin recargar la página),
+    para que el cambio surta efecto de inmediato en el cálculo de asistencia
+    (CAV-154), sin reiniciar el servidor.
+    """
+    configuraciones = listar_tolerancias().order_by('sede__nombre', 'tipo_horario')
+    sedes = Sede.objects.filter(activo=True).order_by('nombre')
+    auditorias_recientes = ToleranciaAuditoria.objects.select_related('usuario').all()[:20]
+
+    context = {
+        'configuraciones': configuraciones,
+        'sedes': sedes,
+        'tipos_horario': ConfiguracionTolerancia.TipoHorario.choices,
+        'auditorias_recientes': auditorias_recientes,
+        'current_view': 'gestion_tolerancia',
+    }
+    return render(request, 'recursoshumanos/tolerancia/gestion_tolerancia.html', context)
+
 #vista para reporte mensual
 
 @login_required
@@ -1866,9 +1898,9 @@ class CustomLoginView(LoginView):
             return False
 
         grupos_administrativos = [
-            'Administrador', 'Metricas', 'Recursos Humanos', 'Calidad', 
+            'Administrador', 'Metricas', 'Recursos Humanos', 'Calidad',
             'Administracion', 'Gases', 'Proyectos', 'Cotizaciones',
-            'proyecto_monitoreo_smcv', 'Yeni_admin'
+            'proyecto_monitoreo_smcv', 'Yeni_admin', 'Supervisores', 'Gerencia'
         ]
         es_admin_o_grupo = user.is_superuser or user.groups.filter(name__in=grupos_administrativos).exists()
         tiene_perfil = hasattr(user, 'trabajador')
@@ -1937,7 +1969,10 @@ class CustomLoginView(LoginView):
 
         if tiene_rrhh:
             return reverse_lazy('recursoshumanos:dashboard')
-        
+
+        elif 'Supervisores' in grupos or 'Gerencia' in grupos:
+            return reverse_lazy('recursoshumanos:dashboard')
+
         elif 'Administracion' in grupos:
             return reverse_lazy('administracion:dashboard_estadistico')
 
@@ -4647,22 +4682,38 @@ def panel_aprobacion_horas_extra(request):
     )
 
     solicitudes_pendientes = base_query.none()
-    
+
     # Banderas para usar en el template
     is_gerente = user.groups.filter(name='Gerencia').exists()
     is_rrhh = user.groups.filter(name='Recursos Humanos').exists()
+    is_supervisor = user.groups.filter(name='Supervisores').exists()
 
-    if user.groups.filter(name='Supervisores').exists():
+    # Etiquetas del flujo (Supervisión -> RRHH -> Gerencia) para informar al usuario
+    # en qué paso está y a quién le llega la solicitud después de su aprobación.
+    nivel_actual = ''
+    paso_actual = 0
+    siguiente_nivel = ''
+
+    if is_supervisor:
         # Supervisor ve PENDIENTE_OPERADOR
         solicitudes_pendientes = base_query.filter(estado=SolicitudHorasExtra.Estado.PENDIENTE_OPERADOR)
-    
+        nivel_actual = 'Supervisión'
+        paso_actual = 1
+        siguiente_nivel = 'Recursos Humanos'
+
     elif is_rrhh:
         # RRHH ve PENDIENTE_ADMIN
         solicitudes_pendientes = base_query.filter(estado=SolicitudHorasExtra.Estado.PENDIENTE_ADMIN)
-    
+        nivel_actual = 'Recursos Humanos'
+        paso_actual = 2
+        siguiente_nivel = 'Gerencia'
+
     elif is_gerente:
         # Gerencia ve PENDIENTE_GERENTE (y necesita ver quién aprobó antes)
         solicitudes_pendientes = base_query.filter(estado=SolicitudHorasExtra.Estado.PENDIENTE_GERENTE)
+        nivel_actual = 'Gerencia'
+        paso_actual = 3
+        siguiente_nivel = ''  # Último nivel: su aprobación cierra el flujo
 
     historial_qs = base_query.filter(
         estado__in=[
@@ -4682,7 +4733,10 @@ def panel_aprobacion_horas_extra(request):
         'current_view': 'panel_aprobacion_he',
         'is_gerente': is_gerente, # Pasamos esto para activar la columna extra en HTML
         'is_rrhh': is_rrhh,       # Opcional: por si RRHH también quiere ver quién fue el operador
-        'is_supervisor': user.groups.filter(name='Supervisores').exists(),
+        'is_supervisor': is_supervisor,
+        'nivel_actual': nivel_actual,
+        'paso_actual': paso_actual,
+        'siguiente_nivel': siguiente_nivel,
     }
     return render(request, 'recursoshumanos/horas_extra/panel_aprobacion.html', context)
 
@@ -4698,11 +4752,14 @@ def procesar_solicitud_horas_extra(request, solicitud_id, accion):
     """
     solicitud = get_object_or_404(SolicitudHorasExtra, pk=solicitud_id)
     user = request.user
-    
+
     # Pre-cargamos permisos
     es_supervisor = user.groups.filter(name='Supervisores').exists()
     es_rrhh = user.groups.filter(name='Recursos Humanos').exists()
     es_gerente = user.groups.filter(name='Gerencia').exists()
+
+    # Nombre del trabajador para que el mensaje indique sobre qué solicitud se actuó
+    nombre_trabajador = str(solicitud.trabajador)
 
     # --- LÓGICA DE APROBACIÓN ---
     if accion == 'aprobar':
@@ -4714,7 +4771,11 @@ def procesar_solicitud_horas_extra(request, solicitud_id, accion):
                 solicitud.fecha_aprobacion_operador = timezone.now()
                 solicitud.estado = SolicitudHorasExtra.Estado.PENDIENTE_ADMIN
                 solicitud.save()
-                messages.success(request, 'Aprobado por Operaciones. Enviado a RRHH.')
+                messages.success(
+                    request,
+                    f'Paso 1 de 3 completado: aprobaste la solicitud de {nombre_trabajador}. '
+                    'Se envió a Recursos Humanos para su aprobación.'
+                )
             else:
                 messages.error(request, 'No tienes permisos de Supervisor.')
 
@@ -4725,7 +4786,11 @@ def procesar_solicitud_horas_extra(request, solicitud_id, accion):
                 solicitud.fecha_aprobacion_admin = timezone.now()
                 solicitud.estado = SolicitudHorasExtra.Estado.PENDIENTE_GERENTE
                 solicitud.save()
-                messages.success(request, 'Aprobado por RRHH. Enviado a Gerencia.')
+                messages.success(
+                    request,
+                    f'Paso 2 de 3 completado: Recursos Humanos aprobó la solicitud de {nombre_trabajador}. '
+                    'Se envió a Gerencia para la aprobación final.'
+                )
             else:
                 messages.error(request, 'No tienes permisos de RRHH.')
 
@@ -4747,12 +4812,23 @@ def procesar_solicitud_horas_extra(request, solicitud_id, accion):
                         fecha=solicitud.fecha_horas_extra
                     )
                     recalcular_asistencia_diaria(tareo)
-                    messages.success(request, '¡Solicitud aprobada y horas recalculadas en el sistema!')
+                    messages.success(
+                        request,
+                        f'Paso 3 de 3 completado: Gerencia dio la aprobación final a la solicitud de '
+                        f'{nombre_trabajador}. El proceso terminó y las horas ya se sumaron a su tareo.'
+                    )
                 except TareoDiario.DoesNotExist:
                     # Si no existe tareo (ej: pidieron hora extra para un día futuro), solo aprobamos la solicitud.
-                    messages.success(request, 'Solicitud aprobada (El tareo aún no existe para recalcular).')
+                    messages.success(
+                        request,
+                        f'Paso 3 de 3 completado: Gerencia dio la aprobación final a la solicitud de '
+                        f'{nombre_trabajador}. Las horas se sumarán cuando exista el tareo de ese día.'
+                    )
                 except Exception as e:
-                    messages.warning(request, f'Solicitud aprobada, pero hubo error recalculando: {e}')
+                    messages.warning(
+                        request,
+                        f'Solicitud aprobada por Gerencia, pero hubo un error recalculando el tareo: {e}'
+                    )
             else:
                 messages.error(request, 'No tienes permisos de Gerencia.')
         
@@ -4766,14 +4842,17 @@ def procesar_solicitud_horas_extra(request, solicitud_id, accion):
 
         # Trazabilidad de quién rechazó
         if estado_actual == SolicitudHorasExtra.Estado.PENDIENTE_OPERADOR and es_supervisor:
-            solicitud.aprobado_por_operador = user 
+            solicitud.aprobado_por_operador = user
             solicitud.fecha_aprobacion_operador = timezone.now()
+            nivel_rechazo = 'Supervisión'
         elif estado_actual == SolicitudHorasExtra.Estado.PENDIENTE_ADMIN and es_rrhh:
             solicitud.aprobado_por_admin = user
             solicitud.fecha_aprobacion_admin = timezone.now()
+            nivel_rechazo = 'Recursos Humanos'
         elif estado_actual == SolicitudHorasExtra.Estado.PENDIENTE_GERENTE and es_gerente:
             solicitud.aprobado_por_gerente = user
             solicitud.fecha_aprobacion_gerente = timezone.now()
+            nivel_rechazo = 'Gerencia'
         else:
             messages.error(request, 'No tienes permisos para rechazar esta solicitud en su estado actual.')
             return redirect('recursoshumanos:panel_aprobacion_he')
@@ -4787,7 +4866,11 @@ def procesar_solicitud_horas_extra(request, solicitud_id, accion):
         # también deberíamos recalcular para quitarle las horas. 
         # Pero en este flujo lineal (Pendiente->Aprobado) no es estrictamente necesario.
         
-        messages.warning(request, 'La solicitud ha sido rechazada.')
+        messages.warning(
+            request,
+            f'Solicitud de {nombre_trabajador} rechazada en el nivel de {nivel_rechazo}. '
+            'El flujo se detiene aquí y no continúa a los siguientes niveles.'
+        )
 
     return redirect('recursoshumanos:panel_aprobacion_he')
 
@@ -4923,9 +5006,10 @@ def consulta_asistencias_view(request):
     trabajador_id  = request.GET.get('trabajador', '').strip()
     fecha_inicio   = request.GET.get('inicio', '').strip()
     fecha_fin      = request.GET.get('fin', '').strip()
+    etiqueta       = request.GET.get('etiqueta', '').strip()
     page_number    = request.GET.get('page', 1)
 
-    busqueda_realizada = any([empresa_id, proyecto_id, subproyecto_id, area_id, trabajador_id, fecha_inicio, fecha_fin])
+    busqueda_realizada = any([empresa_id, proyecto_id, subproyecto_id, area_id, trabajador_id, fecha_inicio, fecha_fin, etiqueta])
     hoy = timezone.localdate()
 
     page_obj = None
@@ -4950,6 +5034,8 @@ def consulta_asistencias_view(request):
             qs = qs.filter(fecha__gte=fecha_inicio)
         if fecha_fin:
             qs = qs.filter(fecha__lte=fecha_fin)
+        if etiqueta:
+            qs = qs.filter(etiqueta_estado=etiqueta)
 
         paginator = Paginator(qs, 20)
         page_obj  = paginator.get_page(page_number)
@@ -4970,5 +5056,132 @@ def consulta_asistencias_view(request):
         'current_trabajador': int(trabajador_id) if trabajador_id else '',
         'current_inicio': fecha_inicio,
         'current_fin': fecha_fin,
+        'current_etiqueta': etiqueta,
+        'opciones_etiqueta': EstadoMarca.choices,
     }
     return render(request, 'recursoshumanos/consulta_asistencias/lista_consulta.html', context)
+
+# ==============================================================================
+# HORAS ACUMULADAS POR PERÍODO
+# ==============================================================================
+
+def _parsear_fecha_get(valor):
+    """Convierte 'YYYY-MM-DD' de un <input type=date> a `date`, o None."""
+    if not valor:
+        return None
+    try:
+        return datetime.strptime(valor.strip(), '%Y-%m-%d').date()
+    except (ValueError, AttributeError):
+        return None
+
+
+@login_required
+@group_required("Recursos Humanos", "Gerencia", "Administracion")
+def reporte_horas_periodo(request):
+    """Horas acumuladas por trabajador en el rango de fechas que fija RRHH.
+
+    RRHH elige el período y el reporte suma `TareoDiario.horas_trabajadas_validas`
+    de cada trabajador en ese rango. No decide si el total es suficiente: esa
+    lectura depende de la modalidad de cada persona y la hace RRHH.
+    """
+    inicio_str = request.GET.get('inicio', '').strip()
+    fin_str = request.GET.get('fin', '').strip()
+
+    empresa_id = request.GET.get('empresa', '').strip()
+    area_id = request.GET.get('area', '').strip()
+    sede_id = request.GET.get('sede', '').strip()
+    proyecto_id = request.GET.get('proyecto', '').strip()
+    trabajador_id = request.GET.get('trabajador', '').strip()
+    solo_con_alerta = request.GET.get('solo_con_alerta') == '1'
+
+    fecha_inicio = _parsear_fecha_get(inicio_str)
+    fecha_fin = _parsear_fecha_get(fin_str)
+
+    hoy = timezone.localdate()
+    resumenes = []
+    totales = None
+    busqueda_realizada = bool(inicio_str or fin_str)
+    periodo_recortado = False
+
+    if busqueda_realizada:
+        if not fecha_inicio or not fecha_fin:
+            messages.error(request, "Indica la fecha de inicio y la fecha de fin del período.")
+            busqueda_realizada = False
+        elif fecha_inicio > fecha_fin:
+            messages.error(request, "La fecha de inicio no puede ser posterior a la fecha de fin.")
+            busqueda_realizada = False
+        else:
+            # Los días futuros ya existen como tareo programado con 0 horas;
+            # incluirlos ensuciaría el conteo de días con jornadas que todavía
+            # no ocurrieron. El servicio los recorta y aquí se avisa.
+            periodo_recortado = fecha_fin > hoy
+
+            resumenes = servicios_horas.resumen_horas_por_periodo(
+                fecha_inicio,
+                fecha_fin,
+                empresa_id=empresa_id or None,
+                area_id=area_id or None,
+                sede_id=sede_id or None,
+                proyecto_id=proyecto_id or None,
+                trabajador_id=trabajador_id or None,
+                solo_con_alerta=solo_con_alerta,
+            )
+            totales = servicios_horas.totales_generales(resumenes)
+
+    context = {
+        'empresas': Empresa.objects.all().order_by('nombre'),
+        'areas': Area.objects.all().order_by('nombre'),
+        'sedes': Sede.objects.all().order_by('nombre'),
+        'proyectos': Proyecto.objects.filter(parent__isnull=True, activo=True).order_by('nombre'),
+        'trabajadores': Trabajador.objects.filter(activo=True).order_by('apellido_paterno', 'nombres'),
+        'resumenes': resumenes,
+        'totales': totales,
+        'busqueda_realizada': busqueda_realizada,
+        'periodo_recortado': periodo_recortado,
+        'hoy': hoy,
+        # Fechas ya parseadas para mostrarlas en formato local; las `current_*`
+        # se quedan en ISO porque son las que rellenan los <input type="date">.
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'current_inicio': inicio_str,
+        'current_fin': fin_str,
+        'current_empresa': empresa_id,
+        'current_area': area_id,
+        'current_sede': sede_id,
+        'current_proyecto': proyecto_id,
+        'current_trabajador': trabajador_id,
+        'solo_con_alerta': solo_con_alerta,
+        'current_view': 'reporte_horas_periodo',
+    }
+    return render(request, 'recursoshumanos/reportes/horas_periodo.html', context)
+
+
+@login_required
+@group_required("Recursos Humanos", "Gerencia", "Administracion")
+def detalle_horas_trabajador(request, trabajador_id):
+    """Desglose día a día del acumulado de un trabajador en el mismo período.
+
+    Es la vista a la que RRHH entra desde el reporte cuando el total no le
+    cuadra: muestra qué aportó cada día y cuáles quedaron sin salida marcada.
+    """
+    trabajador = get_object_or_404(Trabajador, pk=trabajador_id)
+
+    fecha_inicio = _parsear_fecha_get(request.GET.get('inicio'))
+    fecha_fin = _parsear_fecha_get(request.GET.get('fin'))
+
+    if not fecha_inicio or not fecha_fin or fecha_inicio > fecha_fin:
+        messages.error(request, "Período inválido. Vuelve a hacer la consulta.")
+        return redirect('recursoshumanos:reporte_horas_periodo')
+
+    dias = servicios_horas.detalle_dias_trabajador(trabajador.id, fecha_inicio, fecha_fin)
+    total_horas = sum((d.horas_trabajadas_validas or Decimal('0')) for d in dias)
+
+    return render(request, 'recursoshumanos/reportes/horas_periodo_detalle.html', {
+        'trabajador': trabajador,
+        'dias': dias,
+        'total_horas': total_horas,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'querystring_periodo': request.GET.urlencode(),
+        'current_view': 'reporte_horas_periodo',
+    })

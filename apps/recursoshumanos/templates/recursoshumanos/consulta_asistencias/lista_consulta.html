@@ -104,6 +104,18 @@
                 </select>
             </div>
 
+            <div style="flex: 1; min-width: 180px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Detalle marcación</label>
+                <select name="etiqueta" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="">-- Todas --</option>
+                    {% for valor, texto in opciones_etiqueta %}
+                        <option value="{{ valor }}" {% if current_etiqueta == valor %}selected{% endif %}>
+                            {{ texto }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
             <div style="flex: 1; min-width: 150px;">
                 <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Desde</label>
                 <input type="date" name="inicio" value="{{ current_inicio }}" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
@@ -137,6 +149,7 @@
                     <th style="padding: 1rem;">Trabajador</th>
                     <th style="padding: 1rem;">Área</th>
                     <th style="padding: 1rem; text-align: center;">Estado</th>
+                    <th style="padding: 1rem; text-align: center;">Detalle marcación</th>
                     <th style="padding: 1rem;">Entrada</th>
                     <th style="padding: 1rem;">Salida</th>
                     <th style="padding: 1rem;">Medio</th>
@@ -162,6 +175,22 @@
                             <span style="background-color: #e2e8f0; color: #475569; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">{{ r.resultado_efectivo }}</span>
                         {% endif %}
                     </td>
+                    <td style="text-align: center; padding: 1rem;" title="{{ r.detalle_marca }}">
+                        {% if r.etiqueta_estado == 'TARDANZA' %}
+                            <span style="background-color: #fef3c7; color: #b45309; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">TARDANZA{% if r.horas_tardanza %} ({{ r.horas_tardanza }} h){% endif %}</span>
+                        {% elif r.etiqueta_estado == 'FUERA_HORARIO' %}
+                            <span style="background-color: #fee2e2; color: #b91c1c; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">FUERA DE HORARIO</span>
+                        {% elif r.etiqueta_estado == 'NORMAL' %}
+                            <span style="background-color: #d1fae5; color: #047857; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">NORMAL</span>
+                        {% elif r.etiqueta_estado %}
+                            <span style="background-color: #e2e8f0; color: #475569; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">{{ r.get_etiqueta_estado_display }}</span>
+                        {% else %}
+                            <span style="color: #94a3b8;">-</span>
+                        {% endif %}
+                        {% if r.detalle_marca %}
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">{{ r.detalle_marca }}</div>
+                        {% endif %}
+                    </td>
                     <td style="padding: 1rem;">{{ r.hora_entrada_real_calculada|default:"--:--" }}</td>
                     <td style="padding: 1rem;">{{ r.hora_salida_real_calculada|default:"--:--" }}</td>
 
@@ -177,7 +206,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 4rem 2rem; color: #64748b;">
+                    <td colspan="8" style="text-align: center; padding: 4rem 2rem; color: #64748b;">
                         <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
                         <h3>Sin resultados</h3>
                         <p>No hay registros para los filtros seleccionados.</p>
@@ -191,7 +220,7 @@
         <div style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap;">
 
             {% if page_obj.has_previous %}
-                <a href="?page={{ page_obj.previous_page_number }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}"
+                <a href="?page={{ page_obj.previous_page_number }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}&etiqueta={{ current_etiqueta }}"
                    style="padding: 0.4rem 0.9rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #2563eb; background: white;">
                     &laquo; Anterior
                 </a>
@@ -203,7 +232,7 @@
                         {{ num }}
                     </span>
                 {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
-                    <a href="?page={{ num }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}"
+                    <a href="?page={{ num }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}&etiqueta={{ current_etiqueta }}"
                        style="padding: 0.4rem 0.9rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #2563eb; background: white;">
                         {{ num }}
                     </a>
@@ -211,7 +240,7 @@
             {% endfor %}
 
             {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}"
+                <a href="?page={{ page_obj.next_page_number }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}&etiqueta={{ current_etiqueta }}"
                    style="padding: 0.4rem 0.9rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #2563eb; background: white;">
                     Siguiente &raquo;
                 </a>
