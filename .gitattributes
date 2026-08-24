@@ -1,0 +1,7 @@
+# Los scripts de shell corren dentro de contenedores Linux. Si se guardan con
+# CRLF, el shebang queda como "#!/usr/bin/env bash\r" y el contenedor muere con
+# "exec: no such file or directory". Forzar LF siempre.
+*.sh text eol=lf
+entrypoint.sh text eol=lf
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf

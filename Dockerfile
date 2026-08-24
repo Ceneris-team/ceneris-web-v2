@@ -47,9 +47,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 5. Copiar el resto del código
 COPY . .
-    
-# 6. Exponer el puerto
-EXPOSE 10000
 
-# 7. Comando de inicio
-CMD ["gunicorn", "admin_panel.wsgi", "--timeout", "120"]
+# 5b. Normalizar finales de linea del entrypoint y hacerlo ejecutable.
+# El sed es defensivo: si el archivo llegara con CRLF (clonado en Windows), el
+# shebang quedaria como "#!/usr/bin/env bash\r" y el contenedor no arrancaria.
+RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+
+# 6. Exponer el puerto
+EXPOSE 8000
+
+# 7. Comando de inicio.
+# El entrypoint corre migrate y collectstatic antes de levantar gunicorn.
+CMD ["/app/entrypoint.sh"]
