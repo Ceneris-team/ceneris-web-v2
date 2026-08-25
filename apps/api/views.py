@@ -20,7 +20,7 @@ from django.conf import settings as django_settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.db import IntegrityError
-from django.db.models import Q
+from django.db.models import Max, Q
 from django.contrib.auth.decorators import login_required
 
 # Importaciones de modelos
@@ -891,7 +891,8 @@ class UsuariosAutorizadosSyncView(APIView):
 
     def get(self, request):
         since_raw = request.query_params.get('since')
-        queryset = Trabajador.objects.filter(user__isnull=False).select_related('user')
+        base = Trabajador.objects.filter(user__isnull=False)
+        queryset = base.select_related('user')
 
         if since_raw:
             since_dt = parse_datetime(since_raw)
@@ -923,8 +924,33 @@ class UsuariosAutorizadosSyncView(APIView):
 
         checksum = _calcular_checksum_usuarios(usuarios_data)
 
+        # El cursor sale de los DATOS, no del reloj del servidor.
+        #
+        # Antes era `timezone.now()` evaluado junto al `Response`, o sea
+        # DESPUES de leer. Eso abria un hueco: todo lo que cambiara entre la
+        # lectura y ese instante quedaba por debajo del cursor que el cliente
+        # se llevaba, y el proximo incremental (`actualizado_en > since`) ya no
+        # lo alcanzaba. No se recuperaba solo -el cursor ya habia avanzado-,
+        # asi que el cambio se perdia para siempre y en silencio: un trabajador
+        # dado de baja seguia entrando al login offline meses despues.
+        #
+        # La marca de agua de la tabla no puede dejar hueco por construccion:
+        # cualquier fila guardada despues de esta lectura tiene un
+        # `actualizado_en` estrictamente mayor, asi que el proximo incremental
+        # la trae. Ademas deja de depender del reloj, que entre varios workers
+        # puede tener deriva, y de su resolucion.
+        #
+        # Se calcula sobre `base` (todas las filas) y no sobre `queryset`, que
+        # en una llamada incremental ya viene filtrado: si no hubo cambios, el
+        # maximo de ese conjunto vacio seria nulo y el cursor saltaria al
+        # reloj, reintroduciendo el mismo hueco.
+        #
+        # `timezone.now()` queda solo de respaldo para la tabla vacia, donde no
+        # hay marca de agua posible y tampoco hay nada que perder.
+        version = base.aggregate(Max('actualizado_en'))['actualizado_en__max']
+
         return Response({
-            'version': timezone.now().isoformat(),
+            'version': (version or timezone.now()).isoformat(),
             'checksum': checksum,
             'usuarios': usuarios_data,
         }, status=status.HTTP_200_OK)
