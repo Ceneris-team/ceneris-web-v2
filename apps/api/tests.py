@@ -1,7 +1,7 @@
 import hashlib
 import json
 import uuid
-from datetime import datetime, time as dt_time, timedelta
+from datetime import datetime, time as dt_time, timedelta, timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
 from django.db import connection
@@ -351,7 +351,13 @@ class _MarcacionBaseTests(TestCase):
             'nombre_ubicacion': 'Campamento',
         }
         if timestamp is not None:
-            datos['timestamp'] = timestamp.isoformat()
+            # Un string se manda tal cual: los tests de zona horaria necesitan
+            # controlar el formato exacto que viaja por la red (con `Z`, con
+            # offset o sin zona), que es justo lo que distingue a un cliente
+            # de otro.
+            datos['timestamp'] = (
+                timestamp if isinstance(timestamp, str) else timestamp.isoformat()
+            )
         datos.update(extra)
         return datos
 
@@ -637,3 +643,110 @@ class MarcacionCargaFaenaTests(_MarcacionBaseTests):
             len(ultima.captured_queries), len(primera.captured_queries),
             'El costo por marca crece con el volumen acumulado.',
         )
+
+
+
+class TimestampConZonaHorariaTests(_MarcacionBaseTests):
+    """El timestamp de la marca se interpreta segun la zona que declare el
+    payload, no segun la que suponga el servidor.
+
+    Es la otra mitad del fix de MARCA_FUTURA. La app mandaba `DateTime.now()
+    .toIso8601String()`, que en Dart no lleva offset: hora de pared local, a
+    secas. Un celular con la zona horaria mal configurada (el caso tipico: el
+    emulador arranca en GMT, pero tambien pasa en equipos reales) mandaba una
+    hora que el backend leia como hora de Lima. Con GMT eso son 5 horas en el
+    futuro, o sea muy por encima del margen de reloj: 400 MARCA_FUTURA. Y el
+    worker trataba ese 400 como rechazo definitivo, asi que tras unos intentos
+    apartaba la marca a `asistencias_rechazadas`: planilla perdida.
+
+    Estos tests fijan las dos mitades del contrato, para que el backend se
+    pueda desplegar antes que la app sin coordinar una ventana.
+    """
+
+    def _utc_con_z(self, momento):
+        """Serializa como lo hace `DateTime.toUtc().toIso8601String()` en Dart."""
+        return momento.astimezone(dt_timezone.utc).isoformat().replace('+00:00', 'Z')
+
+    def test_timestamp_en_utc_con_z_se_imputa_al_dia_de_lima(self):
+        """El formato que manda la app corregida. La marca de las 20:00 de Lima
+        es del dia siguiente en UTC: si el offset no se respetara, el tareo
+        caeria en el dia equivocado."""
+        fecha = timezone.localdate() - timedelta(days=3)
+        TareoDiario.objects.create(
+            trabajador=self.trabajador, fecha=fecha, estado='O',
+        )
+
+        respuesta = self._marcar(
+            timestamp=self._utc_con_z(self._instante(fecha, 20, 0)),
+            tipo='Salida',
+        )
+
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertTrue(
+            TareoDiario.objects.filter(trabajador=self.trabajador, fecha=fecha).exists()
+        )
+        self.assertFalse(
+            TareoDiario.objects.filter(
+                trabajador=self.trabajador, fecha=fecha + timedelta(days=1)
+            ).exists(),
+            'Se ignoro el offset y la marca se imputo al dia siguiente.',
+        )
+
+    def test_timestamp_sin_zona_se_sigue_asumiendo_lima(self):
+        """Contrato viejo intacto: es lo que manda el APK que hoy esta en la
+        calle, y va a seguir mandandolo hasta que se actualice el parque."""
+        fecha = timezone.localdate() - timedelta(days=3)
+        TareoDiario.objects.create(
+            trabajador=self.trabajador, fecha=fecha, estado='O',
+            hora_entrada=dt_time(8, 0),
+        )
+
+        respuesta = self._marcar(timestamp=f'{fecha.isoformat()}T08:00:00')
+
+        self.assertEqual(respuesta.status_code, 201)
+        tareo = TareoDiario.objects.get(trabajador=self.trabajador, fecha=fecha)
+        self.assertEqual(tareo.hora_entrada_real, dt_time(8, 0))
+
+    def test_celular_con_zona_en_gmt_ya_no_produce_marca_futura(self):
+        """El bug completo, en un solo test.
+
+        Mismo instante real, mismo celular mal configurado en GMT, dos formas
+        de serializarlo: con offset explicito entra, sin zona lo leemos 5 horas
+        adelantado y cae como marca futura.
+        """
+        ahora = timezone.now()
+        TareoDiario.objects.create(
+            trabajador=self.trabajador, fecha=timezone.localdate(), estado='O',
+            hora_entrada=dt_time(8, 0),
+        )
+
+        # Hora de pared que ve un celular puesto en GMT, sin declarar la zona:
+        # es exactamente lo que serializa hoy `DateTime.now().toIso8601String()`
+        # en ese equipo.
+        hora_pared_gmt = ahora.astimezone(dt_timezone.utc).replace(tzinfo=None)
+
+        rechazada = self._marcar(timestamp=hora_pared_gmt.isoformat())
+
+        self.assertEqual(rechazada.status_code, 400)
+        self.assertEqual(rechazada.data['codigo'], 'MARCA_FUTURA')
+
+        # El mismo instante, declarando la zona: entra sin problema.
+        aceptada = self._marcar(timestamp=self._utc_con_z(ahora))
+
+        self.assertEqual(aceptada.status_code, 201)
+        self.assertEqual(Asistencia.objects.count(), 1)
+        self.assertEqual(IntentoFraude.objects.count(), 0)
+
+    def test_reloj_realmente_adelantado_sigue_siendo_marca_futura(self):
+        """El offset explicito no debilita el control: si el reloj del equipo
+        de verdad esta adelantado, la marca se sigue rechazando. Lo que cambia
+        es que ahora el worker la conserva y reintenta en vez de descartarla.
+        """
+        futuro = timezone.now() + timedelta(hours=6)
+
+        respuesta = self._marcar(timestamp=self._utc_con_z(futuro))
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertEqual(respuesta.data['codigo'], 'MARCA_FUTURA')
+        self.assertEqual(Asistencia.objects.count(), 0)
+        self.assertEqual(IntentoFraude.objects.count(), 0)
