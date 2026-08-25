@@ -74,6 +74,18 @@ def _fecha_negocio_de_marca(raw_timestamp):
     corre en UTC y a partir de las 19:00 de Lima ``.date()`` devuelve el dia
     siguiente. Ese bug ya se corrigio una vez en este archivo (ver el candado de
     turno mas abajo); no reintroducirlo.
+
+    Contrato de zona horaria, del que depende el fix de MARCA_FUTURA:
+
+      * Si el payload trae offset explicito (``...Z`` o ``...-05:00``), se
+        respeta tal cual. Es lo que manda la app desde el fix de zona horaria.
+      * Si viene sin zona, se asume America/Lima. Es lo que manda el parque
+        movil viejo, y hay que seguir soportandolo mientras exista.
+
+    Las dos formas conviven a proposito: asi este cambio se puede desplegar
+    antes que la app, sin coordinar una ventana. Un celular con la zona horaria
+    mal configurada mandaba hora local de OTRA zona sin decirlo, se leia como
+    hora de Lima y caia como marca futura; con offset explicito eso ya no pasa.
     """
     if not raw_timestamp:
         return timezone.localdate(), None
