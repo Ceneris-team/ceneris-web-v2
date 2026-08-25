@@ -5,9 +5,11 @@ from datetime import datetime, time as dt_time, timedelta, timezone as dt_timezo
 
 from django.contrib.auth import get_user_model
 from django.db import connection
+from django.db.models import Max
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -220,6 +222,66 @@ class UsuariosAutorizadosSyncTests(TestCase):
         dnis = {u['dni'] for u in tercera.data['usuarios']}
         self.assertEqual(dnis, {'10000001'})
         self.assertFalse(tercera.data['usuarios'][0]['activo'])
+
+    # ------------------------------------------------------------------
+    # El cursor: sale de los datos, no del reloj (bug del hueco silencioso).
+    # ------------------------------------------------------------------
+
+    def test_el_cursor_es_la_marca_de_agua_de_los_datos(self):
+        """El `version` que se lleva el cliente tiene que ser el
+        `actualizado_en` mas alto que acaba de leer, no la hora del servidor.
+
+        Es la propiedad de la que cuelga todo lo demas: mientras el cursor no
+        pase de lo leido, nada puede quedar por debajo de el sin haber viajado.
+        """
+        respuesta = self.client.get(self.url)
+
+        maximo = Trabajador.objects.filter(user__isnull=False).aggregate(
+            Max('actualizado_en')
+        )['actualizado_en__max']
+        self.assertEqual(respuesta.data['version'], maximo.isoformat())
+
+    def test_un_cambio_posterior_a_la_lectura_no_se_pierde(self):
+        """Regresion del bug: el hueco entre la lectura y el cursor.
+
+        Antes `version` era `timezone.now()` evaluado junto al `Response`, o
+        sea DESPUES de leer. Un cambio ocurrido en ese intervalo quedaba por
+        debajo del cursor que el cliente se llevaba y el incremental siguiente
+        ya no lo alcanzaba: se perdia para siempre, en silencio.
+
+        Se simula con `update()` -que no dispara `auto_now`- para fijar un
+        instante exactamente dentro de esa ventana y que el test no dependa de
+        la resolucion del reloj de la maquina.
+        """
+        primera = self.client.get(self.url)
+        cursor = parse_datetime(primera.data['version'])
+
+        # Un cambio inmediatamente posterior a lo leido: con el cursor viejo
+        # (la hora del servidor, siempre mayor) caia en el hueco.
+        Trabajador.objects.filter(dni='10000002').update(
+            activo=False,
+            actualizado_en=cursor + timedelta(microseconds=1),
+        )
+
+        incremental = self.client.get(self.url, {'since': primera.data['version']})
+
+        dnis = {u['dni'] for u in incremental.data['usuarios']}
+        self.assertEqual(dnis, {'10000002'},
+                         'El cambio quedo en el hueco entre la lectura y el cursor.')
+
+    def test_un_incremental_sin_cambios_no_mueve_el_cursor(self):
+        """Si no cambio nada, el cursor tiene que quedarse donde estaba.
+
+        Antes avanzaba al reloj en cada llamada, aunque no hubiera leido nada:
+        cada sincronizacion sin novedades corria el cursor hacia adelante y
+        agrandaba la ventana de lo que podia perderse.
+        """
+        primera = self.client.get(self.url)
+
+        segunda = self.client.get(self.url, {'since': primera.data['version']})
+
+        self.assertEqual(segunda.data['usuarios'], [])
+        self.assertEqual(segunda.data['version'], primera.data['version'])
 
     def test_checksum_coincide_con_lo_que_realmente_viaja_por_la_red(self):
         """
