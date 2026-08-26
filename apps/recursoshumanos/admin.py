@@ -2,7 +2,7 @@
 from django.contrib import admin, messages
 from admin_panel.settings import db
 from django.shortcuts import render
-from .models import Sede, Area, Empresa, Cargo, CentroCosto, ConfiguracionTolerancia, ToleranciaAuditoria, Trabajador, EventoLoginOffline
+from .models import Sede, Area, Empresa, Cargo, CentroCosto, ConfiguracionTolerancia, ToleranciaAuditoria, Trabajador, EventoLoginOffline, MarcaSinHorarioAuditoria
 
 # Creamos una acción personalizada para desvincular dispositivos
 @admin.action(description="Desvincular dispositivo seleccionado")
@@ -87,6 +87,21 @@ class ToleranciaAuditoriaAdmin(admin.ModelAdmin):
     list_display = ['sede_nombre', 'tipo_horario', 'minutos_anteriores', 'minutos_nuevos', 'usuario', 'creado_en']
     list_filter = ['tipo_horario']
     search_fields = ['sede_nombre']
+    ordering = ['-creado_en']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(MarcaSinHorarioAuditoria)
+class MarcaSinHorarioAuditoriaAdmin(admin.ModelAdmin):
+    """Quien habilito a quien a marcar sin horario (solo lectura)."""
+    list_display = ['trabajador_nombre', 'trabajador_dni', 'habilitado_nuevo', 'hasta_nuevo', 'usuario', 'creado_en']
+    list_filter = ['habilitado_nuevo']
+    search_fields = ['trabajador_nombre', 'trabajador_dni']
     ordering = ['-creado_en']
 
     def has_add_permission(self, request):

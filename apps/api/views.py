@@ -531,11 +531,28 @@ class RegistrarAsistenciaView(APIView):
                         }, status=status.HTTP_403_FORBIDDEN)
 
                 except TareoDiario.DoesNotExist:
-                    # Restricción 2: No existe turno asignado en la web
-                    registrar_fraude_bd('Intento de marcacion sin turno programado')
-                    return Response({
-                        'detail': 'No tienes un turno programado para hoy. Por favor contacta a tu supervisor.'
-                    }, status=status.HTTP_403_FORBIDDEN)
+                    # Restricción 2: No existe turno asignado en la web.
+                    #
+                    # Única excepción: RRHH habilitó explícitamente a ESTE
+                    # trabajador a marcar sin horario. El permiso se evalúa
+                    # contra `fecha_negocio` y no contra hoy, porque una marca
+                    # offline sincronizada el mismo día también cae acá y lo que
+                    # importa es si el permiso regía cuando marcó.
+                    if trabajador.puede_marcar_sin_horario_en(fecha_negocio):
+                        # Mismo tratamiento que la rama de marca atrasada: el
+                        # tareo se crea al vuelo con estado 'O' (sin horario),
+                        # que el motor de reglas clasifica ASISTIÓ + SIN_HORARIO
+                        # sin fabricar tardanza. No es fraude, no se registra.
+                        tareo, _ = TareoDiario.objects.get_or_create(
+                            trabajador=trabajador,
+                            fecha=fecha_negocio,
+                            defaults={'estado': 'O', 'resultado': 'F'},
+                        )
+                    else:
+                        registrar_fraude_bd('Intento de marcacion sin turno programado')
+                        return Response({
+                            'detail': 'No tienes un turno programado para hoy. Por favor contacta a tu supervisor.'
+                        }, status=status.HTTP_403_FORBIDDEN)
             # =================================================================
 
             # 5. Guardar la Asistencia (Solo si pasó todas las validaciones y no hubo fraude)
