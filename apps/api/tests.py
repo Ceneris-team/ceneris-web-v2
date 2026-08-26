@@ -950,3 +950,60 @@ class PermisoMarcaSinHorarioModeloTests(TestCase):
         self.assertFalse(
             self.trabajador.puede_marcar_sin_horario_en(limite + timedelta(days=1))
         )
+
+
+class RevocacionPermisoMarcaSinHorarioTests(_MarcacionBaseTests):
+    """Cuando RRHH revoca el permiso, la revocacion aplica desde el dia siguiente.
+
+    Es una decision deliberada, no un descuido: la primera marca autorizada crea
+    el TareoDiario del dia, y a partir de ahi el `get` lo encuentra, la rama
+    `except DoesNotExist` no se ejecuta mas y el permiso deja de consultarse.
+
+    Se eligio dejarlo asi porque cortar en seco rompe la jornada en curso: el
+    trabajador que marco Entrada con el permiso vigente quedaria sin poder
+    marcar Salida, con el dia a medio cerrar para planilla y sin nada que
+    pueda hacer al respecto. La fuga esta acotada a un solo dia y no convierte
+    el permiso en permanente.
+    """
+
+    def test_revocado_el_mismo_dia_permite_cerrar_la_jornada(self):
+        """El dia que ya tiene tareo queda abierto: la Salida se puede marcar."""
+        self.trabajador.puede_marcar_sin_horario = True
+        self.trabajador.save()
+
+        entrada = self._marcar(timestamp=timezone.now(), tipo='Entrada')
+        self.assertEqual(entrada.status_code, 201)
+
+        # RRHH revoca el permiso a media jornada.
+        self.trabajador.puede_marcar_sin_horario = False
+        self.trabajador.save()
+
+        salida = self._marcar(timestamp=timezone.now(), tipo='Salida')
+
+        self.assertEqual(salida.status_code, 201)
+        self.assertEqual(Asistencia.objects.count(), 2)
+        self.assertEqual(IntentoFraude.objects.count(), 0)
+
+    def test_revocado_aplica_desde_el_dia_siguiente(self):
+        """El alcance: el permiso vuelve a consultarse en cuanto no hay tareo.
+
+        Esto es lo que impide que un permiso revocado siga sirviendo para
+        siempre.
+        """
+        self.trabajador.puede_marcar_sin_horario = True
+        self.trabajador.save()
+        # Tareo de AYER, creado por una marca autorizada de ayer.
+        TareoDiario.objects.create(
+            trabajador=self.trabajador,
+            fecha=timezone.localdate() - timedelta(days=1),
+            estado='O',
+        )
+
+        self.trabajador.puede_marcar_sin_horario = False
+        self.trabajador.save()
+
+        # Hoy no hay tareo, asi que el permiso SI se consulta.
+        respuesta = self._marcar(timestamp=timezone.now())
+
+        self.assertEqual(respuesta.status_code, 403)
+        self.assertEqual(IntentoFraude.objects.count(), 1)
