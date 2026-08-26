@@ -64,7 +64,12 @@ class DebugS3Boto3Storage(S3Boto3Storage):
         if getattr(self, '_is_local', False):
             return self._local_storage.exists(name)
         return super().exists(name)
-        
+
+    def _open(self, name, mode='rb'):
+        if getattr(self, '_is_local', False):
+            return self._local_storage._open(name, mode)
+        return super()._open(name, mode)
+
     def delete(self, name):
         if getattr(self, '_is_local', False):
             return self._local_storage.delete(name)
