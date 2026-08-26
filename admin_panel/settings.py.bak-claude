@@ -56,7 +56,7 @@ MONITOREO_WEB_URL = os.environ.get('MONITOREO_WEB_URL')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 print(f"VALOR DE DEBUG LEÍDO: {os.environ.get('DJANGO_DEBUG', 'No definido')}, RESULTADO FINAL DE DEBUG: {DEBUG}")
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.10.42', '10.0.2.2']  # 10.0.2.2 = alias del host desde el emulador Android
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.10.42']
 
 # Si la app se despliega en Render, RENDER_EXTERNAL_HOSTNAME será agregado.
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
