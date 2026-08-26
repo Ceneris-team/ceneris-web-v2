@@ -520,7 +520,17 @@ class RegistrarAsistenciaView(APIView):
                 # Intentar marcar HOY en tu día libre o sin turno asignado sigue
                 # siendo sospechoso y se sigue registrando como tal.
                 try:
-                    # Buscamos el tareo asignado para hoy
+                    # Buscamos el tareo asignado para hoy.
+                    #
+                    # OJO: si el tareo ya existe, el permiso de marcar sin
+                    # horario NO se vuelve a consultar. Es deliberado. Una vez
+                    # que una marca autorizada creo el tareo del dia, ese dia
+                    # queda abierto aunque RRHH revoque el permiso: cortar en
+                    # seco dejaria una Entrada sin Salida, con el dia a medio
+                    # cerrar para planilla y sin nada que el trabajador pueda
+                    # hacer. La revocacion aplica desde el dia siguiente, que es
+                    # cuando vuelve a no haber tareo. Ver
+                    # RevocacionPermisoMarcaSinHorarioTests.
                     tareo = TareoDiario.objects.get(trabajador=trabajador, fecha=fecha_negocio)
 
                     # Restricción 1: Si es Día Libre ('D')
