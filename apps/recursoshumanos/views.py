@@ -11,6 +11,8 @@ from django.contrib.auth import logout
 from metricas_ceneris.views import _calcular_asistencia_por_periodo, _hora_referencia_entrada_por_fecha
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.dateparse import parse_date
+from django.db import transaction
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from .models import Area, IntentoFraude, Trabajador, Empresa # ... etc
@@ -21,7 +23,7 @@ from .forms import TrabajadorForm, UbicacionForm, JustificacionForm, EmpresaForm
 from .models import Cargo, Empresa, Proyecto, Trabajador, CentroCosto, Ubicacion, TareoDiario
 import pandas as pd
 from recursoshumanos.services import recalcular_asistencia_diaria
-from .models import Sede, ConfiguracionTolerancia, ToleranciaAuditoria
+from .models import Sede, ConfiguracionTolerancia, ToleranciaAuditoria, MarcaSinHorarioAuditoria
 from .motor_reglas import EstadoMarca
 from .services import listar_tolerancias, crear_o_actualizar_tolerancia, actualizar_tolerancia
 from . import servicios_horas
@@ -487,8 +489,17 @@ def lista_trabajadores(request):
     # Firestore data placeholder
     firestore_data = {}
 
+    # La pantalla la ven RRHH, Supervisores y Calidad, pero activar el permiso
+    # de marcar sin horario es solo de RRHH. Sin esto, los otros dos grupos
+    # verian un boton que el backend les va a rechazar igual.
+    puede_gestionar_msh = (
+        request.user.is_superuser
+        or request.user.groups.filter(name__in=['Recursos Humanos', 'Administrador']).exists()
+    )
+
     context = {
         'trabajadores': trabajadores_queryset,
+        'puede_gestionar_marca_sin_horario': puede_gestionar_msh,
         'opciones_empresas': opciones_empresas,
         'opciones_cargos': opciones_cargos,
         'opciones_proyectos_padre': opciones_proyectos_padre,
@@ -505,6 +516,68 @@ def lista_trabajadores(request):
     }
 
     return render(request, 'recursoshumanos/empleados/lista_trabajadores.html', context)
+@login_required
+@group_required("Recursos Humanos", "Administrador")
+def toggle_marca_sin_horario(request, pk):
+    """Habilita o revoca el permiso de marcar sin horario para UN trabajador.
+
+    Deliberadamente NO esta en la pantalla de accesos/seguridad: alli la vista
+    solo pide @login_required, y esto relaja un control antifraude. Aca ademas
+    queda auditado quien lo activo y cuando. Nunca es global: siempre aplica a
+    un trabajador puntual.
+    """
+    if request.method != 'POST':
+        return redirect('recursoshumanos:lista_trabajadores')
+
+    trabajador = get_object_or_404(Trabajador, pk=pk)
+
+    habilitado = request.POST.get('puede_marcar_sin_horario') == 'on'
+    hasta_raw = (request.POST.get('marcar_sin_horario_hasta') or '').strip()
+
+    hasta = None
+    if habilitado and hasta_raw:
+        hasta = parse_date(hasta_raw)
+        if hasta is None:
+            messages.error(request, "La fecha de vigencia no es valida.")
+            return redirect('recursoshumanos:lista_trabajadores')
+
+    # Al revocar se limpia la fecha: dejarla colgada haria que un futuro
+    # "habilitar" reviviera una vigencia vieja que nadie eligio.
+    if not habilitado:
+        hasta = None
+
+    anterior_habilitado = trabajador.puede_marcar_sin_horario
+    anterior_hasta = trabajador.marcar_sin_horario_hasta
+
+    if anterior_habilitado == habilitado and anterior_hasta == hasta:
+        messages.info(request, "No hubo cambios en el permiso.")
+        return redirect('recursoshumanos:lista_trabajadores')
+
+    with transaction.atomic():
+        trabajador.puede_marcar_sin_horario = habilitado
+        trabajador.marcar_sin_horario_hasta = hasta
+        trabajador.save(update_fields=['puede_marcar_sin_horario', 'marcar_sin_horario_hasta', 'actualizado_en'])
+
+        MarcaSinHorarioAuditoria.objects.create(
+            trabajador=trabajador,
+            trabajador_nombre=trabajador.nombre_completo,
+            trabajador_dni=trabajador.dni,
+            habilitado_anterior=anterior_habilitado,
+            habilitado_nuevo=habilitado,
+            hasta_anterior=anterior_hasta,
+            hasta_nuevo=hasta,
+            usuario=request.user,
+        )
+
+    if habilitado:
+        detalle = f"hasta el {hasta.strftime('%d/%m/%Y')}" if hasta else "de forma permanente"
+        messages.success(request, f"{trabajador.nombre_completo} puede marcar sin horario {detalle}.")
+    else:
+        messages.success(request, f"Se revoco el permiso de marcar sin horario a {trabajador.nombre_completo}.")
+
+    return redirect('recursoshumanos:lista_trabajadores')
+
+
 # --- VISTAS DE CREACIÓN Y EDICIÓN DE TRABAJADORES ---
 
 @login_required
