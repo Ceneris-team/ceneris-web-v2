@@ -299,7 +299,7 @@
                 <select id="subproyecto" name="subproyecto" class="filter-input">
                     <option value="">-- Todos --</option>
                     {% for subp in subproyectos %}
-                        <option value="{{ subp.id }}" {% if subp.id|stringformat:"s" == subproyecto_seleccionado_id %}selected{% endif %}>{{ subp.nombre }}</option>
+                        <option value="{{ subp.id }}" data-parent="{{ subp.parent_id }}" {% if subp.id|stringformat:"s" == subproyecto_seleccionado_id %}selected{% endif %}>{{ subp.nombre }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -447,13 +447,44 @@ document.addEventListener('DOMContentLoaded', function() {
     const subproyectoInput = document.getElementById('subproyecto');
     const areaInput = document.getElementById('area');
     
+    function aplicarFiltros() {
+        filterForm.querySelector('input[name="page"]')?.remove();
+        filterForm.submit();
+    }
+
     let searchDebounce;
     buscadorInput.addEventListener('input', function() {
         clearTimeout(searchDebounce);
-        searchDebounce = setTimeout(() => {
-            filterForm.querySelector('input[name="page"]')?.remove();
-            filterForm.submit();
-        }, 350);
+        searchDebounce = setTimeout(aplicarFiltros, 350);
+    });
+
+    // El subproyecto depende del proyecto: solo mostramos los hijos del padre elegido.
+    function sincronizarSubproyectos() {
+        if (!proyectoInput || !subproyectoInput) return;
+        const padreId = proyectoInput.value;
+        let seleccionValida = !subproyectoInput.value;
+
+        Array.from(subproyectoInput.options).forEach(function(opt) {
+            if (!opt.value) return;
+            const visible = !padreId || opt.dataset.parent === padreId;
+            opt.hidden = !visible;
+            opt.disabled = !visible;
+            if (visible && opt.value === subproyectoInput.value) seleccionValida = true;
+        });
+
+        if (!seleccionValida) subproyectoInput.value = '';
+    }
+
+    // Ojo con el orden: sincronizar debe correr ANTES de enviar el formulario.
+    if (proyectoInput) {
+        proyectoInput.addEventListener('change', sincronizarSubproyectos);
+    }
+    sincronizarSubproyectos();
+
+    // Los selectores aplican el filtro al cambiar (antes solo se enviaban
+    // al pulsar el botón, así que parecía que el filtro no funcionaba).
+    [proyectoInput, subproyectoInput, areaInput].forEach(function(select) {
+        if (select) select.addEventListener('change', aplicarFiltros);
     });
 
     limpiarFiltrosBtn.addEventListener('click', function() {
@@ -461,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (proyectoInput) proyectoInput.value = '';
         if (subproyectoInput) subproyectoInput.value = '';
         if (areaInput) areaInput.value = '';
-        filterForm.submit();
+        aplicarFiltros();
     });
 
     // ==========================================
