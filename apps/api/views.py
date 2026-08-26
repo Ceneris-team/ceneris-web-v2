@@ -20,7 +20,7 @@ from django.conf import settings as django_settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.db import IntegrityError
-from django.db.models import Q
+from django.db.models import Max, Q
 from django.contrib.auth.decorators import login_required
 
 # Importaciones de modelos
@@ -74,6 +74,18 @@ def _fecha_negocio_de_marca(raw_timestamp):
     corre en UTC y a partir de las 19:00 de Lima ``.date()`` devuelve el dia
     siguiente. Ese bug ya se corrigio una vez en este archivo (ver el candado de
     turno mas abajo); no reintroducirlo.
+
+    Contrato de zona horaria, del que depende el fix de MARCA_FUTURA:
+
+      * Si el payload trae offset explicito (``...Z`` o ``...-05:00``), se
+        respeta tal cual. Es lo que manda la app desde el fix de zona horaria.
+      * Si viene sin zona, se asume America/Lima. Es lo que manda el parque
+        movil viejo, y hay que seguir soportandolo mientras exista.
+
+    Las dos formas conviven a proposito: asi este cambio se puede desplegar
+    antes que la app, sin coordinar una ventana. Un celular con la zona horaria
+    mal configurada mandaba hora local de OTRA zona sin decirlo, se leia como
+    hora de Lima y caia como marca futura; con offset explicito eso ya no pasa.
     """
     if not raw_timestamp:
         return timezone.localdate(), None
@@ -508,7 +520,17 @@ class RegistrarAsistenciaView(APIView):
                 # Intentar marcar HOY en tu día libre o sin turno asignado sigue
                 # siendo sospechoso y se sigue registrando como tal.
                 try:
-                    # Buscamos el tareo asignado para hoy
+                    # Buscamos el tareo asignado para hoy.
+                    #
+                    # OJO: si el tareo ya existe, el permiso de marcar sin
+                    # horario NO se vuelve a consultar. Es deliberado. Una vez
+                    # que una marca autorizada creo el tareo del dia, ese dia
+                    # queda abierto aunque RRHH revoque el permiso: cortar en
+                    # seco dejaria una Entrada sin Salida, con el dia a medio
+                    # cerrar para planilla y sin nada que el trabajador pueda
+                    # hacer. La revocacion aplica desde el dia siguiente, que es
+                    # cuando vuelve a no haber tareo. Ver
+                    # RevocacionPermisoMarcaSinHorarioTests.
                     tareo = TareoDiario.objects.get(trabajador=trabajador, fecha=fecha_negocio)
 
                     # Restricción 1: Si es Día Libre ('D')
@@ -519,11 +541,28 @@ class RegistrarAsistenciaView(APIView):
                         }, status=status.HTTP_403_FORBIDDEN)
 
                 except TareoDiario.DoesNotExist:
-                    # Restricción 2: No existe turno asignado en la web
-                    registrar_fraude_bd('Intento de marcacion sin turno programado')
-                    return Response({
-                        'detail': 'No tienes un turno programado para hoy. Por favor contacta a tu supervisor.'
-                    }, status=status.HTTP_403_FORBIDDEN)
+                    # Restricción 2: No existe turno asignado en la web.
+                    #
+                    # Única excepción: RRHH habilitó explícitamente a ESTE
+                    # trabajador a marcar sin horario. El permiso se evalúa
+                    # contra `fecha_negocio` y no contra hoy, porque una marca
+                    # offline sincronizada el mismo día también cae acá y lo que
+                    # importa es si el permiso regía cuando marcó.
+                    if trabajador.puede_marcar_sin_horario_en(fecha_negocio):
+                        # Mismo tratamiento que la rama de marca atrasada: el
+                        # tareo se crea al vuelo con estado 'O' (sin horario),
+                        # que el motor de reglas clasifica ASISTIÓ + SIN_HORARIO
+                        # sin fabricar tardanza. No es fraude, no se registra.
+                        tareo, _ = TareoDiario.objects.get_or_create(
+                            trabajador=trabajador,
+                            fecha=fecha_negocio,
+                            defaults={'estado': 'O', 'resultado': 'F'},
+                        )
+                    else:
+                        registrar_fraude_bd('Intento de marcacion sin turno programado')
+                        return Response({
+                            'detail': 'No tienes un turno programado para hoy. Por favor contacta a tu supervisor.'
+                        }, status=status.HTTP_403_FORBIDDEN)
             # =================================================================
 
             # 5. Guardar la Asistencia (Solo si pasó todas las validaciones y no hubo fraude)
@@ -839,9 +878,17 @@ def _calcular_checksum_usuarios(usuarios_data):
     respuesta (orden de claves tal como se construyen los dicts), porque
     el cliente recalcula el checksum a partir de lo que recibio por HTTP,
     no de una version re-ordenada que nunca viaja por la red.
+
+    Por la misma razon va ensure_ascii=False: DRF renderiza con
+    UNICODE_JSON=True, o sea que manda los acentos como UTF-8 literal
+    ("Jose Martinez" con tilde viaja como bytes \\xc3\\xad). El default de
+    json.dumps los escaparia a "\\u00ed" y el checksum dejaria de
+    corresponder a lo que realmente sale por la red. El cliente Dart usa
+    jsonEncode, que tampoco escapa, asi que sin esto ningun dataset con
+    tildes o enies coincide nunca.
     """
     normalizados = sorted(usuarios_data, key=lambda u: u['dni'])
-    canonical = json.dumps(normalizados, separators=(',', ':'))
+    canonical = json.dumps(normalizados, separators=(',', ':'), ensure_ascii=False)
     return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
 
 
@@ -871,7 +918,8 @@ class UsuariosAutorizadosSyncView(APIView):
 
     def get(self, request):
         since_raw = request.query_params.get('since')
-        queryset = Trabajador.objects.filter(user__isnull=False).select_related('user')
+        base = Trabajador.objects.filter(user__isnull=False)
+        queryset = base.select_related('user')
 
         if since_raw:
             since_dt = parse_datetime(since_raw)
@@ -903,8 +951,33 @@ class UsuariosAutorizadosSyncView(APIView):
 
         checksum = _calcular_checksum_usuarios(usuarios_data)
 
+        # El cursor sale de los DATOS, no del reloj del servidor.
+        #
+        # Antes era `timezone.now()` evaluado junto al `Response`, o sea
+        # DESPUES de leer. Eso abria un hueco: todo lo que cambiara entre la
+        # lectura y ese instante quedaba por debajo del cursor que el cliente
+        # se llevaba, y el proximo incremental (`actualizado_en > since`) ya no
+        # lo alcanzaba. No se recuperaba solo -el cursor ya habia avanzado-,
+        # asi que el cambio se perdia para siempre y en silencio: un trabajador
+        # dado de baja seguia entrando al login offline meses despues.
+        #
+        # La marca de agua de la tabla no puede dejar hueco por construccion:
+        # cualquier fila guardada despues de esta lectura tiene un
+        # `actualizado_en` estrictamente mayor, asi que el proximo incremental
+        # la trae. Ademas deja de depender del reloj, que entre varios workers
+        # puede tener deriva, y de su resolucion.
+        #
+        # Se calcula sobre `base` (todas las filas) y no sobre `queryset`, que
+        # en una llamada incremental ya viene filtrado: si no hubo cambios, el
+        # maximo de ese conjunto vacio seria nulo y el cursor saltaria al
+        # reloj, reintroduciendo el mismo hueco.
+        #
+        # `timezone.now()` queda solo de respaldo para la tabla vacia, donde no
+        # hay marca de agua posible y tampoco hay nada que perder.
+        version = base.aggregate(Max('actualizado_en'))['actualizado_en__max']
+
         return Response({
-            'version': timezone.now().isoformat(),
+            'version': (version or timezone.now()).isoformat(),
             'checksum': checksum,
             'usuarios': usuarios_data,
         }, status=status.HTTP_200_OK)

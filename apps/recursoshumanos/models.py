@@ -187,6 +187,24 @@ class Trabajador(models.Model):
     # se actualiza solo en cada guardado, permite consultar "que cambio desde X fecha".
     actualizado_en = models.DateTimeField(auto_now=True)
 
+    # --- Permiso de marcación sin horario asignado ---
+    # RRHH lo habilita caso por caso desde el directorio de trabajadores. Sin
+    # esto, marcar en tiempo real sin un TareoDiario del día responde 403 y
+    # registra un IntentoFraude (ver RegistrarAsistenciaView).
+    puede_marcar_sin_horario = models.BooleanField(
+        default=False,
+        verbose_name="Puede marcar sin horario asignado"
+    )
+    # La vigencia existe porque el caso real casi siempre es temporal ("todavía
+    # no le cargaron el turno"). Un permiso permanente no lo revoca nadie nunca,
+    # así que la fecha es la que hace que el permiso se apague solo.
+    marcar_sin_horario_hasta = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Permiso vigente hasta",
+        help_text="Vacío = permiso permanente. Con fecha = vigente hasta ese día inclusive."
+    )
+
     @property
     def nombre_completo(self):
         return f"{self.nombres} {self.apellido_paterno} {self.apellido_materno}".strip()
@@ -200,6 +218,31 @@ class Trabajador(models.Model):
         if self.es_jefe:
             return self.CargoJerarquico.SUPERVISOR
         return self.CargoJerarquico.TRABAJADOR
+
+    @property
+    def marca_sin_horario_vigente(self):
+        """Atajo para la UI: el permiso esta vigente HOY.
+
+        La API NO usa esto: alli el permiso se evalua contra la fecha de negocio
+        de la marca, que puede no ser hoy.
+        """
+        return self.puede_marcar_sin_horario_en(timezone.localdate())
+
+    def puede_marcar_sin_horario_en(self, fecha):
+        """¿El permiso de marcar sin horario está vigente para esa fecha?
+
+        Se evalúa contra la FECHA DE NEGOCIO de la marca, no contra hoy: una
+        marca offline puede llegar días después de haberse hecho, y lo que
+        importa es si el permiso estaba vigente cuando el trabajador marcó.
+
+        Un permiso vencido devuelve False sin que nadie tenga que desactivarlo
+        a mano.
+        """
+        if not self.puede_marcar_sin_horario:
+            return False
+        if self.marcar_sin_horario_hasta is None:
+            return True
+        return fecha <= self.marcar_sin_horario_hasta
 
     @property
     def cargojerarquico(self):
@@ -739,4 +782,50 @@ class ToleranciaAuditoria(models.Model):
 
     def get_tipo_horario_display(self):
         return dict(ConfiguracionTolerancia.TipoHorario.choices).get(self.tipo_horario, self.tipo_horario)
+
+
+class MarcaSinHorarioAuditoria(models.Model):
+    """Historial de activaciones del permiso de marcar sin horario.
+
+    Mismo patrón que ToleranciaAuditoria: quién, cuándo, y de qué valor a qué
+    valor. El permiso relaja un control antifraude, así que tiene que quedar
+    claro quién lo otorgó.
+    """
+
+    trabajador = models.ForeignKey(
+        Trabajador,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='auditorias_marca_sin_horario',
+        verbose_name="Trabajador"
+    )
+    # Snapshot, para que el historial siga siendo legible aunque el trabajador
+    # se elimine después.
+    trabajador_nombre = models.CharField(max_length=200, verbose_name="Trabajador")
+    trabajador_dni = models.CharField(max_length=8, verbose_name="DNI")
+
+    habilitado_anterior = models.BooleanField(verbose_name="Habilitado (antes)")
+    habilitado_nuevo = models.BooleanField(verbose_name="Habilitado (después)")
+    hasta_anterior = models.DateField(null=True, blank=True, verbose_name="Vigente hasta (antes)")
+    hasta_nuevo = models.DateField(null=True, blank=True, verbose_name="Vigente hasta (después)")
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Modificado por"
+    )
+    creado_en = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Cambio")
+
+    class Meta:
+        verbose_name = "Auditoría de Marca sin Horario"
+        verbose_name_plural = "Auditorías de Marca sin Horario"
+        ordering = ['-creado_en']
+
+    def __str__(self):
+        usuario_nombre = self.usuario.username if self.usuario else "Sistema"
+        accion = "habilitó" if self.habilitado_nuevo else "deshabilitó"
+        return f"{usuario_nombre} {accion} marca sin horario a {self.trabajador_nombre}"
 

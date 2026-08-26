@@ -1,0 +1,56 @@
+# Despliegue de v2 en la instancia Lightsail (piloto).
+#
+# Las variables salen del archivo .env que vive junto a este compose y que NO
+# se versiona. Ver .env.example para la lista completa.
+
+# Nombre de proyecto explicito. Sin esto, Compose lo deriva del nombre de la
+# carpeta: si el repo se clonara en un directorio llamado "ceneris-web", creeria
+# que es el mismo proyecto que la v1 que ya corre en el servidor y le
+# reemplazaria los contenedores. Fijandolo aca, eso no puede pasar.
+name: ceneris-v2
+
+services:
+  db:
+    # Misma version que ya corre la v1 en el servidor: la imagen ya esta
+    # descargada y una version mas nueva restaura sin problema dumps de una
+    # mas vieja.
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # OJO: en postgres:18+ el montaje va en /var/lib/postgresql, NO en
+      # /var/lib/postgresql/data como en las versiones anteriores. La imagen
+      # ahora guarda los datos en un subdirectorio por version mayor, y si se
+      # monta en /data arranca y muere con "unused mount/volume".
+      - datos_postgres:/var/lib/postgresql
+    # Sin "ports": la base no se expone a internet. Para restaurar el dump se
+    # entra con "docker compose exec db ...".
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        # Espera a que Postgres acepte conexiones; si no, el migrate del
+        # entrypoint falla en el primer arranque.
+        condition: service_healthy
+    env_file: .env
+    environment:
+      # Se arma aca para no repetir la contrasena en el .env. "db" es el
+      # nombre del servicio, que Docker resuelve por DNS interno.
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    ports:
+      # Puerto del host configurable: en el servidor de pruebas el 8000 ya lo
+      # ocupa la v1, asi que v2 sale por el 8001.
+      - "${PUERTO_WEB:-8001}:8000"
+
+volumes:
+  datos_postgres:
