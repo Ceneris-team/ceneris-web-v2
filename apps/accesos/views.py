@@ -6,9 +6,11 @@ from django.db import transaction
 from django.utils.crypto import get_random_string
 from django.contrib.auth.models import User, Group
 from django.utils.safestring import mark_safe
-from recursoshumanos.models import Trabajador
+from recursoshumanos.models import Trabajador, MarcaSinHorarioAuditoria
+from recursoshumanos.decorators import group_required
 from django.contrib.auth.models import Permission
 from django.db.models import Count
+from django.utils.dateparse import parse_date
 
 
 def tiene_permiso_metricas(user):
@@ -252,6 +254,67 @@ def lista_trabajadores(request):
         'trabajadores': trabajadores,
         'grupos_disponibles': grupos_disponibles
     })
+
+@login_required
+@group_required("Recursos Humanos", "Administrador")
+def toggle_marca_sin_horario(request, trabajador_id):
+    """Habilita o revoca el permiso de marcar sin horario para UN trabajador.
+
+    El permiso relaja un control antifraude de la API, asi que la accion queda
+    auditada (quien, cuando, de que valor a que valor). Nunca es global: siempre
+    aplica a un trabajador puntual.
+    """
+    if request.method != 'POST':
+        return redirect('accesos:lista_trabajadores')
+
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+
+    habilitado = request.POST.get('puede_marcar_sin_horario') == 'on'
+    hasta_raw = (request.POST.get('marcar_sin_horario_hasta') or '').strip()
+
+    hasta = None
+    if habilitado and hasta_raw:
+        hasta = parse_date(hasta_raw)
+        if hasta is None:
+            messages.error(request, "La fecha de vigencia no es valida.")
+            return redirect('accesos:lista_trabajadores')
+
+    # Al revocar se limpia la fecha: dejarla colgada haria que un futuro
+    # "habilitar" reviviera una vigencia vieja que nadie eligio.
+    if not habilitado:
+        hasta = None
+
+    anterior_habilitado = trabajador.puede_marcar_sin_horario
+    anterior_hasta = trabajador.marcar_sin_horario_hasta
+
+    if anterior_habilitado == habilitado and anterior_hasta == hasta:
+        messages.info(request, "No hubo cambios en el permiso.")
+        return redirect('accesos:lista_trabajadores')
+
+    with transaction.atomic():
+        trabajador.puede_marcar_sin_horario = habilitado
+        trabajador.marcar_sin_horario_hasta = hasta
+        trabajador.save(update_fields=['puede_marcar_sin_horario', 'marcar_sin_horario_hasta', 'actualizado_en'])
+
+        MarcaSinHorarioAuditoria.objects.create(
+            trabajador=trabajador,
+            trabajador_nombre=trabajador.nombre_completo,
+            trabajador_dni=trabajador.dni,
+            habilitado_anterior=anterior_habilitado,
+            habilitado_nuevo=habilitado,
+            hasta_anterior=anterior_hasta,
+            hasta_nuevo=hasta,
+            usuario=request.user,
+        )
+
+    if habilitado:
+        detalle = f"hasta el {hasta.strftime('%d/%m/%Y')}" if hasta else "de forma permanente"
+        messages.success(request, f"{trabajador.nombre_completo} puede marcar sin horario {detalle}.")
+    else:
+        messages.success(request, f"Se revoco el permiso de marcar sin horario a {trabajador.nombre_completo}.")
+
+    return redirect('accesos:lista_trabajadores')
+
 
 @login_required
 def lista_usuarios_sistema(request):

@@ -812,3 +812,141 @@ class TimestampConZonaHorariaTests(_MarcacionBaseTests):
         self.assertEqual(respuesta.data['codigo'], 'MARCA_FUTURA')
         self.assertEqual(Asistencia.objects.count(), 0)
         self.assertEqual(IntentoFraude.objects.count(), 0)
+
+
+class MarcaSinHorarioPermisoTests(_MarcacionBaseTests):
+    """Permiso por trabajador para marcar en tiempo real sin horario asignado.
+
+    Es la ÚNICA relajación del candado: solo el caso "no existe tareo hoy", solo
+    para quien RRHH habilitó explícitamente, y solo mientras el permiso siga
+    vigente para la fecha de negocio de la marca.
+    """
+
+    def _habilitar(self, hasta=None):
+        self.trabajador.puede_marcar_sin_horario = True
+        self.trabajador.marcar_sin_horario_hasta = hasta
+        self.trabajador.save()
+
+    def test_habilitado_sin_horario_marca_en_tiempo_real(self):
+        """El caso que la función viene a resolver: 201 y sin fraude."""
+        self._habilitar()
+
+        respuesta = self._marcar(timestamp=timezone.now())
+
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(IntentoFraude.objects.count(), 0)
+        self.assertEqual(Asistencia.objects.count(), 1)
+        # El tareo se crea al vuelo como 'O' (sin horario), igual que en la rama
+        # de marca atrasada, para que el motor de reglas no invente tardanza.
+        tareo = TareoDiario.objects.get(
+            trabajador=self.trabajador, fecha=timezone.localdate()
+        )
+        self.assertEqual(tareo.estado, 'O')
+
+    def test_permiso_permanente_sin_fecha_tambien_habilita(self):
+        self._habilitar(hasta=None)
+
+        respuesta = self._marcar(timestamp=timezone.now())
+
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(IntentoFraude.objects.count(), 0)
+
+    def test_permiso_vigente_hasta_hoy_es_inclusive(self):
+        """'Hasta el día X' incluye el día X."""
+        self._habilitar(hasta=timezone.localdate())
+
+        respuesta = self._marcar(timestamp=timezone.now())
+
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(IntentoFraude.objects.count(), 0)
+
+    def test_permiso_vencido_vuelve_a_rechazar(self):
+        """Un permiso vencido se apaga solo, sin intervención manual."""
+        self._habilitar(hasta=timezone.localdate() - timedelta(days=1))
+
+        respuesta = self._marcar(timestamp=timezone.now())
+
+        self.assertEqual(respuesta.status_code, 403)
+        self.assertEqual(IntentoFraude.objects.count(), 1)
+        self.assertEqual(
+            IntentoFraude.objects.first().motivo_detectado,
+            'Intento de marcacion sin turno programado',
+        )
+
+    def test_sin_permiso_el_candado_sigue_intacto(self):
+        """No se debilitó el bloqueo para quien no fue habilitado."""
+        respuesta = self._marcar(timestamp=timezone.now())
+
+        self.assertEqual(respuesta.status_code, 403)
+        self.assertEqual(IntentoFraude.objects.count(), 1)
+        self.assertEqual(Asistencia.objects.count(), 0)
+
+    def test_habilitado_en_dia_libre_sigue_siendo_fraude(self):
+        """El permiso NO toca el candado de día libre: ese se queda como está."""
+        self._habilitar()
+        TareoDiario.objects.create(
+            trabajador=self.trabajador, fecha=timezone.localdate(), estado='D',
+        )
+
+        respuesta = self._marcar(timestamp=timezone.now())
+
+        self.assertEqual(respuesta.status_code, 403)
+        self.assertEqual(IntentoFraude.objects.count(), 1)
+        self.assertEqual(
+            IntentoFraude.objects.first().motivo_detectado,
+            'Intento de marcacion en dia libre',
+        )
+        self.assertEqual(Asistencia.objects.count(), 0)
+
+    def test_permiso_se_evalua_contra_la_fecha_de_la_marca_no_contra_hoy(self):
+        """Una marca offline sincronizada el mismo día usa la fecha de negocio.
+
+        El permiso venció ayer y la marca es de ayer: al evaluar contra la fecha
+        de la marca (no contra hoy) el permiso SÍ regía cuando el trabajador
+        marcó. Se acepta por la rama de marca atrasada, sin fraude.
+        """
+        ayer = timezone.localdate() - timedelta(days=1)
+        self._habilitar(hasta=ayer)
+
+        respuesta = self._marcar(timestamp=self._instante(ayer, 8, 0))
+
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(IntentoFraude.objects.count(), 0)
+
+
+class PermisoMarcaSinHorarioModeloTests(TestCase):
+    """Las tres combinaciones del permiso, aisladas de la vista."""
+
+    def setUp(self):
+        self.trabajador = Trabajador.objects.create(
+            dni='40000002',
+            apellido_paterno='Flores',
+            apellido_materno='Ccama',
+            nombres='Rosa',
+        )
+        self.hoy = timezone.localdate()
+
+    def test_deshabilitado_es_false_aunque_tenga_fecha(self):
+        self.trabajador.puede_marcar_sin_horario = False
+        self.trabajador.marcar_sin_horario_hasta = self.hoy + timedelta(days=30)
+
+        self.assertFalse(self.trabajador.puede_marcar_sin_horario_en(self.hoy))
+
+    def test_habilitado_sin_fecha_es_permanente(self):
+        self.trabajador.puede_marcar_sin_horario = True
+        self.trabajador.marcar_sin_horario_hasta = None
+
+        self.assertTrue(self.trabajador.puede_marcar_sin_horario_en(self.hoy))
+        self.assertTrue(
+            self.trabajador.puede_marcar_sin_horario_en(self.hoy + timedelta(days=3650))
+        )
+
+    def test_habilitado_con_fecha_es_inclusive_y_caduca(self):
+        limite = self.hoy + timedelta(days=7)
+        self.trabajador.puede_marcar_sin_horario = True
+        self.trabajador.marcar_sin_horario_hasta = limite
+
+        self.assertTrue(self.trabajador.puede_marcar_sin_horario_en(limite))
+        self.assertFalse(
+            self.trabajador.puede_marcar_sin_horario_en(limite + timedelta(days=1))
+        )
