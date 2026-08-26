@@ -1808,18 +1808,21 @@ def gestion_tareo(request):
     subproyecto_seleccionado_id = request.GET.get('subproyecto') # NUEVO FILTRO
     area_seleccionada_id = request.GET.get('area')
     
-    proyectos = Proyecto.objects.filter(activo=True).order_by('nombre')
+    # El selector "Proyecto" solo lista proyectos padre; los hijos van en "Subproyecto".
+    proyectos = Proyecto.objects.filter(parent__isnull=True, activo=True).order_by('nombre')
     subproyectos = Proyecto.objects.filter(parent__isnull=False, activo=True).order_by('nombre')
-    areas = Area.objects.all().order_by('nombre') 
-    
+    areas = Area.objects.all().order_by('nombre')
+
     trabajadores_qs = Trabajador.objects.filter(activo=True)
 
     if proyecto_seleccionado_id:
+        # Un trabajador asignado solo a un subproyecto también pertenece al proyecto padre.
         trabajadores_qs = trabajadores_qs.filter(
-            asignaciones__proyecto_id=proyecto_seleccionado_id,
+            Q(asignaciones__proyecto_id=proyecto_seleccionado_id) |
+            Q(asignaciones__proyecto__parent_id=proyecto_seleccionado_id),
             asignaciones__activo=True
         )
-        
+
     if subproyecto_seleccionado_id:
         trabajadores_qs = trabajadores_qs.filter(
             asignaciones__proyecto_id=subproyecto_seleccionado_id,
