@@ -291,11 +291,26 @@
 </div>
 
 <style>
-    .btn-msh { border:1px solid transparent; border-radius:999px; padding:4px 10px; font-size:.75rem; font-weight:500; cursor:pointer; white-space:nowrap; }
-    .msh-activo { background:#fff8e1; color:#8a6d00; border-color:#ffe082; }
-    .msh-vencido { background:#fdecea; color:#c0392b; border-color:#f5c6cb; }
-    .msh-off { background:#f1f3f5; color:#868e96; border-color:#dee2e6; }
-    .btn-msh:hover { filter:brightness(.96); }
+    /* Contraste: los tres estados pasan holgados WCAG AA sobre su propio fondo.
+       El estado se lee por color Y por texto, nunca solo por color. */
+    .btn-msh { display:inline-flex; align-items:center; gap:6px; border:1px solid transparent;
+               border-radius:999px; padding:5px 12px; font-size:.78rem; font-weight:600;
+               line-height:1.2; cursor:pointer; white-space:nowrap; }
+    .btn-msh::before { content:""; width:7px; height:7px; border-radius:50%; flex:0 0 auto; }
+
+    /* Vigente: ambar. No verde a proposito — esto relaja un control antifraude,
+       no es un estado "todo bien" que convenga normalizar visualmente. */
+    .msh-activo { background:#fff3cd; color:#664d03; border-color:#ffda6a; }
+    .msh-activo::before { background:#d39e00; }
+
+    .msh-vencido { background:#f8d7da; color:#58151c; border-color:#f1aeb5; }
+    .msh-vencido::before { background:#b02a37; }
+
+    .msh-off { background:#e9ecef; color:#41464b; border-color:#ced4da; }
+    .msh-off::before { background:#adb5bd; }
+
+    .btn-msh:hover { filter:brightness(.95); }
+    .btn-msh:focus-visible { outline:2px solid #0d6efd; outline-offset:2px; }
     .msh-overlay { position:fixed; inset:0; background:rgba(33,37,41,.5); z-index:1050; display:flex; align-items:center; justify-content:center; }
     .msh-dialog { background:#fff; border-radius:10px; width:100%; max-width:26rem; margin:0 1rem; box-shadow:0 12px 40px rgba(0,0,0,.2); }
     .msh-header { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; border-bottom:1px solid #e9ecef; }
