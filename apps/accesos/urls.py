@@ -6,7 +6,6 @@ app_name = 'accesos'
 urlpatterns = [
     path('portal/', views.dashboard_seleccion, name='dashboard_seleccion'),
     path('directorio-trabajadores/', views.lista_trabajadores, name='lista_trabajadores'),
-    path('directorio-trabajadores/<int:trabajador_id>/marca-sin-horario/', views.toggle_marca_sin_horario, name='toggle_marca_sin_horario'),
     
     # RUTAS DE USUARIOS
     path('lista-usuarios/', views.lista_usuarios_sistema, name='lista_usuarios'),
