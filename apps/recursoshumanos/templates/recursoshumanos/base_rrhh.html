@@ -375,6 +375,9 @@
                     <li class="navbar__item {% if current_view == 'gestion_empleados' %}active{% endif %}">
                         <a href="{% url 'recursoshumanos:gestion_empleados' %}" class="navbar__link"><i data-feather="users"></i><span>Empleados</span></a>
                     </li>
+                    <li class="navbar__item {% if current_view == 'lista_sanciones' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:lista_sanciones' %}" class="navbar__link"><i data-feather="file-minus"></i><span>Sanciones y Memos</span></a>
+                    </li>
                     <li class="navbar__item {% if current_view == 'panel_aprobacion_he' %}active{% endif %}">
                         <a href="{% url 'recursoshumanos:panel_aprobacion_he' %}" class="navbar__link"><i data-feather="check-circle"></i><span>Aprobar Horas Extras</span></a>
                     </li>
