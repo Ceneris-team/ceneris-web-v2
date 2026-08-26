@@ -71,6 +71,7 @@ urlpatterns = [
     # --- ¡NUEVAS RUTAS PARA la gestion de trabajadores! ---
     path('empleados/', views.gestion_empleados, name='gestion_empleados'),
     path('empleados/lista/', views.lista_trabajadores, name='lista_trabajadores'),
+    path('empleados/<int:pk>/marca-sin-horario/', views.toggle_marca_sin_horario, name='toggle_marca_sin_horario'),
     path('empleados/crear/', views.crear_trabajador, name='crear_trabajador'),
     path('empleados/<int:pk>/editar/', views.editar_trabajador, name='editar_trabajador'),
     path('empleados/<int:pk>/info/', views.info_trabajador, name='info_trabajador'),

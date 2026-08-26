@@ -29,7 +29,6 @@
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Identificación</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Contacto</th>
                     <th class="px-6 py-4 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Acceso Sistema</th>
-                    <th class="px-6 py-4 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Marca sin Horario</th>
                     <th class="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Acciones</th>
                 </tr>
             </thead>
@@ -95,27 +94,7 @@
                         </div>
                     </td>
 
-                    <!-- 5. MARCA SIN HORARIO (PERMISO RRHH) -->
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <button type="button"
-                                onclick="abrirModalMarcaSinHorario('{{ t.id }}', '{{ t.nombres|escapejs }} {{ t.apellido_paterno|escapejs }}', {{ t.puede_marcar_sin_horario|yesno:"true,false" }}, '{{ t.marcar_sin_horario_hasta|date:"Y-m-d" }}')"
-                                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition
-                                       {% if t.marca_sin_horario_vigente %}bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100{% elif t.puede_marcar_sin_horario %}bg-red-50 text-red-600 border border-red-200 hover:bg-red-100{% else %}bg-gray-50 text-gray-400 border border-gray-200 hover:bg-gray-100{% endif %}"
-                                title="Permitir marcar asistencia sin horario asignado">
-                            {% if t.marca_sin_horario_vigente %}
-                                <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
-                                {% if t.marcar_sin_horario_hasta %}Hasta {{ t.marcar_sin_horario_hasta|date:"d/m/Y" }}{% else %}Permanente{% endif %}
-                            {% elif t.puede_marcar_sin_horario %}
-                                <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>
-                                Vencido
-                            {% else %}
-                                <span class="h-1.5 w-1.5 rounded-full bg-gray-300"></span>
-                                Deshabilitado
-                            {% endif %}
-                        </button>
-                    </td>
-
-                    <!-- 6. ACCIONES (ICONOS) -->
+                    <!-- 5. ACCIONES (ICONOS) -->
                     <td class="px-6 py-4 whitespace-nowrap text-right">
                         <div class="flex justify-end items-center gap-3 opacity-60 group-hover:opacity-100 transition-opacity">
                             
@@ -146,7 +125,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="px-6 py-12 text-center text-gray-500 italic">
+                    <td colspan="5" class="px-6 py-12 text-center text-gray-500 italic">
                         No hay trabajadores en la base de datos.
                     </td>
                 </tr>
@@ -254,54 +233,6 @@
     </div>
 </div>
 
-<!-- ================= MODAL MARCA SIN HORARIO ================= -->
-<div id="modalMarcaSinHorario" class="fixed inset-0 bg-gray-900/50 hidden z-50 flex justify-center items-center backdrop-blur-sm transition-opacity">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 transform transition-all border border-gray-100">
-        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-            <h3 class="font-bold text-gray-800">Marcar sin Horario</h3>
-            <button onclick="cerrarModal('modalMarcaSinHorario')" class="text-gray-400 hover:text-gray-600">&#10005;</button>
-        </div>
-
-        <form id="formMarcaSinHorario" method="POST" class="p-6">
-            {% csrf_token %}
-
-            <p class="text-sm text-gray-500 mb-5">
-                Permiso para: <strong id="spanMSHNombre" class="text-gray-900"></strong>
-            </p>
-
-            <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50/50 cursor-pointer select-none">
-                <input type="checkbox" name="puede_marcar_sin_horario" id="checkMSH" onchange="toggleFechaMSH()"
-                       class="mt-0.5 form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-0 focus:ring-offset-0">
-                <span>
-                    <span class="block text-sm font-medium text-gray-800">Permitir marcar sin horario asignado</span>
-                    <span class="block text-xs text-gray-500 mt-0.5">
-                        Deja registrar asistencia aunque RRHH no le haya cargado el turno del día.
-                    </span>
-                </span>
-            </label>
-
-            <div id="contenedorFechaMSH" class="mt-4 hidden">
-                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Vigente hasta</label>
-                <input type="date" name="marcar_sin_horario_hasta" id="inputMSHHasta"
-                       class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:bg-white focus:border-blue-500 text-sm transition-colors">
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Inclusive. Vacío = permanente (el permiso no se revoca solo).
-                </p>
-            </div>
-
-            <div class="mt-4 flex items-start gap-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <span class="font-bold">!</span>
-                <span>Este permiso relaja un control antifraude. Queda registrado quién lo activó y cuándo. El bloqueo de <strong>día libre</strong> se mantiene igual.</span>
-            </div>
-
-            <div class="flex justify-end gap-3 pt-6">
-                <button type="button" onclick="cerrarModal('modalMarcaSinHorario')" class="px-4 py-2 text-gray-500 hover:bg-gray-50 rounded-lg text-sm font-medium transition">Cancelar</button>
-                <button type="submit" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-black shadow-lg shadow-gray-200 transition">Guardar</button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <script>
     // Buscador
     function filtrarTrabajadores() {
@@ -346,24 +277,6 @@
         document.getElementById('inputEditEmail').value = email;
         document.getElementById('inputEditTelefono').value = telefono;
         document.getElementById('modalEditarDatos').classList.remove('hidden');
-    }
-
-    // Modal Marca sin Horario
-    const URL_MSH = "{% url 'accesos:toggle_marca_sin_horario' 0 %}";
-
-    function abrirModalMarcaSinHorario(id, nombre, habilitado, hasta) {
-        document.getElementById('formMarcaSinHorario').action = URL_MSH.replace('/0/', '/' + id + '/');
-        document.getElementById('spanMSHNombre').innerText = nombre;
-        document.getElementById('checkMSH').checked = habilitado;
-        document.getElementById('inputMSHHasta').value = hasta || "";
-        toggleFechaMSH();
-        document.getElementById('modalMarcaSinHorario').classList.remove('hidden');
-    }
-
-    // La fecha solo tiene sentido si el permiso esta activo.
-    function toggleFechaMSH() {
-        const activo = document.getElementById('checkMSH').checked;
-        document.getElementById('contenedorFechaMSH').classList.toggle('hidden', !activo);
     }
 
     function cerrarModal(id) {

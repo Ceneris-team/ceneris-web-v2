@@ -158,6 +158,7 @@
                 <th colspan="2">Asignaciones Activas</th>
                 <th>Estado</th>
                 <th>Dispositivo Vinculado</th>
+                {% if puede_gestionar_marca_sin_horario %}<th style="text-align: center;">Marca sin Horario</th>{% endif %}
                 <th style="text-align: center;">Acciones</th>
             </tr>
         </thead>
@@ -194,6 +195,23 @@
                             <td>{{ fs_data.deviceIdVinculado|default:"No vinculado"|truncatechars:15 }}</td>
                         {% endwith %}
 
+                        {% if puede_gestionar_marca_sin_horario %}
+                        <td style="text-align: center;">
+                            <button type="button"
+                                    onclick="abrirModalMSH('{{ trabajador.pk }}', '{{ trabajador|escapejs }}', {{ trabajador.puede_marcar_sin_horario|yesno:"true,false" }}, '{{ trabajador.marcar_sin_horario_hasta|date:"Y-m-d" }}')"
+                                    class="btn-msh {% if trabajador.marca_sin_horario_vigente %}msh-activo{% elif trabajador.puede_marcar_sin_horario %}msh-vencido{% else %}msh-off{% endif %}"
+                                    title="Permitir marcar asistencia sin horario asignado">
+                                {% if trabajador.marca_sin_horario_vigente %}
+                                    {% if trabajador.marcar_sin_horario_hasta %}Hasta {{ trabajador.marcar_sin_horario_hasta|date:"d/m/Y" }}{% else %}Permanente{% endif %}
+                                {% elif trabajador.puede_marcar_sin_horario %}
+                                    Vencido
+                                {% else %}
+                                    Deshabilitado
+                                {% endif %}
+                            </button>
+                        </td>
+                        {% endif %}
+
                         <td style="text-align: center;">
                             <div class="table-actions-container">
                                 <a href="{% url 'calidad:buscar_trabajador_info' %}?dni={{ trabajador.dni }}" class="btn-icon-action view" title="Ver Info"><i data-feather="user"></i></a>
@@ -219,11 +237,100 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" style="text-align: center;">No se encontraron trabajadores con los filtros aplicados.</td>
+                        <td colspan="8" style="text-align: center;">No se encontraron trabajadores con los filtros aplicados.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
     </table>
+
+{% if puede_gestionar_marca_sin_horario %}
+<!-- ================= MODAL MARCA SIN HORARIO ================= -->
+<div id="modalMSH" class="msh-overlay" style="display:none;">
+    <div class="msh-dialog">
+        <div class="msh-header">
+            <h3 style="margin:0;font-size:1.05rem;">Marcar sin Horario</h3>
+            <button type="button" onclick="cerrarModalMSH()" class="msh-close">&#10005;</button>
+        </div>
+
+        <form id="formMSH" method="POST" class="msh-body">
+            {% csrf_token %}
+
+            <p style="margin:0 0 1rem;color:#6c757d;font-size:.9rem;">
+                Permiso para: <strong id="spanMSHNombre" style="color:#212529;"></strong>
+            </p>
+
+            <label class="msh-check">
+                <input type="checkbox" name="puede_marcar_sin_horario" id="checkMSH" onchange="toggleFechaMSH()">
+                <span>
+                    <strong style="display:block;font-size:.9rem;color:#212529;">Permitir marcar sin horario asignado</strong>
+                    <span style="display:block;font-size:.78rem;color:#6c757d;margin-top:2px;">
+                        Deja registrar asistencia aunque no se le haya cargado el turno del día.
+                    </span>
+                </span>
+            </label>
+
+            <div id="contenedorFechaMSH" style="display:none;margin-top:1rem;">
+                <label style="display:block;font-size:.72rem;font-weight:700;color:#6c757d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Vigente hasta</label>
+                <input type="date" name="marcar_sin_horario_hasta" id="inputMSHHasta" class="msh-date">
+                <p style="font-size:.7rem;color:#adb5bd;margin:4px 0 0;">
+                    Inclusive. Vacío = permanente (el permiso no se revoca solo).
+                </p>
+            </div>
+
+            <div class="msh-aviso">
+                Este permiso relaja un control antifraude. Queda registrado quién lo activó y cuándo.
+                El bloqueo de <strong>día libre</strong> se mantiene igual.
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:.75rem;margin-top:1.5rem;">
+                <button type="button" onclick="cerrarModalMSH()" class="btn-secondary">Cancelar</button>
+                <button type="submit" class="btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .btn-msh { border:1px solid transparent; border-radius:999px; padding:4px 10px; font-size:.75rem; font-weight:500; cursor:pointer; white-space:nowrap; }
+    .msh-activo { background:#fff8e1; color:#8a6d00; border-color:#ffe082; }
+    .msh-vencido { background:#fdecea; color:#c0392b; border-color:#f5c6cb; }
+    .msh-off { background:#f1f3f5; color:#868e96; border-color:#dee2e6; }
+    .btn-msh:hover { filter:brightness(.96); }
+    .msh-overlay { position:fixed; inset:0; background:rgba(33,37,41,.5); z-index:1050; display:flex; align-items:center; justify-content:center; }
+    .msh-dialog { background:#fff; border-radius:10px; width:100%; max-width:26rem; margin:0 1rem; box-shadow:0 12px 40px rgba(0,0,0,.2); }
+    .msh-header { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; border-bottom:1px solid #e9ecef; }
+    .msh-close { background:none; border:none; font-size:1rem; color:#adb5bd; cursor:pointer; }
+    .msh-body { padding:1.25rem; }
+    .msh-check { display:flex; align-items:flex-start; gap:.75rem; padding:.75rem; border:1px solid #e9ecef; border-radius:8px; background:#f8f9fa; cursor:pointer; }
+    .msh-check input { margin-top:3px; }
+    .msh-date { width:100%; border:1px solid #ced4da; border-radius:6px; padding:.5rem .75rem; font-size:.9rem; }
+    .msh-aviso { margin-top:1rem; background:#fff8e1; border:1px solid #ffe082; color:#8a6d00; border-radius:8px; padding:.75rem; font-size:.75rem; line-height:1.4; }
+</style>
+
+<script>
+    const URL_MSH = "{% url 'recursoshumanos:toggle_marca_sin_horario' 0 %}";
+
+    function abrirModalMSH(pk, nombre, habilitado, hasta) {
+        document.getElementById('formMSH').action = URL_MSH.replace('/0/', '/' + pk + '/');
+        document.getElementById('spanMSHNombre').innerText = nombre;
+        document.getElementById('checkMSH').checked = habilitado;
+        document.getElementById('inputMSHHasta').value = hasta || "";
+        toggleFechaMSH();
+        document.getElementById('modalMSH').style.display = 'flex';
+    }
+
+    // La fecha solo tiene sentido si el permiso esta activo.
+    function toggleFechaMSH() {
+        const activo = document.getElementById('checkMSH').checked;
+        document.getElementById('contenedorFechaMSH').style.display = activo ? 'block' : 'none';
+    }
+
+    function cerrarModalMSH() {
+        document.getElementById('modalMSH').style.display = 'none';
+    }
+</script>
+{% endif %}
+
 {% endblock %}
 
 {% block extra_scripts %}
