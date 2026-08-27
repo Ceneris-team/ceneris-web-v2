@@ -2,7 +2,7 @@
 from django.contrib import admin, messages
 from admin_panel.settings import db
 from django.shortcuts import render
-from .models import Sede, Area, Empresa, Cargo, CentroCosto, ConfiguracionTolerancia, ToleranciaAuditoria, Trabajador, EventoLoginOffline, MarcaSinHorarioAuditoria
+from .models import Sede, Area, Empresa, Cargo, CentroCosto, ConfiguracionTolerancia, ToleranciaAuditoria, Trabajador, EventoLoginOffline, MarcaSinHorarioAuditoria, Sancion
 
 # Creamos una acción personalizada para desvincular dispositivos
 @admin.action(description="Desvincular dispositivo seleccionado")
@@ -125,3 +125,11 @@ class EventoLoginOfflineAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(Sancion)
+class SancionAdmin(admin.ModelAdmin):
+    list_display = ['trabajador', 'tipo', 'fecha_sancion', 'creado_por', 'fecha_creacion']
+    list_filter = ['tipo', 'fecha_sancion']
+    search_fields = ['trabajador__dni', 'trabajador__nombres', 'trabajador__apellido_paterno', 'contexto']
+    ordering = ['-fecha_sancion', '-fecha_creacion']
