@@ -829,3 +829,40 @@ class MarcaSinHorarioAuditoria(models.Model):
         accion = "habilitó" if self.habilitado_nuevo else "deshabilitó"
         return f"{usuario_nombre} {accion} marca sin horario a {self.trabajador_nombre}"
 
+
+class Sancion(models.Model):
+    class Tipo(models.TextChoices):
+        VERBAL = 'VERBAL', 'Amonestación Verbal'
+        ORAL = 'ORAL', 'Amonestación Oral'
+        ESCRITA = 'ESCRITA', 'Amonestación Escrita'
+        OTRO = 'OTRO', 'Otra Sanción'
+
+    trabajador = models.ForeignKey(Trabajador, on_delete=models.CASCADE, related_name='sanciones')
+    tipo = models.CharField(max_length=10, choices=Tipo.choices, verbose_name="Tipo de Sanción")
+    contexto = models.TextField(verbose_name="Contexto / Motivo")
+    fecha_sancion = models.DateField(verbose_name="Fecha de la Sanción")
+    documento_adjunto = models.FileField(
+        upload_to='memos_adjuntos/',
+        null=True,
+        blank=True,
+        verbose_name="Documento Adjunto",
+    )
+
+    # --- Auditoría ---
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sanciones_registradas',
+    )
+
+    class Meta:
+        verbose_name = "Sanción"
+        verbose_name_plural = "Sanciones"
+        ordering = ['-fecha_sancion', '-fecha_creacion']
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.trabajador} ({self.fecha_sancion})"
+

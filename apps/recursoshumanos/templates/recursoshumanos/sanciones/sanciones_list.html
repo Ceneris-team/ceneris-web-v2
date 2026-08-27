@@ -1,0 +1,375 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Sanciones y Memos{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/tabla_estados.css' %}">
+    <link rel="stylesheet" href="{% static 'css/filtros_maestros.css' %}">
+    <style>
+        .container, .container-fluid, main, .content, .content-wrapper {
+            max-width: 100% !important;
+            padding-left: 30px !important;
+            padding-right: 30px !important;
+            margin: 0 !important;
+        }
+
+        .page-header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 25px;
+            padding-top: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+
+        .header-titles h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: #0f172a;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .back-link:hover { color: #3b82f6; transform: translateX(-4px); }
+        .back-link svg { width: 18px; height: 18px; }
+
+        .form-filters-master { display: flex; flex-wrap: wrap; gap: 1.5rem 1rem; align-items: flex-end; }
+        .filter-group { flex: 1 1 260px; min-width: 220px; max-width: 360px; }
+        #trabajador-input { width: 100%; padding: 0.6rem 1rem; border: 1px solid #ced4da; border-radius: 6px; }
+        #trabajador-input:focus { border-color: #86b7fe; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); outline: none; }
+        .form-actions { display: flex; gap: 0.75rem; padding-bottom: 2px; }
+        .form-actions .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; font-weight: 500; border-radius: 6px; white-space: nowrap; border: none; transition: background-color 0.2s ease; cursor: pointer; }
+        .form-actions .btn-primary { background-color: #d45b04; color: #ffffff; }
+        .form-actions .btn-primary:hover { background-color: #b04a03; }
+        .form-actions .btn-secondary { background-color: #6c757d; color: #ffffff; }
+        .form-actions .btn-secondary:hover { background-color: #5a6268; }
+        .form-actions i { width: 16px; height: 16px; }
+
+        /* Estado (punto/badge) */
+        .estado-memo-cell { text-align: center; width: 80px; }
+        .badge-memo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 0.3em 0.7em;
+            font-size: 0.8em;
+            font-weight: 700;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .badge-memo .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .badge-memo.con-memos {
+            background-color: #fff3e0;
+            color: #e65100;
+            border: 1px solid #ffb74d;
+        }
+        .badge-memo.con-memos .dot {
+            background-color: #ff6d00;
+            box-shadow: 0 0 6px 2px rgba(255, 109, 0, 0.65);
+        }
+        .badge-memo.sin-memos {
+            background-color: #f1f3f5;
+            color: #868e96;
+            border: 1px solid #dee2e6;
+        }
+        .badge-memo.sin-memos .dot {
+            background-color: #adb5bd;
+        }
+        .badge-memo.grave {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fca5a5;
+        }
+        .badge-memo.grave .dot {
+            background-color: #dc2626;
+            box-shadow: 0 0 6px 2px rgba(220, 38, 38, 0.65);
+        }
+
+        /* Alinea siempre el botón "+" en la misma posición, tenga o no historial */
+        td .table-actions-container {
+            justify-content: flex-start;
+        }
+        .btn-icon-action-placeholder {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            color: #cbd5e1;
+            font-weight: 700;
+        }
+
+        /* Botón "Agregar Sanción" (círculo naranja) */
+        .btn-icon-action.agregar-sancion {
+            background-color: #d45b04;
+            color: #ffffff;
+        }
+        .btn-icon-action.agregar-sancion:hover {
+            background-color: #b04a03;
+            color: #ffffff;
+        }
+        .btn-icon-action.agregar-sancion i {
+            stroke: #ffffff;
+        }
+
+        .trabajador-nombre { font-weight: 600; color: #0f172a; }
+        .trabajador-dni { font-size: 0.85em; color: #64748b; }
+        .area-nombre { font-weight: 500; }
+        .cargo-nombre { font-size: 0.85em; color: #64748b; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header-container">
+        <div class="header-titles">
+            <a href="{% url 'recursoshumanos:dashboard' %}" class="back-link">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+                Volver al Panel
+            </a>
+            <h1>Sanciones y Memos</h1>
+            <p style="margin: 0;">Registra y consulta las amonestaciones del personal.</p>
+        </div>
+    </div>
+
+    <div class="master-filter-bar">
+        <form method="get" class="form-filters-master" action="{% url 'recursoshumanos:lista_sanciones' %}">
+            <div class="filter-group" style="flex-grow: 1.5; min-width: 240px;">
+                <label for="trabajador-input">Buscar Trabajador</label>
+                <input type="text" name="search" id="trabajador-input" placeholder="Nombre, apellido o DNI..." value="{{ filtro_busqueda }}">
+            </div>
+            <div class="filter-group">
+                <label for="empresa">Empresa</label>
+                <select name="empresa" id="empresa">
+                    <option value="" {% if not filtro_empresa %}selected{% endif %}>Todas</option>
+                    {% for empresa in opciones_empresas %}
+                        <option value="{{ empresa.pk }}" {% if filtro_empresa == empresa.pk|stringformat:"s" %}selected{% endif %}>{{ empresa.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="area">Área</label>
+                <select name="area" id="area">
+                    <option value="" {% if not filtro_area %}selected{% endif %}>Todas</option>
+                    {% for area in opciones_areas %}
+                        <option value="{{ area.pk }}" {% if filtro_area == area.pk|stringformat:"s" %}selected{% endif %}>{{ area.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="cargo">Cargo</label>
+                <select name="cargo" id="cargo">
+                    <option value="" {% if not filtro_cargo %}selected{% endif %}>Todos</option>
+                    {% for cargo in opciones_cargos %}
+                        <option value="{{ cargo }}" {% if filtro_cargo == cargo %}selected{% endif %}>{{ cargo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group" style="flex-grow: 0.6; min-width: 180px;">
+                <label for="estado_sanciones">Cantidad de Sanciones</label>
+                <select name="estado_sanciones" id="estado_sanciones">
+                    <option value="" {% if not filtro_estado_sanciones %}selected{% endif %}>Todos</option>
+                    <option value="sin" {% if filtro_estado_sanciones == 'sin' %}selected{% endif %}>Sin sanciones</option>
+                    <option value="con" {% if filtro_estado_sanciones == 'con' %}selected{% endif %}>Con sanciones</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary"><i data-feather="filter"></i><span>Buscar</span></button>
+                <a href="{% url 'recursoshumanos:lista_sanciones' %}" class="btn btn-secondary"><i data-feather="refresh-cw"></i><span>Limpiar</span></a>
+            </div>
+        </form>
+    </div>
+
+    <div style="margin-top: 2rem; text-align: left; color: #64748b; font-size: 0.85rem;">
+        Mostrando {{ total_trabajadores }} trabajadores
+    </div>
+
+    <table style="margin-top: 0.5rem;">
+        <thead>
+            <tr>
+                <th style="text-align: center;">Estado</th>
+                <th>Trabajador / DNI</th>
+                <th>Área / Cargo</th>
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for trabajador in trabajadores %}
+            <tr id="fila-trabajador-{{ trabajador.pk }}">
+                <td class="estado-memo-cell">
+                    {% if trabajador.total_memos > 0 %}
+                        <span class="badge-memo con-memos{% if trabajador.total_memos >= 5 %} grave{% endif %}" title="{{ trabajador.total_memos }} sanción(es) registrada(s)">
+                            <span class="dot"></span>{{ trabajador.total_memos }}
+                        </span>
+                    {% else %}
+                        <span class="badge-memo sin-memos">
+                            <span class="dot"></span>Sin sanciones
+                        </span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="trabajador-nombre">{{ trabajador }}</div>
+                    <div class="trabajador-dni">DNI: {{ trabajador.dni }}</div>
+                </td>
+                <td>
+                    <div class="area-nombre">{{ trabajador.area.nombre|default:"Sin Área" }}</div>
+                    <div class="cargo-nombre">{{ trabajador.cargo|default:"Sin Cargo" }}</div>
+                </td>
+                <td>
+                    <div class="table-actions-container">
+                        <button type="button"
+                                class="btn-icon-action agregar-sancion"
+                                title="Registrar Sanción"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalCrearSancion"
+                                onclick="setSancionModalData('{{ trabajador.pk }}', '{{ trabajador|escapejs }}')">
+                            <i data-feather="file-plus"></i>
+                        </button>
+                        {% if trabajador.total_memos > 0 %}
+                        <a href="{% url 'recursoshumanos:historial_sanciones' trabajador_id=trabajador.pk %}"
+                           class="btn-icon-action view"
+                           title="Ver Historial">
+                            <i data-feather="clock"></i>
+                        </a>
+                        {% else %}
+                        <span class="btn-icon-action-placeholder" aria-hidden="true">&minus;</span>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center; padding: 40px 20px; color: #94a3b8;">
+                    <i data-feather="users" style="width: 32px; height: 32px; margin-bottom: 10px;"></i><br>
+                    No se encontraron trabajadores con los filtros seleccionados.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- ========================================== -->
+    <!--   MODAL: AGREGAR SANCIÓN / MEMO (AJAX)     -->
+    <!-- ========================================== -->
+    <div class="modal fade" id="modalCrearSancion" tabindex="-1" aria-labelledby="modalCrearSancionLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" style="background-color: #d45b04; color: #fff;">
+                    <h5 class="modal-title" id="modalCrearSancionLabel">
+                        Agregar Sanción / Memo — <span id="modalTrabajadorNombre"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="formCrearSancion" method="post" action="" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="inputTipoSancion" class="form-label">Tipo de Sanción</label>
+                            <select class="form-select" id="inputTipoSancion" name="tipo" required>
+                                <option value="" disabled selected>Selecciona un tipo...</option>
+                                {% for valor, etiqueta in tipos_sancion %}
+                                    <option value="{{ valor }}">{{ etiqueta }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="inputFechaSancion" class="form-label">Fecha de la Sanción</label>
+                            <input type="date" class="form-control" id="inputFechaSancion" name="fecha_sancion" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="inputContextoSancion" class="form-label">Contexto / Motivo</label>
+                            <textarea class="form-control" id="inputContextoSancion" name="contexto" rows="4" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="inputDocumentoAdjunto" class="form-label">Documento Adjunto (opcional)</label>
+                            <input type="file" class="form-control" id="inputDocumentoAdjunto" name="documento_adjunto" accept=".pdf,.jpg,.jpeg,.png">
+                            <div class="form-text">Formatos permitidos: PDF, JPG o PNG.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btnGuardarSancion">Guardar Sanción</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function setSancionModalData(trabajadorId, trabajadorNombre) {
+        const form = document.getElementById('formCrearSancion');
+        form.action = `/recursoshumanos/sanciones/crear/${trabajadorId}/`;
+        form.reset();
+        document.getElementById('modalTrabajadorNombre').textContent = trabajadorNombre;
+    }
+
+    document.getElementById('formCrearSancion').addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        const form = event.target;
+        const btn = document.getElementById('btnGuardarSancion');
+        const formData = new FormData(form);
+
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        })
+        .then(response => response.json().then(data => ({ ok: response.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok || data.status !== 'ok') {
+                throw new Error(data.message || 'No se pudo registrar la sanción.');
+            }
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sanción registrada',
+                    text: data.message,
+                    timer: 1500,
+                    showConfirmButton: false,
+                }).then(() => window.location.reload());
+            } else {
+                window.location.reload();
+            }
+        })
+        .catch(error => {
+            btn.disabled = false;
+            btn.textContent = 'Guardar Sanción';
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: 'Error', text: error.message });
+            } else {
+                alert(error.message);
+            }
+        });
+    });
+
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+</script>
+{% endblock %}

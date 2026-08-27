@@ -1,0 +1,253 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load static %}
+
+{% block title %}Historial de Sanciones — {{ trabajador }}{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .container, .container-fluid, main, .content, .content-wrapper {
+            max-width: 100% !important;
+            padding-left: 30px !important;
+            padding-right: 30px !important;
+            margin: 0 !important;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .back-link:hover { color: #3b82f6; transform: translateX(-4px); }
+        .back-link svg { width: 18px; height: 18px; }
+
+        .trabajador-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 22px;
+            background-color: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 22px 25px;
+            margin-bottom: 25px;
+        }
+        .trabajador-avatar {
+            min-width: 64px;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background-color: #d45b04;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 22px;
+            text-transform: uppercase;
+        }
+        .trabajador-header h1 { margin: 0 0 2px 0; font-size: 1.5rem; color: #0f172a; }
+        .trabajador-header .subtitulo-perfil {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #d45b04;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin: 0 0 10px 0;
+        }
+        .perfil-datos {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px 24px;
+            width: 100%;
+        }
+        .perfil-datos .dato-label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .perfil-datos .dato-valor {
+            display: block;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* Timeline */
+        .timeline { position: relative; padding-left: 30px; }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 9px;
+            top: 6px;
+            bottom: 6px;
+            width: 2px;
+            background-color: #e2e8f0;
+        }
+        .timeline-item {
+            position: relative;
+            background-color: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 18px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -25px;
+            top: 20px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #ff6d00;
+            box-shadow: 0 0 0 4px #fff3e0;
+        }
+        .timeline-item .tipo-badge {
+            display: inline-block;
+            padding: 0.25em 0.7em;
+            font-size: 0.8em;
+            font-weight: 700;
+            border-radius: 999px;
+            background-color: #fff3e0;
+            color: #e65100;
+            border: 1px solid #ffb74d;
+            margin-bottom: 8px;
+        }
+        .timeline-item .fecha-sancion {
+            float: right;
+            color: #64748b;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .timeline-item .contexto { color: #334155; margin: 10px 0; white-space: pre-line; }
+        .timeline-item .adjunto-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+            padding: 5px 12px;
+            border-radius: 6px;
+            background-color: #fff3e0;
+            color: #d45b04;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: background-color 0.2s ease;
+        }
+        .timeline-item .adjunto-link:hover {
+            background-color: #ffe2b8;
+            text-decoration: none;
+        }
+        .timeline-item .adjunto-link.descargar {
+            background-color: #eef2ff;
+            color: #4338ca;
+        }
+        .timeline-item .adjunto-link.descargar:hover {
+            background-color: #e0e7ff;
+        }
+        .adjuntos-acciones {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .timeline-item .auditoria {
+            font-size: 0.82rem;
+            color: #94a3b8;
+            border-top: 1px dashed #e2e8f0;
+            padding-top: 8px;
+            margin-top: 10px;
+        }
+        .sin-sanciones {
+            text-align: center;
+            padding: 40px;
+            color: #94a3b8;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <a href="{% url 'recursoshumanos:lista_sanciones' %}" class="back-link">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+        </svg>
+        Volver al Listado
+    </a>
+
+    <div class="trabajador-header">
+        <div class="trabajador-avatar">{{ trabajador.nombres|slice:":1" }}{{ trabajador.apellido_paterno|slice:":1" }}</div>
+        <div style="flex-grow: 1;">
+            <p class="subtitulo-perfil">Perfil del Trabajador</p>
+            <h1>{{ trabajador }}</h1>
+            <div class="perfil-datos" style="margin-top: 12px;">
+                <div>
+                    <span class="dato-label">DNI</span>
+                    <span class="dato-valor">{{ trabajador.dni }}</span>
+                </div>
+                <div>
+                    <span class="dato-label">Empresa</span>
+                    <span class="dato-valor">{{ trabajador.empresa.nombre|default:"Sin Empresa" }}</span>
+                </div>
+                <div>
+                    <span class="dato-label">Área</span>
+                    <span class="dato-valor">{{ trabajador.area.nombre|default:"Sin Área" }}</span>
+                </div>
+                <div>
+                    <span class="dato-label">Cargo</span>
+                    <span class="dato-valor">{{ trabajador.cargo|default:"Sin Cargo" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h5 style="margin-bottom: 15px; color: #0f172a;">Historial de Sanciones</h5>
+
+    {% if sanciones %}
+    <div class="timeline">
+        {% for sancion in sanciones %}
+        <div class="timeline-item">
+            <span class="fecha-sancion">{{ sancion.fecha_sancion|date:"d/m/Y" }}</span>
+            <span class="tipo-badge">{{ sancion.get_tipo_display }}</span>
+            <div class="contexto">{{ sancion.contexto }}</div>
+            {% if sancion.documento_adjunto %}
+                <div class="adjuntos-acciones">
+                    <a href="{% url 'recursoshumanos:descargar_adjunto_sancion' sancion_id=sancion.pk %}"
+                       target="_blank" rel="noopener noreferrer" class="adjunto-link">
+                        Ver adjunto 👁️
+                    </a>
+                    <a href="{% url 'recursoshumanos:descargar_adjunto_sancion' sancion_id=sancion.pk %}?download=1"
+                       class="adjunto-link descargar">
+                        Descargar 📥
+                    </a>
+                </div>
+            {% endif %}
+            <div class="auditoria">
+                Registrado por
+                {% if sancion.creado_por %}{{ sancion.creado_por.get_full_name|default:sancion.creado_por.username }}{% else %}un usuario eliminado{% endif %}
+                el {{ sancion.fecha_creacion|date:"d/m/Y H:i" }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="sin-sanciones">
+        <i data-feather="inbox" style="width: 40px; height: 40px; margin-bottom: 10px;"></i>
+        <p>Este trabajador no tiene sanciones registradas.</p>
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+</script>
+{% endblock %}
