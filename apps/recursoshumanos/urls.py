@@ -139,4 +139,10 @@ urlpatterns = [
     path('horas-extra/panel-aprobacion/', views.panel_aprobacion_horas_extra, name='panel_aprobacion_he'),
     path('horas-extra/procesar/<int:solicitud_id>/<str:accion>/', views.procesar_solicitud_horas_extra, name='procesar_solicitud_he'),
     path('recursoshumanos/reportes/faltas/', reporte_faltas_web, name='reporte_faltas_web'),
+
+    # --- SANCIONES / MEMOS (RRHH) ---
+    path('sanciones/', views.lista_sanciones, name='lista_sanciones'),
+    path('sanciones/crear/<int:trabajador_id>/', views.crear_sancion, name='crear_sancion'),
+    path('sanciones/trabajador/<int:trabajador_id>/', views.historial_sanciones, name='historial_sanciones'),
+    path('sanciones/adjunto/<int:sancion_id>/', views.descargar_adjunto_sancion, name='descargar_adjunto_sancion'),
 ]

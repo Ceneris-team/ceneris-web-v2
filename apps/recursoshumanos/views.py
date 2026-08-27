@@ -23,7 +23,7 @@ from .forms import TrabajadorForm, UbicacionForm, JustificacionForm, EmpresaForm
 from .models import Cargo, Empresa, Proyecto, Trabajador, CentroCosto, Ubicacion, TareoDiario
 import pandas as pd
 from recursoshumanos.services import recalcular_asistencia_diaria
-from .models import Sede, ConfiguracionTolerancia, ToleranciaAuditoria, MarcaSinHorarioAuditoria
+from .models import Sede, ConfiguracionTolerancia, ToleranciaAuditoria, MarcaSinHorarioAuditoria, Sancion
 from .motor_reglas import EstadoMarca
 from .services import listar_tolerancias, crear_o_actualizar_tolerancia, actualizar_tolerancia
 from . import servicios_horas
@@ -48,7 +48,10 @@ from django.contrib.auth.views import LoginView
 from django.urls import reverse_lazy, reverse
 from django.views.decorators.http import require_POST
 import json
-from django.db.models import Q, Prefetch
+from django.db.models import Q, Prefetch, Count
+import os
+import mimetypes
+from django.http import FileResponse
 from django.utils.http import url_has_allowed_host_and_scheme
 from collections import Counter, defaultdict
 from .templatetags.custom_filters_rrhh import has_group
@@ -5258,3 +5261,158 @@ def detalle_horas_trabajador(request, trabajador_id):
         'querystring_periodo': request.GET.urlencode(),
         'current_view': 'reporte_horas_periodo',
     })
+
+
+# --- SANCIONES / MEMOS (RRHH) ---
+
+@login_required
+@group_required("Recursos Humanos")
+def lista_sanciones(request):
+    """Listado de trabajadores con buscador y conteo de sanciones/memos."""
+    busqueda = request.GET.get('search', '').strip()
+    filtro_estado_sanciones = request.GET.get('estado_sanciones', '').strip()
+    filtro_empresa = request.GET.get('empresa', '').strip()
+    filtro_cargo = request.GET.get('cargo', '').strip()
+    filtro_area = request.GET.get('area', '').strip()
+
+    trabajadores = Trabajador.objects.filter(activo=True).select_related('area', 'empresa').annotate(
+        total_memos=Count('sanciones')
+    ).order_by('apellido_paterno', 'apellido_materno', 'nombres')
+
+    if busqueda:
+        trabajadores = trabajadores.filter(
+            Q(nombres__icontains=busqueda) |
+            Q(apellido_paterno__icontains=busqueda) |
+            Q(apellido_materno__icontains=busqueda) |
+            Q(dni__icontains=busqueda)
+        )
+
+    if filtro_estado_sanciones == 'sin':
+        trabajadores = trabajadores.filter(total_memos=0)
+    elif filtro_estado_sanciones == 'con':
+        trabajadores = trabajadores.filter(total_memos__gte=1)
+
+    if filtro_empresa:
+        trabajadores = trabajadores.filter(empresa_id=filtro_empresa)
+
+    if filtro_cargo:
+        trabajadores = trabajadores.filter(cargo=filtro_cargo)
+
+    if filtro_area:
+        trabajadores = trabajadores.filter(area_id=filtro_area)
+
+    opciones_empresas = Empresa.objects.order_by('nombre')
+    opciones_areas = Area.objects.order_by('nombre')
+    opciones_cargos = Trabajador.objects.exclude(cargo__isnull=True).exclude(cargo='').values_list(
+        'cargo', flat=True
+    ).distinct().order_by('cargo')
+
+    context = {
+        'trabajadores': trabajadores,
+        'total_trabajadores': trabajadores.count(),
+        'filtro_busqueda': busqueda,
+        'filtro_estado_sanciones': filtro_estado_sanciones,
+        'filtro_empresa': filtro_empresa,
+        'filtro_cargo': filtro_cargo,
+        'filtro_area': filtro_area,
+        'opciones_empresas': opciones_empresas,
+        'opciones_areas': opciones_areas,
+        'opciones_cargos': opciones_cargos,
+        'tipos_sancion': Sancion.Tipo.choices,
+        'current_view': 'lista_sanciones',
+    }
+    return render(request, 'recursoshumanos/sanciones/sanciones_list.html', context)
+
+
+@login_required
+@group_required("Recursos Humanos")
+@require_POST
+def crear_sancion(request, trabajador_id):
+    """Crea una sanción/memo para un trabajador (POST/AJAX desde el modal)."""
+    trabajador = get_object_or_404(Trabajador, pk=trabajador_id)
+
+    tipo = request.POST.get('tipo')
+    contexto = (request.POST.get('contexto') or '').strip()
+    fecha_sancion = request.POST.get('fecha_sancion')
+    documento_adjunto = request.FILES.get('documento_adjunto')
+
+    if tipo not in Sancion.Tipo.values:
+        return JsonResponse({'status': 'error', 'message': 'Selecciona un tipo de sanción válido.'}, status=400)
+    if not contexto or not fecha_sancion:
+        return JsonResponse({'status': 'error', 'message': 'La fecha y el contexto son obligatorios.'}, status=400)
+
+    sancion = Sancion.objects.create(
+        trabajador=trabajador,
+        tipo=tipo,
+        contexto=contexto,
+        fecha_sancion=fecha_sancion,
+        documento_adjunto=documento_adjunto,
+        creado_por=request.user,
+    )
+
+    return JsonResponse({
+        'status': 'ok',
+        'message': 'Sanción registrada correctamente.',
+        'sancion_id': sancion.pk,
+        'total_memos': trabajador.sanciones.count(),
+    })
+
+
+@login_required
+@group_required("Recursos Humanos")
+def descargar_adjunto_sancion(request, sancion_id):
+    """
+    Proxy de descarga para el documento adjunto de una sanción.
+
+    En vez de mandar al navegador una URL de S3 (firmada o del dominio
+    custom AWS_S3_CUSTOM_DOMAIN, que puede devolver AccessDenied si el bucket
+    no es publico), el propio backend abre el archivo con las credenciales de
+    la app (via el storage de Django) y transmite los bytes directo al
+    navegador con FileResponse. El navegador nunca habla con S3.
+    """
+    sancion = get_object_or_404(Sancion, pk=sancion_id)
+
+    if not sancion.documento_adjunto:
+        return HttpResponse(
+            'Esta sanción no tiene un documento adjunto registrado.',
+            content_type='text/plain; charset=utf-8',
+            status=404,
+        )
+
+    try:
+        archivo = sancion.documento_adjunto.open('rb')
+    except Exception as e:
+        print(f"[descargar_adjunto_sancion] sancion_id={sancion_id} archivo={sancion.documento_adjunto.name!r} error={type(e).__name__}: {e}")
+        return HttpResponse(
+            'No se pudo abrir el documento adjunto. Intenta nuevamente o contacta a soporte.',
+            content_type='text/plain; charset=utf-8',
+            status=404,
+        )
+
+    nombre_archivo = os.path.basename(sancion.documento_adjunto.name)
+    content_type, _ = mimetypes.guess_type(nombre_archivo)
+    content_type = content_type or 'application/octet-stream'
+
+    # ?download=1 fuerza la descarga a disco; sin el parametro se abre
+    # inline en el navegador (visor de PDF/imagen).
+    forzar_descarga = request.GET.get('download') == '1'
+    disposicion = 'attachment' if forzar_descarga else 'inline'
+
+    response = FileResponse(archivo, content_type=content_type)
+    response['Content-Disposition'] = f'{disposicion}; filename="{nombre_archivo}"'
+    return response
+
+
+@login_required
+@group_required("Recursos Humanos")
+def historial_sanciones(request, trabajador_id):
+    """Timeline de sanciones/memos registradas para un trabajador."""
+    trabajador = get_object_or_404(Trabajador.objects.select_related('area', 'empresa'), pk=trabajador_id)
+    sanciones = trabajador.sanciones.select_related('creado_por').order_by('-fecha_sancion', '-fecha_creacion')
+
+    context = {
+        'trabajador': trabajador,
+        'sanciones': sanciones,
+        'current_view': 'lista_sanciones',
+    }
+    return render(request, 'recursoshumanos/sanciones/sanciones_historial.html', context)
