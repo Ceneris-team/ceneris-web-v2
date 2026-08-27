@@ -25,6 +25,7 @@ import pandas as pd
 from recursoshumanos.services import recalcular_asistencia_diaria
 from .models import Sede, ConfiguracionTolerancia, ToleranciaAuditoria, MarcaSinHorarioAuditoria
 from .motor_reglas import EstadoMarca
+from accesos.models import MENSAJE_SESION_DUPLICADA, SesionCerradaRemotamente
 from .services import listar_tolerancias, crear_o_actualizar_tolerancia, actualizar_tolerancia
 from . import servicios_horas
 from firebase_admin import firestore
@@ -1999,6 +2000,28 @@ class CustomLoginView(LoginView):
             return redirect(self.get_success_url())
             
         return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        """
+        CAV-187 (mejora): si el usuario llega aquí porque su sesión fue cerrada
+        desde otro dispositivo, se lo explicamos en el propio login.
+
+        Cubre el caso en que el navegador desplazado navega antes de que
+        el vigilante alcance a mostrar el modal.
+        """
+        contexto = super().get_context_data(**kwargs)
+        cookie_vieja = self.request.COOKIES.get(settings.SESSION_COOKIE_NAME)
+        aviso = SesionCerradaRemotamente.aviso_pendiente(cookie_vieja)
+
+        if aviso is not None:
+            # Se marca para que el aviso no reaparezca en cada visita al
+            # login mientras la cookie vieja siga en el navegador.
+            SesionCerradaRemotamente.objects.filter(pk=aviso.pk).update(avisado=True)
+            contexto['aviso_sesion_duplicada'] = MENSAJE_SESION_DUPLICADA
+        elif self.request.GET.get('sesion') == SesionCerradaRemotamente.MOTIVO_SESION_DUPLICADA:
+            contexto['aviso_sesion_duplicada'] = MENSAJE_SESION_DUPLICADA
+
+        return contexto
 
     def form_invalid(self, form):
         """Mensaje genérico si se equivocan en la contraseña."""

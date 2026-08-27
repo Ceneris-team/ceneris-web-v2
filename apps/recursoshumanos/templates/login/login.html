@@ -283,6 +283,21 @@
             <!-- AGREGA ESTE BLOQUE DE CÓDIGO AQUÍ -->
             <!-- ========================================== -->
             <div class="messages-container">
+                {# CAV-187 (mejora): aviso de sesion cerrada desde otro dispositivo. #}
+                {% if aviso_sesion_duplicada %}
+                <div class="alert warning alert-persistente" role="alert">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <span>{{ aviso_sesion_duplicada }}</span>
+                    </div>
+                    <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+                </div>
+                {% endif %}
+
                 {% if messages %}
                     {% for message in messages %}
                     <div class="alert {{ message.tags }}" role="alert">
@@ -335,7 +350,9 @@
     // Esperar a que el documento cargue
     document.addEventListener('DOMContentLoaded', function() {
         // Seleccionar todas las alertas
-        const alerts = document.querySelectorAll('.alert');
+        // CAV-187 (mejora): el aviso de sesion cerrada no se desvanece; el usuario
+        // necesita leerlo entero para entender por que lo sacaron.
+        const alerts = document.querySelectorAll('.alert:not(.alert-persistente)');
         
         if (alerts.length > 0) {
             // Esperar 5 segundos (5000 milisegundos)

@@ -1,12 +1,15 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group
 from django.contrib.sessions.models import Session
 from django.http import HttpResponse
-from django.test import Client, RequestFactory, TestCase
+from django.test import Client, RequestFactory, TestCase, override_settings
+from django.utils import timezone
 
 from .middleware import PlatformAccessMiddleware
+from .models import SesionCerradaRemotamente
 
 User = get_user_model()
 
@@ -194,3 +197,114 @@ class SesionSimultaneaTests(TestCase):
         self.assertTrue(cliente_2.login(username='rootadmin', password='clave12345'))
 
         self.assertTrue(Session.objects.filter(session_key=session_key_1).exists())
+
+
+class AvisoSesionCerradaTests(TestCase):
+    """CAV-187 (mejora): el dispositivo desplazado debe enterarse de
+    por que perdio la sesion, no aparecer en el login sin explicacion."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.trabajador = User.objects.create_user(username='trabajador2', password='clave12345')
+        cls.superuser = User.objects.create_superuser(
+            username='rootadmin2', password='clave12345', email='root3@ceneris.test'
+        )
+
+    def _desplazar_sesion(self, username='trabajador2'):
+        """Loguea dos clientes y devuelve el que quedo desplazado."""
+        cliente_1 = Client()
+        cliente_2 = Client()
+        self.assertTrue(cliente_1.login(username=username, password='clave12345'))
+        session_key_1 = cliente_1.session.session_key
+        self.assertTrue(cliente_2.login(username=username, password='clave12345'))
+        return cliente_1, session_key_1
+
+    def test_se_registra_el_aviso_al_cerrar_la_sesion_anterior(self):
+        _, session_key_1 = self._desplazar_sesion()
+
+        aviso = SesionCerradaRemotamente.objects.get(session_key=session_key_1)
+        self.assertEqual(aviso.usuario, self.trabajador)
+        self.assertFalse(aviso.avisado)
+
+    def test_superuser_no_genera_aviso(self):
+        self._desplazar_sesion(username='rootadmin2')
+
+        self.assertFalse(SesionCerradaRemotamente.objects.exists())
+
+    @override_settings(SESION_UNICA_EXIMIR_SUPERUSUARIO=False)
+    def test_superuser_si_recibe_aviso_con_la_excepcion_apagada(self):
+        """El interruptor de desarrollo permite probar el aviso con una
+        cuenta de administrador sin crear un usuario de prueba."""
+        cliente_1, session_key_1 = self._desplazar_sesion(username='rootadmin2')
+
+        self.assertFalse(Session.objects.filter(session_key=session_key_1).exists())
+        datos = cliente_1.get('/seguridad/estado-sesion/').json()
+        self.assertEqual(datos['motivo'], SesionCerradaRemotamente.MOTIVO_SESION_DUPLICADA)
+
+    def test_estado_sesion_avisa_al_navegador_desplazado(self):
+        cliente_1, _ = self._desplazar_sesion()
+
+        respuesta = cliente_1.get('/seguridad/estado-sesion/')
+        datos = respuesta.json()
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertFalse(datos['activa'])
+        self.assertEqual(datos['motivo'], SesionCerradaRemotamente.MOTIVO_SESION_DUPLICADA)
+        self.assertEqual(datos['segundos_redireccion'], 5)
+        self.assertIn('/accounts/login/', datos['login_url'])
+        self.assertIn(SesionCerradaRemotamente.MOTIVO_SESION_DUPLICADA, datos['login_url'])
+
+    def test_estado_sesion_responde_activa_con_sesion_vigente(self):
+        cliente = Client()
+        self.assertTrue(cliente.login(username='trabajador2', password='clave12345'))
+
+        datos = cliente.get('/seguridad/estado-sesion/').json()
+
+        self.assertTrue(datos['activa'])
+
+    def test_estado_sesion_sin_cookie_no_inventa_motivo(self):
+        datos = Client().get('/seguridad/estado-sesion/').json()
+
+        self.assertFalse(datos['activa'])
+        self.assertEqual(datos['motivo'], 'sin_sesion')
+
+    def test_login_muestra_el_aviso_una_sola_vez(self):
+        cliente_1, session_key_1 = self._desplazar_sesion()
+
+        primera = cliente_1.get('/accounts/login/')
+        self.assertContains(primera, 'se inició sesión con esta misma cuenta')
+        self.assertTrue(SesionCerradaRemotamente.objects.get(session_key=session_key_1).avisado)
+
+        segunda = cliente_1.get('/accounts/login/')
+        self.assertNotContains(segunda, 'se inició sesión con esta misma cuenta')
+
+    def test_pagina_web_lleva_el_vigilante_inyectado(self):
+        cliente = Client()
+        self.assertTrue(cliente.login(username='trabajador2', password='clave12345'))
+
+        respuesta = cliente.get('/seguridad/portal/')
+
+        self.assertContains(respuesta, 'cav-aviso-sesion')
+        self.assertContains(respuesta, '/seguridad/estado-sesion/')
+
+    def test_el_vigilante_no_se_inyecta_en_respuestas_json(self):
+        cliente = Client()
+        self.assertTrue(cliente.login(username='trabajador2', password='clave12345'))
+
+        respuesta = cliente.get('/seguridad/estado-sesion/')
+
+        self.assertNotIn(b'cav-aviso-sesion', respuesta.content)
+
+    def test_purga_de_avisos_antiguos(self):
+        SesionCerradaRemotamente.objects.create(
+            session_key='clave-vieja', usuario=self.trabajador,
+            fecha_cierre=timezone.now() - timedelta(days=30),
+        )
+        SesionCerradaRemotamente.objects.create(
+            session_key='clave-reciente', usuario=self.trabajador,
+        )
+
+        SesionCerradaRemotamente.purgar_antiguas(dias=7)
+
+        claves = list(SesionCerradaRemotamente.objects.values_list('session_key', flat=True))
+        self.assertEqual(claves, ['clave-reciente'])

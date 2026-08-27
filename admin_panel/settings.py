@@ -138,7 +138,22 @@ MIDDLEWARE = [
     # CAV-186: debe ir despues de AuthenticationMiddleware (necesita
     # request.user ya resuelto) y despues de SessionMiddleware.
     'accesos.middleware.PlatformAccessMiddleware',
+    # CAV-187 (mejora): inyecta el vigilante de sesion unica en las paginas web.
+    'accesos.middleware.AvisoSesionCerradaMiddleware',
 ]
+
+# CAV-187 (mejora): cada cuanto pregunta el navegador si su sesion sigue viva y
+# cuantos segundos espera el modal antes de mandar al login.
+SESION_UNICA_INTERVALO_SEGUNDOS = int(os.environ.get('SESION_UNICA_INTERVALO_SEGUNDOS', 15))
+SESION_UNICA_SEGUNDOS_REDIRECCION = int(os.environ.get('SESION_UNICA_SEGUNDOS_REDIRECCION', 5))
+
+# El superusuario esta exento de la sesion unica (regla de negocio de
+# CAV-187). Se puede apagar la excepcion en desarrollo
+# (SESION_UNICA_EXIMIR_SUPERUSUARIO=0) para probar el aviso con una
+# cuenta de administrador, sin tener que crear un usuario de prueba.
+SESION_UNICA_EXIMIR_SUPERUSUARIO = os.environ.get(
+    'SESION_UNICA_EXIMIR_SUPERUSUARIO', 'True'
+).strip().lower() not in ('0', 'false', 'no')
 
 # ==============================================================================
 # URLs, Plantillas, WSGI
