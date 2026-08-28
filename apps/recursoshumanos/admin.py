@@ -2,7 +2,7 @@
 from django.contrib import admin, messages
 from admin_panel.settings import db
 from django.shortcuts import render
-from .models import Sede, Area, Empresa, Cargo, CentroCosto, ConfiguracionTolerancia, ToleranciaAuditoria
+from .models import Sede, Area, Empresa, Cargo, CentroCosto, ConfiguracionTolerancia, ToleranciaAuditoria, Trabajador, EventoLoginOffline, MarcaSinHorarioAuditoria, Sancion
 
 # Creamos una acción personalizada para desvincular dispositivos
 @admin.action(description="Desvincular dispositivo seleccionado")
@@ -39,12 +39,13 @@ class TrabajadorAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj=None): return False
     def has_delete_permission(self, request, obj=None): return False
 
-# Aún necesitamos un modelo "espejo" para la interfaz
-#from .models import Trabajador
-#@admin.register(Trabajador)
-#class TrabajadorAdminInterface(admin.ModelAdmin):
- #   list_display = ('dni', 'nombre', 'cargo', 'activo')
-  #  actions = [desvincular_dispositivo]
+@admin.register(Trabajador)
+class TrabajadorAdminInterface(admin.ModelAdmin):
+    list_display = ('dni', 'nombre_completo', 'cargo', 'area', 'user', 'activo')
+    list_filter = ('activo', 'area', 'sede')
+    search_fields = ('dni', 'nombres', 'apellido_paterno', 'apellido_materno', 'user__username')
+    raw_id_fields = ('user',)
+    autocomplete_fields = ['area', 'sede']
 
 # Registrar modelos básicos para gestión
 @admin.register(Sede)
@@ -93,3 +94,42 @@ class ToleranciaAuditoriaAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(MarcaSinHorarioAuditoria)
+class MarcaSinHorarioAuditoriaAdmin(admin.ModelAdmin):
+    """Quien habilito a quien a marcar sin horario (solo lectura)."""
+    list_display = ['trabajador_nombre', 'trabajador_dni', 'habilitado_nuevo', 'hasta_nuevo', 'usuario', 'creado_en']
+    list_filter = ['habilitado_nuevo']
+    search_fields = ['trabajador_nombre', 'trabajador_dni']
+    ordering = ['-creado_en']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(EventoLoginOffline)
+class EventoLoginOfflineAdmin(admin.ModelAdmin):
+    """CAV-83: auditoria de logins realizados sin conexion (solo lectura)."""
+    list_display = ['trabajador', 'device_id', 'fecha_hora_offline', 'fecha_hora_reportado']
+    list_filter = ['fecha_hora_offline']
+    search_fields = ['trabajador__dni', 'trabajador__nombres', 'trabajador__apellido_paterno', 'device_id']
+    ordering = ['-fecha_hora_offline']
+    readonly_fields = ['trabajador', 'device_id', 'fecha_hora_offline', 'fecha_hora_reportado']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Sancion)
+class SancionAdmin(admin.ModelAdmin):
+    list_display = ['trabajador', 'tipo', 'fecha_sancion', 'creado_por', 'fecha_creacion']
+    list_filter = ['tipo', 'fecha_sancion']
+    search_fields = ['trabajador__dni', 'trabajador__nombres', 'trabajador__apellido_paterno', 'contexto']
+    ordering = ['-fecha_sancion', '-fecha_creacion']

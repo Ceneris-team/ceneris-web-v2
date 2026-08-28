@@ -62,6 +62,10 @@ class ContextoMarcacion:
     minutos_tolerancia: int
     es_feriado: bool
     tiene_marcas: bool
+    # Datos del feriado ya resueltos por el servicio (CAV-13), solo para el
+    # detalle legible; el motor no consulta la tabla de feriados.
+    nombre_feriado: str | None = None
+    ambito_feriado: str | None = None
 
 
 @dataclass(frozen=True)
@@ -77,6 +81,14 @@ class ResultadoEvaluacion:
 
 def _normalizar_resultado(valor: str) -> str:
     return (valor or '').upper()
+
+
+def _detalle_feriado(ctx: ContextoMarcacion, base: str) -> str:
+    """Agrega al motivo base el nombre y ámbito del feriado, si se conocen."""
+    if not ctx.nombre_feriado:
+        return base
+    ambito = f' ({ctx.ambito_feriado})' if ctx.ambito_feriado else ''
+    return f'{base}: {ctx.nombre_feriado}{ambito}'
 
 
 def _minutos_tardanza(
@@ -176,7 +188,7 @@ def evaluar_marcacion(ctx: ContextoMarcacion) -> ResultadoEvaluacion:
                 etiquetas=(EstadoMarca.FERIADO,),
                 horas_tardanza=0.0,
                 minutos_tardanza=0,
-                detalle='Día feriado sin marcación',
+                detalle=_detalle_feriado(ctx, 'Día feriado sin marcación'),
             )
         return ResultadoEvaluacion(
             resultado=RESULTADO_FALTA,
@@ -196,7 +208,7 @@ def evaluar_marcacion(ctx: ContextoMarcacion) -> ResultadoEvaluacion:
             etiquetas=(EstadoMarca.FERIADO,),
             horas_tardanza=0.0,
             minutos_tardanza=0,
-            detalle='Asistencia en día feriado',
+            detalle=_detalle_feriado(ctx, 'Asistencia en día feriado'),
         )
 
     # 5. Día normal con marcas.

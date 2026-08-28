@@ -23,7 +23,7 @@ def _cursor_biometrico():
     import time
     
     print("\n" + "="*50)
-    print(" 🛠️ [DEBUG BIOMÉTRICO] INICIANDO PROCESO ")
+    print("  [DEBUG BIOMÉTRICO] INICIANDO PROCESO ")
     print("="*50)
     
     db_conf = settings.DATABASES.get('db_biometrico', {})
@@ -55,7 +55,7 @@ def _cursor_biometrico():
         )
         tiempo_total = round(time.time() - inicio_tiempo, 2)
         
-        print(f"\n[DEBUG] 3. ¡ÉXITO! 🟢")
+        print(f"\n[DEBUG] 3. ¡ÉXITO! ")
         print(f"    -> El router dejó pasar a Render.")
         print(f"    -> MySQL aceptó al usuario '{usuario_reloj}'.")
         print(f"    -> Tiempo de conexión: {tiempo_total} segundos.")
@@ -70,7 +70,7 @@ def _cursor_biometrico():
 
     except pymysql.err.OperationalError as exc:
         tiempo_total = round(time.time() - inicio_tiempo, 2)
-        print(f"\n[DEBUG] ❌ FALLO DE OPERACIÓN tras {tiempo_total} segundos.")
+        print(f"\n[DEBUG] [ERROR] FALLO DE OPERACIÓN tras {tiempo_total} segundos.")
         
         mensaje_error = str(exc).lower()
         if 'timed out' in mensaje_error:
@@ -85,7 +85,7 @@ def _cursor_biometrico():
         raise
         
     except Exception as exc:
-        print(f"\n[DEBUG] ❌ ERROR INESPERADO: {exc}")
+        print(f"\n[DEBUG] [ERROR] ERROR INESPERADO: {exc}")
         print("="*50 + "\n")
         raise
 
@@ -281,17 +281,17 @@ def sincronizar_biometrico_fragmentado(con_detalle=False, desde=None, hasta=None
         dni_empleado = mapa_empleados_por_sucursal.get(prefijo_origen, {}).get(codigo_reloj)
 
         # =====================================================
-        # 🚨 INICIO DEL CHIVATO (RASTREADOR DE DNI)
+        # [ALERTA] INICIO DEL CHIVATO (RASTREADOR DE DNI)
         # =====================================================
         if dni_empleado == '75150962':
             print("\n" + "!"*40)
-            print(f"🚨 RASTREANDO A: 75150962")
+            print(f"[ALERTA] RASTREANDO A: 75150962")
             print(f" -> Fecha y Hora que llega del reloj: {fecha_hora}")
             print(f" -> Tipo: {tipo_marcacion}")
             print(f" -> Código Reloj: {codigo_reloj} (Sucursal {prefijo_origen})")
             print("!"*40 + "\n")
         # =====================================================
-        # 🚨 FIN DEL CHIVATO
+        # [ALERTA] FIN DEL CHIVATO
         # =====================================================
         
         if not dni_empleado:

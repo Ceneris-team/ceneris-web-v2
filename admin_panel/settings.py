@@ -56,26 +56,34 @@ MONITOREO_WEB_URL = os.environ.get('MONITOREO_WEB_URL')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 print(f"VALOR DE DEBUG LEÍDO: {os.environ.get('DJANGO_DEBUG', 'No definido')}, RESULTADO FINAL DE DEBUG: {DEBUG}")
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.10.42']
+def _lista_desde_env(nombre):
+    """Lee una variable de entorno separada por comas y la vuelve lista."""
+    crudo = os.environ.get(nombre, '')
+    return [item.strip() for item in crudo.split(',') if item.strip()]
+
+
+# Hosts de desarrollo, siempre presentes. Los de cada despliegue se agregan por
+# DJANGO_ALLOWED_HOSTS (separados por comas), que es lo que se usa en Lightsail:
+#   DJANGO_ALLOWED_HOSTS=52.1.2.3
+# 10.0.2.2 = alias del host anfitrion desde el emulador Android.
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.10.42', '10.0.2.2']
+for _host in _lista_desde_env('DJANGO_ALLOWED_HOSTS'):
+    if _host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_host)
+
+# Origenes de confianza para POST del panel web. Con IP y puerto hay que incluir
+# el esquema y el puerto: DJANGO_CSRF_TRUSTED_ORIGINS=http://52.1.2.3:8000
+CSRF_TRUSTED_ORIGINS = _lista_desde_env('DJANGO_CSRF_TRUSTED_ORIGINS')
 
 # Si la app se despliega en Render, RENDER_EXTERNAL_HOSTNAME será agregado.
+# Se conserva para no romper esa ruta si algún día se vuelve a Render.
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     if RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
-
-CSRF_TRUSTED_ORIGINS = [
-    # Puedes añadir tus orígenes de desarrollo si usas HTTPS localmente
-    # 'https://localhost:8000',
-    # 'https://127.0.0.1:8000',
-]
-
-if RENDER_EXTERNAL_HOSTNAME:
-    # Construimos la URL completa para el origen de confianza
     trusted_origin = f'https://{RENDER_EXTERNAL_HOSTNAME}'
     if trusted_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(trusted_origin)
-# --- FIN DEL BLOQUE AÑADIDO ---
 # ==============================================================================
 # Aplicaciones Instaladas
 # ==============================================================================
@@ -100,6 +108,7 @@ INSTALLED_APPS = [
     # django-crispy-forms (renderiza formularios con plantillas Bootstrap)
     'crispy_forms',
     'crispy_bootstrap5',
+    'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
     'proyectos',
@@ -109,6 +118,7 @@ INSTALLED_APPS = [
     'metricas_ceneris',
     'accesos',
     'api',
+    'notificaciones',
 ]
 
 # ==============================================================================
@@ -118,13 +128,32 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
+    # CAV-186: debe ir despues de AuthenticationMiddleware (necesita
+    # request.user ya resuelto) y despues de SessionMiddleware.
+    'accesos.middleware.PlatformAccessMiddleware',
+    # CAV-187 (mejora): inyecta el vigilante de sesion unica en las paginas web.
+    'accesos.middleware.AvisoSesionCerradaMiddleware',
 ]
+
+# CAV-187 (mejora): cada cuanto pregunta el navegador si su sesion sigue viva y
+# cuantos segundos espera el modal antes de mandar al login.
+SESION_UNICA_INTERVALO_SEGUNDOS = int(os.environ.get('SESION_UNICA_INTERVALO_SEGUNDOS', 15))
+SESION_UNICA_SEGUNDOS_REDIRECCION = int(os.environ.get('SESION_UNICA_SEGUNDOS_REDIRECCION', 5))
+
+# El superusuario esta exento de la sesion unica (regla de negocio de
+# CAV-187). Se puede apagar la excepcion en desarrollo
+# (SESION_UNICA_EXIMIR_SUPERUSUARIO=0) para probar el aviso con una
+# cuenta de administrador, sin tener que crear un usuario de prueba.
+SESION_UNICA_EXIMIR_SUPERUSUARIO = os.environ.get(
+    'SESION_UNICA_EXIMIR_SUPERUSUARIO', 'True'
+).strip().lower() not in ('0', 'false', 'no')
 
 # ==============================================================================
 # URLs, Plantillas, WSGI
@@ -193,6 +222,15 @@ EMAIL_COPIA_EMOS = os.environ.get('EMAIL_COPIA_EMOS', 'notificaciones@ceneris.co
 # EMAIL_HOST_USER = notificaciones.ceneris@gmail.com
 # EMAIL_HOST_PASSWORD = ugjumjmspstprtca (contraseña de aplicación sin espacios)
 # EMAIL_COPIA_EMOS = notificaciones@ceneris.com (opcional)
+
+# ==============================================================================
+# SendGrid (correo transaccional — HT-12)
+# ==============================================================================
+SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
+SENDGRID_FROM_EMAIL = os.environ.get(
+    'SENDGRID_FROM_EMAIL', 'notificaciones.ceneris@gmail.com'
+)
+SENDGRID_MAX_REINTENTOS = int(os.environ.get('SENDGRID_MAX_REINTENTOS', '5'))
 
 # ==============================================================================
 # Archivos Estáticos (Configuración para Render con WhiteNoise)
@@ -364,3 +402,8 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
+
+# ==============================================================================
+# CORS - Permitir peticiones desde la app Flutter Web/Movil
+# ==============================================================================
+CORS_ALLOW_ALL_ORIGINS = True

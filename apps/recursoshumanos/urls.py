@@ -31,6 +31,9 @@ urlpatterns = [
     # --- REPORTES EXCEL ASISTENCIA ---
     path('reportes/', views.gestion_reporte_maestro, name='gestion_reportes'),
     path('reportes/justificaciones/', views.reporte_justificaciones_rrhh, name='reporte_justificaciones_rrhh'),
+    # Horas acumuladas en el periodo que fija RRHH
+    path('reportes/horas-periodo/', views.reporte_horas_periodo, name='reporte_horas_periodo'),
+    path('reportes/horas-periodo/<int:trabajador_id>/', views.detalle_horas_trabajador, name='detalle_horas_trabajador'),
     path('exportar-diario/', views.exportar_reporte_diario, name='exportar_reporte_diario'),
     path('exportar-semanal/', views.exportar_reporte_semanal, name='exportar_reporte_semanal'),
     path('exportar-planilla/', views.exportar_formato_planilla, name='exportar_formato_planilla'),
@@ -64,10 +67,16 @@ urlpatterns = [
 
     path('solicitudes/', views.gestion_solicitudes, name='gestion_solicitudes'),
 
-    path('tareo/', views.gestion_tareo, name='gestion_tareo'),    
+    path('tareo/', views.gestion_tareo, name='gestion_tareo'),
+    # Importación del tareo desde el Excel de planificación del proyecto:
+    # el primer paso solo previsualiza, el segundo es el que escribe.
+    path('tareo/importar/', views.importar_tareo, name='importar_tareo'),
+    path('tareo/importar/confirmar/', views.importar_tareo_confirmar, name='importar_tareo_confirmar'),
+
     # --- ¡NUEVAS RUTAS PARA la gestion de trabajadores! ---
     path('empleados/', views.gestion_empleados, name='gestion_empleados'),
     path('empleados/lista/', views.lista_trabajadores, name='lista_trabajadores'),
+    path('empleados/<int:pk>/marca-sin-horario/', views.toggle_marca_sin_horario, name='toggle_marca_sin_horario'),
     path('empleados/crear/', views.crear_trabajador, name='crear_trabajador'),
     path('empleados/<int:pk>/editar/', views.editar_trabajador, name='editar_trabajador'),
     path('empleados/<int:pk>/info/', views.info_trabajador, name='info_trabajador'),
@@ -135,4 +144,10 @@ urlpatterns = [
     path('horas-extra/panel-aprobacion/', views.panel_aprobacion_horas_extra, name='panel_aprobacion_he'),
     path('horas-extra/procesar/<int:solicitud_id>/<str:accion>/', views.procesar_solicitud_horas_extra, name='procesar_solicitud_he'),
     path('recursoshumanos/reportes/faltas/', reporte_faltas_web, name='reporte_faltas_web'),
+
+    # --- SANCIONES / MEMOS (RRHH) ---
+    path('sanciones/', views.lista_sanciones, name='lista_sanciones'),
+    path('sanciones/crear/<int:trabajador_id>/', views.crear_sancion, name='crear_sancion'),
+    path('sanciones/trabajador/<int:trabajador_id>/', views.historial_sanciones, name='historial_sanciones'),
+    path('sanciones/adjunto/<int:sancion_id>/', views.descargar_adjunto_sancion, name='descargar_adjunto_sancion'),
 ]

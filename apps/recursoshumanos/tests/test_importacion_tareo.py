@@ -1,0 +1,363 @@
+"""Pruebas del parseo del Excel de tareo del proyecto.
+
+Se construye un libro con la misma forma que el archivo real (bloques
+semanales en horizontal) en vez de depender de un .xlsx de ejemplo.
+"""
+
+import io
+from datetime import date
+
+import openpyxl
+from django.test import TestCase
+
+from recursoshumanos import servicios_importacion_tareo as srv
+from recursoshumanos.models import Trabajador, Ubicacion
+
+
+def construir_libro(semanas, filas, rotulos=None):
+    """semanas: lista de (mes_texto, [7 numeros de dia]).
+    filas: lista de (posicion, nombre, {indice_semana: [7 celdas]}).
+    rotulos: [(fila_ini, fila_fin, texto)] para la columna de seccion de la
+    izquierda; None deja el bloque sin rotulo (formato de 9 columnas)."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = '2026'
+
+    for indice, (mes_texto, numeros) in enumerate(semanas):
+        col = 2 + indice * 10          # columna "PERSONAL EN CAMPO"
+        ws.cell(2, col + 3, mes_texto)
+        if rotulos:
+            for ini, fin, texto in rotulos:
+                ws.cell(ini, col, texto)
+                if fin > ini:
+                    ws.merge_cells(start_row=ini, end_row=fin,
+                                   start_column=col, end_column=col)
+        ws.cell(4, col + 1, 'POSICIÓN')
+        ws.cell(4, col + 2, 'NOMBRE')
+        for i, numero in enumerate(numeros):
+            ws.cell(3, col + 3 + i, numero)
+
+    for offset, (posicion, nombre, celdas_por_semana) in enumerate(filas):
+        fila = 5 + offset
+        for indice in range(len(semanas)):
+            col = 2 + indice * 10
+            ws.cell(fila, col + 1, posicion)
+            ws.cell(fila, col + 2, nombre)
+            for i, valor in enumerate(celdas_por_semana.get(indice, [None] * 7)):
+                if valor:
+                    ws.cell(fila, col + 3 + i, valor)
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+
+class ParseoExcelTests(TestCase):
+    """Julio 2026 arranca en miércoles, así que la primera y la última semana
+    del archivo cruzan de mes: buen banco de pruebas para el fechado."""
+
+    def _libro_julio(self):
+        semanas = [
+            ('JUNIO', [29, 30, 1, 2, 3, 4, 5]),
+            ('JULIO', [6, 7, 8, 9, 10, 11, 12]),
+            ('JULIO', [13, 14, 15, 16, 17, 18, 19]),
+            ('JULIO', [20, 21, 22, 23, 24, 25, 26]),
+            ('JULIO', [27, 28, 29, 30, 31, 1, 2]),
+        ]
+        filas = [
+            ('M1', 'DIEGO HERNANI', {
+                0: [None, None, 'M1', 'M1', 'M1', None, None],
+                1: [None, 'M1', 'M1', 'M1', 'M1', None, None],
+            }),
+            ('GABINETE 1', 'JEYSSON SOLIS', {
+                1: ['JEYSSON', 'JEYSSON', None, None, None, None, None],
+            }),
+            ('M4', 'SHAMIR ACHO', {
+                1: ['M4', 'M4 (GAB)', None, None, None, None, None],
+            }),
+        ]
+        return construir_libro(semanas, filas)
+
+    def test_fecha_los_dias_respetando_los_cruces_de_mes(self):
+        resultado = srv.leer_excel(self._libro_julio(), 2026, 7)
+
+        diego = next(p for p in resultado.personas if p.nombre_excel == 'DIEGO HERNANI')
+        # De la semana que cruza junio solo entran 1, 2 y 3 de julio.
+        self.assertEqual(sorted(diego.dias), [1, 2, 3, 7, 8, 9, 10])
+        self.assertEqual(diego.dias[1].fecha, date(2026, 7, 1))
+
+    def test_ignora_las_semanas_de_otro_mes(self):
+        resultado = srv.leer_excel(self._libro_julio(), 2026, 7)
+        self.assertEqual(resultado.semanas_leidas, 5)
+
+    def test_todo_lo_marcado_entra_como_campo(self):
+        """Sin rótulo a la izquierda (formato de junio en adelante) todo es H
+        (campo, 12 h), incluidas las posiciones de gabinete."""
+        resultado = srv.leer_excel(self._libro_julio(), 2026, 7)
+
+        for persona in resultado.personas:
+            for dia in persona.dias.values():
+                self.assertEqual(dia.estado, 'H', persona.nombre_excel)
+
+        jeysson = next(p for p in resultado.personas if p.nombre_excel == 'JEYSSON SOLIS')
+        self.assertEqual(jeysson.posicion_resumen, 'GABINETE 1')
+
+    def test_la_anotacion_gab_ya_no_cambia_el_estado(self):
+        resultado = srv.leer_excel(self._libro_julio(), 2026, 7)
+
+        shamir = next(p for p in resultado.personas if p.nombre_excel == 'SHAMIR ACHO')
+        self.assertEqual(shamir.dias[6].estado, 'H')   # "M4"
+        self.assertEqual(shamir.dias[7].estado, 'H')   # "M4 (GAB)"
+        self.assertEqual(shamir.dias[7].anotacion, 'GAB')
+
+    def test_marca_las_filas_de_una_seccion_desconocida(self):
+        """Una sección que no es ni campo ni Vallecito se lee, pero queda señalada.
+
+        Antes se descartaban en silencio. El problema es que las hojas nuevas
+        (junio en adelante) ya no traen la columna de rótulo, así que la misma
+        persona entraba o no según el mes. Ahora siempre llega a la
+        previsualización con su sección a la vista y RRHH decide.
+        """
+        libro = construir_libro(
+            [('JULIO', [6, 7, 8, 9, 10, 11, 12])],
+            [('M1', 'DIEGO HERNANI', {0: ['M1', 'M1', None, None, None, None, None]}),
+             ('M2', 'SONNY ALVIRI', {0: ['M2', 'M2', None, None, None, None, None]})],
+            rotulos=[(4, 5, 'PERSONAL EN CAMPO'),
+                     (6, 8, 'SOPORTE MONITOREO - OPTALERT')],
+        )
+        resultado = srv.leer_excel(libro, 2026, 7)
+
+        por_nombre = {p.nombre_excel: p for p in resultado.personas}
+        self.assertEqual(sorted(por_nombre), ['DIEGO HERNANI', 'SONNY ALVIRI'])
+
+        diego = por_nombre['DIEGO HERNANI']                   # fila 5, campo
+        self.assertEqual(diego.dias_otra_seccion, [])
+        self.assertFalse(diego.solo_otra_seccion)
+
+        sonny = por_nombre['SONNY ALVIRI']                    # fila 6, sección ajena
+        self.assertTrue(sonny.solo_otra_seccion)
+        self.assertEqual([d.dia for d in sonny.dias_otra_seccion], [6, 7])
+        self.assertEqual({d.estado for d in sonny.dias.values()}, {'D'})
+        self.assertEqual(len(sonny.secciones_ajenas), 1)
+        self.assertIn('OPTALERT', sonny.secciones_ajenas[0])
+
+        self.assertTrue(any('OPTALERT' in a for a in resultado.avisos))
+
+    def test_vallecito_entra_como_personalizado_de_13_a_21(self):
+        """El turno Vallecito se conoce: entra como P 13:00-21:00, ya resuelto.
+
+        No se marca como sección ajena (no necesita revisión) y trae el horario
+        por defecto listo para escribirse.
+        """
+        libro = construir_libro(
+            [('JULIO', [6, 7, 8, 9, 10, 11, 12])],
+            [('M1', 'DIEGO HERNANI', {0: ['M1', 'M1', None, None, None, None, None]}),
+             ('M15', 'SONNY ALVIRI', {0: ['M15', 'M15', None, None, None, None, None]})],
+            rotulos=[(4, 5, 'PERSONAL EN CAMPO'),
+                     (6, 8, 'PERSONAL VALLECITO\nFINALIZACIÓN DE CADENAS DE CUSTODIA')],
+        )
+        resultado = srv.leer_excel(libro, 2026, 7)
+
+        sonny = next(p for p in resultado.personas if p.nombre_excel == 'SONNY ALVIRI')
+        # Vallecito NO es sección ajena: entra limpio, sin marca de revisión.
+        self.assertEqual(sonny.dias_otra_seccion, [])
+        self.assertFalse(sonny.solo_otra_seccion)
+        self.assertEqual({d.estado for d in sonny.dias.values()}, {'P'})
+        for dia in sonny.dias.values():
+            self.assertEqual(dia.hora_entrada, '13:00')
+            self.assertEqual(dia.hora_salida, '21:00')
+
+        self.assertTrue(any('Vallecito' in a for a in resultado.avisos))
+
+    def test_vacaciones_en_el_nombre_entra_como_dia_libre(self):
+        """"WASHINGTON (vacaciones)" es una fila aparte solo con los días libres.
+
+        La nota del nombre manda por encima de la sección: aunque esté bajo
+        PERSONAL EN CAMPO, esos días entran como D (día libre) ya resuelto, sin
+        marca de revisión, y se avisa.
+        """
+        libro = construir_libro(
+            [('JULIO', [6, 7, 8, 9, 10, 11, 12])],
+            [('AS SUP', 'WASHINGTON (vacaciones)',
+              {0: ['X', 'X', 'X', None, None, None, None]})],
+            rotulos=[(4, 6, 'PERSONAL EN CAMPO')],
+        )
+        resultado = srv.leer_excel(libro, 2026, 7)
+
+        washington = next(p for p in resultado.personas
+                          if 'WASHINGTON' in p.nombre_excel.upper())
+        self.assertEqual({d.estado for d in washington.dias.values()}, {'D'})
+        # No es sección ajena: entra limpio, sin marca de revisión.
+        self.assertEqual(washington.dias_otra_seccion, [])
+        self.assertTrue(any('acacion' in a for a in resultado.avisos))
+
+    def test_la_semana_sin_numeros_de_dia_no_se_importa(self):
+        """Un bloque sin la fila de números de día no se importa.
+
+        Su fecha solo saldría de la cadena (bloque anterior + 7 días) y una
+        cabecera mal armada en el Excel escribiría la semana entera en los días
+        equivocados. Se deja fuera y se avisa; la otra semana sí entra.
+        """
+        libro = construir_libro(
+            [('JULIO', [6, 7, 8, 9, 10, 11, 12]),
+             ('JULIO', [None] * 7),           # 13-19: sin numerar
+             ('JULIO', [20, 21, 22, 23, 24, 25, 26]),
+             ('JULIO', [27, 28, 29, 30, 31, 1, 2])],
+            [('M1', 'DIEGO HERNANI',
+              {0: ['M1'] * 7, 1: ['M1'] * 7, 2: ['M1'] * 7})],
+        )
+        resultado = srv.leer_excel(libro, 2026, 7)
+
+        diego = next(p for p in resultado.personas
+                     if p.nombre_excel == 'DIEGO HERNANI')
+        # Entran las semanas numeradas; la del 13 al 19 queda fuera.
+        self.assertEqual(sorted(diego.dias),
+                         [6, 7, 8, 9, 10, 11, 12, 20, 21, 22, 23, 24, 25, 26])
+        self.assertEqual(resultado.semanas_leidas, 3)
+        self.assertEqual(len(resultado.semanas_omitidas), 1)
+        omitida = resultado.semanas_omitidas[0]
+        self.assertEqual(omitida['inicio'], date(2026, 7, 13))
+        self.assertEqual(omitida['dias'], [13, 14, 15, 16, 17, 18, 19])
+        self.assertTrue(any('NO se importo' in a for a in resultado.avisos))
+
+    def test_avisa_cuando_la_semana_no_trae_rotulo(self):
+        resultado = srv.leer_excel(self._libro_julio(), 2026, 7)
+        self.assertTrue(any('no traen el rotulo' in a for a in resultado.avisos))
+
+    def test_celda_vacia_no_genera_dia(self):
+        resultado = srv.leer_excel(self._libro_julio(), 2026, 7)
+        jeysson = next(p for p in resultado.personas if p.nombre_excel == 'JEYSSON SOLIS')
+        self.assertNotIn(8, jeysson.dias)
+
+    def test_no_importa_celdas_compartidas_por_dos_personas(self):
+        libro = construir_libro(
+            [('JULIO', [6, 7, 8, 9, 10, 11, 12])],
+            [('APOYO GABINETE', 'EDWIN PUMA / HENRRY CERPA',
+              {0: ['EDWIN', None, None, None, None, None, None]})],
+        )
+        resultado = srv.leer_excel(libro, 2026, 7)
+
+        self.assertEqual(resultado.personas, [])
+        self.assertTrue(any('mas de una persona' in a for a in resultado.avisos))
+
+    def test_descarta_filas_sin_ningun_dia_marcado(self):
+        libro = construir_libro(
+            [('JULIO', [6, 7, 8, 9, 10, 11, 12])],
+            [('M1', 'CARLOS ROJAS', {})],
+        )
+        resultado = srv.leer_excel(libro, 2026, 7)
+        self.assertEqual(resultado.personas, [])
+
+    def test_archivo_sin_el_formato_esperado_falla_con_mensaje_claro(self):
+        wb = openpyxl.Workbook()
+        wb.active['A1'] = 'cualquier cosa'
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+
+        with self.assertRaises(srv.ErrorImportacion):
+            srv.leer_excel(buffer, 2026, 7)
+
+
+class DiasDeLaSemanaTests(TestCase):
+    """Agosto de 2026 empieza sábado, así que el sábado 1 y el domingo 2 solo
+    pueden entrar por la semana que arranca el lunes 27 de julio. Sirve para
+    fijar que se capturan los siete días y que cada uno cae donde debe."""
+
+    def _libro_agosto(self):
+        semanas = [
+            ('JULIO', [27, 28, 29, 30, 31, 1, 2]),
+            ('AGOSTO', [3, 4, 5, 6, 7, 8, 9]),
+        ]
+        filas = [('M1', 'DIEGO HERNANI', {0: ['M1'] * 7, 1: ['M1'] * 7})]
+        return construir_libro(semanas, filas)
+
+    def test_captura_sabado_y_domingo_igual_que_el_resto_de_dias(self):
+        resultado = srv.leer_excel(self._libro_agosto(), 2026, 8)
+
+        diego = resultado.personas[0]
+        self.assertEqual(sorted(diego.dias), [1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+    def test_cada_celda_queda_en_su_dia_de_la_semana(self):
+        resultado = srv.leer_excel(self._libro_agosto(), 2026, 8)
+
+        dias = resultado.personas[0].dias
+        # 5 = sábado, 6 = domingo, 0 = lunes ... 4 = viernes.
+        self.assertEqual([dias[n].fecha.weekday() for n in range(1, 10)],
+                         [5, 6, 0, 1, 2, 3, 4, 5, 6])
+
+
+class EmparejamientoTests(TestCase):
+    def setUp(self):
+        self.diego = Trabajador.objects.create(
+            dni='10000001', nombres='DIEGO ARMANDO',
+            apellido_paterno='HERNANI', apellido_materno='ROJAS')
+        self.kleyder = Trabajador.objects.create(
+            dni='10000002', nombres='KLEIDER',
+            apellido_paterno='JAITA', apellido_materno='MAMANI')
+
+    def _resultado_con(self, *nombres):
+        resultado = srv.ResultadoImportacion(anio=2026, mes=7)
+        resultado.personas = [srv.PersonaImportada(nombre_excel=n) for n in nombres]
+        return resultado
+
+    def test_empareja_por_nombre_y_apellido_paterno(self):
+        resultado = self._resultado_con('DIEGO HERNANI')
+        srv.emparejar_personas(resultado, Trabajador.objects.all())
+
+        persona = resultado.personas[0]
+        self.assertEqual(persona.trabajador, self.diego)
+        self.assertEqual(persona.confianza, 'exacta')
+
+    def test_tolera_las_variantes_de_escritura_del_excel(self):
+        # El archivo escribe "KLEYDER" y el maestro dice "KLEIDER".
+        resultado = self._resultado_con('KLEYDER JAITA')
+        srv.emparejar_personas(resultado, Trabajador.objects.all())
+
+        persona = resultado.personas[0]
+        self.assertEqual(persona.trabajador, self.kleyder)
+        self.assertEqual(persona.confianza, 'aproximada')
+
+    def test_un_desconocido_queda_sin_match(self):
+        resultado = self._resultado_con('PERSONA INEXISTENTE')
+        srv.emparejar_personas(resultado, Trabajador.objects.all())
+
+        persona = resultado.personas[0]
+        self.assertIsNone(persona.trabajador)
+        self.assertEqual(persona.confianza, 'sin_match')
+
+
+class UbicacionesTests(TestCase):
+    def setUp(self):
+        self.vallecito = Ubicacion.objects.create(nombre='Vallecito')
+
+    def _resultado_con_anotacion(self, anotacion):
+        resultado = srv.ResultadoImportacion(anio=2026, mes=7)
+        persona = srv.PersonaImportada(nombre_excel='VICTOR QUIÑONES')
+        persona.dias[6] = srv.DiaImportado(
+            fecha=date(2026, 7, 6), estado='C', posicion='SUP',
+            texto_celda=f'VICTOR ({anotacion})', anotacion=anotacion)
+        resultado.personas = [persona]
+        return resultado
+
+    def test_resuelve_la_anotacion_contra_el_catalogo(self):
+        resultado = self._resultado_con_anotacion('Vallecito')
+        srv.resolver_ubicaciones(resultado, Ubicacion.objects.all())
+
+        dia = resultado.personas[0].dias[6]
+        self.assertEqual(dia.ubicacion_id, self.vallecito.id)
+
+    def test_los_codigos_de_funcion_no_son_ubicaciones(self):
+        resultado = self._resultado_con_anotacion('GAB')
+        srv.resolver_ubicaciones(resultado, Ubicacion.objects.all())
+
+        self.assertIsNone(resultado.personas[0].dias[6].ubicacion_id)
+        self.assertEqual(resultado.avisos, [])
+
+    def test_anotacion_desconocida_se_avisa_pero_no_bloquea(self):
+        resultado = self._resultado_con_anotacion('C2')
+        srv.resolver_ubicaciones(resultado, Ubicacion.objects.all())
+
+        self.assertIsNone(resultado.personas[0].dias[6].ubicacion_id)
+        self.assertTrue(any('sin ubicacion equivalente' in a for a in resultado.avisos))

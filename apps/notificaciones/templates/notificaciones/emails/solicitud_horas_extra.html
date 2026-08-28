@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solicitud de Horas Extra</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:30px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#1e3a5f;padding:24px 32px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">
+                Nueva Solicitud de Horas Extra
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 20px;color:#334155;font-size:15px;line-height:1.6;">
+                Se ha registrado una nueva solicitud de horas extra que requiere su aprobaci&oacute;n.
+              </p>
+
+              <!-- Info card -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:24px;">
+                <tr>
+                  <td style="padding:20px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding:6px 0;color:#64748b;font-size:13px;width:140px;vertical-align:top;">Trabajador:</td>
+                        <td style="padding:6px 0;color:#0f172a;font-size:14px;font-weight:600;">{{ trabajador_nombre }}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;color:#64748b;font-size:13px;vertical-align:top;">DNI:</td>
+                        <td style="padding:6px 0;color:#0f172a;font-size:14px;">{{ trabajador_dni }}</td>
+                      </tr>
+                      {% if trabajador_area %}
+                      <tr>
+                        <td style="padding:6px 0;color:#64748b;font-size:13px;vertical-align:top;">&Aacute;rea:</td>
+                        <td style="padding:6px 0;color:#0f172a;font-size:14px;">{{ trabajador_area }}</td>
+                      </tr>
+                      {% endif %}
+                      <tr>
+                        <td style="padding:6px 0;color:#64748b;font-size:13px;vertical-align:top;">Fecha de HH.EE.:</td>
+                        <td style="padding:6px 0;color:#0f172a;font-size:14px;font-weight:600;">{{ fecha_horas_extra }}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;color:#64748b;font-size:13px;vertical-align:top;">Horas solicitadas:</td>
+                        <td style="padding:6px 0;color:#0f172a;font-size:14px;font-weight:600;">{{ cantidad_horas }} hora{{ cantidad_horas|floatformat:0|pluralize:"s" }}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;color:#64748b;font-size:13px;vertical-align:top;">Solicitado desde:</td>
+                        <td style="padding:6px 0;color:#0f172a;font-size:14px;">{{ origen }}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Justificación -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <tr>
+                  <td style="color:#64748b;font-size:13px;padding-bottom:6px;">Justificaci&oacute;n del trabajador:</td>
+                </tr>
+                <tr>
+                  <td style="background-color:#fffbeb;border-left:4px solid #f59e0b;padding:14px 16px;color:#92400e;font-size:14px;line-height:1.5;border-radius:0 6px 6px 0;">
+                    {{ justificacion }}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              {% if enlace_aprobacion %}
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding:8px 0 24px;">
+                    <a href="{{ enlace_aprobacion }}" target="_blank"
+                       style="display:inline-block;background-color:#1e3a5f;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:6px;font-size:15px;font-weight:600;">
+                      Revisar y Aprobar
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              {% endif %}
+
+              <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.5;text-align:center;">
+                Este correo fue generado autom&aacute;ticamente por el sistema CENERIS.
+                Si tiene dudas, contacte al &aacute;rea de Recursos Humanos.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#f8fafc;padding:16px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+              <p style="margin:0;color:#94a3b8;font-size:11px;">
+                &copy; {{ anio }} CENERIS &mdash; Sistema de Gesti&oacute;n de Recursos Humanos
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

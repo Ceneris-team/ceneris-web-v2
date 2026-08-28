@@ -106,6 +106,14 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 class AsistenciaSerializer(serializers.ModelSerializer):
+    # `client_uuid` es unique=True en el modelo, asi que DRF le agregaria un
+    # UniqueValidator por defecto y el reintento del worker offline moriria con
+    # un 400 ANTES de que la vista pueda responder con la marca ya registrada.
+    # Lo declaramos sin validadores: la unicidad la sigue garantizando la BD
+    # (mas el except IntegrityError de la vista), y el duplicado se traduce a
+    # una respuesta idempotente en vez de a un error.
+    client_uuid = serializers.UUIDField(required=False, allow_null=True, validators=[])
+
     class Meta:
         model = Asistencia
         fields = [
@@ -116,8 +124,12 @@ class AsistenciaSerializer(serializers.ModelSerializer):
             'longitud',
             'nombre_ubicacion',
             'device_id',
+            'client_uuid',
+            # Fecha de recepcion en servidor. Viaja solo para que RRHH pueda
+            # auditar el desfase contra `timestamp` en las marcas atrasadas.
+            'creado_en',
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'creado_en']
 
 
 class FaltaPendienteSerializer(serializers.ModelSerializer):
@@ -167,6 +179,16 @@ class UsuarioAutorizadoSerializer(serializers.Serializer):
     nombre_completo = serializers.CharField()
     activo = serializers.BooleanField()
     actualizado_en = serializers.DateTimeField()
+
+
+class EventoLoginOfflineSerializer(serializers.Serializer):
+    """
+    CAV-83: payload que manda el celular al reportar (una vez que
+    recupera conexion) que hubo un inicio de sesion validado localmente
+    mientras estaba sin señal.
+    """
+    device_id = serializers.CharField(max_length=255)
+    fecha_hora_offline = serializers.DateTimeField()
 
 
 class ConfiguracionToleranciaSerializer(serializers.ModelSerializer):

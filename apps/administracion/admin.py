@@ -11,8 +11,8 @@ class AgenteAdmin(admin.ModelAdmin):
 
 @admin.register(Feriado)
 class FeriadoAdmin(admin.ModelAdmin):
-	list_display = ('nombre', 'fecha', 'tipo', 'ambito')
-	list_filter = ('tipo', 'ambito')
+	list_display = ('nombre', 'fecha', 'tipo', 'ambito', 'sede', 'empresa')
+	list_filter = ('tipo', 'ambito', 'sede', 'empresa')
 	search_fields = ('nombre',)
 	ordering = ('-fecha',)
 	date_hierarchy = 'fecha'

@@ -375,6 +375,12 @@
                     <li class="navbar__item {% if current_view == 'gestion_empleados' %}active{% endif %}">
                         <a href="{% url 'recursoshumanos:gestion_empleados' %}" class="navbar__link"><i data-feather="users"></i><span>Empleados</span></a>
                     </li>
+                    <li class="navbar__item {% if current_view == 'lista_sanciones' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:lista_sanciones' %}" class="navbar__link"><i data-feather="file-minus"></i><span>Sanciones y Memos</span></a>
+                    </li>
+                    <li class="navbar__item {% if current_view == 'panel_aprobacion_he' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:panel_aprobacion_he' %}" class="navbar__link"><i data-feather="check-circle"></i><span>Aprobar Horas Extras</span></a>
+                    </li>
                     <li class="navbar__item {% if current_view == 'gestion_ubicaciones' %}active{% endif %}">
                         <a href="{% url 'recursoshumanos:gestion_ubicaciones' %}" class="navbar__link"><i data-feather="map-pin"></i><span>Ubicaciones</span></a>
                     </li>
@@ -403,6 +409,9 @@
                         <li class="navbar__item {% if current_view == 'lista_consulta' %}active{% endif %}">
                             <a href="{% url 'recursoshumanos:lista_consulta' %}" class="navbar__link"><i data-feather="search"></i><span>Consulta Asistencias</span></a>
                         </li>
+                    <li class="navbar__item {% if current_view == 'reporte_horas_periodo' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:reporte_horas_periodo' %}" class="navbar__link"><i data-feather="clock"></i><span>Horas por Período</span></a>
+                    </li>
                     <li class="navbar__item {% if current_view == 'reporte_justificaciones_rrhh' %}active{% endif %}">
                         <a href="{% url 'recursoshumanos:reporte_justificaciones_rrhh' %}" class="navbar__link"><i data-feather="check-square"></i><span>Justificaciones</span></a>
                     </li>
@@ -499,7 +508,8 @@
             toast: true,
             position: 'top-end',
             showConfirmButton: false,
-            timer: 3000,
+            width: '26rem',
+            timer: 7000,
             timerProgressBar: true,
             didOpen: (toast) => {
                 toast.addEventListener('mouseenter', Swal.stopTimer)
@@ -511,7 +521,7 @@
                 var type = "{{ message.tags }}";
                 if (type === 'debug') type = 'info';
                 if (type === 'danger') type = 'error'; 
-                Toast.fire({ icon: type, title: "{{ message }}" });
+                Toast.fire({ icon: type, title: "{{ message|escapejs }}" });
             {% endfor %}
         {% endif %}
     </script>

@@ -5,6 +5,9 @@ app_name = 'accesos'
 
 urlpatterns = [
     path('portal/', views.dashboard_seleccion, name='dashboard_seleccion'),
+
+    # CAV-187 (mejora): lo consulta el vigilante de sesion unica (sin login).
+    path('estado-sesion/', views.estado_sesion, name='estado_sesion'),
     path('directorio-trabajadores/', views.lista_trabajadores, name='lista_trabajadores'),
     
     # RUTAS DE USUARIOS

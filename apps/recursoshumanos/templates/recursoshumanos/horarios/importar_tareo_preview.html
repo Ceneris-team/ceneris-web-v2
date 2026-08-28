@@ -1,0 +1,1257 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% load custom_filters %}
+{% block title %}Importar Tareo desde Excel{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Misma estructura y estilos que la Planificación Matricial: cabecera,
+       tarjeta de filtros y tabla. Aquí la tabla no se edita, solo muestra en
+       verde lo que la importación va a escribir. */
+
+    .container, .container-fluid, main, .content, .content-wrapper {
+        max-width: 100% !important;
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+        margin: 0 !important;
+    }
+
+    /* ---- Cabecera (misma que la Planificación Matricial) ---- */
+    .page-header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 25px;
+        padding-top: 10px;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 15px;
+    }
+    .header-titles h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        color: #0f172a;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+    }
+    .back-link {
+        display: inline-flex; align-items: center; gap: 6px; color: #64748b;
+        text-decoration: none; font-weight: 600; font-size: 0.9rem;
+        transition: color 0.2s ease, transform 0.2s ease;
+        white-space: nowrap;
+    }
+    .back-link:hover { color: #3b82f6; transform: translateX(-4px); }
+
+    .btn-action {
+        padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer;
+        font-weight: 600; font-size: 0.88rem; transition: all 0.2s;
+        display: inline-flex; align-items: center; gap: 7px; text-decoration: none;
+        white-space: nowrap;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .btn-action svg { width: 17px; height: 17px; flex: none; }
+    .btn-success { background-color: #10b981; color: white; }
+    .btn-success:hover { background-color: #059669; transform: translateY(-1px); }
+    .btn-success:disabled { background-color: #cbd5e1; cursor: not-allowed; transform: none; }
+    .btn-clean { background-color: #64748b; color: white; }
+    .btn-clean:hover { background-color: #475569; }
+    .btn-primary { background-color: #3b82f6; color: white; }
+    .btn-primary:hover { background-color: #2563eb; transform: translateY(-1px); }
+    .btn-icon-only { width: 44px; height: 44px; padding: 0; justify-content: center; }
+    .broom-emoji { font-size: 20px; line-height: 1; transform: translateY(1px); }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+
+    /* ---- Tarjeta de filtros (idéntica a la matriz) ---- */
+    .filter-card {
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        margin-bottom: 25px;
+        border: 1px solid #e2e8f0;
+    }
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        align-items: end;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label {
+        font-size: 0.75rem; font-weight: 700; color: #64748b;
+        text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .filter-input {
+        padding: 10px 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        background-color: #f8fafc;
+        width: 100%;
+        color: #334155;
+    }
+    .filter-input:focus {
+        outline: none; border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        background-color: #ffffff;
+    }
+    /* El mes no se puede cambiar aqui: el Excel ya se leyo para el mes elegido
+       y el archivo no se guarda en el servidor. Se deja a la vista, no gris. */
+    .filter-input[readonly] { color: #475569; cursor: default; }
+
+    .area-filter-row { display: flex; align-items: center; gap: 10px; }
+    .area-filter-row .filter-input { flex: 1; }
+    .area-filter-row .btn-icon-only { flex: 0 0 44px; }
+
+    /* Aviso del filtro: aclara que ocultar filas no cambia lo que se importa. */
+    .filtro-nota {
+        margin: 14px 0 0; font-size: 0.82rem; color: #64748b;
+    }
+    .filtro-nota strong { color: #334155; }
+    .search-wrapper { position: relative; width: 100%; }
+    .search-wrapper svg {
+        position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        width: 18px; height: 18px; color: #94a3b8; pointer-events: none;
+    }
+    .search-input {
+        padding-left: 14px;
+        padding-right: 38px;
+        background-image: none !important;
+        -webkit-appearance: none;
+        appearance: none;
+    }
+    .search-input::-webkit-search-decoration,
+    .search-input::-webkit-search-cancel-button,
+    .search-input::-webkit-search-results-button,
+    .search-input::-webkit-search-results-decoration { display: none; }
+
+    /* Los avisos van plegados: son importantes pero no deben empujar la tabla
+       fuera de la pantalla. */
+    .aviso-box {
+        background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b;
+        border-radius: 8px; margin-bottom: 12px;
+        color: #78350f; font-size: 0.84rem; line-height: 1.5;
+    }
+    .aviso-box > summary {
+        cursor: pointer; padding: 8px 14px; font-weight: 700;
+        list-style: none; display: flex; align-items: center; gap: 8px;
+    }
+    .aviso-box > summary::-webkit-details-marker { display: none; }
+    .aviso-box > summary::before { content: '▸'; font-size: 0.8rem; }
+    .aviso-box[open] > summary::before { content: '▾'; }
+    .aviso-box > summary .contador {
+        background: #f59e0b; color: #ffffff; border-radius: 999px;
+        padding: 1px 8px; font-size: 0.72rem;
+    }
+    .aviso-box ul { margin: 0; padding: 0 16px 12px 38px; }
+    .aviso-box li { margin-bottom: 3px; }
+
+    /* ---- Tabla matricial ---- */
+    /* Lo que sobra tras cabecera, filtros, avisos y barra inferior. El valor
+       exacto lo ajusta el script; esto es el respaldo si no corre. */
+    .table-container {
+        overflow: auto; border-radius: 10px;
+        max-height: calc(100vh - 320px); min-height: 120px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e2e8f0; background: #ffffff;
+    }
+    .tareo-table {
+        border-collapse: separate; border-spacing: 0; table-layout: fixed;
+        width: max-content; min-width: 100%; font-size: 0.85rem;
+    }
+    .tareo-table th, .tareo-table td {
+        border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;
+        padding: 5px 6px; text-align: center; vertical-align: middle;
+    }
+    .tareo-table thead th {
+        background-color: #ffffff; color: #475569; font-weight: 700;
+        position: sticky; top: 0; z-index: 10;
+        border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;
+    }
+    .codigo-col { width: 95px; min-width: 95px; position: sticky; left: 0; z-index: 5; }
+    .trabajador-col {
+        width: 300px; min-width: 300px; position: sticky; left: 95px; z-index: 5;
+        text-align: left; padding-left: 14px !important;
+    }
+    .tareo-table tbody td.sticky-col {
+        background-color: #fdfdfd; font-weight: 500; color: #1e293b;
+        border-right: 2px solid #e2e8f0;
+    }
+    .tareo-table thead th.sticky-col {
+        z-index: 20; background-color: #ffffff;
+        border-right: 2px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;
+    }
+    .dia-col { width: 48px; min-width: 48px; line-height: 1.3; }
+
+    .tareo-cell { user-select: none; }
+    tr.fila-import.oculta { display: none; }
+    /* Lo que la importación va a escribir. Un color por tipo de jornada, para
+       que al cambiar el Tipo de una fila se vea al instante qué va a entrar. */
+    .tareo-cell.importada {
+        background-color: #dcfce7; color: #166534; font-weight: 700;
+        box-shadow: inset 0 0 0 1px #86efac;
+    }
+    /* H (campo, 12 h): es el tipo por defecto del personal en campo, en verde. */
+    .tareo-cell.importada.estado-H {
+        background-color: #d1fae5; color: #065f46; box-shadow: inset 0 0 0 1px #6ee7b7;
+    }
+    .tareo-cell.importada.estado-O {
+        background-color: #dbeafe; color: #1e40af; box-shadow: inset 0 0 0 1px #93c5fd;
+    }
+    .tareo-cell.importada.estado-P {
+        background-color: #ede9fe; color: #5b21b6; box-shadow: inset 0 0 0 1px #c4b5fd;
+    }
+    .tareo-cell.importada.estado-J {
+        background-color: #ffedd5; color: #9a3412; box-shadow: inset 0 0 0 1px #fdba74;
+    }
+    .tareo-cell.importada.estado-D {
+        background-color: #f8fafc; color: #64748b; box-shadow: inset 0 0 0 1px #e2e8f0;
+    }
+
+    tr.excluida td.tareo-cell.importada {
+        background-color: #f1f5f9; color: #94a3b8; box-shadow: none;
+    }
+    tr.excluida td.sticky-col { color: #94a3b8; }
+
+    .dni-celda { font-variant-numeric: tabular-nums; }
+    .dni-celda.vacio { color: #cbd5e1; }
+
+    /* El select se ve como texto plano hasta que se pasa por encima, para que
+       la tabla siga leyéndose igual que la matriz. */
+    .select-trabajador {
+        width: 100%; padding: 5px 6px; border: 1px solid transparent; border-radius: 6px;
+        font-size: 0.85rem; font-weight: 500; color: #1e293b;
+        background: transparent; cursor: pointer;
+        text-overflow: ellipsis;
+    }
+    .select-trabajador:hover { border-color: #cbd5e1; background: #ffffff; }
+    .select-trabajador:focus { outline: none; border-color: #3b82f6; background: #ffffff; }
+    .select-trabajador.sin-match { border-color: transparent; background: transparent; color: #1e293b; }
+
+    /* Una sola línea: si la fila crece a dos, la tabla deja de caber. */
+    .origen-excel {
+        display: block; color: #94a3b8; font-size: 0.72rem;
+        margin: 1px 0 0 7px; line-height: 1.3;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .badge {
+        display: inline-block; padding: 1px 7px; border-radius: 999px;
+        font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .badge-aproximada { background: #fef9c3; color: #a16207; }
+    .badge-ambigua { background: #ffedd5; color: #c2410c; }
+    .badge-sin_match { background: #fee2e2; color: #b91c1c; }
+
+    /* ---- Alerta de fila por resolver a mano ---- */
+    /* Parpadea para que no pase desapercibida entre decenas de filas, pero el
+       texto no se mueve: solo cambia el color, así la tabla se sigue leyendo. */
+    .alerta-manual {
+        position: relative; display: inline-flex; align-items: center; gap: 3px;
+        margin-left: 5px; padding: 1px 7px; border-radius: 999px;
+        background: #fee2e2; color: #b91c1c;
+        font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.03em; cursor: help; border: 1px solid #fca5a5;
+        animation: parpadeo-alerta 1.4s ease-in-out infinite;
+    }
+    @keyframes parpadeo-alerta {
+        0%, 100% { background: #fee2e2; border-color: #fca5a5; }
+        50%      { background: #fca5a5; border-color: #ef4444; }
+    }
+    /* Quien tenga activado "reducir movimiento" ve la alerta fija, no parpadeante. */
+    @media (prefers-reduced-motion: reduce) {
+        .alerta-manual { animation: none; background: #fca5a5; }
+    }
+    /* Ya resuelta: se queda visible por si hay que releerla, pero sin llamar la atención. */
+    .alerta-manual.resuelta {
+        animation: none; background: #f1f5f9; color: #64748b; border-color: #cbd5e1;
+    }
+
+    /* Personal que el Excel puso en otra sección (turno Vallecito y similares).
+       Contorno amarillo en la celda del nombre para poder separarlos de un
+       vistazo del personal de campo. */
+    .tareo-table tbody td.trabajador-col.otra-seccion {
+        background-color: #fffbeb;
+        box-shadow: inset 0 0 0 2px #f59e0b;
+        border-right-color: #f59e0b;
+    }
+    /* La alerta de sección va en amarillo, no en rojo: no es un error del
+       archivo, es una decisión de turno. */
+    .alerta-manual.tipo-otra_seccion {
+        background: #fef3c7; color: #92400e; border-color: #fbbf24;
+        animation-name: parpadeo-seccion;
+    }
+    @keyframes parpadeo-seccion {
+        0%, 100% { background: #fef3c7; border-color: #fbbf24; }
+        50%      { background: #fbbf24; border-color: #d97706; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .alerta-manual.tipo-otra_seccion { animation: none; background: #fbbf24; }
+    }
+
+    /* El globo va pegado al <body> y posicionado con JS: dentro de la fila lo
+       recortarían el overflow del contenedor de la tabla y el de .origen-excel. */
+    .alerta-tip {
+        position: fixed; z-index: 9999; width: 360px; max-width: 80vw;
+        background: #ffffff; border: 1px solid #fca5a5; border-radius: 10px;
+        padding: 10px 12px; box-shadow: 0 10px 24px -8px rgba(15, 23, 42, 0.35);
+        color: #334155; font-size: 0.78rem; font-weight: 400;
+        text-transform: none; letter-spacing: 0; line-height: 1.45;
+        white-space: normal; text-align: left; pointer-events: none;
+    }
+    .alerta-tip[hidden] { display: none; }
+    .alerta-tip strong { display: block; color: #b91c1c; margin-bottom: 3px; font-size: 0.82rem; }
+
+    /* ---- Botón de alertas en la cabecera ---- */
+    .btn-alertas {
+        display: inline-flex; align-items: center; gap: 7px;
+        padding: 8px 14px; border-radius: 8px; cursor: pointer;
+        background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c;
+        font-weight: 700; font-size: 0.85rem; white-space: nowrap;
+        animation: parpadeo-alerta 1.4s ease-in-out infinite;
+    }
+    .btn-alertas:hover { background: #fee2e2; border-color: #ef4444; }
+    .btn-alertas .icono { font-size: 1rem; line-height: 1; }
+    @media (prefers-reduced-motion: reduce) { .btn-alertas { animation: none; } }
+
+    /* ---- Ventana de alertas ---- */
+    .modal-alertas[hidden] { display: none; }
+    .modal-alertas {
+        position: fixed; inset: 0; z-index: 9998;
+        display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-fondo { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.45); }
+    .modal-caja {
+        position: relative; z-index: 1; width: 640px; max-width: 100%;
+        max-height: 82vh; display: flex; flex-direction: column;
+        background: #ffffff; border-radius: 14px; padding: 18px 20px 20px;
+        box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.45);
+    }
+    .modal-cabecera {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .modal-cabecera h2 {
+        margin: 0; font-size: 1.1rem; color: #0f172a; font-weight: 700;
+    }
+    .modal-cerrar {
+        border: none; background: transparent; font-size: 1.6rem; line-height: 1;
+        color: #94a3b8; cursor: pointer; padding: 0 4px;
+    }
+    .modal-cerrar:hover { color: #334155; }
+    .modal-intro { margin: 8px 0 12px; color: #64748b; font-size: 0.84rem; line-height: 1.5; }
+    .modal-cuerpo { overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .modal-item {
+        border: 1px solid #e2e8f0; border-left: 4px solid #ef4444;
+        border-radius: 10px; padding: 10px 13px; background: #fffdfd;
+    }
+    .modal-item.tipo-otra_seccion { border-left-color: #f59e0b; background: #fffcf5; }
+    /* Semana que no se importó: no es una fila con un dato dudoso, es una
+       ausencia de datos, así que se distingue del resto de alertas. */
+    .modal-item.tipo-semana { border-left-color: #6366f1; background: #eef2ff; }
+    .modal-item h3 { margin: 0 0 4px; font-size: 0.88rem; color: #0f172a; font-weight: 700; }
+    .modal-item p { margin: 0; font-size: 0.82rem; color: #475569; line-height: 1.5; }
+    .modal-item .ir-a-fila {
+        margin-top: 7px; background: none; border: none; padding: 0;
+        color: #2563eb; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .modal-item .ir-a-fila:hover { text-decoration: underline; }
+    /* Se resalta un momento la fila a la que lleva la ventana. */
+    @keyframes destacar-fila { 0%, 100% { background: transparent; } 40% { background: #dbeafe; } }
+    tr.destacada td { animation: destacar-fila 1.6s ease-in-out; }
+
+    /* ---- Columna Tipo ---- */
+    .tipo-col {
+        width: 132px; min-width: 132px;
+        position: sticky; left: 395px; z-index: 5;
+    }
+    .select-tipo {
+        width: 100%; padding: 4px 5px; border: 1px solid #cbd5e1; border-radius: 6px;
+        font-size: 0.8rem; font-weight: 600; color: #1e293b; background: #ffffff;
+        cursor: pointer;
+    }
+    .select-tipo:focus { outline: none; border-color: #3b82f6; }
+    /* Fila con días de varios tipos: el Tipo lista las etiquetas presentes
+       ("Varios: H y P") en vez de afirmar uno solo. */
+    .select-tipo.varios { color: #4338ca; border-color: #a5b4fc; background: #eef2ff; }
+    /* Horas de P y J: solo aparecen cuando el tipo las necesita. */
+    .horas-tipo { display: none; gap: 4px; margin-top: 4px; }
+    .horas-tipo.visible { display: flex; }
+    .horas-tipo input {
+        flex: 1; min-width: 0; padding: 3px 4px; border: 1px solid #cbd5e1;
+        border-radius: 5px; font-size: 0.72rem; color: #334155;
+    }
+
+    /* ---- Barra de avance (pegada abajo) ---- */
+    /* El contenedor de la plantilla base no deja desplazar la página, así que
+       esta barra tiene que caber sí o sí: se mantiene en una sola línea. */
+    .barra-progreso {
+        position: sticky; bottom: 0; z-index: 50;
+        display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
+        padding: 10px 14px; margin-top: 12px;
+        box-shadow: 0 -4px 12px -6px rgba(15, 23, 42, 0.18);
+    }
+    .progreso-info { flex: 1 1 220px; min-width: 180px; }
+    .progreso-linea {
+        height: 10px; border-radius: 999px; background: #e2e8f0;
+        overflow: hidden; margin-bottom: 8px;
+    }
+    .progreso-relleno {
+        height: 100%; width: 0%; border-radius: 999px;
+        background: #16a34a; transition: width 0.25s ease, background-color 0.25s ease;
+    }
+    .progreso-relleno.incompleto { background: #f59e0b; }
+    .progreso-texto {
+        display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+        font-size: 0.85rem; color: #475569;
+    }
+    .progreso-texto strong { font-size: 1.05rem; color: #0f172a; }
+    .progreso-pendiente { color: #b45309; font-weight: 600; }
+    .progreso-listo { color: #15803d; font-weight: 600; }
+    .progreso-acciones { display: flex; gap: 12px; align-items: center; }
+    .opcion-sobrescribir {
+        display: flex; align-items: center; gap: 7px;
+        font-size: 0.82rem; color: #475569; white-space: nowrap;
+    }
+    .barra-progreso.aplicando .progreso-relleno {
+        background: repeating-linear-gradient(
+            45deg, #16a34a, #16a34a 10px, #22c55e 10px, #22c55e 20px);
+        animation: avanzar 1s linear infinite;
+    }
+    @keyframes avanzar { from { background-position: 0 0; } to { background-position: 28px 0; } }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header-container">
+        <div class="header-titles">
+            <h1>Planificación Matricial: {{ mes_nombre }}</h1>
+        </div>
+        <div class="header-actions">
+            {% if total_alertas %}
+            <button type="button" id="btnAlertas" class="btn-alertas"
+                    title="Ver las filas que necesitan tu decisión y las semanas que no se importaron">
+                <span class="icono" aria-hidden="true">&#9888;</span>
+                {{ total_alertas }} alerta{{ total_alertas|pluralize:"s" }}
+            </button>
+            {% endif %}
+            <a href="{{ url_volver }}" class="back-link">&larr; Volver al tareo</a>
+        </div>
+    </div>
+
+    {% comment %}
+    Misma cabecera de filtros que la matriz. Aquí filtran las filas ya cargadas
+    en el navegador: el Excel no se guarda, así que no se puede volver a
+    consultar el servidor sin perder la previsualización.
+    {% endcomment %}
+    <div class="filter-card">
+        <div class="filter-grid" id="filterGrid">
+            <div class="form-group">
+                <label for="buscadorTrabajador">Búsqueda Rápida</label>
+                <div class="search-wrapper">
+                    <input type="search" id="buscadorTrabajador" value="{{ filtros.q }}"
+                           placeholder="DNI o Nombre..." class="filter-input search-input">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="mes">Mes y Año</label>
+                <input type="month" id="mes" value="{{ mes_seleccionado }}" class="filter-input" readonly
+                       title="El archivo ya se leyó para este mes. Para otro mes vuelve al tareo y súbelo de nuevo.">
+            </div>
+
+            <div class="form-group">
+                <label for="diaFiltro">Día (opcional)</label>
+                <select id="diaFiltro" class="filter-input"
+                        title="Muestra solo las filas del Excel que traen ese día marcado. Sirve para verificar quién quedó capturado en una fecha puntual.">
+                    <option value="">-- Todos --</option>
+                    {% for dia_info in dias_del_mes_info %}
+                        <option value="{{ dia_info.numero }}">{{ dia_info.numero }} · {{ dia_info.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="proyecto">Proyecto</label>
+                <select id="proyecto" class="filter-input">
+                    <option value="">-- Todos --</option>
+                    {% for proyecto in proyectos %}
+                        <option value="{{ proyecto.id }}" {% if proyecto.id|stringformat:"s" == filtros.proyecto %}selected{% endif %}>{{ proyecto.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="subproyecto">Subproyecto</label>
+                <select id="subproyecto" class="filter-input">
+                    <option value="">-- Todos --</option>
+                    {% for subp in subproyectos %}
+                        <option value="{{ subp.id }}" data-parent="{{ subp.parent_id }}" {% if subp.id|stringformat:"s" == filtros.subproyecto %}selected{% endif %}>{{ subp.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="area">Área</label>
+                <div class="area-filter-row">
+                    <select id="area" class="filter-input">
+                        <option value="">-- Todas --</option>
+                        {% for area in areas %}
+                            <option value="{{ area.id }}" {% if area.id|stringformat:"s" == filtros.area %}selected{% endif %}>{{ area.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" id="filtrarBtn" class="btn-action btn-primary btn-icon-only"
+                            aria-label="Consultar filtros" title="Consultar filtros">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18M6 12h12m-9 8h6" />
+                        </svg>
+                    </button>
+                    <button type="button" id="limpiarFiltrosBtn" class="btn-action btn-clean btn-icon-only"
+                            aria-label="Limpiar filtros" title="Limpiar filtros">
+                        <span class="broom-emoji" aria-hidden="true">🧹</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <p class="filtro-nota" id="filtroNota" hidden></p>
+    </div>
+
+    {% comment %}
+    Ventana de alertas. Se abre desde el botón de la cabecera (todas) o desde el
+    icono de una fila (esa sola). El detalle se arma en JS a partir de los
+    data-alerta-* de cada icono, así no hay dos fuentes que puedan discrepar.
+    {% endcomment %}
+    <div class="modal-alertas" id="modalAlertas" hidden>
+        <div class="modal-fondo" data-cerrar-modal></div>
+        <div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="modalAlertasTitulo">
+            <div class="modal-cabecera">
+                <h2 id="modalAlertasTitulo"><span aria-hidden="true">&#9888;</span> <span id="modalAlertasNombre">Alertas de la importación</span></h2>
+                <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar">&times;</button>
+            </div>
+            <p class="modal-intro" id="modalAlertasIntro"></p>
+            <div class="modal-cuerpo" id="modalAlertasCuerpo"></div>
+        </div>
+    </div>
+
+    {% comment %}
+    Semanas que NO se importaron porque su bloque del Excel no trae la fila con
+    los números de día: la fecha solo se podría deducir por la posición del
+    bloque y no es confiable. Se avisa en una ventana que se abre sola, porque
+    es una ausencia de datos y no se vería en la tabla.
+    {% endcomment %}
+    {% if semanas_omitidas %}
+    <div class="modal-alertas" id="modalSemanas">
+        <div class="modal-fondo" data-cerrar-semanas></div>
+        <div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="modalSemanasTitulo">
+            <div class="modal-cabecera">
+                <h2 id="modalSemanasTitulo"><span aria-hidden="true">&#9888;</span>
+                    {{ semanas_omitidas|length }} semana{{ semanas_omitidas|length|pluralize }} sin importar</h2>
+                <button type="button" class="modal-cerrar" data-cerrar-semanas aria-label="Cerrar">&times;</button>
+            </div>
+            <p class="modal-intro">
+                El Excel no trae la fila con los números de día en
+                {{ semanas_omitidas|length|pluralize:"este bloque,estos bloques" }}, así que
+                no se puede saber con certeza a qué fechas corresponden. Esos días
+                <strong>quedan vacíos</strong> a propósito: complétalos a mano en la matriz
+                según tu criterio, o confirma la semana con quien llenó el archivo.
+            </p>
+            <div class="modal-cuerpo">
+                {% for semana in semanas_omitidas %}
+                <div class="modal-item tipo-semana">
+                    <h3>Semana del {{ semana.rango }}: sin importar</h3>
+                    <p>Días que quedaron vacíos: {{ semana.dias }}. La cabecera de ese bloque
+                       está mal armada en el Excel (le falta la fila con los números de día),
+                       así que no se puede confirmar a qué fechas corresponde. Complétalos a
+                       mano en la matriz o confírmalos con quien llenó el archivo.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {{ meta_trabajadores|json_script:"metaTrabajadores" }}
+
+    <form method="post" action="{% url 'recursoshumanos:importar_tareo_confirmar' %}" id="confirmarForm">
+        {% csrf_token %}
+        <input type="hidden" name="mes" value="{{ mes_seleccionado }}">
+        <input type="hidden" name="q" value="{{ filtros.q }}">
+        <input type="hidden" name="proyecto" value="{{ filtros.proyecto }}">
+        <input type="hidden" name="subproyecto" value="{{ filtros.subproyecto }}">
+        <input type="hidden" name="area" value="{{ filtros.area }}">
+
+        <div class="table-container">
+            <table class="tareo-table" id="tablaMatricial">
+                <thead>
+                    <tr>
+                        <th class="codigo-col sticky-col">DNI</th>
+                        <th class="trabajador-col sticky-col">Nombres y Apellidos</th>
+                        <th class="tipo-col sticky-col"
+                            title="Tipo de jornada con el que entrarán TODOS los días de esa fila.">Tipo</th>
+                        {% for dia_info in dias_del_mes_info %}
+                            <th class="dia-col" data-dia="{{ dia_info.numero }}">
+                                {{ dia_info.nombre }}<br><span style="font-size: 1.1em; color: #0f172a;">{{ dia_info.numero }}</span>
+                            </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in filas %}
+                    <tr class="fila-import{% if not fila.asignada %} excluida{% endif %}"
+                        data-indice="{{ fila.indice }}" data-nombre-excel="{{ fila.nombre_excel }}">
+                        <td class="codigo-col sticky-col">
+                            <span class="dni-celda{% if not fila.asignada %} vacio{% endif %}">{% if fila.asignada %}{{ fila.trabajador.dni }}{% else %}—{% endif %}</span>
+                            <input type="hidden" name="incluir_{{ fila.indice }}" value="on">
+                            <input type="hidden" name="datos_{{ fila.indice }}" value="{{ fila.datos_json }}">
+                        </td>
+                        <td class="trabajador-col sticky-col{% if fila.otra_seccion %} otra-seccion{% endif %}">
+                            <select name="dni_{{ fila.indice }}"
+                                    class="select-trabajador{% if not fila.asignada %} sin-match{% endif %}">
+                                <option value=""></option>
+                                {% for t in trabajadores_opciones %}
+                                    <option value="{{ t.dni }}" {% if fila.asignada and fila.trabajador.dni == t.dni %}selected{% endif %}>
+                                        {{ t.apellido_paterno }} {{ t.apellido_materno }}, {{ t.nombres }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <span class="origen-excel"
+                                  title="En el Excel: {{ fila.nombre_excel }}{% if fila.posicion %} · {{ fila.posicion }}{% endif %}">
+                                Excel: {{ fila.nombre_excel }}{% if fila.posicion %} &middot; {{ fila.posicion }}{% endif %}
+                                {% if fila.confianza == 'aproximada' %}<span class="badge badge-aproximada">Aproximada {{ fila.similitud }}</span>{% endif %}
+                                {% if fila.alerta %}
+                                    <span class="alerta-manual tipo-{{ fila.alerta.tipo }}" tabindex="0" role="button"
+                                          aria-label="{{ fila.alerta.titulo }}: {{ fila.alerta.detalle }}"
+                                          data-alerta-tipo="{{ fila.alerta.tipo }}"
+                                          data-alerta-titulo="{{ fila.alerta.titulo }}"
+                                          data-alerta-detalle="{{ fila.alerta.detalle }}">&#9888; Alerta</span>
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="tipo-col sticky-col">
+                            <select class="select-tipo{% if not fila.tipo_inicial %} varios{% endif %}"
+                                    aria-label="Tipo de jornada de la fila">
+                                {% if not fila.tipo_inicial %}
+                                    <option value="" selected>Varios: {{ fila.tipos_mezcla }}</option>
+                                {% endif %}
+                                {% for tipo in tipos_tareo %}
+                                    <option value="{{ tipo.valor }}"
+                                            {% if fila.tipo_inicial == tipo.valor %}selected{% endif %}>
+                                        {{ tipo.etiqueta }}: {{ tipo.nombre }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="horas-tipo horas-p">
+                                <input type="time" name="hora_entrada_{{ fila.indice }}"
+                                       value="{{ fila.horario_inicial.entrada }}"
+                                       title="Hora de entrada" aria-label="Hora de entrada">
+                                <input type="time" name="hora_salida_{{ fila.indice }}"
+                                       value="{{ fila.horario_inicial.salida }}"
+                                       title="Hora de salida" aria-label="Hora de salida">
+                            </div>
+                            <div class="horas-tipo horas-j">
+                                <input type="number" name="jornada_horas_{{ fila.indice }}"
+                                       min="0.5" max="24" step="0.5" placeholder="Horas"
+                                       title="Horas de la jornada" aria-label="Horas de la jornada">
+                            </div>
+                        </td>
+                        {% for dia_info in dias_del_mes_info %}
+                            {% with dia_str=dia_info.numero|stringformat:"s" %}
+                            {% with celda=fila.dias|get_item:dia_str %}
+                            {% if celda %}
+                                <td class="tareo-cell importada estado-{{ celda.estado }}" data-dia="{{ dia_info.numero }}"
+                                    title="{{ fila.nombre_excel }} · {{ celda.posicion }}{% if celda.anotacion %} ({{ celda.anotacion }}){% endif %}{% if celda.ubicacion %} · {{ celda.ubicacion }}{% endif %}{% if celda.seccion %} · Sección: {{ celda.seccion }}{% endif %}">{% if celda.estado == 'D' %}.{% else %}{{ celda.estado }}{% endif %}</td>
+                            {% else %}
+                                <td class="tareo-cell" data-dia="{{ dia_info.numero }}"></td>
+                            {% endif %}
+                            {% endwith %}{% endwith %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="barra-progreso" id="barraProgreso">
+            <div class="progreso-info">
+                <div class="progreso-linea">
+                    <div class="progreso-relleno" id="progresoRelleno"></div>
+                </div>
+                <div class="progreso-texto">
+                    <strong id="progresoPorcentaje">0%</strong>
+                    <span id="progresoDetalle">Calculando…</span>
+                </div>
+            </div>
+            <div class="progreso-acciones">
+                <label class="opcion-sobrescribir" title="Apagado: se respeta lo que RRHH ya haya puesto a mano.">
+                    <input type="checkbox" name="sobrescribir" id="sobrescribir">
+                    Sobrescribir celdas ya cargadas
+                </label>
+                <a href="{{ url_volver }}" class="btn-action btn-clean">Cancelar</a>
+                <button type="submit" class="btn-action btn-success" id="btnConfirmar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span id="btnConfirmarTexto">Confirmar e importar</span>
+                </button>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const filas = Array.from(document.querySelectorAll('tr.fila-import'));
+
+    // ---- Globo de las alertas de fila ------------------------------------
+    // Uno solo para toda la tabla, colgado del <body> para que no lo recorte
+    // el scroll del contenedor. Se muestra al pasar el cursor o al tabular.
+    const globoAlerta = document.createElement('div');
+    globoAlerta.className = 'alerta-tip';
+    globoAlerta.hidden = true;
+    document.body.appendChild(globoAlerta);
+
+    function mostrarAlerta(icono) {
+        globoAlerta.innerHTML = '';
+        const titulo = document.createElement('strong');
+        titulo.textContent = icono.dataset.alertaTitulo;
+        globoAlerta.appendChild(titulo);
+        globoAlerta.appendChild(
+            document.createTextNode(icono.dataset.alertaDetalle));
+        globoAlerta.hidden = false;
+
+        // Encima del icono; si no cabe arriba, debajo. Y sin salirse por la derecha.
+        const caja = icono.getBoundingClientRect();
+        const alto = globoAlerta.offsetHeight;
+        const ancho = globoAlerta.offsetWidth;
+        const arriba = caja.top - alto - 8;
+        globoAlerta.style.top = (arriba >= 8 ? arriba : caja.bottom + 8) + 'px';
+        globoAlerta.style.left =
+            Math.max(8, Math.min(caja.left, window.innerWidth - ancho - 8)) + 'px';
+    }
+
+    function ocultarAlerta() {
+        globoAlerta.hidden = true;
+    }
+
+    document.querySelectorAll('.alerta-manual').forEach(function (icono) {
+        icono.addEventListener('mouseenter', function () { mostrarAlerta(icono); });
+        icono.addEventListener('focus', function () { mostrarAlerta(icono); });
+        icono.addEventListener('mouseleave', ocultarAlerta);
+        icono.addEventListener('blur', ocultarAlerta);
+        // Clic (o Enter): la explicación completa en la ventana, sin recortes.
+        icono.addEventListener('click', function () {
+            ocultarAlerta();
+            abrirModalAlertas(icono);
+        });
+        icono.addEventListener('keydown', function (evento) {
+            if (evento.key === 'Enter' || evento.key === ' ') {
+                evento.preventDefault();
+                ocultarAlerta();
+                abrirModalAlertas(icono);
+            }
+        });
+    });
+    // Al desplazar la tabla el icono se mueve y el globo se quedaría suelto.
+    window.addEventListener('scroll', ocultarAlerta, true);
+
+    // ---- Ventana de alertas ----------------------------------------------
+    const modal = document.getElementById('modalAlertas');
+    const modalNombre = document.getElementById('modalAlertasNombre');
+    const modalIntro = document.getElementById('modalAlertasIntro');
+    const modalCuerpo = document.getElementById('modalAlertasCuerpo');
+    const btnAlertas = document.getElementById('btnAlertas');
+    // Ventana de semanas sin importar. Es null cuando no hay ninguna; su cuerpo
+    // es además el origen de las tarjetas que se clonan en la ventana de alertas.
+    const modalSemanas = document.getElementById('modalSemanas');
+
+    function filaDelIcono(icono) {
+        return icono.closest('tr.fila-import');
+    }
+
+    function tarjetaDeAlerta(icono, conEnlace) {
+        const fila = filaDelIcono(icono);
+        const item = document.createElement('div');
+        item.className = 'modal-item tipo-' + icono.dataset.alertaTipo;
+
+        const titulo = document.createElement('h3');
+        titulo.textContent = icono.dataset.alertaTitulo;
+        item.appendChild(titulo);
+
+        const texto = document.createElement('p');
+        texto.textContent = icono.dataset.alertaDetalle;
+        item.appendChild(texto);
+
+        if (conEnlace && fila) {
+            const enlace = document.createElement('button');
+            enlace.type = 'button';
+            enlace.className = 'ir-a-fila';
+            enlace.textContent = 'Ir a la fila de ' + (fila.dataset.nombreExcel || 'esta persona');
+            enlace.addEventListener('click', function () {
+                cerrarModal();
+                fila.classList.remove('oculta');
+                fila.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                fila.classList.remove('destacada');
+                void fila.offsetWidth;   // reinicia la animación si ya estaba puesta
+                fila.classList.add('destacada');
+            });
+            item.appendChild(enlace);
+        }
+        return item;
+    }
+
+    function abrirModalAlertas(icono) {
+        const iconos = icono
+            ? [icono]
+            : Array.from(document.querySelectorAll('.alerta-manual'));
+        // Las semanas que no se importaron van en la MISMA ventana: no tienen
+        // fila que las delate, así que si no salen aquí RRHH no se entera. Se
+        // clonan de la ventana emergente para no tener dos textos que puedan
+        // discrepar, y van primero porque son datos ausentes, no dudosos.
+        const tarjetasSemana = (!icono && modalSemanas)
+            ? Array.from(modalSemanas.querySelectorAll('.modal-item'))
+            : [];
+
+        modalCuerpo.innerHTML = '';
+        tarjetasSemana.forEach(function (tarjeta) {
+            modalCuerpo.appendChild(tarjeta.cloneNode(true));
+        });
+        iconos.forEach(function (uno) {
+            modalCuerpo.appendChild(tarjetaDeAlerta(uno, !icono));
+        });
+
+        if (icono) {
+            const fila = filaDelIcono(icono);
+            modalNombre.textContent = fila ? fila.dataset.nombreExcel : 'Alerta';
+            modalIntro.textContent =
+                'Esto es lo que dice el Excel de esta fila y lo que tienes que decidir.';
+        } else {
+            const total = iconos.length + tarjetasSemana.length;
+            modalNombre.textContent = total + (total === 1
+                ? ' aviso de la importación' : ' avisos de la importación');
+            let intro = '';
+            if (tarjetasSemana.length) {
+                intro += 'Hay semanas que NO se importaron porque el Excel no dice a qué '
+                    + 'fechas corresponden: esos días quedaron vacíos y los completa RRHH. ';
+            }
+            if (iconos.length) {
+                intro += 'El Excel tampoco trae DNI ni tipo de jornada, así que el sistema '
+                    + 'empareja por nombre y no adivina cuando algo no cuadra. Resuelve esas '
+                    + 'filas en la tabla: asigna el trabajador en la lista, ajusta la columna '
+                    + 'Tipo, o deja la fila sin trabajador para que no se importe.';
+            }
+            modalIntro.textContent = intro;
+        }
+        modal.hidden = false;
+        document.querySelector('.modal-cerrar').focus();
+    }
+
+    function cerrarModal() {
+        modal.hidden = true;
+    }
+
+    // La ventana de semanas se muestra sola al abrir la previsualización (sale
+    // renderizada sin `hidden`), porque es una AUSENCIA de datos y no hay
+    // ninguna fila en la tabla que la delate. Después queda accesible desde el
+    // botón de alertas, que la incluye en su recuento.
+    if (modalSemanas) {
+        const cerrarSemanas = function () { modalSemanas.hidden = true; };
+        modalSemanas.querySelectorAll('[data-cerrar-semanas]').forEach(function (elemento) {
+            elemento.addEventListener('click', cerrarSemanas);
+        });
+        document.addEventListener('keydown', function (evento) {
+            if (evento.key === 'Escape' && !modalSemanas.hidden) cerrarSemanas();
+        });
+        modalSemanas.querySelector('.modal-cerrar').focus();
+    }
+
+    if (btnAlertas) btnAlertas.addEventListener('click', function () { abrirModalAlertas(null); });
+    modal.querySelectorAll('[data-cerrar-modal]').forEach(function (elemento) {
+        elemento.addEventListener('click', cerrarModal);
+    });
+    document.addEventListener('keydown', function (evento) {
+        if (evento.key === 'Escape' && !modal.hidden) cerrarModal();
+    });
+
+    // La tabla se queda con todo el alto que sobre. Se recalcula porque la
+    // cabecera de filtros se parte en dos líneas en pantallas estrechas y
+    // porque el bloque de avisos se puede desplegar.
+    const contenedorTabla = document.querySelector('.table-container');
+    const cajaAvisos = document.querySelector('.aviso-box');
+
+    const ALTO_MINIMO_TABLA = 120;
+
+    function ajustarAltoTabla() {
+        const barraAlto = document.getElementById('barraProgreso').offsetHeight;
+        const arriba = contenedorTabla.getBoundingClientRect().top + window.scrollY;
+        let alto = window.innerHeight - arriba - barraAlto - 24;
+        contenedorTabla.style.maxHeight = Math.max(ALTO_MINIMO_TABLA, alto) + 'px';
+
+        // El relleno del contenedor de la plantilla base y el reacomodo de los
+        // botones de la barra no se pueden calcular de antemano: se descuenta
+        // lo que sobre, repitiendo porque cada ajuste cambia esas alturas.
+        for (let intento = 0; intento < 4; intento++) {
+            const sobra = document.documentElement.scrollHeight - window.innerHeight;
+            if (sobra <= 0 || alto <= ALTO_MINIMO_TABLA) break;
+            alto -= sobra;
+            contenedorTabla.style.maxHeight = Math.max(ALTO_MINIMO_TABLA, alto) + 'px';
+        }
+    }
+
+    // Se ajusta dos veces: una en el acto, porque en una pestaña en segundo
+    // plano no llegan frames y requestAnimationFrame nunca correría; y otra en
+    // el frame siguiente, porque medir durante el evento da alturas a medio
+    // maquetar.
+    let ajustePedido = false;
+    function pedirAjuste() {
+        ajustarAltoTabla();
+        if (ajustePedido) return;
+        ajustePedido = true;
+        requestAnimationFrame(function () {
+            ajustePedido = false;
+            ajustarAltoTabla();
+        });
+    }
+
+    window.addEventListener('resize', pedirAjuste);
+    // Con las tipografías ya cargadas las alturas cambian, así que se remide.
+    window.addEventListener('load', pedirAjuste);
+    if (cajaAvisos) cajaAvisos.addEventListener('toggle', pedirAjuste);
+
+    // La barra inferior y la tarjeta de filtros crecen cuando sus elementos se
+    // reacomodan en pantallas estrechas; ninguna depende del alto de la tabla,
+    // así que observarlas no realimenta el ajuste.
+    if (window.ResizeObserver) {
+        const observador = new ResizeObserver(pedirAjuste);
+        observador.observe(document.getElementById('barraProgreso'));
+        observador.observe(document.querySelector('.filter-card'));
+    }
+
+    ajustarAltoTabla();
+    pedirAjuste();
+
+    // ==========================================
+    // FILTROS (los mismos de la matriz)
+    // ==========================================
+    // Aquí filtran en el navegador sobre las filas ya cargadas: el Excel no se
+    // guarda en el servidor, así que recargar la página perdería la
+    // previsualización. Ocultar filas no cambia lo que se importa.
+    const META = JSON.parse(document.getElementById('metaTrabajadores').textContent || '{}');
+    const buscadorInput = document.getElementById('buscadorTrabajador');
+    const mesInput = document.getElementById('mes');
+    const proyectoInput = document.getElementById('proyecto');
+    const subproyectoInput = document.getElementById('subproyecto');
+    const areaInput = document.getElementById('area');
+    const diaFiltroInput = document.getElementById('diaFiltro');
+    const filtrarBtn = document.getElementById('filtrarBtn');
+    const limpiarFiltrosBtn = document.getElementById('limpiarFiltrosBtn');
+    const filtroNota = document.getElementById('filtroNota');
+    const MES_IMPORTADO = mesInput.value;
+
+    function normalizarTexto(valor) {
+        return (valor || '').toString().toUpperCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    function tieneDia(fila, dia) {
+        try {
+            const datos = JSON.parse(fila.querySelector('input[name^="datos_"]').value);
+            return Object.prototype.hasOwnProperty.call(datos, dia);
+        } catch (err) {
+            return false;
+        }
+    }
+
+    function coincideConFiltros(fila) {
+        const dni = fila.querySelector('.select-trabajador').value;
+        const info = dni ? META[dni] : null;
+
+        const buscado = normalizarTexto(buscadorInput.value).trim();
+        if (buscado) {
+            const contenido = normalizarTexto(
+                dni + ' ' + (info ? info.n : '') + ' ' + (fila.dataset.nombreExcel || ''));
+            if (contenido.indexOf(buscado) === -1) return false;
+        }
+
+        // Filtro opcional por día del mes: sirve para verificar puntualmente
+        // quién quedó capturado en una fecha concreta.
+        const dia = diaFiltroInput.value;
+        if (dia && !tieneDia(fila, dia)) return false;
+
+        const proyecto = proyectoInput.value;
+        const subproyecto = subproyectoInput.value;
+        const area = areaInput.value;
+        if (!proyecto && !subproyecto && !area) return true;
+
+        // Una fila sin trabajador asignado no tiene proyecto ni área con qué
+        // comparar. Se deja visible a propósito: es justo la que RRHH tiene que
+        // resolver a mano, y esconderla detrás de un filtro de área hacía creer
+        // que la importación se había saltado a esa persona.
+        if (!info) return true;
+        if (proyecto && info.p.indexOf(proyecto) === -1) return false;
+        if (subproyecto && info.p.indexOf(subproyecto) === -1) return false;
+        if (area && info.a !== area) return false;
+        return true;
+    }
+
+    // Cuando se elige un día, además de dejar solo las filas con ese día, se
+    // ocultan las columnas del resto de días: la tabla queda con DNI, Nombre y
+    // esa única columna.
+    function aplicarFiltroColumnaDia() {
+        const dia = diaFiltroInput.value;
+        document.querySelectorAll('#tablaMatricial th.dia-col, #tablaMatricial td.tareo-cell')
+            .forEach(function (celda) {
+                const suyo = celda.dataset.dia;
+                celda.style.display = (!dia || suyo === dia) ? '' : 'none';
+            });
+    }
+
+    function aplicarFiltros() {
+        aplicarFiltroColumnaDia();
+        let visibles = 0;
+        filas.forEach(function (fila) {
+            const visible = coincideConFiltros(fila);
+            fila.classList.toggle('oculta', !visible);
+            if (visible) visibles++;
+        });
+
+        const ocultas = filas.length - visibles;
+        filtroNota.hidden = ocultas === 0;
+        if (ocultas > 0) {
+            filtroNota.innerHTML = 'Mostrando <strong>' + visibles + '</strong> de <strong>'
+                + filas.length + '</strong> filas del archivo. El filtro solo cambia lo que se ve: '
+                + 'al confirmar se importan también las ' + ocultas + ' fila'
+                + (ocultas === 1 ? '' : 's') + ' oculta' + (ocultas === 1 ? '' : 's') + '.';
+        }
+        pedirAjuste();
+    }
+
+    // El subproyecto depende del proyecto: solo se ofrecen los hijos del padre
+    // elegido, igual que en la matriz.
+    function sincronizarSubproyectos() {
+        const padreId = proyectoInput.value;
+        let seleccionValida = !subproyectoInput.value;
+
+        Array.from(subproyectoInput.options).forEach(function (opt) {
+            if (!opt.value) return;
+            const visible = !padreId || opt.dataset.parent === padreId;
+            opt.hidden = !visible;
+            opt.disabled = !visible;
+            if (visible && opt.value === subproyectoInput.value) seleccionValida = true;
+        });
+
+        if (!seleccionValida) subproyectoInput.value = '';
+    }
+
+    let busquedaDemora;
+    buscadorInput.addEventListener('input', function () {
+        clearTimeout(busquedaDemora);
+        busquedaDemora = setTimeout(aplicarFiltros, 250);
+    });
+
+    proyectoInput.addEventListener('change', function () {
+        sincronizarSubproyectos();
+        aplicarFiltros();
+    });
+    [subproyectoInput, areaInput, diaFiltroInput].forEach(function (select) {
+        select.addEventListener('change', aplicarFiltros);
+    });
+    filtrarBtn.addEventListener('click', aplicarFiltros);
+
+    limpiarFiltrosBtn.addEventListener('click', function () {
+        buscadorInput.value = '';
+        proyectoInput.value = '';
+        subproyectoInput.value = '';
+        areaInput.value = '';
+        diaFiltroInput.value = '';
+        sincronizarSubproyectos();
+        aplicarFiltros();
+    });
+
+    // El mes es el que se leyó del archivo; algunos navegadores dejan abrir el
+    // selector aunque el campo sea de solo lectura, así que se devuelve.
+    mesInput.addEventListener('change', function () { mesInput.value = MES_IMPORTADO; });
+
+    sincronizarSubproyectos();
+    aplicarFiltros();
+
+    const barra = document.getElementById('barraProgreso');
+    const relleno = document.getElementById('progresoRelleno');
+    const porcentaje = document.getElementById('progresoPorcentaje');
+    const detalle = document.getElementById('progresoDetalle');
+    const btnConfirmar = document.getElementById('btnConfirmar');
+    const btnConfirmarTexto = document.getElementById('btnConfirmarTexto');
+
+    function filaLista(fila) {
+        return fila.querySelector('.select-trabajador').value !== '';
+    }
+
+    function celdasDe(fila) {
+        try {
+            return Object.keys(JSON.parse(fila.querySelector('input[name^="datos_"]').value)).length;
+        } catch (err) {
+            return 0;
+        }
+    }
+
+    // Avance real de la importación: cuánto del archivo ya tiene destino en el
+    // sistema. Sube sola a medida que se resuelven las filas sin emparejar.
+    function actualizarProgreso() {
+        const total = filas.length;
+        const listas = filas.filter(filaLista);
+        const pendientes = total - listas.length;
+
+        let celdasListas = 0, celdasTotales = 0;
+        filas.forEach(function (fila) {
+            const n = celdasDe(fila);
+            celdasTotales += n;
+            if (filaLista(fila)) celdasListas += n;
+        });
+
+        const pct = total === 0 ? 0 : Math.round((listas.length / total) * 100);
+        relleno.style.width = pct + '%';
+        relleno.classList.toggle('incompleto', pendientes > 0);
+        porcentaje.textContent = pct + '%';
+
+        if (pendientes === 0) {
+            detalle.innerHTML = '<span class="progreso-listo">Importación completa:</span> '
+                + 'las ' + total + ' filas del Excel tienen trabajador asignado &middot; '
+                + celdasListas + ' celdas listas para escribir.';
+        } else {
+            detalle.innerHTML = listas.length + ' de ' + total + ' filas listas &middot; '
+                + '<span class="progreso-pendiente">faltan ' + pendientes
+                + ' por asignar</span> (' + (celdasTotales - celdasListas)
+                + ' celdas quedarían fuera).';
+        }
+
+        btnConfirmar.disabled = listas.length === 0;
+        btnConfirmarTexto.textContent = listas.length === 0
+            ? 'Nada que importar'
+            : 'Importar ' + listas.length + ' fila' + (listas.length === 1 ? '' : 's')
+              + ' (' + celdasListas + ' celdas)';
+    }
+
+    // Una fila sin trabajador elegido no se puede importar: se apaga el verde y
+    // el DNI para que no haya que adivinar qué va a entrar.
+    function sincronizarFila(fila) {
+        const select = fila.querySelector('.select-trabajador');
+        const activa = select.value !== '';
+        fila.classList.toggle('excluida', !activa);
+        select.classList.toggle('sin-match', !activa);
+
+        const dni = fila.querySelector('.dni-celda');
+        dni.textContent = activa ? select.value : '—';
+        dni.classList.toggle('vacio', !activa);
+
+        // La alerta deja de parpadear en cuanto RRHH elige el trabajador. La de
+        // tipo "nota" no: ahí la decisión es si esos días entran o no, y eso se
+        // resuelve desmarcando la fila, no con el desplegable.
+        const alerta = fila.querySelector('.alerta-manual');
+        if (alerta && alerta.dataset.alertaTipo !== 'nota') {
+            alerta.classList.toggle('resuelta', activa);
+        }
+    }
+
+    // ---- Tipo de jornada de la fila --------------------------------------
+    // El Excel solo distingue campo y "otra sección"; el tipo real lo decide
+    // RRHH. Al elegirlo se reescriben TODOS los días de esa fila: es lo que se
+    // va a guardar, así que la tabla lo tiene que reflejar al momento.
+    const ETIQUETA_ESTADO = { H: 'H', C: 'C', O: 'O', P: 'P', J: 'J', D: '.' };
+    const ESTADOS_CON_COLOR = ['H', 'C', 'O', 'P', 'J', 'D'];
+
+    // Muestra solo las horas que el tipo necesita, sin tocar los días.
+    function mostrarHorasSegunTipo(fila) {
+        const estado = fila.querySelector('.select-tipo').value;
+        fila.querySelector('.horas-p').classList.toggle('visible', estado === 'P');
+        fila.querySelector('.horas-j').classList.toggle('visible', estado === 'J');
+    }
+
+    // Solo cuando RRHH elige un tipo a mano: reescribe TODOS los días de la fila
+    // a ese estado (acción en bloque). En la carga NO se llama, para que una fila
+    // con días de dos secciones (campo H + Vallecito P) conserve el estado de
+    // cada día en vez de aplanarse a uno solo.
+    function aplicarTipoAFila(fila) {
+        const select = fila.querySelector('.select-tipo');
+        const estado = select.value;
+        mostrarHorasSegunTipo(fila);
+        // Al elegir un tipo real la fila deja de ser "Varios": se reescriben
+        // todos sus días a ese estado.
+        select.classList.toggle('varios', estado === '');
+
+        if (!estado) return;
+
+        const entrada = fila.querySelector('input[name^="datos_"]');
+        let datos;
+        try {
+            datos = JSON.parse(entrada.value);
+        } catch (err) {
+            return;
+        }
+        Object.keys(datos).forEach(function (dia) { datos[dia].e = estado; });
+        entrada.value = JSON.stringify(datos);
+
+        fila.querySelectorAll('.tareo-cell.importada').forEach(function (celda) {
+            ESTADOS_CON_COLOR.forEach(function (uno) {
+                celda.classList.remove('estado-' + uno);
+            });
+            celda.classList.add('estado-' + estado);
+            celda.textContent = ETIQUETA_ESTADO[estado];
+        });
+    }
+
+    filas.forEach(function (fila) {
+        fila.querySelector('.select-trabajador').addEventListener('change', function () {
+            sincronizarFila(fila);
+            actualizarProgreso();
+            // Al cambiar de trabajador la fila puede dejar de cumplir el filtro.
+            aplicarFiltros();
+        });
+
+        const selectTipo = fila.querySelector('.select-tipo');
+        selectTipo.addEventListener('change', function () { aplicarTipoAFila(fila); });
+        // De arranque solo se muestran las horas del tipo; los días quedan como
+        // los trajo el Excel (cada uno con su estado, sin aplanar la fila).
+        mostrarHorasSegunTipo(fila);
+    });
+
+    actualizarProgreso();
+
+    document.getElementById('confirmarForm').addEventListener('submit', function (e) {
+        const activas = filas.filter(filaLista).length;
+        if (activas === 0) {
+            e.preventDefault();
+            alert('No hay ninguna fila lista para importar. Asigna al menos un trabajador.');
+            return;
+        }
+        if (!confirm('Se importarán ' + activas + ' trabajador(es) al tareo de {{ mes_nombre }}. ¿Continuar?')) {
+            e.preventDefault();
+            return;
+        }
+
+        // El guardado va en una sola petición, así que la barra no reporta un
+        // porcentaje inventado: pasa a modo "en curso" y va nombrando la etapa.
+        barra.classList.add('aplicando');
+        relleno.style.width = '100%';
+        relleno.classList.remove('incompleto');
+        porcentaje.textContent = '';
+        btnConfirmar.disabled = true;
+        btnConfirmarTexto.textContent = 'Importando…';
+
+        const etapas = [
+            'Guardando el tareo… no cierres esta página.',
+            'Escribiendo los días en la base de datos…',
+            'Aplicando horarios según cada estado…',
+            'Casi listo, preparando la matriz…',
+        ];
+        let paso = 0;
+        detalle.textContent = etapas[0];
+        setInterval(function () {
+            paso = Math.min(paso + 1, etapas.length - 1);
+            detalle.textContent = etapas[paso];
+        }, 1800);
+    });
+});
+</script>
+{% endblock %}

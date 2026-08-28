@@ -118,13 +118,25 @@ def recalcular_asistencia_diaria(tareo: TareoDiario):
     """
     # Import local: administracion.services.feriados hace import diferido de
     # este mismo app, así evitamos cualquier ciclo al cargar las apps.
-    from administracion.services.feriados import es_feriado
+    from administracion.services.feriados import obtener_feriado
     from .motor_reglas import ContextoMarcacion, evaluar_marcacion
 
     # 1. OBTENER MARCAS DEL DÍA
+    # Se acota por RANGO de instante en vez de `timestamp__date=`: bajo USE_TZ
+    # ese lookup aplica una conversion de zona horaria sobre la columna, que un
+    # indice btree no puede aprovechar, asi que cada recalculo escanea la tabla
+    # entera de asistencias. Al volver de faena esta funcion corre una vez por
+    # cada dia sincronizado, de modo que el escaneo se multiplica por cientos.
+    # El rango es equivalente (ambos delimitan el dia en America/Lima) pero si
+    # usa el indice (usuario, timestamp) declarado en el modelo.
+    inicio_dia = timezone.make_aware(datetime.combine(tareo.fecha, time.min))
+    fin_dia = timezone.make_aware(
+        datetime.combine(tareo.fecha + timedelta(days=1), time.min)
+    )
     marcas = Asistencia.objects.filter(
         usuario=tareo.trabajador.user,
-        timestamp__date=tareo.fecha
+        timestamp__gte=inicio_dia,
+        timestamp__lt=fin_dia,
     ).order_by('timestamp')
 
     if not marcas.exists():
@@ -172,6 +184,11 @@ def recalcular_asistencia_diaria(tareo: TareoDiario):
     # resuelve contra la tabla oficial (CAV-11), todo en esta única pasada.
     h_programada = _a_time(tareo.hora_entrada)
 
+    # El feriado se resuelve según el scope del trabajador (CAV-13): un feriado
+    # regional/de empresa solo aplica a su sede/empresa; el nacional a todos.
+    trabajador = tareo.trabajador
+    feriado = obtener_feriado(tareo.fecha, sede=trabajador.sede, empresa=trabajador.empresa)
+
     contexto = ContextoMarcacion(
         fecha=tareo.fecha,
         estado_jornada=tareo.estado,
@@ -180,8 +197,10 @@ def recalcular_asistencia_diaria(tareo: TareoDiario):
         hora_salida_programada=_a_time(tareo.hora_salida),
         hora_entrada_real=tareo.hora_entrada_real,
         hora_salida_real=tareo.hora_salida_real,
-        minutos_tolerancia=obtener_minutos_tolerancia(tareo.trabajador.sede, tareo.estado),
-        es_feriado=es_feriado(tareo.fecha),
+        minutos_tolerancia=obtener_minutos_tolerancia(trabajador.sede, tareo.estado),
+        es_feriado=feriado is not None,
+        nombre_feriado=feriado.nombre if feriado else None,
+        ambito_feriado=feriado.get_ambito_display() if feriado else None,
         tiene_marcas=True,
     )
     evaluacion = evaluar_marcacion(contexto)
@@ -196,7 +215,9 @@ def recalcular_asistencia_diaria(tareo: TareoDiario):
     horas_objetivo = 0.0
 
     try:
-        if tareo.estado == 'J' and tareo.jornada_horas:
+        # 'H' (campo, 12 h) se guarda como jornada por horas sin entrada/salida,
+        # igual que 'J': el objetivo de pago sale de jornada_horas, no del rango.
+        if tareo.estado in ('J', 'H') and tareo.jornada_horas:
             horas_objetivo = float(tareo.jornada_horas)
         elif h_programada and tareo.hora_salida:
             h_salida_prog = tareo.hora_salida
@@ -210,7 +231,7 @@ def recalcular_asistencia_diaria(tareo: TareoDiario):
                 dt_s = datetime.combine(date.today(), h_salida_prog)
                 horas_objetivo = max(0, ((dt_s - dt_e).total_seconds() / 3600) - 1)
     except Exception as e:
-         print(f"⚠️ Error calculando objetivo: {e}")
+         print(f"[WARN] Error calculando objetivo: {e}")
 
     # Sumar Extras
     solicitud = SolicitudHorasExtra.objects.filter(
