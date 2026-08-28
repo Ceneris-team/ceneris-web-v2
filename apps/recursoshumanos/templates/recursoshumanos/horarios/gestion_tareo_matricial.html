@@ -244,6 +244,48 @@
     .tareo-cell.selected { background-color: #dbeafe !important; outline: 2px solid #3b82f6; outline-offset: -2px; }
     .changed { background-color: #fef08a !important; font-weight: bold; color: #854d0e; }
 
+    /* Celdas que acaba de escribir la importación de Excel. El verde se apaga
+       al cambiar de mes, al guardar cambios manuales o desde "ocultar". */
+    .tareo-cell.importada {
+        background-color: #dcfce7; color: #166534; font-weight: 700;
+        box-shadow: inset 0 0 0 1px #86efac;
+    }
+
+    .btn-import { background-color: #0f766e; color: #ffffff; }
+    .btn-import:hover { background-color: #115e59; transform: translateY(-1px); }
+
+    .import-modal-body { text-align: left; }
+    .import-modal-body p { color: #475569; font-size: 0.88rem; line-height: 1.55; margin: 0 0 14px; }
+    .import-modal-body ul { color: #64748b; font-size: 0.82rem; line-height: 1.6; padding-left: 18px; margin: 0 0 16px; }
+    .file-input {
+        width: 100%; padding: 10px; border: 1px dashed #cbd5e1; border-radius: 8px;
+        background: #f8fafc; font-size: 0.85rem; color: #334155;
+    }
+
+    /* Avance de la subida y el análisis del Excel */
+    .import-progreso { margin-top: 14px; }
+    .import-progreso-linea {
+        height: 8px; border-radius: 999px; background: #e2e8f0;
+        overflow: hidden; margin-bottom: 8px;
+    }
+    .import-progreso-relleno {
+        height: 100%; width: 0%; border-radius: 999px;
+        background: #0f766e; transition: width 0.2s ease;
+    }
+    /* Al terminar la subida ya no hay nada que medir: el servidor está leyendo
+       el archivo. La franja en movimiento lo dice sin fingir un porcentaje. */
+    .import-progreso-relleno.analizando {
+        width: 100% !important;
+        background: repeating-linear-gradient(
+            45deg, #0f766e, #0f766e 10px, #14b8a6 10px, #14b8a6 20px);
+        background-size: 28px 28px;
+        animation: importAvance 0.9s linear infinite;
+    }
+    @keyframes importAvance { from { background-position: 0 0; } to { background-position: 28px 0; } }
+
+    .import-progreso-texto { font-size: 0.82rem; color: #475569; }
+    .import-progreso-texto strong { color: #0f766e; }
+
     /* Modales y Menu contextual ocultos */
     #context-menu { position: absolute; background: white; border: 1px solid #e2e8f0; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); padding: 5px 0; z-index: 2000; display: none; border-radius: 8px; overflow: hidden; }
     #context-menu ul { list-style: none; margin: 0; padding: 0; }
@@ -263,7 +305,15 @@
             <h1>Planificación Matricial: {{ mes_nombre }}</h1>
         </div>
         
-                <div class="header-actions"></div>
+                <div class="header-actions">
+            <button type="button" id="abrirImportBtn" class="btn-action btn-import"
+                    aria-label="Importar tareo desde Excel" title="Importar tareo desde Excel">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+                </svg>
+                Importar Excel
+            </button>
+        </div>
     </div>
 
     <div class="filter-card">
@@ -282,6 +332,17 @@
             <div class="form-group">
                 <label for="mes">Mes y Año</label>
                 <input type="month" id="mes" name="mes" value="{{ mes_seleccionado }}" class="filter-input">
+            </div>
+
+            <div class="form-group">
+                <label for="diaFiltro">Día (opcional)</label>
+                <select id="diaFiltro" class="filter-input"
+                        title="Muestra solo los trabajadores con algún estado en ese día. Sirve para verificar quién quedó capturado en una fecha puntual.">
+                    <option value="">-- Todos --</option>
+                    {% for dia_info in dias_del_mes_info %}
+                        <option value="{{ dia_info.numero }}">{{ dia_info.numero }} · {{ dia_info.nombre }}</option>
+                    {% endfor %}
+                </select>
             </div>
 
             <div class="form-group">
@@ -333,7 +394,7 @@
                     <th class="codigo-col sticky-col">DNI</th>
                     <th class="trabajador-col sticky-col">Nombres y Apellidos</th>
                     {% for dia_info in dias_del_mes_info %}
-                        <th class="dia-col">
+                        <th class="dia-col" data-dia="{{ dia_info.numero }}">
                             {{ dia_info.nombre }}<br><span style="font-size: 1.1em; color: #0f172a;">{{ dia_info.numero }}</span>
                         </th>
                     {% endfor %}
@@ -348,14 +409,17 @@
                         {% with dia=dia_info.numero dia_str=dia_info.numero|stringformat:"s" %}
                         {% with horario_trabajador=tareo_del_mes|get_item:trabajador.dni %}
                         {% with horario_dia=horario_trabajador|get_item:dia_str %}
-                        <td class="tareo-cell" data-dni="{{ trabajador.dni }}" data-dia="{{ dia }}">
+                        {% with dias_importados=celdas_importadas|get_item:trabajador.dni %}
+                        <td class="tareo-cell{% if dias_importados and dia_str in dias_importados %} importada{% endif %}"
+                            data-dni="{{ trabajador.dni }}" data-dia="{{ dia }}"
+                            {% if dias_importados and dia_str in dias_importados %}title="Cargado desde el Excel importado"{% endif %}>
                             {% if horario_dia.estado == 'J' and horario_dia.jornada_horas %}
                                 J ({{ horario_dia.jornada_horas }}h)
                             {% else %}
                                 {{ horario_dia.estado|default:"" }}
                             {% endif %}
                         </td>
-                        {% endwith %}{% endwith %}{% endwith %}
+                        {% endwith %}{% endwith %}{% endwith %}{% endwith %}
                     {% endfor %}
                 </tr>
                 {% endfor %}
@@ -404,6 +468,55 @@
         </ul>
     </div>
 
+    <div id="importModal" class="modal">
+        <div class="modal-content" style="max-width: 520px;">
+            <span class="close-button">&times;</span>
+            <h3 style="margin-top:0; color:#1e293b;">Importar tareo desde Excel</h3>
+            <form method="post" action="{% url 'recursoshumanos:importar_tareo' %}"
+                  enctype="multipart/form-data" class="import-modal-body">
+                {% csrf_token %}
+                <input type="hidden" name="q" value="{{ busqueda|default:'' }}">
+                <input type="hidden" name="proyecto" value="{{ proyecto_seleccionado_id|default:'' }}">
+                <input type="hidden" name="subproyecto" value="{{ subproyecto_seleccionado_id|default:'' }}">
+                <input type="hidden" name="area" value="{{ area_seleccionada_id|default:'' }}">
+
+                <p>
+                    Sube el Excel de planificación del proyecto (formato
+                    <em>TAREO PROY - MONITOREO</em>). Se leerán solo las semanas que caen
+                    en el mes elegido.
+                </p>
+                <ul>
+                    <li>Del archivo se toman la fecha, la persona, si trabaja ese día y si es campo (C) o gabinete (O).</li>
+                    <li>No trae horas ni DNI: los horarios los pone el sistema según el estado.</li>
+                    <li>Verás una previsualización antes de guardar nada.</li>
+                </ul>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="mes_import">Mes a importar</label>
+                    <input type="month" id="mes_import" name="mes" value="{{ mes_seleccionado }}"
+                           class="filter-input" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="archivo_import">Archivo .xlsx</label>
+                    <input type="file" id="archivo_import" name="archivo" accept=".xlsx"
+                           class="file-input" required>
+                </div>
+
+                <button type="submit" id="btnAnalizar" class="btn-action btn-import"
+                        style="width: 100%; justify-content: center;">
+                    Analizar archivo
+                </button>
+
+                <div class="import-progreso" id="importProgreso" hidden>
+                    <div class="import-progreso-linea">
+                        <div class="import-progreso-relleno" id="importProgresoRelleno"></div>
+                    </div>
+                    <div class="import-progreso-texto" id="importProgresoTexto"></div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="horarioModal" class="modal">
         <div class="modal-content">
             <span class="close-button">&times;</span>
@@ -446,10 +559,37 @@ document.addEventListener('DOMContentLoaded', function() {
     const proyectoInput = document.getElementById('proyecto');
     const subproyectoInput = document.getElementById('subproyecto');
     const areaInput = document.getElementById('area');
-    
+    const diaFiltroInput = document.getElementById('diaFiltro');
+
     function aplicarFiltros() {
         filterForm.querySelector('input[name="page"]')?.remove();
         filterForm.submit();
+    }
+
+    // Filtro por día: es solo visual, no toca la BD ni recarga la página. Oculta
+    // los trabajadores cuya celda del día elegido esté vacía para verificar
+    // rápido quién quedó capturado en una fecha concreta.
+    function aplicarFiltroDia() {
+        const dia = diaFiltroInput ? diaFiltroInput.value : '';
+
+        // Ocultar/mostrar columnas: solo se ve el día elegido (más DNI y Nombre).
+        document.querySelectorAll('#tablaMatricial th.dia-col, #tablaMatricial td.tareo-cell')
+            .forEach(function (celda) {
+                const suyo = celda.dataset.dia;
+                celda.style.display = (!dia || suyo === dia) ? '' : 'none';
+            });
+
+        // Ocultar filas cuya celda de ese día esté vacía.
+        const filas = document.querySelectorAll('#tablaMatricial tbody tr');
+        filas.forEach(function (fila) {
+            if (!dia) {
+                fila.style.display = '';
+                return;
+            }
+            const celda = fila.querySelector('.tareo-cell[data-dia="' + dia + '"]');
+            const tieneEstado = celda && celda.textContent.trim() !== '';
+            fila.style.display = tieneEstado ? '' : 'none';
+        });
     }
 
     let searchDebounce;
@@ -487,12 +627,106 @@ document.addEventListener('DOMContentLoaded', function() {
         if (select) select.addEventListener('change', aplicarFiltros);
     });
 
+    if (diaFiltroInput) {
+        diaFiltroInput.addEventListener('change', aplicarFiltroDia);
+    }
+    aplicarFiltroDia();
+
     limpiarFiltrosBtn.addEventListener('click', function() {
         buscadorInput.value = '';
         if (proyectoInput) proyectoInput.value = '';
         if (subproyectoInput) subproyectoInput.value = '';
         if (areaInput) areaInput.value = '';
+        if (diaFiltroInput) diaFiltroInput.value = '';
         aplicarFiltros();
+    });
+
+    // ==========================================
+    // IMPORTACIÓN DE EXCEL
+    // ==========================================
+    const importModal = document.getElementById('importModal');
+    const abrirImportBtn = document.getElementById('abrirImportBtn');
+    const mesImportInput = document.getElementById('mes_import');
+    const mesFiltroInput = document.getElementById('mes');
+
+    const importForm = importModal.querySelector('form');
+    const btnAnalizar = document.getElementById('btnAnalizar');
+    const importProgreso = document.getElementById('importProgreso');
+    const importRelleno = document.getElementById('importProgresoRelleno');
+    const importTexto = document.getElementById('importProgresoTexto');
+
+    function reiniciarProgresoImport() {
+        importProgreso.hidden = true;
+        importRelleno.classList.remove('analizando');
+        importRelleno.style.width = '0%';
+        importTexto.innerHTML = '';
+        btnAnalizar.disabled = false;
+    }
+
+    abrirImportBtn.addEventListener('click', function() {
+        // El mes del modal sigue al del filtro: se importa lo que se está viendo.
+        if (mesImportInput && mesFiltroInput) mesImportInput.value = mesFiltroInput.value;
+        reiniciarProgresoImport();
+        importModal.style.display = 'block';
+    });
+
+    // Se envía por XHR solo para poder mostrar el avance real de la subida.
+    // Si algo falla se deja que el navegador haga el envío normal.
+    importForm.addEventListener('submit', function(e) {
+        if (!window.FormData || !window.XMLHttpRequest) return;
+        e.preventDefault();
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', importForm.action, true);
+
+        importProgreso.hidden = false;
+        btnAnalizar.disabled = true;
+        importRelleno.classList.remove('analizando');
+        importRelleno.style.width = '0%';
+        importTexto.innerHTML = 'Subiendo el archivo… <strong>0%</strong>';
+
+        xhr.upload.addEventListener('progress', function(ev) {
+            if (!ev.lengthComputable) return;
+            const pct = Math.round((ev.loaded / ev.total) * 100);
+            importRelleno.style.width = pct + '%';
+            importTexto.innerHTML = 'Subiendo el archivo… <strong>' + pct + '%</strong>';
+        });
+
+        // Terminada la subida ya no hay nada medible: el servidor está leyendo
+        // el Excel. Se nombra la etapa en vez de inventar un porcentaje.
+        xhr.upload.addEventListener('load', function() {
+            importRelleno.classList.add('analizando');
+            importTexto.innerHTML = '<strong>Archivo recibido.</strong> '
+                + 'Leyendo las semanas del mes y emparejando trabajadores…';
+        });
+
+        function enviarSinXhr() {
+            importTexto.textContent = 'Enviando de forma tradicional…';
+            importForm.submit();   // no vuelve a disparar este listener
+        }
+
+        xhr.addEventListener('load', function() {
+            if (xhr.status !== 200 || !xhr.responseText) { enviarSinXhr(); return; }
+            importTexto.innerHTML = '<strong>Listo.</strong> Abriendo la previsualización…';
+            // Se arrastran los filtros en la URL: si el usuario recarga, ese GET
+            // no puede rehacer la previsualización (el Excel no se guarda) y la
+            // vista lo devuelve al tareo del mes y los filtros correctos.
+            const base = xhr.responseURL || importForm.action;
+            const params = new URLSearchParams();
+            ['mes', 'q', 'proyecto', 'subproyecto', 'area'].forEach(function (nombre) {
+                const campo = importForm.querySelector('[name="' + nombre + '"]');
+                if (campo && campo.value) params.set(nombre, campo.value);
+            });
+            const destino = base.split('?')[0] + (params.toString() ? '?' + params : '');
+            try { history.replaceState(null, '', destino); } catch (err) { /* sin soporte */ }
+            document.open();
+            document.write(xhr.responseText);
+            document.close();
+        });
+        xhr.addEventListener('error', enviarSinXhr);
+        xhr.addEventListener('abort', enviarSinXhr);
+
+        xhr.send(new FormData(importForm));
     });
 
     // ==========================================
@@ -606,7 +840,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 cell.textContent = data.estado || '';
             }
             cell.classList.add('changed');
-            
+            // Editar a mano una celda importada deja de ser "lo que trajo el Excel".
+            cell.classList.remove('importada');
+
             if (!cambios[dni]) cambios[dni] = {};
             cambios[dni][dia] = {
                 estado: data.estado,

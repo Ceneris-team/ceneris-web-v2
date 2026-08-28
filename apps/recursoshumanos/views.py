@@ -28,6 +28,7 @@ from .motor_reglas import EstadoMarca
 from accesos.models import MENSAJE_SESION_DUPLICADA, SesionCerradaRemotamente
 from .services import listar_tolerancias, crear_o_actualizar_tolerancia, actualizar_tolerancia
 from . import servicios_horas
+from . import servicios_importacion_tareo
 from firebase_admin import firestore
 from google.cloud import firestore
 from google.cloud.firestore_v1.field_path import FieldPath
@@ -49,6 +50,7 @@ from django.contrib.auth.views import LoginView
 from django.urls import reverse_lazy, reverse
 from django.views.decorators.http import require_POST
 import json
+import re
 from django.db.models import Q, Prefetch, Count
 import os
 import mimetypes
@@ -1784,6 +1786,46 @@ def gestion_solicitudes(request):
     return render(request, 'recursoshumanos/gestion_solicitudes.html', context)
 
 
+# Clave de sesión donde queda anotado qué celdas acaba de escribir una
+# importación de Excel, para pintarlas en verde al volver a la matriz.
+SESION_TAREO_IMPORTADO = 'tareo_importado'
+
+
+def horario_programado_tareo(estado, fecha, datos=None):
+    """Horario que le corresponde a una celda del tareo según su estado.
+
+    Es la misma regla para el pintado manual y para la importación de Excel:
+    C = 09:00-17:00; O = 08:30-18:00 de lunes a viernes y 09:00-13:00 los
+    sábados; P toma las horas del modal; J guarda las horas de jornada.
+    Devuelve (hora_entrada, hora_salida, jornada_horas).
+    """
+    datos = datos or {}
+    entrada, salida, jornada = None, None, None
+
+    if estado == 'C':
+        entrada, salida = time(9, 0), time(17, 0)
+    elif estado == 'O':
+        # weekday() devuelve 5 para el Sábado
+        if fecha.weekday() == 5:
+            entrada, salida = time(9, 0), time(13, 0)
+        else:
+            entrada, salida = time(8, 30), time(18, 0)
+    elif estado == 'P':
+        horario_dict = datos.get('horario') or {}
+        str_ent = horario_dict.get('entrada')
+        str_sal = horario_dict.get('salida')
+        if str_ent:
+            entrada = datetime.strptime(str_ent, '%H:%M').time()
+        if str_sal:
+            salida = datetime.strptime(str_sal, '%H:%M').time()
+    elif estado == 'J':
+        jornada_str = datos.get('jornada_horas')
+        if jornada_str:
+            jornada = float(jornada_str)
+
+    return entrada, salida, jornada
+
+
 @login_required
 def gestion_tareo(request):
     """
@@ -1869,27 +1911,9 @@ def gestion_tareo(request):
                             TareoDiario.objects.filter(trabajador=trabajador, fecha=fecha_actual).delete()
                             continue
 
-                        entrada_prog, salida_prog, jornada_prog = None, None, None
-
-                        if nuevo_estado == 'C':
-                            entrada_prog, salida_prog = time(9, 0), time(17, 0)
-                        elif nuevo_estado == 'O':
-                            # weekday() devuelve 5 para el Sábado
-                            if fecha_actual.weekday() == 5: 
-                                entrada_prog = time(9, 0)
-                                salida_prog = time(13, 0) # Asumo que salen a la 1pm, cámbialo si es otra hora
-                            else:
-                                entrada_prog = time(8, 30)
-                                salida_prog = time(18, 0)
-                        elif nuevo_estado == 'P':
-                            horario_dict = data.get('horario') or {}
-                            str_ent = horario_dict.get('entrada')
-                            str_sal = horario_dict.get('salida')
-                            if str_ent: entrada_prog = datetime.strptime(str_ent, '%H:%M').time()
-                            if str_sal: salida_prog = datetime.strptime(str_sal, '%H:%M').time()
-                        elif nuevo_estado == 'J':
-                            jornada_str = data.get('jornada_horas')
-                            if jornada_str: jornada_prog = float(jornada_str)
+                        entrada_prog, salida_prog, jornada_prog = horario_programado_tareo(
+                            nuevo_estado, fecha_actual, data
+                        )
 
                         TareoDiario.objects.update_or_create(
                             trabajador=trabajador,
@@ -1902,9 +1926,12 @@ def gestion_tareo(request):
                             }
                         )
             messages.success(request, f"Tareo de {mes_nombre} actualizado correctamente.")
+            # El resaltado verde describe lo que dejó la importación; una vez
+            # que RRHH edita y guarda a mano deja de ser cierto.
+            request.session.pop(SESION_TAREO_IMPORTADO, None)
         except Exception as e:
             messages.error(request, f"Error al guardar: {str(e)}")
-        
+
         query_params = f"?mes={mes_seleccionado_str}"
         if busqueda: query_params += f"&q={busqueda}"
         if proyecto_seleccionado_id: query_params += f"&proyecto={proyecto_seleccionado_id}"
@@ -1944,11 +1971,27 @@ def gestion_tareo(request):
             }
         }
 
+    # Celdas escritas por la última importación de Excel: se pintan en verde
+    # para que se vea de un vistazo qué llegó del archivo y qué no. Sobrevive a
+    # la paginación y se apaga sola al cambiar de mes, al guardar a mano o con
+    # el enlace "ocultar resaltado".
+    if request.GET.get('limpiar_resaltado'):
+        request.session.pop(SESION_TAREO_IMPORTADO, None)
+
+    resaltado = request.session.get(SESION_TAREO_IMPORTADO) or {}
+    celdas_importadas = {}
+    if resaltado.get('mes') == mes_seleccionado_str:
+        celdas_importadas = resaltado.get('celdas') or {}
+    elif resaltado:
+        request.session.pop(SESION_TAREO_IMPORTADO, None)
+
     context = {
         'trabajadores': trabajadores_pagina,
         'page_obj': page_obj,
         'mes_seleccionado': mes_seleccionado_str,
         'mes_nombre': mes_nombre,
+        'celdas_importadas': celdas_importadas,
+        'total_importadas': resaltado.get('total', 0) if celdas_importadas else 0,
         'dias_del_mes_info': dias_del_mes_info,
         'tareo_del_mes': tareo_del_mes,
         'proyectos': proyectos,
@@ -1962,6 +2005,514 @@ def gestion_tareo(request):
     }
     
     return render(request, 'recursoshumanos/horarios/gestion_tareo_matricial.html', context)
+
+
+# =============================================================================
+# IMPORTACIÓN DEL TAREO DESDE EL EXCEL DE PLANIFICACIÓN DEL PROYECTO
+# =============================================================================
+# El Excel del proyecto solo sabe dos cosas por celda: si la persona trabaja
+# ese día y en qué posición. De ahí salen estados C (campo) y O (gabinete), y
+# nada más: no hay horas, ni DNI, ni forma de distinguir un descanso de una
+# falta. Por eso la importación pasa siempre por una pantalla de confirmación
+# y nunca inventa faltas.
+
+MESES_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio',
+            'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+
+MAX_BYTES_EXCEL_TAREO = 15 * 1024 * 1024
+
+
+def _parametros_filtro_tareo(datos):
+    """Filtros de la matriz que hay que arrastrar por toda la importación."""
+    return {
+        'q': (datos.get('q') or '').strip(),
+        'proyecto': datos.get('proyecto') or '',
+        'subproyecto': datos.get('subproyecto') or '',
+        'area': datos.get('area') or '',
+    }
+
+
+def _url_tareo(filtros, mes_str):
+    """Vuelve a la matriz conservando el mes y los filtros de origen."""
+    query = f"?mes={mes_str}"
+    for clave in ('q', 'proyecto', 'subproyecto', 'area'):
+        if filtros.get(clave):
+            query += f"&{clave}={filtros[clave]}"
+    return f"{reverse('recursoshumanos:gestion_tareo')}{query}"
+
+
+def _mes_pedido(datos):
+    """Lee 'YYYY-MM' del formulario. Devuelve (str, anio, mes) o (str, None, None)."""
+    mes_str = (datos.get('mes') or '').strip()
+    try:
+        anio, mes = map(int, mes_str.split('-'))
+        date(anio, mes, 1)
+    except (ValueError, AttributeError):
+        return mes_str, None, None
+    return mes_str, anio, mes
+
+
+def _volver_al_tareo_por_get(request, mensaje):
+    """La previsualización se arma con el archivo subido, que no se guarda en
+    ninguna parte. Al recargar (F5) o volver atrás el navegador pide la URL por
+    GET y no hay nada que rehacer: se devuelve a la matriz con los filtros que
+    venían en la dirección, en vez de dejar un 405 en blanco."""
+    filtros = _parametros_filtro_tareo(request.GET)
+    mes_str, anio, _ = _mes_pedido(request.GET)
+    if anio is None:
+        mes_str = datetime.now().strftime('%Y-%m')
+    messages.info(request, mensaje)
+    return redirect(_url_tareo(filtros, mes_str))
+
+
+def _meta_trabajadores(trabajadores):
+    """Area y proyectos de cada trabajador, para filtrar la previsualizacion.
+
+    La previsualizacion repite la cabecera de filtros de la matriz, pero no
+    puede volver a consultar la base de datos: el Excel se leyo una sola vez y
+    no se guarda en ninguna parte. Asi que los filtros trabajan en el navegador
+    sobre las filas ya cargadas y necesitan, por DNI, lo mismo que filtra la
+    matriz: el area y los proyectos activos.
+
+    Los proyectos incluyen al padre de cada subproyecto, porque en la matriz
+    quien esta asignado solo a un subproyecto tambien sale al filtrar por el
+    proyecto padre.
+    """
+    meta = {}
+    for trabajador in trabajadores:
+        proyectos = set()
+        for asignacion in trabajador.asignaciones.all():
+            if not asignacion.activo:
+                continue
+            proyectos.add(str(asignacion.proyecto_id))
+            if asignacion.proyecto.parent_id:
+                proyectos.add(str(asignacion.proyecto.parent_id))
+        meta[trabajador.dni] = {
+            'n': f"{trabajador.apellido_paterno} {trabajador.apellido_materno}, {trabajador.nombres}",
+            'a': str(trabajador.area_id) if trabajador.area_id else '',
+            'p': sorted(proyectos),
+        }
+    return meta
+
+
+# Tipos de jornada que se pueden elegir en la previsualización de la
+# importación. Son los mismos de la leyenda de la Planificación Matricial menos
+# los que no tiene sentido programar desde un Excel de planificación (F y Z).
+ESTADOS_TAREO_IMPORTABLES = {'C', 'O', 'P', 'J', 'D'}
+
+TIPOS_TAREO_IMPORTACION = [
+    {'valor': 'C', 'etiqueta': 'C', 'nombre': 'Trabajo en Campo'},
+    {'valor': 'O', 'etiqueta': 'O', 'nombre': 'Oficina'},
+    {'valor': 'P', 'etiqueta': 'P', 'nombre': 'Horario Personalizado'},
+    {'valor': 'J', 'etiqueta': 'J', 'nombre': 'Jornada por Horas'},
+    {'valor': 'D', 'etiqueta': '.', 'nombre': 'Día Libre'},
+]
+
+
+def _lista_dias_es(numeros):
+    """[1, 2, 5] -> "1, 2 y 5"."""
+    textos = [str(n) for n in numeros]
+    if len(textos) == 1:
+        return textos[0]
+    return ', '.join(textos[:-1]) + ' y ' + textos[-1]
+
+
+def _alerta_fila_tareo(persona, mes_nombre):
+    """Mensaje para RRHH cuando una fila del Excel no se puede resolver sola.
+
+    Devuelve None si la fila no necesita intervención. El texto explica qué dice
+    literalmente el Excel y qué decisión toca tomar: el sistema nunca inventa el
+    emparejamiento, solo expone lo que encontró.
+    """
+    nota = ''
+    encontrado = re.search(r'\(([^)]*)\)', persona.nombre_excel)
+    if encontrado:
+        nota = encontrado.group(1).strip()
+
+    # Manda la sección: si el Excel puso a esta persona en un turno que no es
+    # campo, eso es lo primero que RRHH tiene que decidir.
+    dias_ajenos = persona.dias_otra_seccion
+    if dias_ajenos:
+        seccion = ' / '.join(persona.secciones_ajenas)
+        listado = _lista_dias_es([d.dia for d in dias_ajenos])
+        quien = persona.nombre_excel
+        if persona.trabajador is not None:
+            t = persona.trabajador
+            quien += f" (coincide con {t.apellido_paterno} {t.apellido_materno}, {t.nombres})"
+        detalle = (
+            f"El Excel pone a {quien} bajo la sección «{seccion}», no bajo "
+            f"PERSONAL EN CAMPO. Días afectados: {listado} de {mes_nombre} "
+            f"({len(dias_ajenos)} día{'s' if len(dias_ajenos) != 1 else ''}). "
+        )
+        detalle += (
+            "El archivo no dice qué turno es, así que esos días entran como "
+            "«.» (Día Libre), no como trabajo de campo. Cámbialo en la columna "
+            "Tipo si corresponde otra cosa: C (campo), O (oficina), P (horario "
+            "personalizado) o J (jornada por horas). "
+        )
+        if persona.solo_otra_seccion:
+            detalle += (
+                "Todos los días de esta persona vienen de esa sección. Si no "
+                "debe importarse, quita el trabajador de la lista y la fila "
+                "entera queda fuera."
+            )
+        else:
+            detalle += (
+                "Ojo: el resto de sus días sí vienen de PERSONAL EN CAMPO y "
+                "entran como C. Si cambias el tipo, se aplica a TODOS los días "
+                "de la fila, también a esos."
+            )
+        return {'tipo': 'otra_seccion',
+                'titulo': f'Personal de otra sección: {seccion}',
+                'detalle': detalle}
+
+    if persona.confianza == 'ambigua':
+        nombres = ', '.join(
+            f"{t.apellido_paterno} {t.apellido_materno}, {t.nombres}"
+            for t in persona.candidatos
+        )
+        return {
+            'tipo': 'ambigua',
+            'titulo': 'Varios trabajadores posibles',
+            'detalle': (
+                f"El Excel escribe «{persona.nombre_excel}» y ese nombre encaja con "
+                f"{len(persona.candidatos)} trabajadores registrados: {nombres}. "
+                "El sistema no elige por su cuenta: selecciona el correcto en la lista "
+                "de la izquierda, o desmarca la fila si no corresponde importarla."
+            ),
+        }
+
+    if persona.confianza == 'sin_match':
+        porcentaje = int(round(persona.similitud * 100))
+        detalle = (
+            f"El Excel escribe «{persona.nombre_excel}» y no hay ningún trabajador "
+            f"registrado con ese nombre (el parecido más alto fue {porcentaje}%). "
+        )
+        if nota:
+            detalle += (
+                f"Ojo: el Excel añade la nota «{nota}» junto al nombre. Si esa nota "
+                "indica que la persona no estuvo en campo (vacaciones, descanso, otra "
+                "sede), lo correcto es desmarcar la fila y no importarla. "
+            )
+        detalle += (
+            "Si sí debe importarse, elige al trabajador en la lista de la izquierda; "
+            "si no está dado de alta, créalo primero en el maestro de personal."
+        )
+        return {'tipo': 'sin_match',
+                'titulo': 'Sin coincidencia en el maestro',
+                'detalle': detalle}
+
+    if nota and persona.trabajador is not None:
+        return {
+            'tipo': 'nota',
+            'titulo': 'El Excel trae una nota',
+            'detalle': (
+                f"El Excel escribe «{persona.nombre_excel}»: el nombre se emparejó, pero "
+                f"trae la nota «{nota}». El archivo no distingue el motivo, así que estos "
+                "días se importan como trabajo de campo. Revisa si esa nota cambia el "
+                "estado y desmarca la fila si no corresponde."
+            ),
+        }
+
+    return None
+
+
+@login_required
+def importar_tareo(request):
+    """Paso 1: lee el Excel y muestra la previsualización. No escribe nada."""
+    if request.method != 'POST':
+        return _volver_al_tareo_por_get(
+            request,
+            "Para ver la previsualización hay que volver a elegir el archivo: "
+            "el Excel no se guarda en el servidor."
+        )
+
+    filtros = _parametros_filtro_tareo(request.POST)
+    mes_str, anio, mes = _mes_pedido(request.POST)
+
+    if anio is None:
+        messages.error(request, "Selecciona un mes válido antes de importar.")
+        return redirect(_url_tareo(filtros, mes_str or datetime.now().strftime('%Y-%m')))
+
+    archivo = request.FILES.get('archivo')
+    if archivo is None:
+        messages.error(request, "No se recibió ningún archivo.")
+        return redirect(_url_tareo(filtros, mes_str))
+    if not archivo.name.lower().endswith('.xlsx'):
+        messages.error(request, "El archivo debe ser un Excel .xlsx (no .xls ni .csv).")
+        return redirect(_url_tareo(filtros, mes_str))
+    if archivo.size > MAX_BYTES_EXCEL_TAREO:
+        messages.error(request, "El archivo supera los 15 MB permitidos.")
+        return redirect(_url_tareo(filtros, mes_str))
+
+    trabajadores_activos = list(
+        Trabajador.objects.filter(activo=True)
+        .select_related('area')
+        .prefetch_related('asignaciones__proyecto')
+        .order_by('apellido_paterno', 'nombres')
+    )
+    try:
+        resultado = servicios_importacion_tareo.analizar(
+            archivo, anio, mes, trabajadores_activos, Ubicacion.objects.all()
+        )
+    except servicios_importacion_tareo.ErrorImportacion as exc:
+        messages.error(request, str(exc))
+        return redirect(_url_tareo(filtros, mes_str))
+    except Exception as exc:
+        messages.error(request, f"No se pudo leer el archivo: {exc}")
+        return redirect(_url_tareo(filtros, mes_str))
+
+    if not resultado.personas:
+        messages.warning(
+            request,
+            f"El archivo no trae ningún día asignado en {MESES_ES[mes-1]} de {anio}."
+        )
+        return redirect(_url_tareo(filtros, mes_str))
+
+    _, num_dias = calendar.monthrange(anio, mes)
+    nombres_dias = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
+    dias_del_mes_info = [
+        {'numero': dia, 'nombre': nombres_dias[date(anio, mes, dia).weekday()]}
+        for dia in range(1, num_dias + 1)
+    ]
+
+    # Se muestran TODAS las filas del Excel, también las que no emparejaron con
+    # ningún trabajador: son justamente las que RRHH tiene que resolver a mano
+    # en el desplegable. Filtrarlas aquí las hacía desaparecer sin aviso y daba
+    # la impresión de que la importación no capturaba a esas personas.
+    nombre_del_mes = f"{MESES_ES[mes-1]} de {anio}"
+
+    filas = []
+    for indice, persona in enumerate(resultado.personas):
+        dias_render, dias_payload = {}, {}
+        ubicaciones_vistas = []
+        for dia in persona.dias_ordenados:
+            dias_render[str(dia.dia)] = {
+                'estado': dia.estado,
+                'posicion': dia.posicion,
+                'anotacion': dia.anotacion,
+                'ubicacion': dia.ubicacion_nombre,
+                'texto': dia.texto_celda,
+                'seccion': dia.seccion,
+            }
+            dias_payload[str(dia.dia)] = {'e': dia.estado, 'u': dia.ubicacion_id}
+            if dia.ubicacion_nombre:
+                ubicaciones_vistas.append(dia.ubicacion_nombre)
+
+        estados_fila = {d.estado for d in persona.dias.values()}
+        tipo_inicial = estados_fila.pop() if len(estados_fila) == 1 else ''
+
+        filas.append({
+            'indice': indice,
+            'nombre_excel': persona.nombre_excel,
+            'posicion': persona.posicion_resumen,
+            'confianza': persona.confianza,
+            'similitud': persona.similitud,
+            'trabajador': persona.trabajador,
+            'candidatos': persona.candidatos,
+            'total_dias': persona.total_dias,
+            'dias': dias_render,
+            'datos_json': json.dumps(dias_payload),
+            'ubicaciones': ', '.join(dict.fromkeys(ubicaciones_vistas)),
+            'alerta': _alerta_fila_tareo(persona, nombre_del_mes),
+            # El Excel la puso en un turno que no es campo: se marca en amarillo
+            # y, si TODOS sus dias vienen de ahi, llega sin trabajador elegido
+            # para que no se importe sola.
+            'otra_seccion': bool(persona.dias_otra_seccion),
+            # Ya no hace falta dejarla sin asignar para que no se cuele como
+            # trabajo de campo: sus dias entran como "." (libre) y RRHH decide
+            # el tipo con el desplegable de la columna Tipo.
+            'asignada': persona.trabajador is not None,
+            'tipo_inicial': tipo_inicial,
+        })
+
+    total_por_revisar = sum(1 for f in filas if f['alerta'])
+    total_otra_seccion = sum(1 for f in filas if f['otra_seccion'])
+
+    contexto = {
+        'filas': filas,
+        'meta_trabajadores': _meta_trabajadores(trabajadores_activos),
+        'resultado': resultado,
+        'avisos': resultado.avisos,
+        'mes_seleccionado': mes_str,
+        'mes_nombre': nombre_del_mes,
+        'dias_del_mes_info': dias_del_mes_info,
+        'trabajadores_opciones': trabajadores_activos,
+        'filtros': filtros,
+        # La previsualización repite la cabecera de filtros de la matriz, así
+        # que necesita los mismos catálogos para poder mostrar los nombres.
+        'proyectos': Proyecto.objects.filter(parent__isnull=True, activo=True).order_by('nombre'),
+        'subproyectos': Proyecto.objects.filter(parent__isnull=False, activo=True).order_by('nombre'),
+        'areas': Area.objects.all().order_by('nombre'),
+        'nombre_archivo': archivo.name,
+        'total_emparejadas': len(resultado.emparejadas),
+        'total_sin_emparejar': len(resultado.sin_emparejar),
+        'total_por_revisar': total_por_revisar,
+        'total_otra_seccion': total_otra_seccion,
+        'tipos_tareo': TIPOS_TAREO_IMPORTACION,
+        'url_volver': _url_tareo(filtros, mes_str),
+        'current_view': 'gestion_tareo',
+    }
+    return render(request, 'recursoshumanos/horarios/importar_tareo_preview.html', contexto)
+
+
+@login_required
+def importar_tareo_confirmar(request):
+    """Paso 2: escribe en TareoDiario lo que RRHH confirmó en la previsualización."""
+    if request.method != 'POST':
+        return _volver_al_tareo_por_get(
+            request, "La importación ya se cerró. Vuelve a subir el archivo si quieres repetirla."
+        )
+
+    filtros = _parametros_filtro_tareo(request.POST)
+    mes_str, anio, mes = _mes_pedido(request.POST)
+
+    if anio is None:
+        messages.error(request, "Mes inválido. Vuelve a intentar la importación.")
+        return redirect(_url_tareo(filtros, mes_str or datetime.now().strftime('%Y-%m')))
+
+    url_destino = _url_tareo(filtros, mes_str)
+
+    sobrescribir = request.POST.get('sobrescribir') == 'on'
+
+    _, num_dias = calendar.monthrange(anio, mes)
+    # El Excel solo distingue campo (C) y el resto de secciones (D). Los demás
+    # tipos los pone RRHH en la previsualización, con el mismo vocabulario que
+    # la Planificación Matricial. Nada fuera de esta lista entra, ni siquiera
+    # manipulando el formulario.
+    estados_validos = ESTADOS_TAREO_IMPORTABLES
+    ubicaciones_validas = set(Ubicacion.objects.values_list('id', flat=True))
+
+    # Varias filas del Excel pueden apuntar al mismo trabajador (el archivo
+    # escribe "HENRRY CERPA" y "HERNRY CERPA"), así que se juntan antes de tocar
+    # la base de datos.
+    por_trabajador = defaultdict(dict)
+
+    for clave in request.POST:
+        if not clave.startswith('dni_'):
+            continue
+        indice = clave[len('dni_'):]
+        if request.POST.get(f'incluir_{indice}') != 'on':
+            continue
+        dni = (request.POST.get(clave) or '').strip()
+        if not dni:
+            continue
+        try:
+            payload = json.loads(request.POST.get(f'datos_{indice}') or '{}')
+        except json.JSONDecodeError:
+            continue
+
+        # Horas que RRHH escribió en la fila. Solo aplican a los tipos que las
+        # necesitan: P toma entrada/salida y J el número de horas. Si las deja
+        # vacías el día entra igual, sin horario, para completarlo en la matriz.
+        horario_fila = {
+            'entrada': (request.POST.get(f'hora_entrada_{indice}') or '').strip(),
+            'salida': (request.POST.get(f'hora_salida_{indice}') or '').strip(),
+        }
+        jornada_fila = (request.POST.get(f'jornada_horas_{indice}') or '').strip()
+
+        for dia_str, valores in payload.items():
+            if not str(dia_str).isdigit():
+                continue
+            dia = int(dia_str)
+            if not 1 <= dia <= num_dias:
+                continue
+            estado = (valores or {}).get('e')
+            if estado not in estados_validos:
+                continue
+            ubicacion_id = (valores or {}).get('u')
+            if ubicacion_id not in ubicaciones_validas:
+                ubicacion_id = None
+            extras = {}
+            if estado == 'P' and (horario_fila['entrada'] or horario_fila['salida']):
+                extras['horario'] = horario_fila
+            elif estado == 'J' and jornada_fila:
+                extras['jornada_horas'] = jornada_fila
+            por_trabajador[dni].setdefault(dia, (estado, ubicacion_id, extras))
+
+    if not por_trabajador:
+        messages.warning(request, "No seleccionaste ninguna fila para importar.")
+        return redirect(url_destino)
+
+    trabajadores = {
+        t.dni: t for t in Trabajador.objects.filter(dni__in=por_trabajador.keys(), activo=True)
+    }
+
+    creados = actualizados = omitidos = 0
+    celdas_pintadas = defaultdict(list)
+
+    try:
+        with transaction.atomic():
+            for dni, dias in por_trabajador.items():
+                trabajador = trabajadores.get(dni)
+                if trabajador is None:
+                    continue
+
+                existentes = {
+                    registro.fecha.day: registro
+                    for registro in TareoDiario.objects.filter(
+                        trabajador=trabajador,
+                        fecha__range=(date(anio, mes, 1), date(anio, mes, num_dias)),
+                    )
+                }
+
+                for dia, (estado, ubicacion_id, extras) in sorted(dias.items()):
+                    fecha = date(anio, mes, dia)
+                    existente = existentes.get(dia)
+                    if existente is not None and not sobrescribir:
+                        omitidos += 1
+                        continue
+
+                    entrada, salida, jornada = horario_programado_tareo(
+                        estado, fecha, extras)
+                    defaults = {
+                        'estado': estado,
+                        'hora_entrada': entrada,
+                        'hora_salida': salida,
+                        'jornada_horas': jornada,
+                    }
+                    # La ubicación solo se escribe cuando el Excel la trae; si no,
+                    # se respeta la que ya tuviera el registro.
+                    if ubicacion_id is not None:
+                        defaults['ubicacion_id'] = ubicacion_id
+
+                    _, fue_creado = TareoDiario.objects.update_or_create(
+                        trabajador=trabajador, fecha=fecha, defaults=defaults
+                    )
+                    if fue_creado:
+                        creados += 1
+                    else:
+                        actualizados += 1
+                    celdas_pintadas[dni].append(str(dia))
+    except Exception as exc:
+        messages.error(request, f"Error al importar: {exc}")
+        return redirect(url_destino)
+
+    total_escritas = creados + actualizados
+    request.session[SESION_TAREO_IMPORTADO] = {
+        'mes': mes_str,
+        'celdas': dict(celdas_pintadas),
+        'total': total_escritas,
+    }
+
+    resumen = (
+        f"Importación aplicada: {total_escritas} celdas "
+        f"({creados} nuevas, {actualizados} actualizadas) en {len(celdas_pintadas)} trabajadores."
+    )
+    if omitidos:
+        resumen += f" {omitidos} celdas se dejaron intactas porque ya tenían datos."
+    messages.success(request, resumen)
+
+    no_escritos = sorted(set(por_trabajador) - set(celdas_pintadas))
+    if no_escritos:
+        messages.warning(
+            request,
+            f"{len(no_escritos)} trabajador(es) no se importaron porque ya no "
+            f"están activos: {', '.join(no_escritos)}."
+        )
+
+    return redirect(url_destino)
+
 
 class CustomLoginView(LoginView):
     template_name = 'login/login.html'
