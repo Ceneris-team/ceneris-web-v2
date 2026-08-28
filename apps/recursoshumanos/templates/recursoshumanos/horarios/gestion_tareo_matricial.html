@@ -561,6 +561,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const subproyectoInput = document.getElementById('subproyecto');
     const areaInput = document.getElementById('area');
     const diaFiltroInput = document.getElementById('diaFiltro');
+    const mesInput = document.getElementById('mes');
+    const mesInicial = mesInput ? mesInput.value : '';
 
     function aplicarFiltros() {
         filterForm.querySelector('input[name="page"]')?.remove();
@@ -628,6 +630,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (select) select.addEventListener('change', aplicarFiltros);
     });
 
+    // El mes recarga solo: al elegir otro mes/año ya no hace falta pulsar
+    // "Consultar filtros". Se ignora el valor vacío (mientras se está editando
+    // el campo) y el mes que ya se está viendo, para no recargar de gratis.
+    if (mesInput) {
+        mesInput.addEventListener('change', function() {
+            if (!mesInput.value || mesInput.value === mesInicial) return;
+            if (diaFiltroInput) diaFiltroInput.value = '';
+            aplicarFiltros();
+        });
+    }
+
     if (diaFiltroInput) {
         diaFiltroInput.addEventListener('change', aplicarFiltroDia);
     }
@@ -648,7 +661,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const importModal = document.getElementById('importModal');
     const abrirImportBtn = document.getElementById('abrirImportBtn');
     const mesImportInput = document.getElementById('mes_import');
-    const mesFiltroInput = document.getElementById('mes');
+    const mesFiltroInput = mesInput;
 
     const importForm = importModal.querySelector('form');
     const btnAnalizar = document.getElementById('btnAnalizar');
