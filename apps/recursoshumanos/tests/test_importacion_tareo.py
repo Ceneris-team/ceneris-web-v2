@@ -92,13 +92,13 @@ class ParseoExcelTests(TestCase):
         self.assertEqual(resultado.semanas_leidas, 5)
 
     def test_todo_lo_marcado_entra_como_campo(self):
-        """Sin rótulo a la izquierda (formato de junio en adelante) todo es C,
-        incluidas las posiciones de gabinete."""
+        """Sin rótulo a la izquierda (formato de junio en adelante) todo es H
+        (campo, 12 h), incluidas las posiciones de gabinete."""
         resultado = srv.leer_excel(self._libro_julio(), 2026, 7)
 
         for persona in resultado.personas:
             for dia in persona.dias.values():
-                self.assertEqual(dia.estado, 'C', persona.nombre_excel)
+                self.assertEqual(dia.estado, 'H', persona.nombre_excel)
 
         jeysson = next(p for p in resultado.personas if p.nombre_excel == 'JEYSSON SOLIS')
         self.assertEqual(jeysson.posicion_resumen, 'GABINETE 1')
@@ -107,12 +107,12 @@ class ParseoExcelTests(TestCase):
         resultado = srv.leer_excel(self._libro_julio(), 2026, 7)
 
         shamir = next(p for p in resultado.personas if p.nombre_excel == 'SHAMIR ACHO')
-        self.assertEqual(shamir.dias[6].estado, 'C')   # "M4"
-        self.assertEqual(shamir.dias[7].estado, 'C')   # "M4 (GAB)"
+        self.assertEqual(shamir.dias[6].estado, 'H')   # "M4"
+        self.assertEqual(shamir.dias[7].estado, 'H')   # "M4 (GAB)"
         self.assertEqual(shamir.dias[7].anotacion, 'GAB')
 
-    def test_marca_las_filas_que_no_son_de_personal_en_campo(self):
-        """Las secciones ajenas se leen, pero quedan señaladas.
+    def test_marca_las_filas_de_una_seccion_desconocida(self):
+        """Una sección que no es ni campo ni Vallecito se lee, pero queda señalada.
 
         Antes se descartaban en silencio. El problema es que las hojas nuevas
         (junio en adelante) ya no traen la columna de rótulo, así que la misma
@@ -124,7 +124,7 @@ class ParseoExcelTests(TestCase):
             [('M1', 'DIEGO HERNANI', {0: ['M1', 'M1', None, None, None, None, None]}),
              ('M2', 'SONNY ALVIRI', {0: ['M2', 'M2', None, None, None, None, None]})],
             rotulos=[(4, 5, 'PERSONAL EN CAMPO'),
-                     (6, 8, 'PERSONAL VALLECITO\nFINALIZACIÓN DE CADENAS DE CUSTODIA')],
+                     (6, 8, 'SOPORTE MONITOREO - OPTALERT')],
         )
         resultado = srv.leer_excel(libro, 2026, 7)
 
@@ -135,13 +135,62 @@ class ParseoExcelTests(TestCase):
         self.assertEqual(diego.dias_otra_seccion, [])
         self.assertFalse(diego.solo_otra_seccion)
 
-        sonny = por_nombre['SONNY ALVIRI']                    # fila 6, Vallecito
+        sonny = por_nombre['SONNY ALVIRI']                    # fila 6, sección ajena
         self.assertTrue(sonny.solo_otra_seccion)
         self.assertEqual([d.dia for d in sonny.dias_otra_seccion], [6, 7])
+        self.assertEqual({d.estado for d in sonny.dias.values()}, {'D'})
         self.assertEqual(len(sonny.secciones_ajenas), 1)
-        self.assertIn('VALLECITO', sonny.secciones_ajenas[0])
+        self.assertIn('OPTALERT', sonny.secciones_ajenas[0])
 
-        self.assertTrue(any('VALLECITO' in a for a in resultado.avisos))
+        self.assertTrue(any('OPTALERT' in a for a in resultado.avisos))
+
+    def test_vallecito_entra_como_personalizado_de_13_a_21(self):
+        """El turno Vallecito se conoce: entra como P 13:00-21:00, ya resuelto.
+
+        No se marca como sección ajena (no necesita revisión) y trae el horario
+        por defecto listo para escribirse.
+        """
+        libro = construir_libro(
+            [('JULIO', [6, 7, 8, 9, 10, 11, 12])],
+            [('M1', 'DIEGO HERNANI', {0: ['M1', 'M1', None, None, None, None, None]}),
+             ('M15', 'SONNY ALVIRI', {0: ['M15', 'M15', None, None, None, None, None]})],
+            rotulos=[(4, 5, 'PERSONAL EN CAMPO'),
+                     (6, 8, 'PERSONAL VALLECITO\nFINALIZACIÓN DE CADENAS DE CUSTODIA')],
+        )
+        resultado = srv.leer_excel(libro, 2026, 7)
+
+        sonny = next(p for p in resultado.personas if p.nombre_excel == 'SONNY ALVIRI')
+        # Vallecito NO es sección ajena: entra limpio, sin marca de revisión.
+        self.assertEqual(sonny.dias_otra_seccion, [])
+        self.assertFalse(sonny.solo_otra_seccion)
+        self.assertEqual({d.estado for d in sonny.dias.values()}, {'P'})
+        for dia in sonny.dias.values():
+            self.assertEqual(dia.hora_entrada, '13:00')
+            self.assertEqual(dia.hora_salida, '21:00')
+
+        self.assertTrue(any('Vallecito' in a for a in resultado.avisos))
+
+    def test_vacaciones_en_el_nombre_entra_como_dia_libre(self):
+        """"WASHINGTON (vacaciones)" es una fila aparte solo con los días libres.
+
+        La nota del nombre manda por encima de la sección: aunque esté bajo
+        PERSONAL EN CAMPO, esos días entran como D (día libre) ya resuelto, sin
+        marca de revisión, y se avisa.
+        """
+        libro = construir_libro(
+            [('JULIO', [6, 7, 8, 9, 10, 11, 12])],
+            [('AS SUP', 'WASHINGTON (vacaciones)',
+              {0: ['X', 'X', 'X', None, None, None, None]})],
+            rotulos=[(4, 6, 'PERSONAL EN CAMPO')],
+        )
+        resultado = srv.leer_excel(libro, 2026, 7)
+
+        washington = next(p for p in resultado.personas
+                          if 'WASHINGTON' in p.nombre_excel.upper())
+        self.assertEqual({d.estado for d in washington.dias.values()}, {'D'})
+        # No es sección ajena: entra limpio, sin marca de revisión.
+        self.assertEqual(washington.dias_otra_seccion, [])
+        self.assertTrue(any('acacion' in a for a in resultado.avisos))
 
     def test_avisa_cuando_la_semana_no_trae_rotulo(self):
         resultado = srv.leer_excel(self._libro_julio(), 2026, 7)

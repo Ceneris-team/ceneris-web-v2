@@ -1804,6 +1804,11 @@ def horario_programado_tareo(estado, fecha, datos=None):
 
     if estado == 'C':
         entrada, salida = time(9, 0), time(17, 0)
+    elif estado == 'H':
+        # Personal de campo: no tiene horario fijo de entrada/salida, pero cumple
+        # 12 horas. Se guarda como jornada por horas de 12 (sin horario), igual
+        # que 'J', para que el motor de reglas calcule el objetivo de pago.
+        jornada = 12
     elif estado == 'O':
         # weekday() devuelve 5 para el Sábado
         if fecha.weekday() == 5:
@@ -2098,9 +2103,12 @@ def _meta_trabajadores(trabajadores):
 # Tipos de jornada que se pueden elegir en la previsualización de la
 # importación. Son los mismos de la leyenda de la Planificación Matricial menos
 # los que no tiene sentido programar desde un Excel de planificación (F y Z).
-ESTADOS_TAREO_IMPORTABLES = {'C', 'O', 'P', 'J', 'D'}
+# H (campo, 12 h) es el tipo por defecto del personal en campo; C (Trabajo en
+# Campo 09:00-17:00) se mantiene por si RRHH lo prefiere en alguna fila.
+ESTADOS_TAREO_IMPORTABLES = {'H', 'C', 'O', 'P', 'J', 'D'}
 
 TIPOS_TAREO_IMPORTACION = [
+    {'valor': 'H', 'etiqueta': 'H', 'nombre': 'Campo (12 h)'},
     {'valor': 'C', 'etiqueta': 'C', 'nombre': 'Trabajo en Campo'},
     {'valor': 'O', 'etiqueta': 'O', 'nombre': 'Oficina'},
     {'valor': 'P', 'etiqueta': 'P', 'nombre': 'Horario Personalizado'},
@@ -2147,8 +2155,8 @@ def _alerta_fila_tareo(persona, mes_nombre):
         detalle += (
             "El archivo no dice qué turno es, así que esos días entran como "
             "«.» (Día Libre), no como trabajo de campo. Cámbialo en la columna "
-            "Tipo si corresponde otra cosa: C (campo), O (oficina), P (horario "
-            "personalizado) o J (jornada por horas). "
+            "Tipo si corresponde otra cosa: H (campo 12 h), O (oficina), P "
+            "(horario personalizado) o J (jornada por horas). "
         )
         if persona.solo_otra_seccion:
             detalle += (
@@ -2159,7 +2167,7 @@ def _alerta_fila_tareo(persona, mes_nombre):
         else:
             detalle += (
                 "Ojo: el resto de sus días sí vienen de PERSONAL EN CAMPO y "
-                "entran como C. Si cambias el tipo, se aplica a TODOS los días "
+                "entran como H. Si cambias el tipo, se aplica a TODOS los días "
                 "de la fila, también a esos."
             )
         return {'tipo': 'otra_seccion',
@@ -2203,6 +2211,10 @@ def _alerta_fila_tareo(persona, mes_nombre):
                 'detalle': detalle}
 
     if nota and persona.trabajador is not None:
+        # Vacaciones ya se resuelve solo: esos días entran como «.» (día libre),
+        # no como campo, así que no hay nada que revisar y no se alerta.
+        if servicios_importacion_tareo.es_nombre_dia_libre(persona.nombre_excel):
+            return None
         return {
             'tipo': 'nota',
             'titulo': 'El Excel trae una nota',
@@ -2299,8 +2311,28 @@ def importar_tareo(request):
             if dia.ubicacion_nombre:
                 ubicaciones_vistas.append(dia.ubicacion_nombre)
 
-        estados_fila = {d.estado for d in persona.dias.values()}
-        tipo_inicial = estados_fila.pop() if len(estados_fila) == 1 else ''
+        # Tipo de la fila = el estado que más se repite entre sus días. Una fila
+        # con días de dos secciones (campo H + Vallecito P, porque el borde de la
+        # banda "PERSONAL VALLECITO" se corre de una semana a otra y roza la cola
+        # de la matriz) ya NO queda como "mixto": toma el tipo dominante y cada
+        # día conserva el suyo (el día Vallecito entra P 13:00-21:00 y el de campo
+        # H 12 h). A igualdad gana H (campo), que es la ficha base de este personal.
+        conteo_estados = Counter(d.estado for d in persona.dias.values())
+        if conteo_estados:
+            tope = max(conteo_estados.values())
+            empatados = [e for e, n in conteo_estados.items() if n == tope]
+            tipo_inicial = 'H' if 'H' in empatados else empatados[0]
+        else:
+            tipo_inicial = ''
+
+        # Horario que la sección trae por defecto (turno Vallecito: 13:00-21:00).
+        # Precarga las horas de la fila para que un tipo P entre ya con su turno,
+        # sin que RRHH tenga que teclearlo. Vacío para campo y demás.
+        horario_inicial = {'entrada': '', 'salida': ''}
+        for d in persona.dias.values():
+            if d.hora_entrada or d.hora_salida:
+                horario_inicial = {'entrada': d.hora_entrada, 'salida': d.hora_salida}
+                break
 
         filas.append({
             'indice': indice,
@@ -2324,6 +2356,7 @@ def importar_tareo(request):
             # el tipo con el desplegable de la columna Tipo.
             'asignada': persona.trabajador is not None,
             'tipo_inicial': tipo_inicial,
+            'horario_inicial': horario_inicial,
         })
 
     total_por_revisar = sum(1 for f in filas if f['alerta'])

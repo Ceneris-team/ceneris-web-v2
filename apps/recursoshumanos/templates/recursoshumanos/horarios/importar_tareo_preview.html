@@ -191,6 +191,10 @@
         background-color: #dcfce7; color: #166534; font-weight: 700;
         box-shadow: inset 0 0 0 1px #86efac;
     }
+    /* H (campo, 12 h): es el tipo por defecto del personal en campo, en verde. */
+    .tareo-cell.importada.estado-H {
+        background-color: #d1fae5; color: #065f46; box-shadow: inset 0 0 0 1px #6ee7b7;
+    }
     .tareo-cell.importada.estado-O {
         background-color: #dbeafe; color: #1e40af; box-shadow: inset 0 0 0 1px #93c5fd;
     }
@@ -362,7 +366,6 @@
         cursor: pointer;
     }
     .select-tipo:focus { outline: none; border-color: #3b82f6; }
-    .select-tipo.mixto { color: #b45309; border-color: #fbbf24; background: #fffbeb; }
     /* Horas de P y J: solo aparecen cuando el tipo las necesita. */
     .horas-tipo { display: none; gap: 4px; margin-top: 4px; }
     .horas-tipo.visible { display: flex; }
@@ -584,11 +587,8 @@
                             </span>
                         </td>
                         <td class="tipo-col sticky-col">
-                            <select class="select-tipo{% if not fila.tipo_inicial %} mixto{% endif %}"
+                            <select class="select-tipo"
                                     aria-label="Tipo de jornada de la fila">
-                                {% if not fila.tipo_inicial %}
-                                    <option value="" selected>— Mixto —</option>
-                                {% endif %}
                                 {% for tipo in tipos_tareo %}
                                     <option value="{{ tipo.valor }}"
                                             {% if fila.tipo_inicial == tipo.valor %}selected{% endif %}>
@@ -598,8 +598,10 @@
                             </select>
                             <div class="horas-tipo horas-p">
                                 <input type="time" name="hora_entrada_{{ fila.indice }}"
+                                       value="{{ fila.horario_inicial.entrada }}"
                                        title="Hora de entrada" aria-label="Hora de entrada">
                                 <input type="time" name="hora_salida_{{ fila.indice }}"
+                                       value="{{ fila.horario_inicial.salida }}"
                                        title="Hora de salida" aria-label="Hora de salida">
                             </div>
                             <div class="horas-tipo horas-j">
@@ -1073,19 +1075,26 @@ document.addEventListener('DOMContentLoaded', function () {
     // El Excel solo distingue campo y "otra sección"; el tipo real lo decide
     // RRHH. Al elegirlo se reescriben TODOS los días de esa fila: es lo que se
     // va a guardar, así que la tabla lo tiene que reflejar al momento.
-    const ETIQUETA_ESTADO = { C: 'C', O: 'O', P: 'P', J: 'J', D: '.' };
-    const ESTADOS_CON_COLOR = ['C', 'O', 'P', 'J', 'D'];
+    const ETIQUETA_ESTADO = { H: 'H', C: 'C', O: 'O', P: 'P', J: 'J', D: '.' };
+    const ESTADOS_CON_COLOR = ['H', 'C', 'O', 'P', 'J', 'D'];
 
+    // Muestra solo las horas que el tipo necesita, sin tocar los días.
+    function mostrarHorasSegunTipo(fila) {
+        const estado = fila.querySelector('.select-tipo').value;
+        fila.querySelector('.horas-p').classList.toggle('visible', estado === 'P');
+        fila.querySelector('.horas-j').classList.toggle('visible', estado === 'J');
+    }
+
+    // Solo cuando RRHH elige un tipo a mano: reescribe TODOS los días de la fila
+    // a ese estado (acción en bloque). En la carga NO se llama, para que una fila
+    // con días de dos secciones (campo H + Vallecito P) conserve el estado de
+    // cada día en vez de aplanarse a uno solo.
     function aplicarTipoAFila(fila) {
         const select = fila.querySelector('.select-tipo');
         const estado = select.value;
-        select.classList.toggle('mixto', estado === '');
+        mostrarHorasSegunTipo(fila);
 
-        // Las horas solo se piden para los tipos que las usan.
-        fila.querySelector('.horas-p').classList.toggle('visible', estado === 'P');
-        fila.querySelector('.horas-j').classList.toggle('visible', estado === 'J');
-
-        if (!estado) return;   // "— Mixto —": se respeta lo que trajo el Excel
+        if (!estado) return;
 
         const entrada = fila.querySelector('input[name^="datos_"]');
         let datos;
@@ -1116,8 +1125,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const selectTipo = fila.querySelector('.select-tipo');
         selectTipo.addEventListener('change', function () { aplicarTipoAFila(fila); });
-        // De arranque solo se muestran las horas si el tipo ya las necesita.
-        aplicarTipoAFila(fila);
+        // De arranque solo se muestran las horas del tipo; los días quedan como
+        // los trajo el Excel (cada uno con su estado, sin aplanar la fila).
+        mostrarHorasSegunTipo(fila);
     });
 
     actualizarProgreso();

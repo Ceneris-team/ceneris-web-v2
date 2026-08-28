@@ -10,11 +10,19 @@ en horizontal. Cada bloque ocupa ~10 columnas:
 
 La celda de un dia trae texto cuando esa persona trabaja ese dia y esta vacia
 cuando no. Ese binario (con la POSICION de la fila) es todo lo que el archivo
-sabe: no hay DNI, ni horas, ni forma de distinguir descanso de falta. Por eso
-este modulo solo produce dos estados, y los saca de la seccion del propio
-archivo: C (campo) para lo que cae bajo "PERSONAL EN CAMPO" y D (dia libre)
-para el resto de secciones, que es lo que RRHH revisa y reclasifica a mano en
-la previsualizacion. Los dias sin marca no se tocan.
+sabe: no hay DNI, ni horas, ni forma de distinguir descanso de falta. El estado
+que se le asigna a cada dia sale de la seccion del propio archivo:
+
+  * "PERSONAL EN CAMPO"  -> H (campo): sin horario fijo, pero cumple 12 horas.
+  * "PERSONAL VALLECITO" -> P (horario personalizado) 13:00-21:00, que es el
+    turno fijo de esa cuadrilla; entra ya resuelto, sin pedir revision.
+  * cualquier otra seccion -> D (dia libre): el estado inocuo, senalado para
+    que RRHH decida el tipo fila por fila en la previsualizacion.
+
+Aparte de la seccion, la nota del nombre manda: una fila "NOMBRE (vacaciones)"
+entra como D (dia libre) ya resuelto, sea cual sea su seccion.
+
+Los dias sin marca no se tocan.
 
 El parseo es puro: no toca la base de datos. El emparejamiento con Trabajador y
 la resolucion de ubicaciones reciben los catalogos ya consultados.
@@ -33,21 +41,27 @@ import openpyxl
 
 # --- Vocabulario del archivo -------------------------------------------------
 
-ESTADO_CAMPO = 'C'
+# Personal de campo: no tiene horario fijo, pero cumple 12 horas. Se guarda como
+# jornada por horas de 12 (la vista pone las 12 horas al escribir el TareoDiario).
+ESTADO_CAMPO = 'H'
 
-# Lo que el Excel pone fuera de PERSONAL EN CAMPO (turno Vallecito y similares)
-# NO es trabajo de campo, pero el archivo tampoco dice que turno es. Entra como
-# dia libre: es el estado inocuo, el que no da por bueno nada que no conste.
-# RRHH cambia el tipo fila por fila en la previsualizacion.
+# Secciones que el Excel pone fuera de PERSONAL EN CAMPO y que el sistema NO sabe
+# clasificar. No son trabajo de campo, y el archivo tampoco dice que turno son:
+# entran como dia libre, el estado inocuo, senalado para que RRHH decida a mano.
 ESTADO_LIBRE = 'D'
 
+# Turno Vallecito: la cuadrilla de finalizacion de cadenas de custodia trabaja un
+# horario personalizado fijo de 13:00 a 21:00. Como el turno es conocido, se
+# importa ya resuelto (P con esas horas), sin marcarlo para revision.
+ESTADO_VALLECITO = 'P'
+HORARIO_VALLECITO = ('13:00', '21:00')
+
 # La columna que va INMEDIATAMENTE A LA IZQUIERDA de POSICION rotula la seccion
-# a la que pertenece cada fila, en una celda combinada vertical. Las filas que
-# caen dentro de la seccion "PERSONAL EN CAMPO" se importan como C. Las otras
-# secciones del archivo ("PERSONAL VALLECITO / FINALIZACION DE CADENAS DE
-# CUSTODIA", "SOPORTE MONITOREO - OPTALERT") son turnos distintos: se importan
-# igual, pero como dia libre y senaladas para que RRHH decida el tipo.
+# a la que pertenece cada fila, en una celda combinada vertical. El rotulo decide
+# el estado: "PERSONAL EN CAMPO" -> H; "PERSONAL VALLECITO ..." -> P 13:00-21:00;
+# cualquier otra seccion -> D (dia libre) y senalada para que RRHH la revise.
 SECCION_CAMPO = 'PERSONAL EN CAMPO'
+SECCION_VALLECITO = 'VALLECITO'
 
 # Ojo: la columna de rotulo solo existe hasta la semana del 1 de junio de 2026.
 # A partir de ahi el archivo pasa de bloques de 10 columnas a bloques de 9 y la
@@ -113,6 +127,29 @@ def es_seccion_campo(rotulo) -> bool:
     return SECCION_CAMPO in normalizar(rotulo)
 
 
+def es_seccion_vallecito(rotulo) -> bool:
+    """True si el rotulo de la izquierda corresponde al turno Vallecito.
+
+    Sin rotulo devuelve False: `es_seccion_campo` ya se queda con ese caso.
+    """
+    if rotulo is None:
+        return False
+    return SECCION_VALLECITO in normalizar(rotulo)
+
+
+# El Excel abre una fila aparte para los dias de vacaciones, con la nota escrita
+# en el propio nombre: "WASHINGTON (vacaciones)" convive con "WASHINGTON PALOMINO"
+# y solo trae los dias libres. Esos dias NO son trabajo de campo: entran como D
+# (dia libre), ya resueltos, sin marcar la fila para revision.
+MARCADORES_DIA_LIBRE = ('VACACION',)  # cubre VACACION / VACACIONES
+
+
+def es_nombre_dia_libre(nombre) -> bool:
+    """True si el nombre trae una nota de vacaciones (dias que van como D)."""
+    normalizado = normalizar(nombre)
+    return any(marca in normalizado for marca in MARCADORES_DIA_LIBRE)
+
+
 # --- Estructuras de resultado ------------------------------------------------
 
 @dataclass
@@ -124,8 +161,13 @@ class DiaImportado:
     anotacion: str = ''
     ubicacion_id: object = None
     ubicacion_nombre: str = ''
-    # Rotulo de la seccion del Excel cuando NO es "PERSONAL EN CAMPO" (por
-    # ejemplo el turno de Vallecito). Vacio = campo.
+    # Horario por defecto que trae la seccion, cuando lo tiene (turno Vallecito:
+    # '13:00'/'21:00'). Vacio para campo y para el resto. Lo usa la vista para
+    # precargar las horas de la fila cuando el estado es P.
+    hora_entrada: str = ''
+    hora_salida: str = ''
+    # Rotulo de la seccion del Excel cuando es una seccion AJENA que RRHH tiene
+    # que revisar (ni campo ni Vallecito). Vacio = seccion ya resuelta.
     seccion: str = ''
 
     @property
@@ -386,6 +428,8 @@ def leer_excel(archivo, anio, mes) -> ResultadoImportacion:
     compartidas = set()
     conflictos = set()
     otras_secciones = {}
+    vallecito_filas = 0
+    vacaciones_filas = 0
     bloques_sin_rotulo = 0
 
     numeros_por_bloque = [
@@ -420,22 +464,40 @@ def leer_excel(archivo, anio, mes) -> ResultadoImportacion:
             if not _es_fila_valida(posicion, nombre):
                 continue
 
-            # La seccion de la izquierda dice de que turno es la fila. Lo que no
-            # cae bajo PERSONAL EN CAMPO se lee igual, pero queda marcado: no se
-            # descarta en silencio, se le muestra a RRHH para que decida (antes
-            # se perdia sin dejar rastro, y en las hojas sin rotulo esa misma
-            # persona si entraba, asi que el resultado cambiaba segun el mes).
-            rotulo = secciones.get(fila) if secciones else None
-            seccion_fila = ''
-            if not es_seccion_campo(rotulo):
-                seccion_fila = ' '.join(str(rotulo).split())
-                otras_secciones[seccion_fila] = otras_secciones.get(seccion_fila, 0) + 1
-
+            # La seccion de la izquierda dice de que turno es la fila:
+            #   * campo     -> H (12 horas, sin horario fijo)
+            #   * Vallecito -> P 13:00-21:00 (turno conocido, entra ya resuelto)
+            #   * otra      -> D (dia libre) y marcada para que RRHH la revise;
+            #                  no se descarta en silencio, se le muestra a RRHH
+            #                  (antes se perdia sin dejar rastro).
+            # Ojo: los limites de cada seccion varian de una semana a otra (una
+            # cuadrilla crece o encoge), asi que se leen por bloque de las celdas
+            # combinadas de la izquierda, nunca de un rango de filas fijo.
             nombre_texto = str(nombre).strip()
             if '/' in nombre_texto:
                 # "EDWIN PUMA / HENRRY CERPA": no se adivina a quien le toca.
                 compartidas.add(nombre_texto)
                 continue
+
+            rotulo = secciones.get(fila) if secciones else None
+            seccion_fila = ''
+            horario_seccion = ('', '')
+            if es_nombre_dia_libre(nombre_texto):
+                # "WASHINGTON (vacaciones)": manda la nota del nombre por encima de
+                # la seccion. Son dias libres, entran como D ya resuelto (verde),
+                # no como campo ni marcados para revision.
+                estado_seccion = ESTADO_LIBRE
+                vacaciones_filas += 1
+            elif es_seccion_campo(rotulo):
+                estado_seccion = ESTADO_CAMPO
+            elif es_seccion_vallecito(rotulo):
+                estado_seccion = ESTADO_VALLECITO
+                horario_seccion = HORARIO_VALLECITO
+                vallecito_filas += 1
+            else:
+                estado_seccion = ESTADO_LIBRE
+                seccion_fila = ' '.join(str(rotulo).split())
+                otras_secciones[seccion_fila] = otras_secciones.get(seccion_fila, 0) + 1
 
             clave = normalizar(nombre_texto)
             persona = agregadas.get(clave)
@@ -453,15 +515,18 @@ def leer_excel(archivo, anio, mes) -> ResultadoImportacion:
                 _, anotacion = partir_anotacion(celda)
                 nuevo = DiaImportado(
                     fecha=fecha,
-                    estado=ESTADO_LIBRE if seccion_fila else ESTADO_CAMPO,
+                    estado=estado_seccion,
                     posicion=str(posicion).strip(),
                     texto_celda=str(celda).strip(),
                     anotacion=anotacion,
+                    hora_entrada=horario_seccion[0],
+                    hora_salida=horario_seccion[1],
                     seccion=seccion_fila,
                 )
                 previo = persona.dias.get(fecha.day)
-                # Si el mismo dia aparece en dos secciones, manda el de campo:
-                # es el unico estado que este importador sabe escribir.
+                # Si el mismo dia aparece en una seccion ajena (marcada) y en una
+                # ya resuelta (campo o Vallecito), manda la resuelta: es la que el
+                # importador sabe escribir sin pedir intervencion.
                 if previo is None or (previo.seccion and not seccion_fila):
                     persona.dias[fecha.day] = nuevo
 
@@ -478,6 +543,17 @@ def leer_excel(archivo, anio, mes) -> ResultadoImportacion:
         resultado.avisos.append(
             "Celdas con mas de una persona, no importadas: "
             + ', '.join(sorted(compartidas))
+        )
+    if vallecito_filas:
+        resultado.avisos.append(
+            "Turno Vallecito: sus dias se importaron como \"P\" (horario "
+            "personalizado) de 13:00 a 21:00. Si alguna fila lleva otro horario, "
+            "ajustalo antes de confirmar."
+        )
+    if vacaciones_filas:
+        resultado.avisos.append(
+            f"Vacaciones: {vacaciones_filas} fila(s) con la nota \"vacaciones\" en "
+            "el nombre se importaron como \".\" (dia libre), no como campo."
         )
     for seccion, cuantas in sorted(otras_secciones.items()):
         resultado.avisos.append(
@@ -515,7 +591,11 @@ def emparejar_personas(resultado, trabajadores) -> None:
     indice = _indice_trabajadores(trabajadores)
 
     for persona in resultado.personas:
-        objetivo = normalizar(persona.nombre_excel)
+        # La nota entre parentesis del nombre ("(vacaciones)", "(VALLECITO)") no
+        # es parte del nombre: se quita antes de emparejar para que la fila
+        # empareje con el mismo trabajador que su fila normal.
+        sin_nota = re.sub(r'\([^)]*\)', '', persona.nombre_excel)
+        objetivo = normalizar(sin_nota)
         tokens = set(objetivo.split())
 
         contenidos = [t for t, _, tks in indice if tokens and tokens <= tks]
