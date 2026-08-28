@@ -185,10 +185,23 @@
 
     .tareo-cell { user-select: none; }
     tr.fila-import.oculta { display: none; }
-    /* Lo que la importación va a escribir */
+    /* Lo que la importación va a escribir. Un color por tipo de jornada, para
+       que al cambiar el Tipo de una fila se vea al instante qué va a entrar. */
     .tareo-cell.importada {
         background-color: #dcfce7; color: #166534; font-weight: 700;
         box-shadow: inset 0 0 0 1px #86efac;
+    }
+    .tareo-cell.importada.estado-O {
+        background-color: #dbeafe; color: #1e40af; box-shadow: inset 0 0 0 1px #93c5fd;
+    }
+    .tareo-cell.importada.estado-P {
+        background-color: #ede9fe; color: #5b21b6; box-shadow: inset 0 0 0 1px #c4b5fd;
+    }
+    .tareo-cell.importada.estado-J {
+        background-color: #ffedd5; color: #9a3412; box-shadow: inset 0 0 0 1px #fdba74;
+    }
+    .tareo-cell.importada.estado-D {
+        background-color: #f8fafc; color: #64748b; box-shadow: inset 0 0 0 1px #e2e8f0;
     }
 
     tr.excluida td.tareo-cell.importada {
@@ -224,6 +237,139 @@
     .badge-aproximada { background: #fef9c3; color: #a16207; }
     .badge-ambigua { background: #ffedd5; color: #c2410c; }
     .badge-sin_match { background: #fee2e2; color: #b91c1c; }
+
+    /* ---- Alerta de fila por resolver a mano ---- */
+    /* Parpadea para que no pase desapercibida entre decenas de filas, pero el
+       texto no se mueve: solo cambia el color, así la tabla se sigue leyendo. */
+    .alerta-manual {
+        position: relative; display: inline-flex; align-items: center; gap: 3px;
+        margin-left: 5px; padding: 1px 7px; border-radius: 999px;
+        background: #fee2e2; color: #b91c1c;
+        font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.03em; cursor: help; border: 1px solid #fca5a5;
+        animation: parpadeo-alerta 1.4s ease-in-out infinite;
+    }
+    @keyframes parpadeo-alerta {
+        0%, 100% { background: #fee2e2; border-color: #fca5a5; }
+        50%      { background: #fca5a5; border-color: #ef4444; }
+    }
+    /* Quien tenga activado "reducir movimiento" ve la alerta fija, no parpadeante. */
+    @media (prefers-reduced-motion: reduce) {
+        .alerta-manual { animation: none; background: #fca5a5; }
+    }
+    /* Ya resuelta: se queda visible por si hay que releerla, pero sin llamar la atención. */
+    .alerta-manual.resuelta {
+        animation: none; background: #f1f5f9; color: #64748b; border-color: #cbd5e1;
+    }
+
+    /* Personal que el Excel puso en otra sección (turno Vallecito y similares).
+       Contorno amarillo en la celda del nombre para poder separarlos de un
+       vistazo del personal de campo. */
+    .tareo-table tbody td.trabajador-col.otra-seccion {
+        background-color: #fffbeb;
+        box-shadow: inset 0 0 0 2px #f59e0b;
+        border-right-color: #f59e0b;
+    }
+    /* La alerta de sección va en amarillo, no en rojo: no es un error del
+       archivo, es una decisión de turno. */
+    .alerta-manual.tipo-otra_seccion {
+        background: #fef3c7; color: #92400e; border-color: #fbbf24;
+        animation-name: parpadeo-seccion;
+    }
+    @keyframes parpadeo-seccion {
+        0%, 100% { background: #fef3c7; border-color: #fbbf24; }
+        50%      { background: #fbbf24; border-color: #d97706; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .alerta-manual.tipo-otra_seccion { animation: none; background: #fbbf24; }
+    }
+
+    /* El globo va pegado al <body> y posicionado con JS: dentro de la fila lo
+       recortarían el overflow del contenedor de la tabla y el de .origen-excel. */
+    .alerta-tip {
+        position: fixed; z-index: 9999; width: 360px; max-width: 80vw;
+        background: #ffffff; border: 1px solid #fca5a5; border-radius: 10px;
+        padding: 10px 12px; box-shadow: 0 10px 24px -8px rgba(15, 23, 42, 0.35);
+        color: #334155; font-size: 0.78rem; font-weight: 400;
+        text-transform: none; letter-spacing: 0; line-height: 1.45;
+        white-space: normal; text-align: left; pointer-events: none;
+    }
+    .alerta-tip[hidden] { display: none; }
+    .alerta-tip strong { display: block; color: #b91c1c; margin-bottom: 3px; font-size: 0.82rem; }
+
+    /* ---- Botón de alertas en la cabecera ---- */
+    .btn-alertas {
+        display: inline-flex; align-items: center; gap: 7px;
+        padding: 8px 14px; border-radius: 8px; cursor: pointer;
+        background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c;
+        font-weight: 700; font-size: 0.85rem; white-space: nowrap;
+        animation: parpadeo-alerta 1.4s ease-in-out infinite;
+    }
+    .btn-alertas:hover { background: #fee2e2; border-color: #ef4444; }
+    .btn-alertas .icono { font-size: 1rem; line-height: 1; }
+    @media (prefers-reduced-motion: reduce) { .btn-alertas { animation: none; } }
+
+    /* ---- Ventana de alertas ---- */
+    .modal-alertas[hidden] { display: none; }
+    .modal-alertas {
+        position: fixed; inset: 0; z-index: 9998;
+        display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-fondo { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.45); }
+    .modal-caja {
+        position: relative; z-index: 1; width: 640px; max-width: 100%;
+        max-height: 82vh; display: flex; flex-direction: column;
+        background: #ffffff; border-radius: 14px; padding: 18px 20px 20px;
+        box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.45);
+    }
+    .modal-cabecera {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .modal-cabecera h2 {
+        margin: 0; font-size: 1.1rem; color: #0f172a; font-weight: 700;
+    }
+    .modal-cerrar {
+        border: none; background: transparent; font-size: 1.6rem; line-height: 1;
+        color: #94a3b8; cursor: pointer; padding: 0 4px;
+    }
+    .modal-cerrar:hover { color: #334155; }
+    .modal-intro { margin: 8px 0 12px; color: #64748b; font-size: 0.84rem; line-height: 1.5; }
+    .modal-cuerpo { overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .modal-item {
+        border: 1px solid #e2e8f0; border-left: 4px solid #ef4444;
+        border-radius: 10px; padding: 10px 13px; background: #fffdfd;
+    }
+    .modal-item.tipo-otra_seccion { border-left-color: #f59e0b; background: #fffcf5; }
+    .modal-item h3 { margin: 0 0 4px; font-size: 0.88rem; color: #0f172a; font-weight: 700; }
+    .modal-item p { margin: 0; font-size: 0.82rem; color: #475569; line-height: 1.5; }
+    .modal-item .ir-a-fila {
+        margin-top: 7px; background: none; border: none; padding: 0;
+        color: #2563eb; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .modal-item .ir-a-fila:hover { text-decoration: underline; }
+    /* Se resalta un momento la fila a la que lleva la ventana. */
+    @keyframes destacar-fila { 0%, 100% { background: transparent; } 40% { background: #dbeafe; } }
+    tr.destacada td { animation: destacar-fila 1.6s ease-in-out; }
+
+    /* ---- Columna Tipo ---- */
+    .tipo-col {
+        width: 132px; min-width: 132px;
+        position: sticky; left: 395px; z-index: 5;
+    }
+    .select-tipo {
+        width: 100%; padding: 4px 5px; border: 1px solid #cbd5e1; border-radius: 6px;
+        font-size: 0.8rem; font-weight: 600; color: #1e293b; background: #ffffff;
+        cursor: pointer;
+    }
+    .select-tipo:focus { outline: none; border-color: #3b82f6; }
+    .select-tipo.mixto { color: #b45309; border-color: #fbbf24; background: #fffbeb; }
+    /* Horas de P y J: solo aparecen cuando el tipo las necesita. */
+    .horas-tipo { display: none; gap: 4px; margin-top: 4px; }
+    .horas-tipo.visible { display: flex; }
+    .horas-tipo input {
+        flex: 1; min-width: 0; padding: 3px 4px; border: 1px solid #cbd5e1;
+        border-radius: 5px; font-size: 0.72rem; color: #334155;
+    }
 
     /* ---- Barra de avance (pegada abajo) ---- */
     /* El contenedor de la plantilla base no deja desplazar la página, así que
@@ -272,6 +418,13 @@
             <h1>Planificación Matricial: {{ mes_nombre }}</h1>
         </div>
         <div class="header-actions">
+            {% if total_por_revisar %}
+            <button type="button" id="btnAlertas" class="btn-alertas"
+                    title="Ver el detalle de las filas que necesitan tu decisión">
+                <span class="icono" aria-hidden="true">&#9888;</span>
+                {{ total_por_revisar }} alerta{{ total_por_revisar|pluralize:"s" }}
+            </button>
+            {% endif %}
             <a href="{{ url_volver }}" class="back-link">&larr; Volver al tareo</a>
         </div>
     </div>
@@ -356,6 +509,23 @@
         <p class="filtro-nota" id="filtroNota" hidden></p>
     </div>
 
+    {% comment %}
+    Ventana de alertas. Se abre desde el botón de la cabecera (todas) o desde el
+    icono de una fila (esa sola). El detalle se arma en JS a partir de los
+    data-alerta-* de cada icono, así no hay dos fuentes que puedan discrepar.
+    {% endcomment %}
+    <div class="modal-alertas" id="modalAlertas" hidden>
+        <div class="modal-fondo" data-cerrar-modal></div>
+        <div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="modalAlertasTitulo">
+            <div class="modal-cabecera">
+                <h2 id="modalAlertasTitulo"><span aria-hidden="true">&#9888;</span> <span id="modalAlertasNombre">Alertas de la importación</span></h2>
+                <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar">&times;</button>
+            </div>
+            <p class="modal-intro" id="modalAlertasIntro"></p>
+            <div class="modal-cuerpo" id="modalAlertasCuerpo"></div>
+        </div>
+    </div>
+
     {{ meta_trabajadores|json_script:"metaTrabajadores" }}
 
     <form method="post" action="{% url 'recursoshumanos:importar_tareo_confirmar' %}" id="confirmarForm">
@@ -372,6 +542,8 @@
                     <tr>
                         <th class="codigo-col sticky-col">DNI</th>
                         <th class="trabajador-col sticky-col">Nombres y Apellidos</th>
+                        <th class="tipo-col sticky-col"
+                            title="Tipo de jornada con el que entrarán TODOS los días de esa fila.">Tipo</th>
                         {% for dia_info in dias_del_mes_info %}
                             <th class="dia-col" data-dia="{{ dia_info.numero }}">
                                 {{ dia_info.nombre }}<br><span style="font-size: 1.1em; color: #0f172a;">{{ dia_info.numero }}</span>
@@ -381,19 +553,19 @@
                 </thead>
                 <tbody>
                     {% for fila in filas %}
-                    <tr class="fila-import{% if not fila.trabajador %} excluida{% endif %}"
+                    <tr class="fila-import{% if not fila.asignada %} excluida{% endif %}"
                         data-indice="{{ fila.indice }}" data-nombre-excel="{{ fila.nombre_excel }}">
                         <td class="codigo-col sticky-col">
-                            <span class="dni-celda{% if not fila.trabajador %} vacio{% endif %}">{{ fila.trabajador.dni|default:"—" }}</span>
+                            <span class="dni-celda{% if not fila.asignada %} vacio{% endif %}">{% if fila.asignada %}{{ fila.trabajador.dni }}{% else %}—{% endif %}</span>
                             <input type="hidden" name="incluir_{{ fila.indice }}" value="on">
                             <input type="hidden" name="datos_{{ fila.indice }}" value="{{ fila.datos_json }}">
                         </td>
-                        <td class="trabajador-col sticky-col">
+                        <td class="trabajador-col sticky-col{% if fila.otra_seccion %} otra-seccion{% endif %}">
                             <select name="dni_{{ fila.indice }}"
-                                    class="select-trabajador{% if not fila.trabajador %} sin-match{% endif %}">
+                                    class="select-trabajador{% if not fila.asignada %} sin-match{% endif %}">
                                 <option value=""></option>
                                 {% for t in trabajadores_opciones %}
-                                    <option value="{{ t.dni }}" {% if fila.trabajador and fila.trabajador.dni == t.dni %}selected{% endif %}>
+                                    <option value="{{ t.dni }}" {% if fila.asignada and fila.trabajador.dni == t.dni %}selected{% endif %}>
                                         {{ t.apellido_paterno }} {{ t.apellido_materno }}, {{ t.nombres }}
                                     </option>
                                 {% endfor %}
@@ -401,17 +573,47 @@
                             <span class="origen-excel"
                                   title="En el Excel: {{ fila.nombre_excel }}{% if fila.posicion %} · {{ fila.posicion }}{% endif %}">
                                 Excel: {{ fila.nombre_excel }}{% if fila.posicion %} &middot; {{ fila.posicion }}{% endif %}
-                                {% if fila.confianza == 'aproximada' %}<span class="badge badge-aproximada">Aproximada {{ fila.similitud }}</span>
-                                {% elif fila.confianza == 'ambigua' %}<span class="badge badge-ambigua">Varios candidatos</span>
-                                {% elif fila.confianza == 'sin_match' %}<span class="badge badge-sin_match">Sin coincidencia</span>{% endif %}
+                                {% if fila.confianza == 'aproximada' %}<span class="badge badge-aproximada">Aproximada {{ fila.similitud }}</span>{% endif %}
+                                {% if fila.alerta %}
+                                    <span class="alerta-manual tipo-{{ fila.alerta.tipo }}" tabindex="0" role="button"
+                                          aria-label="{{ fila.alerta.titulo }}: {{ fila.alerta.detalle }}"
+                                          data-alerta-tipo="{{ fila.alerta.tipo }}"
+                                          data-alerta-titulo="{{ fila.alerta.titulo }}"
+                                          data-alerta-detalle="{{ fila.alerta.detalle }}">&#9888; Alerta</span>
+                                {% endif %}
                             </span>
+                        </td>
+                        <td class="tipo-col sticky-col">
+                            <select class="select-tipo{% if not fila.tipo_inicial %} mixto{% endif %}"
+                                    aria-label="Tipo de jornada de la fila">
+                                {% if not fila.tipo_inicial %}
+                                    <option value="" selected>— Mixto —</option>
+                                {% endif %}
+                                {% for tipo in tipos_tareo %}
+                                    <option value="{{ tipo.valor }}"
+                                            {% if fila.tipo_inicial == tipo.valor %}selected{% endif %}>
+                                        {{ tipo.etiqueta }}: {{ tipo.nombre }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="horas-tipo horas-p">
+                                <input type="time" name="hora_entrada_{{ fila.indice }}"
+                                       title="Hora de entrada" aria-label="Hora de entrada">
+                                <input type="time" name="hora_salida_{{ fila.indice }}"
+                                       title="Hora de salida" aria-label="Hora de salida">
+                            </div>
+                            <div class="horas-tipo horas-j">
+                                <input type="number" name="jornada_horas_{{ fila.indice }}"
+                                       min="0.5" max="24" step="0.5" placeholder="Horas"
+                                       title="Horas de la jornada" aria-label="Horas de la jornada">
+                            </div>
                         </td>
                         {% for dia_info in dias_del_mes_info %}
                             {% with dia_str=dia_info.numero|stringformat:"s" %}
                             {% with celda=fila.dias|get_item:dia_str %}
                             {% if celda %}
-                                <td class="tareo-cell importada" data-dia="{{ dia_info.numero }}"
-                                    title="{{ fila.nombre_excel }} · {{ celda.posicion }}{% if celda.anotacion %} ({{ celda.anotacion }}){% endif %}{% if celda.ubicacion %} · {{ celda.ubicacion }}{% endif %}">{{ celda.estado }}</td>
+                                <td class="tareo-cell importada estado-{{ celda.estado }}" data-dia="{{ dia_info.numero }}"
+                                    title="{{ fila.nombre_excel }} · {{ celda.posicion }}{% if celda.anotacion %} ({{ celda.anotacion }}){% endif %}{% if celda.ubicacion %} · {{ celda.ubicacion }}{% endif %}{% if celda.seccion %} · Sección: {{ celda.seccion }}{% endif %}">{% if celda.estado == 'D' %}.{% else %}{{ celda.estado }}{% endif %}</td>
                             {% else %}
                                 <td class="tareo-cell" data-dia="{{ dia_info.numero }}"></td>
                             {% endif %}
@@ -454,6 +656,139 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const filas = Array.from(document.querySelectorAll('tr.fila-import'));
+
+    // ---- Globo de las alertas de fila ------------------------------------
+    // Uno solo para toda la tabla, colgado del <body> para que no lo recorte
+    // el scroll del contenedor. Se muestra al pasar el cursor o al tabular.
+    const globoAlerta = document.createElement('div');
+    globoAlerta.className = 'alerta-tip';
+    globoAlerta.hidden = true;
+    document.body.appendChild(globoAlerta);
+
+    function mostrarAlerta(icono) {
+        globoAlerta.innerHTML = '';
+        const titulo = document.createElement('strong');
+        titulo.textContent = icono.dataset.alertaTitulo;
+        globoAlerta.appendChild(titulo);
+        globoAlerta.appendChild(
+            document.createTextNode(icono.dataset.alertaDetalle));
+        globoAlerta.hidden = false;
+
+        // Encima del icono; si no cabe arriba, debajo. Y sin salirse por la derecha.
+        const caja = icono.getBoundingClientRect();
+        const alto = globoAlerta.offsetHeight;
+        const ancho = globoAlerta.offsetWidth;
+        const arriba = caja.top - alto - 8;
+        globoAlerta.style.top = (arriba >= 8 ? arriba : caja.bottom + 8) + 'px';
+        globoAlerta.style.left =
+            Math.max(8, Math.min(caja.left, window.innerWidth - ancho - 8)) + 'px';
+    }
+
+    function ocultarAlerta() {
+        globoAlerta.hidden = true;
+    }
+
+    document.querySelectorAll('.alerta-manual').forEach(function (icono) {
+        icono.addEventListener('mouseenter', function () { mostrarAlerta(icono); });
+        icono.addEventListener('focus', function () { mostrarAlerta(icono); });
+        icono.addEventListener('mouseleave', ocultarAlerta);
+        icono.addEventListener('blur', ocultarAlerta);
+        // Clic (o Enter): la explicación completa en la ventana, sin recortes.
+        icono.addEventListener('click', function () {
+            ocultarAlerta();
+            abrirModalAlertas(icono);
+        });
+        icono.addEventListener('keydown', function (evento) {
+            if (evento.key === 'Enter' || evento.key === ' ') {
+                evento.preventDefault();
+                ocultarAlerta();
+                abrirModalAlertas(icono);
+            }
+        });
+    });
+    // Al desplazar la tabla el icono se mueve y el globo se quedaría suelto.
+    window.addEventListener('scroll', ocultarAlerta, true);
+
+    // ---- Ventana de alertas ----------------------------------------------
+    const modal = document.getElementById('modalAlertas');
+    const modalNombre = document.getElementById('modalAlertasNombre');
+    const modalIntro = document.getElementById('modalAlertasIntro');
+    const modalCuerpo = document.getElementById('modalAlertasCuerpo');
+    const btnAlertas = document.getElementById('btnAlertas');
+
+    function filaDelIcono(icono) {
+        return icono.closest('tr.fila-import');
+    }
+
+    function tarjetaDeAlerta(icono, conEnlace) {
+        const fila = filaDelIcono(icono);
+        const item = document.createElement('div');
+        item.className = 'modal-item tipo-' + icono.dataset.alertaTipo;
+
+        const titulo = document.createElement('h3');
+        titulo.textContent = icono.dataset.alertaTitulo;
+        item.appendChild(titulo);
+
+        const texto = document.createElement('p');
+        texto.textContent = icono.dataset.alertaDetalle;
+        item.appendChild(texto);
+
+        if (conEnlace && fila) {
+            const enlace = document.createElement('button');
+            enlace.type = 'button';
+            enlace.className = 'ir-a-fila';
+            enlace.textContent = 'Ir a la fila de ' + (fila.dataset.nombreExcel || 'esta persona');
+            enlace.addEventListener('click', function () {
+                cerrarModal();
+                fila.classList.remove('oculta');
+                fila.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                fila.classList.remove('destacada');
+                void fila.offsetWidth;   // reinicia la animación si ya estaba puesta
+                fila.classList.add('destacada');
+            });
+            item.appendChild(enlace);
+        }
+        return item;
+    }
+
+    function abrirModalAlertas(icono) {
+        const iconos = icono
+            ? [icono]
+            : Array.from(document.querySelectorAll('.alerta-manual'));
+        modalCuerpo.innerHTML = '';
+        iconos.forEach(function (uno) {
+            modalCuerpo.appendChild(tarjetaDeAlerta(uno, !icono));
+        });
+
+        if (icono) {
+            const fila = filaDelIcono(icono);
+            modalNombre.textContent = fila ? fila.dataset.nombreExcel : 'Alerta';
+            modalIntro.textContent =
+                'Esto es lo que dice el Excel de esta fila y lo que tienes que decidir.';
+        } else {
+            modalNombre.textContent = iconos.length + (iconos.length === 1
+                ? ' fila necesita tu decisión' : ' filas necesitan tu decisión');
+            modalIntro.textContent =
+                'El Excel no trae DNI ni tipo de jornada, así que el sistema empareja por '
+                + 'nombre y no adivina cuando algo no cuadra. Resuélvelas en la tabla: '
+                + 'asigna el trabajador en la lista, ajusta la columna Tipo, o deja la fila '
+                + 'sin trabajador para que no se importe.';
+        }
+        modal.hidden = false;
+        document.querySelector('.modal-cerrar').focus();
+    }
+
+    function cerrarModal() {
+        modal.hidden = true;
+    }
+
+    if (btnAlertas) btnAlertas.addEventListener('click', function () { abrirModalAlertas(null); });
+    modal.querySelectorAll('[data-cerrar-modal]').forEach(function (elemento) {
+        elemento.addEventListener('click', cerrarModal);
+    });
+    document.addEventListener('keydown', function (evento) {
+        if (evento.key === 'Escape' && !modal.hidden) cerrarModal();
+    });
 
     // La tabla se queda con todo el alto que sobre. Se recalcula porque la
     // cabecera de filtros se parte en dos líneas en pantallas estrechas y
@@ -566,8 +901,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!proyecto && !subproyecto && !area) return true;
 
         // Una fila sin trabajador asignado no tiene proyecto ni área con qué
-        // comparar, así que queda fuera de cualquier filtro de esos.
-        if (!info) return false;
+        // comparar. Se deja visible a propósito: es justo la que RRHH tiene que
+        // resolver a mano, y esconderla detrás de un filtro de área hacía creer
+        // que la importación se había saltado a esa persona.
+        if (!info) return true;
         if (proyecto && info.p.indexOf(proyecto) === -1) return false;
         if (subproyecto && info.p.indexOf(subproyecto) === -1) return false;
         if (area && info.a !== area) return false;
@@ -722,6 +1059,51 @@ document.addEventListener('DOMContentLoaded', function () {
         const dni = fila.querySelector('.dni-celda');
         dni.textContent = activa ? select.value : '—';
         dni.classList.toggle('vacio', !activa);
+
+        // La alerta deja de parpadear en cuanto RRHH elige el trabajador. La de
+        // tipo "nota" no: ahí la decisión es si esos días entran o no, y eso se
+        // resuelve desmarcando la fila, no con el desplegable.
+        const alerta = fila.querySelector('.alerta-manual');
+        if (alerta && alerta.dataset.alertaTipo !== 'nota') {
+            alerta.classList.toggle('resuelta', activa);
+        }
+    }
+
+    // ---- Tipo de jornada de la fila --------------------------------------
+    // El Excel solo distingue campo y "otra sección"; el tipo real lo decide
+    // RRHH. Al elegirlo se reescriben TODOS los días de esa fila: es lo que se
+    // va a guardar, así que la tabla lo tiene que reflejar al momento.
+    const ETIQUETA_ESTADO = { C: 'C', O: 'O', P: 'P', J: 'J', D: '.' };
+    const ESTADOS_CON_COLOR = ['C', 'O', 'P', 'J', 'D'];
+
+    function aplicarTipoAFila(fila) {
+        const select = fila.querySelector('.select-tipo');
+        const estado = select.value;
+        select.classList.toggle('mixto', estado === '');
+
+        // Las horas solo se piden para los tipos que las usan.
+        fila.querySelector('.horas-p').classList.toggle('visible', estado === 'P');
+        fila.querySelector('.horas-j').classList.toggle('visible', estado === 'J');
+
+        if (!estado) return;   // "— Mixto —": se respeta lo que trajo el Excel
+
+        const entrada = fila.querySelector('input[name^="datos_"]');
+        let datos;
+        try {
+            datos = JSON.parse(entrada.value);
+        } catch (err) {
+            return;
+        }
+        Object.keys(datos).forEach(function (dia) { datos[dia].e = estado; });
+        entrada.value = JSON.stringify(datos);
+
+        fila.querySelectorAll('.tareo-cell.importada').forEach(function (celda) {
+            ESTADOS_CON_COLOR.forEach(function (uno) {
+                celda.classList.remove('estado-' + uno);
+            });
+            celda.classList.add('estado-' + estado);
+            celda.textContent = ETIQUETA_ESTADO[estado];
+        });
     }
 
     filas.forEach(function (fila) {
@@ -731,6 +1113,11 @@ document.addEventListener('DOMContentLoaded', function () {
             // Al cambiar de trabajador la fila puede dejar de cumplir el filtro.
             aplicarFiltros();
         });
+
+        const selectTipo = fila.querySelector('.select-tipo');
+        selectTipo.addEventListener('change', function () { aplicarTipoAFila(fila); });
+        // De arranque solo se muestran las horas si el tipo ya las necesita.
+        aplicarTipoAFila(fila);
     });
 
     actualizarProgreso();

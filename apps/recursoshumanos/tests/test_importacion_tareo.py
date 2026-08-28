@@ -111,8 +111,14 @@ class ParseoExcelTests(TestCase):
         self.assertEqual(shamir.dias[7].estado, 'C')   # "M4 (GAB)"
         self.assertEqual(shamir.dias[7].anotacion, 'GAB')
 
-    def test_solo_importa_las_filas_bajo_personal_en_campo(self):
-        """Con rótulo, las secciones que no son campo quedan fuera."""
+    def test_marca_las_filas_que_no_son_de_personal_en_campo(self):
+        """Las secciones ajenas se leen, pero quedan señaladas.
+
+        Antes se descartaban en silencio. El problema es que las hojas nuevas
+        (junio en adelante) ya no traen la columna de rótulo, así que la misma
+        persona entraba o no según el mes. Ahora siempre llega a la
+        previsualización con su sección a la vista y RRHH decide.
+        """
         libro = construir_libro(
             [('JULIO', [6, 7, 8, 9, 10, 11, 12])],
             [('M1', 'DIEGO HERNANI', {0: ['M1', 'M1', None, None, None, None, None]}),
@@ -122,8 +128,19 @@ class ParseoExcelTests(TestCase):
         )
         resultado = srv.leer_excel(libro, 2026, 7)
 
-        nombres = [p.nombre_excel for p in resultado.personas]
-        self.assertEqual(nombres, ['DIEGO HERNANI'])          # fila 5, campo
+        por_nombre = {p.nombre_excel: p for p in resultado.personas}
+        self.assertEqual(sorted(por_nombre), ['DIEGO HERNANI', 'SONNY ALVIRI'])
+
+        diego = por_nombre['DIEGO HERNANI']                   # fila 5, campo
+        self.assertEqual(diego.dias_otra_seccion, [])
+        self.assertFalse(diego.solo_otra_seccion)
+
+        sonny = por_nombre['SONNY ALVIRI']                    # fila 6, Vallecito
+        self.assertTrue(sonny.solo_otra_seccion)
+        self.assertEqual([d.dia for d in sonny.dias_otra_seccion], [6, 7])
+        self.assertEqual(len(sonny.secciones_ajenas), 1)
+        self.assertIn('VALLECITO', sonny.secciones_ajenas[0])
+
         self.assertTrue(any('VALLECITO' in a for a in resultado.avisos))
 
     def test_avisa_cuando_la_semana_no_trae_rotulo(self):

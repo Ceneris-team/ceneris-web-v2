@@ -50,6 +50,7 @@ from django.contrib.auth.views import LoginView
 from django.urls import reverse_lazy, reverse
 from django.views.decorators.http import require_POST
 import json
+import re
 from django.db.models import Q, Prefetch, Count
 import os
 import mimetypes
@@ -2094,6 +2095,128 @@ def _meta_trabajadores(trabajadores):
     return meta
 
 
+# Tipos de jornada que se pueden elegir en la previsualización de la
+# importación. Son los mismos de la leyenda de la Planificación Matricial menos
+# los que no tiene sentido programar desde un Excel de planificación (F y Z).
+ESTADOS_TAREO_IMPORTABLES = {'C', 'O', 'P', 'J', 'D'}
+
+TIPOS_TAREO_IMPORTACION = [
+    {'valor': 'C', 'etiqueta': 'C', 'nombre': 'Trabajo en Campo'},
+    {'valor': 'O', 'etiqueta': 'O', 'nombre': 'Oficina'},
+    {'valor': 'P', 'etiqueta': 'P', 'nombre': 'Horario Personalizado'},
+    {'valor': 'J', 'etiqueta': 'J', 'nombre': 'Jornada por Horas'},
+    {'valor': 'D', 'etiqueta': '.', 'nombre': 'Día Libre'},
+]
+
+
+def _lista_dias_es(numeros):
+    """[1, 2, 5] -> "1, 2 y 5"."""
+    textos = [str(n) for n in numeros]
+    if len(textos) == 1:
+        return textos[0]
+    return ', '.join(textos[:-1]) + ' y ' + textos[-1]
+
+
+def _alerta_fila_tareo(persona, mes_nombre):
+    """Mensaje para RRHH cuando una fila del Excel no se puede resolver sola.
+
+    Devuelve None si la fila no necesita intervención. El texto explica qué dice
+    literalmente el Excel y qué decisión toca tomar: el sistema nunca inventa el
+    emparejamiento, solo expone lo que encontró.
+    """
+    nota = ''
+    encontrado = re.search(r'\(([^)]*)\)', persona.nombre_excel)
+    if encontrado:
+        nota = encontrado.group(1).strip()
+
+    # Manda la sección: si el Excel puso a esta persona en un turno que no es
+    # campo, eso es lo primero que RRHH tiene que decidir.
+    dias_ajenos = persona.dias_otra_seccion
+    if dias_ajenos:
+        seccion = ' / '.join(persona.secciones_ajenas)
+        listado = _lista_dias_es([d.dia for d in dias_ajenos])
+        quien = persona.nombre_excel
+        if persona.trabajador is not None:
+            t = persona.trabajador
+            quien += f" (coincide con {t.apellido_paterno} {t.apellido_materno}, {t.nombres})"
+        detalle = (
+            f"El Excel pone a {quien} bajo la sección «{seccion}», no bajo "
+            f"PERSONAL EN CAMPO. Días afectados: {listado} de {mes_nombre} "
+            f"({len(dias_ajenos)} día{'s' if len(dias_ajenos) != 1 else ''}). "
+        )
+        detalle += (
+            "El archivo no dice qué turno es, así que esos días entran como "
+            "«.» (Día Libre), no como trabajo de campo. Cámbialo en la columna "
+            "Tipo si corresponde otra cosa: C (campo), O (oficina), P (horario "
+            "personalizado) o J (jornada por horas). "
+        )
+        if persona.solo_otra_seccion:
+            detalle += (
+                "Todos los días de esta persona vienen de esa sección. Si no "
+                "debe importarse, quita el trabajador de la lista y la fila "
+                "entera queda fuera."
+            )
+        else:
+            detalle += (
+                "Ojo: el resto de sus días sí vienen de PERSONAL EN CAMPO y "
+                "entran como C. Si cambias el tipo, se aplica a TODOS los días "
+                "de la fila, también a esos."
+            )
+        return {'tipo': 'otra_seccion',
+                'titulo': f'Personal de otra sección: {seccion}',
+                'detalle': detalle}
+
+    if persona.confianza == 'ambigua':
+        nombres = ', '.join(
+            f"{t.apellido_paterno} {t.apellido_materno}, {t.nombres}"
+            for t in persona.candidatos
+        )
+        return {
+            'tipo': 'ambigua',
+            'titulo': 'Varios trabajadores posibles',
+            'detalle': (
+                f"El Excel escribe «{persona.nombre_excel}» y ese nombre encaja con "
+                f"{len(persona.candidatos)} trabajadores registrados: {nombres}. "
+                "El sistema no elige por su cuenta: selecciona el correcto en la lista "
+                "de la izquierda, o desmarca la fila si no corresponde importarla."
+            ),
+        }
+
+    if persona.confianza == 'sin_match':
+        porcentaje = int(round(persona.similitud * 100))
+        detalle = (
+            f"El Excel escribe «{persona.nombre_excel}» y no hay ningún trabajador "
+            f"registrado con ese nombre (el parecido más alto fue {porcentaje}%). "
+        )
+        if nota:
+            detalle += (
+                f"Ojo: el Excel añade la nota «{nota}» junto al nombre. Si esa nota "
+                "indica que la persona no estuvo en campo (vacaciones, descanso, otra "
+                "sede), lo correcto es desmarcar la fila y no importarla. "
+            )
+        detalle += (
+            "Si sí debe importarse, elige al trabajador en la lista de la izquierda; "
+            "si no está dado de alta, créalo primero en el maestro de personal."
+        )
+        return {'tipo': 'sin_match',
+                'titulo': 'Sin coincidencia en el maestro',
+                'detalle': detalle}
+
+    if nota and persona.trabajador is not None:
+        return {
+            'tipo': 'nota',
+            'titulo': 'El Excel trae una nota',
+            'detalle': (
+                f"El Excel escribe «{persona.nombre_excel}»: el nombre se emparejó, pero "
+                f"trae la nota «{nota}». El archivo no distingue el motivo, así que estos "
+                "días se importan como trabajo de campo. Revisa si esa nota cambia el "
+                "estado y desmarca la fila si no corresponde."
+            ),
+        }
+
+    return None
+
+
 @login_required
 def importar_tareo(request):
     """Paso 1: lee el Excel y muestra la previsualización. No escribe nada."""
@@ -2157,6 +2280,8 @@ def importar_tareo(request):
     # ningún trabajador: son justamente las que RRHH tiene que resolver a mano
     # en el desplegable. Filtrarlas aquí las hacía desaparecer sin aviso y daba
     # la impresión de que la importación no capturaba a esas personas.
+    nombre_del_mes = f"{MESES_ES[mes-1]} de {anio}"
+
     filas = []
     for indice, persona in enumerate(resultado.personas):
         dias_render, dias_payload = {}, {}
@@ -2168,10 +2293,14 @@ def importar_tareo(request):
                 'anotacion': dia.anotacion,
                 'ubicacion': dia.ubicacion_nombre,
                 'texto': dia.texto_celda,
+                'seccion': dia.seccion,
             }
             dias_payload[str(dia.dia)] = {'e': dia.estado, 'u': dia.ubicacion_id}
             if dia.ubicacion_nombre:
                 ubicaciones_vistas.append(dia.ubicacion_nombre)
+
+        estados_fila = {d.estado for d in persona.dias.values()}
+        tipo_inicial = estados_fila.pop() if len(estados_fila) == 1 else ''
 
         filas.append({
             'indice': indice,
@@ -2185,7 +2314,20 @@ def importar_tareo(request):
             'dias': dias_render,
             'datos_json': json.dumps(dias_payload),
             'ubicaciones': ', '.join(dict.fromkeys(ubicaciones_vistas)),
+            'alerta': _alerta_fila_tareo(persona, nombre_del_mes),
+            # El Excel la puso en un turno que no es campo: se marca en amarillo
+            # y, si TODOS sus dias vienen de ahi, llega sin trabajador elegido
+            # para que no se importe sola.
+            'otra_seccion': bool(persona.dias_otra_seccion),
+            # Ya no hace falta dejarla sin asignar para que no se cuele como
+            # trabajo de campo: sus dias entran como "." (libre) y RRHH decide
+            # el tipo con el desplegable de la columna Tipo.
+            'asignada': persona.trabajador is not None,
+            'tipo_inicial': tipo_inicial,
         })
+
+    total_por_revisar = sum(1 for f in filas if f['alerta'])
+    total_otra_seccion = sum(1 for f in filas if f['otra_seccion'])
 
     contexto = {
         'filas': filas,
@@ -2193,7 +2335,7 @@ def importar_tareo(request):
         'resultado': resultado,
         'avisos': resultado.avisos,
         'mes_seleccionado': mes_str,
-        'mes_nombre': f"{MESES_ES[mes-1]} de {anio}",
+        'mes_nombre': nombre_del_mes,
         'dias_del_mes_info': dias_del_mes_info,
         'trabajadores_opciones': trabajadores_activos,
         'filtros': filtros,
@@ -2205,6 +2347,9 @@ def importar_tareo(request):
         'nombre_archivo': archivo.name,
         'total_emparejadas': len(resultado.emparejadas),
         'total_sin_emparejar': len(resultado.sin_emparejar),
+        'total_por_revisar': total_por_revisar,
+        'total_otra_seccion': total_otra_seccion,
+        'tipos_tareo': TIPOS_TAREO_IMPORTACION,
         'url_volver': _url_tareo(filtros, mes_str),
         'current_view': 'gestion_tareo',
     }
@@ -2231,9 +2376,11 @@ def importar_tareo_confirmar(request):
     sobrescribir = request.POST.get('sobrescribir') == 'on'
 
     _, num_dias = calendar.monthrange(anio, mes)
-    # El Excel solo declara trabajo de campo; nada más puede entrar por aquí,
-    # ni siquiera manipulando el formulario.
-    estados_validos = {servicios_importacion_tareo.ESTADO_CAMPO}
+    # El Excel solo distingue campo (C) y el resto de secciones (D). Los demás
+    # tipos los pone RRHH en la previsualización, con el mismo vocabulario que
+    # la Planificación Matricial. Nada fuera de esta lista entra, ni siquiera
+    # manipulando el formulario.
+    estados_validos = ESTADOS_TAREO_IMPORTABLES
     ubicaciones_validas = set(Ubicacion.objects.values_list('id', flat=True))
 
     # Varias filas del Excel pueden apuntar al mismo trabajador (el archivo
@@ -2255,6 +2402,15 @@ def importar_tareo_confirmar(request):
         except json.JSONDecodeError:
             continue
 
+        # Horas que RRHH escribió en la fila. Solo aplican a los tipos que las
+        # necesitan: P toma entrada/salida y J el número de horas. Si las deja
+        # vacías el día entra igual, sin horario, para completarlo en la matriz.
+        horario_fila = {
+            'entrada': (request.POST.get(f'hora_entrada_{indice}') or '').strip(),
+            'salida': (request.POST.get(f'hora_salida_{indice}') or '').strip(),
+        }
+        jornada_fila = (request.POST.get(f'jornada_horas_{indice}') or '').strip()
+
         for dia_str, valores in payload.items():
             if not str(dia_str).isdigit():
                 continue
@@ -2267,7 +2423,12 @@ def importar_tareo_confirmar(request):
             ubicacion_id = (valores or {}).get('u')
             if ubicacion_id not in ubicaciones_validas:
                 ubicacion_id = None
-            por_trabajador[dni].setdefault(dia, (estado, ubicacion_id))
+            extras = {}
+            if estado == 'P' and (horario_fila['entrada'] or horario_fila['salida']):
+                extras['horario'] = horario_fila
+            elif estado == 'J' and jornada_fila:
+                extras['jornada_horas'] = jornada_fila
+            por_trabajador[dni].setdefault(dia, (estado, ubicacion_id, extras))
 
     if not por_trabajador:
         messages.warning(request, "No seleccionaste ninguna fila para importar.")
@@ -2295,14 +2456,15 @@ def importar_tareo_confirmar(request):
                     )
                 }
 
-                for dia, (estado, ubicacion_id) in sorted(dias.items()):
+                for dia, (estado, ubicacion_id, extras) in sorted(dias.items()):
                     fecha = date(anio, mes, dia)
                     existente = existentes.get(dia)
                     if existente is not None and not sobrescribir:
                         omitidos += 1
                         continue
 
-                    entrada, salida, jornada = horario_programado_tareo(estado, fecha)
+                    entrada, salida, jornada = horario_programado_tareo(
+                        estado, fecha, extras)
                     defaults = {
                         'estado': estado,
                         'hora_entrada': entrada,

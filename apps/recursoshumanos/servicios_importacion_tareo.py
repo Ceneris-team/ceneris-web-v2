@@ -11,8 +11,10 @@ en horizontal. Cada bloque ocupa ~10 columnas:
 La celda de un dia trae texto cuando esa persona trabaja ese dia y esta vacia
 cuando no. Ese binario (con la POSICION de la fila) es todo lo que el archivo
 sabe: no hay DNI, ni horas, ni forma de distinguir descanso de falta. Por eso
-este modulo solo produce el estado C (campo): la seccion "PERSONAL EN CAMPO"
-del propio archivo es la que lo determina. Los dias sin marca no se tocan.
+este modulo solo produce dos estados, y los saca de la seccion del propio
+archivo: C (campo) para lo que cae bajo "PERSONAL EN CAMPO" y D (dia libre)
+para el resto de secciones, que es lo que RRHH revisa y reclasifica a mano en
+la previsualizacion. Los dias sin marca no se tocan.
 
 El parseo es puro: no toca la base de datos. El emparejamiento con Trabajador y
 la resolucion de ubicaciones reciben los catalogos ya consultados.
@@ -33,12 +35,18 @@ import openpyxl
 
 ESTADO_CAMPO = 'C'
 
+# Lo que el Excel pone fuera de PERSONAL EN CAMPO (turno Vallecito y similares)
+# NO es trabajo de campo, pero el archivo tampoco dice que turno es. Entra como
+# dia libre: es el estado inocuo, el que no da por bueno nada que no conste.
+# RRHH cambia el tipo fila por fila en la previsualizacion.
+ESTADO_LIBRE = 'D'
+
 # La columna que va INMEDIATAMENTE A LA IZQUIERDA de POSICION rotula la seccion
 # a la que pertenece cada fila, en una celda combinada vertical. Las filas que
-# caen dentro de la seccion "PERSONAL EN CAMPO" son las que se importan como C.
-# Las otras secciones del archivo ("PERSONAL VALLECITO / FINALIZACION DE CADENAS
-# DE CUSTODIA", "SOPORTE MONITOREO - OPTALERT") son turnos distintos y no se
-# importan.
+# caen dentro de la seccion "PERSONAL EN CAMPO" se importan como C. Las otras
+# secciones del archivo ("PERSONAL VALLECITO / FINALIZACION DE CADENAS DE
+# CUSTODIA", "SOPORTE MONITOREO - OPTALERT") son turnos distintos: se importan
+# igual, pero como dia libre y senaladas para que RRHH decida el tipo.
 SECCION_CAMPO = 'PERSONAL EN CAMPO'
 
 # Ojo: la columna de rotulo solo existe hasta la semana del 1 de junio de 2026.
@@ -116,6 +124,9 @@ class DiaImportado:
     anotacion: str = ''
     ubicacion_id: object = None
     ubicacion_nombre: str = ''
+    # Rotulo de la seccion del Excel cuando NO es "PERSONAL EN CAMPO" (por
+    # ejemplo el turno de Vallecito). Vacio = campo.
+    seccion: str = ''
 
     @property
     def dia(self) -> int:
@@ -146,6 +157,21 @@ class PersonaImportada:
     @property
     def total_dias(self) -> int:
         return len(self.dias)
+
+    @property
+    def dias_otra_seccion(self) -> list:
+        """Dias que el Excel puso bajo una seccion distinta de campo."""
+        return [d for d in self.dias_ordenados if d.seccion]
+
+    @property
+    def secciones_ajenas(self) -> list:
+        """Rotulos no-campo bajo los que aparece esta persona, sin repetir."""
+        return list(dict.fromkeys(d.seccion for d in self.dias_otra_seccion))
+
+    @property
+    def solo_otra_seccion(self) -> bool:
+        """True si NINGUN dia de la persona viene de PERSONAL EN CAMPO."""
+        return bool(self.dias) and all(d.seccion for d in self.dias.values())
 
 
 @dataclass
@@ -394,13 +420,16 @@ def leer_excel(archivo, anio, mes) -> ResultadoImportacion:
             if not _es_fila_valida(posicion, nombre):
                 continue
 
-            # La seccion de la izquierda manda: solo se importa lo que cae
-            # bajo PERSONAL EN CAMPO.
+            # La seccion de la izquierda dice de que turno es la fila. Lo que no
+            # cae bajo PERSONAL EN CAMPO se lee igual, pero queda marcado: no se
+            # descarta en silencio, se le muestra a RRHH para que decida (antes
+            # se perdia sin dejar rastro, y en las hojas sin rotulo esa misma
+            # persona si entraba, asi que el resultado cambiaba segun el mes).
             rotulo = secciones.get(fila) if secciones else None
+            seccion_fila = ''
             if not es_seccion_campo(rotulo):
-                clave_seccion = ' '.join(str(rotulo).split())
-                otras_secciones[clave_seccion] = otras_secciones.get(clave_seccion, 0) + 1
-                continue
+                seccion_fila = ' '.join(str(rotulo).split())
+                otras_secciones[seccion_fila] = otras_secciones.get(seccion_fila, 0) + 1
 
             nombre_texto = str(nombre).strip()
             if '/' in nombre_texto:
@@ -422,15 +451,25 @@ def leer_excel(archivo, anio, mes) -> ResultadoImportacion:
                 if fecha.year != anio or fecha.month != mes:
                     continue  # dia de la semana que cae en el mes vecino
                 _, anotacion = partir_anotacion(celda)
-                persona.dias.setdefault(fecha.day, DiaImportado(
+                nuevo = DiaImportado(
                     fecha=fecha,
-                    estado=ESTADO_CAMPO,
+                    estado=ESTADO_LIBRE if seccion_fila else ESTADO_CAMPO,
                     posicion=str(posicion).strip(),
                     texto_celda=str(celda).strip(),
                     anotacion=anotacion,
-                ))
+                    seccion=seccion_fila,
+                )
+                previo = persona.dias.get(fecha.day)
+                # Si el mismo dia aparece en dos secciones, manda el de campo:
+                # es el unico estado que este importador sabe escribir.
+                if previo is None or (previo.seccion and not seccion_fila):
+                    persona.dias[fecha.day] = nuevo
 
-    resultado.personas = sorted(agregadas.values(),
+    # Una fila puede tener marcas solo en los dias que caen en el mes vecino
+    # (semanas a caballo entre dos meses, tipo "MARZO - ABRIL"). Esa persona no
+    # aporta ningun dia al mes que se importa: se descarta para que no salga
+    # como fila vacia en la previsualizacion.
+    resultado.personas = sorted((p for p in agregadas.values() if p.dias),
                                 key=lambda p: normalizar(p.nombre_excel))
 
     if not resultado.semanas_leidas:
@@ -442,8 +481,9 @@ def leer_excel(archivo, anio, mes) -> ResultadoImportacion:
         )
     for seccion, cuantas in sorted(otras_secciones.items()):
         resultado.avisos.append(
-            f"Seccion \"{seccion}\": {cuantas} fila(s) no importadas "
-            "(no estan bajo PERSONAL EN CAMPO)."
+            f"Seccion \"{seccion}\": {cuantas} fila(s) marcadas para revision "
+            "(no estan bajo PERSONAL EN CAMPO). Sus dias entran como \".\" "
+            "(dia libre), no como campo: revisa el tipo fila por fila."
         )
     if bloques_sin_rotulo:
         resultado.avisos.append(
