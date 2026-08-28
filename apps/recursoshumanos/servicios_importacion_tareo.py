@@ -609,12 +609,66 @@ def leer_excel(archivo, anio, mes) -> ResultadoImportacion:
 
 # --- Emparejamiento con el maestro de trabajadores ---------------------------
 
-def _indice_trabajadores(trabajadores):
+def indice_trabajadores(trabajadores):
     indice = []
     for t in trabajadores:
         completo = normalizar(f"{t.nombres} {t.apellido_paterno} {t.apellido_materno}")
         indice.append((t, completo, set(completo.split())))
     return indice
+
+
+def _nombre_sin_nota(nombre_excel) -> str:
+    """El Excel anota "(vacaciones)" o "(VALLECITO)" junto al nombre."""
+    return normalizar(re.sub(r'\([^)]*\)', '', nombre_excel or ''))
+
+
+def _token_parecido(token, otros) -> bool:
+    """Igual, o uno es prefijo del otro con al menos 4 letras.
+
+    Cubre las abreviaturas y erratas del Excel ("CHRISTOPH" por "CHRISTOPHER").
+    """
+    for otro in otros:
+        if token == otro:
+            return True
+        largo = min(len(token), len(otro))
+        if largo >= 4 and (token.startswith(otro) or otro.startswith(token)):
+            return True
+    return False
+
+
+def sugerir_trabajadores(nombre_excel, indice, limite=15):
+    """Trabajadores del maestro ordenados por parecido al nombre del Excel.
+
+    Devuelve pares (trabajador, parecido de 0 a 1), del mas parecido al menos.
+    El desplegable de la previsualizacion listaba el maestro completo en orden
+    alfabetico y RRHH tenia que buscar a mano entre cientos de nombres; con
+    esto los primeros de la lista son los que se parecen. Manda quien comparte
+    palabras del nombre —el Excel pone "GUSTAVO, LENIN" y lo que hace falta ver
+    son los LENIN— y, en igualdad, el parecido de la cadena entera.
+
+    Nunca se descarta a nadie por parecido bajo: si el Excel escribe a alguien
+    que no esta en el maestro (mal escrito o sin dar de alta), la lista igual
+    arranca por el mas parecido, que es por donde RRHH empieza a mirar.
+    """
+    objetivo = _nombre_sin_nota(nombre_excel)
+    if not objetivo:
+        return []
+    tokens = set(objetivo.split())
+
+    puntuados = []
+    for trabajador, completo, tks in indice:
+        comunes = sum(1 for token in tokens if _token_parecido(token, tks))
+        ratio = SequenceMatcher(None, objetivo, completo).ratio()
+        # Tambien contra "nombre + apellido paterno", que es como suele venir
+        # escrito en el Excel.
+        partes = completo.split()
+        if len(partes) > 2:
+            corto = f"{partes[0]} {partes[-2]}"
+            ratio = max(ratio, SequenceMatcher(None, objetivo, corto).ratio())
+        puntuados.append((comunes, ratio, trabajador))
+
+    puntuados.sort(key=lambda p: (-p[0], -p[1]))
+    return [(p[2], p[1]) for p in puntuados[:limite]]
 
 
 def emparejar_personas(resultado, trabajadores) -> None:
@@ -625,14 +679,13 @@ def emparejar_personas(resultado, trabajadores) -> None:
     contenidos y despues por similitud. Nunca decide solo: la confianza viaja a
     la pantalla de previsualizacion para que RRHH confirme.
     """
-    indice = _indice_trabajadores(trabajadores)
+    indice = indice_trabajadores(trabajadores)
 
     for persona in resultado.personas:
         # La nota entre parentesis del nombre ("(vacaciones)", "(VALLECITO)") no
         # es parte del nombre: se quita antes de emparejar para que la fila
         # empareje con el mismo trabajador que su fila normal.
-        sin_nota = re.sub(r'\([^)]*\)', '', persona.nombre_excel)
-        objetivo = normalizar(sin_nota)
+        objetivo = _nombre_sin_nota(persona.nombre_excel)
         tokens = set(objetivo.split())
 
         contenidos = [t for t, _, tks in indice if tokens and tokens <= tks]
