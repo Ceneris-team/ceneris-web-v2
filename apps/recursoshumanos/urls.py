@@ -67,7 +67,12 @@ urlpatterns = [
 
     path('solicitudes/', views.gestion_solicitudes, name='gestion_solicitudes'),
 
-    path('tareo/', views.gestion_tareo, name='gestion_tareo'),    
+    path('tareo/', views.gestion_tareo, name='gestion_tareo'),
+    # Importación del tareo desde el Excel de planificación del proyecto:
+    # el primer paso solo previsualiza, el segundo es el que escribe.
+    path('tareo/importar/', views.importar_tareo, name='importar_tareo'),
+    path('tareo/importar/confirmar/', views.importar_tareo_confirmar, name='importar_tareo_confirmar'),
+
     # --- ¡NUEVAS RUTAS PARA la gestion de trabajadores! ---
     path('empleados/', views.gestion_empleados, name='gestion_empleados'),
     path('empleados/lista/', views.lista_trabajadores, name='lista_trabajadores'),

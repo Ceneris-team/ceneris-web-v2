@@ -215,7 +215,9 @@ def recalcular_asistencia_diaria(tareo: TareoDiario):
     horas_objetivo = 0.0
 
     try:
-        if tareo.estado == 'J' and tareo.jornada_horas:
+        # 'H' (campo, 12 h) se guarda como jornada por horas sin entrada/salida,
+        # igual que 'J': el objetivo de pago sale de jornada_horas, no del rango.
+        if tareo.estado in ('J', 'H') and tareo.jornada_horas:
             horas_objetivo = float(tareo.jornada_horas)
         elif h_programada and tareo.hora_salida:
             h_salida_prog = tareo.hora_salida

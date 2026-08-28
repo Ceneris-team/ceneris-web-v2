@@ -9,6 +9,13 @@ from django.utils.safestring import mark_safe
 from recursoshumanos.models import Trabajador
 from django.contrib.auth.models import Permission
 from django.db.models import Count
+from django.conf import settings
+from django.http import JsonResponse
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.cache import never_cache
+
+from .models import MENSAJE_SESION_DUPLICADA, SesionCerradaRemotamente
 
 
 def tiene_permiso_metricas(user):
@@ -492,3 +499,35 @@ def crear_usuario_externo(request):
             messages.error(request, f"Error al crear usuario: {str(e)}")
 
     return redirect('accesos:lista_usuarios')
+
+# ==============================================================================
+# CAV-187 (mejora): aviso de sesion cerrada desde otro dispositivo
+# ==============================================================================
+
+@never_cache
+def estado_sesion(request):
+    """
+    Endpoint publico que consulta el vigilante de sesion unica que corre
+    en cada pagina web.
+
+    Se deja sin `login_required` a proposito: justamente lo llama un
+    navegador cuya sesion ya fue borrada, y su cookie `sessionid` vieja
+    es la unica pista que queda para reconocerlo.
+    """
+    if request.user.is_authenticated:
+        return JsonResponse({'activa': True})
+
+    cookie_vieja = request.COOKIES.get(settings.SESSION_COOKIE_NAME)
+    aviso = SesionCerradaRemotamente.aviso_pendiente(cookie_vieja)
+    if aviso is None:
+        return JsonResponse({'activa': False, 'motivo': 'sin_sesion'})
+
+    login_url = f'{reverse("login")}?sesion={SesionCerradaRemotamente.MOTIVO_SESION_DUPLICADA}'
+    return JsonResponse({
+        'activa': False,
+        'motivo': SesionCerradaRemotamente.MOTIVO_SESION_DUPLICADA,
+        'mensaje': MENSAJE_SESION_DUPLICADA,
+        'fecha_cierre': timezone.localtime(aviso.fecha_cierre).strftime('%d/%m/%Y %H:%M'),
+        'login_url': login_url,
+        'segundos_redireccion': getattr(settings, 'SESION_UNICA_SEGUNDOS_REDIRECCION', 5),
+    })
