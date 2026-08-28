@@ -386,6 +386,12 @@
                     <li class="navbar__item {% if current_view == 'gestion_horarios' %}active{% endif %}">
                         <a href="{% url 'recursoshumanos:gestion_tareo' %}" class="navbar__link"><i data-feather="calendar"></i><span>Tareo</span></a>
                     </li>
+                    <li class="navbar__item {% if current_view == 'gestion_feriados' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:gestion_feriados' %}" class="navbar__link"><i data-feather="sun"></i><span>Feriados</span></a>
+                    </li>
+                    <li class="navbar__item {% if current_view == 'gestion_tolerancia' %}active{% endif %}">
+                        <a href="{% url 'recursoshumanos:gestion_tolerancia' %}" class="navbar__link"><i data-feather="clock"></i><span>Tolerancia Horario</span></a>
+                    </li>
                     <li class="navbar__item {% if current_view == 'gestion_reportes' %}active{% endif %}">
                         <a href="{% url 'recursoshumanos:gestion_reportes' %}" class="navbar__link"><i data-feather="download"></i><span>Reportes</span></a>
                     </li>
@@ -440,13 +446,6 @@
                     </li>
                 {% endif %}
                 
-                {% if request.user.is_superuser %}
-                    <li class="navbar__item {% if 'auditoria' in request.path %}active{% endif %}">
-                        <a href="{% url 'cotizaciones:dashboard_auditoria' %}" class="navbar__link">
-                            <i data-feather="shield"></i><span>Auditoría Cotizaciones</span>
-                        </a>
-                    </li>
-                {% endif %}
             </ul>
 
             <!-- 3. FOOTER DEL SIDEBAR (USUARIO Y LOGOUT) -->

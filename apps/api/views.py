@@ -14,8 +14,10 @@ from datetime import datetime, timedelta, time, date
 from decimal import Decimal
 import pytz
 import json
+import hashlib
 
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 
@@ -27,9 +29,9 @@ from recursoshumanos.models import (
 
 # Importaciones de serializers
 from .serializers import (
-    MyTokenObtainPairSerializer, AsistenciaSerializer, 
+    MyTokenObtainPairSerializer, AsistenciaSerializer,
     FaltaPendienteSerializer, CrearJustificacionSerializer,
-    SolicitudHorasExtraSerializer
+    SolicitudHorasExtraSerializer, UsuarioAutorizadoSerializer
 )
 
 # Importaciones de servicios
@@ -305,7 +307,7 @@ class RegistrarAsistenciaView(APIView):
                     latitud_reportada=request.data.get('latitud') or request.data.get('latitude') or request.data.get('lat'),
                     longitud_reportada=request.data.get('longitud') or request.data.get('longitude') or request.data.get('lng')
                 )
-                print(f"🚨 [ALERTA] Fraude guardado en BD: {motivo}")
+                print(f"[ALERTA] Fraude guardado en BD: {motivo}")
 
             # Lógica de Dispositivo (Crear o validar)
             dispositivo, created = Dispositivo.objects.get_or_create(
@@ -376,13 +378,28 @@ class RegistrarAsistenciaView(APIView):
                 )
                 
                 # 4. CÁLCULO AUTOMÁTICO
+                advertencia = None
                 try:
                     recalcular_asistencia_diaria(tareo_hoy)
                     print(f"✅ Asistencia registrada y procesada para {trabajador}")
+
+                    tareo_hoy.refresh_from_db()
+                    if tareo_hoy.etiqueta_estado in ('FUERA_HORARIO', 'TARDANZA'):
+                        advertencia = {
+                            'tipo': tareo_hoy.etiqueta_estado,
+                            'mensaje': (
+                                f'Tu marcación fue clasificada como '
+                                f'{tareo_hoy.get_etiqueta_estado_display()}.'
+                            ),
+                            'detalle': tareo_hoy.detalle_marca or '',
+                        }
                 except Exception as e:
                     print(f"⚠️ Error en el cálculo matemático: {e}")
 
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                response_data = dict(serializer.data)
+                if advertencia:
+                    response_data['advertencia'] = advertencia
+                return Response(response_data, status=status.HTTP_201_CREATED)
             
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -624,3 +641,90 @@ def actualizar_telefono(request):
         return Response({"mensaje": "Teléfono actualizado.", "nuevo_telefono": nuevo_telefono}, status=200)
     except Trabajador.DoesNotExist:
         return Response({"error": "No se encontró el trabajador."}, status=404)
+
+
+# ==============================================================================
+# CAV-182: Sincronizacion incremental de usuarios autorizados
+# ==============================================================================
+def _calcular_checksum_usuarios(usuarios_data):
+    """
+    Genera un checksum estable (SHA-256) sobre la lista de usuarios ya
+    serializada, ordenada por DNI para que el resultado sea determinista
+    sin importar el orden en que la base de datos devuelva las filas.
+    El cliente movil recalcula este mismo checksum para verificar que
+    la lista no fue alterada/corrompida en el camino (CAV-183).
+
+    IMPORTANTE: NO se usa sort_keys=True aqui. El checksum debe calcularse
+    sobre la MISMA representacion JSON que efectivamente se envia en la
+    respuesta (orden de claves tal como se construyen los dicts), porque
+    el cliente recalcula el checksum a partir de lo que recibio por HTTP,
+    no de una version re-ordenada que nunca viaja por la red.
+    """
+    normalizados = sorted(usuarios_data, key=lambda u: u['dni'])
+    canonical = json.dumps(normalizados, separators=(',', ':'))
+    return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+
+
+class UsuariosAutorizadosSyncView(APIView):
+    """
+    CAV-182: Endpoint de sincronizacion incremental de usuarios autorizados.
+
+    GET /api/usuarios-autorizados/sync/?since=<ISO-8601, opcional>
+
+    - Sin 'since': devuelve TODOS los trabajadores con cuenta de usuario
+      vinculada (sync completo, primera vez que el dispositivo sincroniza).
+    - Con 'since': devuelve solo los que cambiaron (activo, datos, etc.)
+      despues de esa fecha/hora (sync incremental).
+
+    Respuesta:
+    {
+        "version": "<ISO-8601, usar como 'since' en la proxima llamada>",
+        "checksum": "<sha256 de la lista 'usuarios' tal como se envia>",
+        "usuarios": [
+            {"dni": ..., "username": ..., "nombre_completo": ...,
+             "activo": ..., "actualizado_en": ...},
+            ...
+        ]
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        since_raw = request.query_params.get('since')
+        queryset = Trabajador.objects.filter(user__isnull=False).select_related('user')
+
+        if since_raw:
+            since_dt = parse_datetime(since_raw)
+            if since_dt is None:
+                return Response(
+                    {"error": "Parametro 'since' invalido. Debe ser una fecha ISO-8601."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if timezone.is_naive(since_dt):
+                since_dt = timezone.make_aware(since_dt, timezone.get_current_timezone())
+            queryset = queryset.filter(actualizado_en__gt=since_dt)
+
+        queryset = queryset.order_by('dni')
+
+        usuarios_data = [
+            {
+                'dni': t.dni,
+                'username': t.user.username,
+                'nombre_completo': t.nombre_completo,
+                'activo': t.activo,
+                'actualizado_en': t.actualizado_en.isoformat(),
+            }
+            for t in queryset
+        ]
+
+        # Validamos con el serializer para garantizar el contrato de datos
+        serializer = UsuarioAutorizadoSerializer(data=usuarios_data, many=True)
+        serializer.is_valid(raise_exception=True)
+
+        checksum = _calcular_checksum_usuarios(usuarios_data)
+
+        return Response({
+            'version': timezone.now().isoformat(),
+            'checksum': checksum,
+            'usuarios': usuarios_data,
+        }, status=status.HTTP_200_OK)

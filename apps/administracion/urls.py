@@ -2,6 +2,7 @@
 
 from django.urls import path
 from . import views
+from . import views_feriados
 from .views import (
     gestionar_requerimientos,
     lista_requerimientos,
@@ -50,4 +51,11 @@ urlpatterns = [
     path('agentes/editar/<int:pk>/', views.AgenteUpdateView.as_view(), name='editar_agente'),
     path('agentes/eliminar/<int:pk>/', views.AgenteDeleteView.as_view(), name='eliminar_agente'),
     path('reportes/facturacion/', views.reporte_facturacion, name='reporte_facturacion'),
+
+    # --- Gestión de Feriados (HU-01 CAV-10) ---
+    path('feriados/', views_feriados.gestion_feriados, name='gestion_feriados'),
+    path('feriados/api/', views_feriados.feriados_api_list, name='feriados_api_list'),
+    path('feriados/api/crear/', views_feriados.feriado_api_crear, name='feriado_api_crear'),
+    path('feriados/api/<int:pk>/editar/', views_feriados.feriado_api_editar, name='feriado_api_editar'),
+    path('feriados/api/<int:pk>/eliminar/', views_feriados.feriado_api_eliminar, name='feriado_api_eliminar'),
 ]

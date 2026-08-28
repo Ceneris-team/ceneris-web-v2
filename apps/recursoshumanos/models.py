@@ -3,6 +3,8 @@ from django.core.validators import RegexValidator
 from django.utils import timezone
 from django.conf import settings
 
+from .motor_reglas import EstadoMarca
+
 # Validador para DNI
 dni_validator = RegexValidator(
     regex=r'^\d{8}$',
@@ -181,6 +183,9 @@ class Trabajador(models.Model):
     # Estado Global
     aptitud_actual = models.CharField(max_length=50, default='Sin Evaluación', editable=False)
     activo = models.BooleanField(default=True)
+    # Usado por CAV-182 (sincronizacion incremental de usuarios autorizados):
+    # se actualiza solo en cada guardado, permite consultar "que cambio desde X fecha".
+    actualizado_en = models.DateTimeField(auto_now=True)
 
     @property
     def nombre_completo(self):
@@ -445,6 +450,25 @@ class TareoDiario(models.Model):
     # Para saber si se aplicó descuento automático de almuerzo
     descuento_almuerzo_aplicado = models.BooleanField(default=False)
 
+    # Clasificación de la marca del día que produce el motor de reglas
+    # (CAV-167): NORMAL, TARDANZA, FERIADO, FUERA_HORARIO, etc. Es distinto de
+    # `estado` (tipo de jornada) y de `resultado` (F/A/J). Nace en null hasta
+    # que el motor evalúa el día.
+    etiqueta_estado = models.CharField(
+        max_length=20,
+        choices=EstadoMarca.choices,
+        null=True,
+        blank=True,
+        verbose_name="Etiqueta de la marca",
+    )
+
+    detalle_marca = models.TextField(
+        blank=True,
+        default='',
+        verbose_name="Motivo de la clasificación",
+        help_text="Razón legible que produjo la etiqueta (ej. 'Tardanza de 15 min; Salida posterior').",
+    )
+
     # Opcional: Ubicación asignada
     ubicacion = models.ForeignKey(Ubicacion, on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -580,4 +604,84 @@ class Justificacion(models.Model):
 
     def __str__(self):
         return f"Justificación {self.tareo.trabajador} - {self.tareo.fecha}"
+
+
+class ConfiguracionTolerancia(models.Model):
+    """HU-06 (CAV-15): tolerancia de tardanza configurable por Sede y horario/turno."""
+
+    class TipoHorario(models.TextChoices):
+        CAMPO = 'C', 'Campo'
+        OFICINA = 'O', 'Oficina'
+        PERSONALIZADO = 'P', 'Personalizado'
+        JORNADA_HORAS = 'J', 'Jornada por Horas'
+
+    sede = models.ForeignKey(
+        Sede,
+        on_delete=models.CASCADE,
+        related_name='tolerancias',
+        verbose_name="Sede"
+    )
+    tipo_horario = models.CharField(
+        max_length=1,
+        choices=TipoHorario.choices,
+        verbose_name="Horario / Turno"
+    )
+    minutos_tolerancia = models.PositiveIntegerField(
+        default=15,
+        verbose_name="Minutos de Tolerancia"
+    )
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Configuración de Tolerancia"
+        verbose_name_plural = "Configuraciones de Tolerancia"
+        unique_together = ('sede', 'tipo_horario')
+        ordering = ['sede__nombre', 'tipo_horario']
+
+    def __str__(self):
+        return f"{self.sede.nombre} - {self.get_tipo_horario_display()}: {self.minutos_tolerancia} min"
+
+
+class ToleranciaAuditoria(models.Model):
+    """Historial de cambios sobre ConfiguracionTolerancia (quién, cuándo, de cuánto a cuánto)."""
+
+    configuracion = models.ForeignKey(
+        ConfiguracionTolerancia,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='auditorias',
+        verbose_name="Configuración"
+    )
+    # Se guardan como snapshot para que el historial siga siendo legible
+    # aunque la configuración o la sede asociada se eliminen después.
+    sede_nombre = models.CharField(max_length=100, verbose_name="Sede")
+    tipo_horario = models.CharField(max_length=1, verbose_name="Horario / Turno")
+
+    minutos_anteriores = models.PositiveIntegerField(verbose_name="Minutos Anteriores")
+    minutos_nuevos = models.PositiveIntegerField(verbose_name="Minutos Nuevos")
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Modificado por"
+    )
+    creado_en = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Cambio")
+
+    class Meta:
+        verbose_name = "Auditoría de Tolerancia"
+        verbose_name_plural = "Auditorías de Tolerancia"
+        ordering = ['-creado_en']
+
+    def __str__(self):
+        usuario_nombre = self.usuario.username if self.usuario else "Sistema"
+        return f"{self.sede_nombre} ({self.get_tipo_horario_display()}): {self.minutos_anteriores}min -> {self.minutos_nuevos}min por {usuario_nombre}"
+
+    def get_tipo_horario_display(self):
+        return dict(ConfiguracionTolerancia.TipoHorario.choices).get(self.tipo_horario, self.tipo_horario)
 

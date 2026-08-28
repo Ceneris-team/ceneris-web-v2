@@ -2,7 +2,7 @@
 from django.contrib import admin, messages
 from admin_panel.settings import db
 from django.shortcuts import render
-from .models import Sede, Area, Empresa, Cargo, CentroCosto
+from .models import Sede, Area, Empresa, Cargo, CentroCosto, ConfiguracionTolerancia, ToleranciaAuditoria
 
 # Creamos una acción personalizada para desvincular dispositivos
 @admin.action(description="Desvincular dispositivo seleccionado")
@@ -74,3 +74,22 @@ class CargoAdmin(admin.ModelAdmin):
 class CentroCostoAdmin(admin.ModelAdmin):
     list_display = ['codigo', 'nombre']
     search_fields = ['codigo', 'nombre']
+
+@admin.register(ConfiguracionTolerancia)
+class ConfiguracionToleranciaAdmin(admin.ModelAdmin):
+    list_display = ['sede', 'tipo_horario', 'minutos_tolerancia', 'activo', 'actualizado_en']
+    list_filter = ['sede', 'tipo_horario', 'activo']
+    search_fields = ['sede__nombre']
+
+@admin.register(ToleranciaAuditoria)
+class ToleranciaAuditoriaAdmin(admin.ModelAdmin):
+    list_display = ['sede_nombre', 'tipo_horario', 'minutos_anteriores', 'minutos_nuevos', 'usuario', 'creado_en']
+    list_filter = ['tipo_horario']
+    search_fields = ['sede_nombre']
+    ordering = ['-creado_en']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
