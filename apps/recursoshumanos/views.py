@@ -2153,6 +2153,10 @@ def importar_tareo(request):
         for dia in range(1, num_dias + 1)
     ]
 
+    # Se muestran TODAS las filas del Excel, también las que no emparejaron con
+    # ningún trabajador: son justamente las que RRHH tiene que resolver a mano
+    # en el desplegable. Filtrarlas aquí las hacía desaparecer sin aviso y daba
+    # la impresión de que la importación no capturaba a esas personas.
     filas = []
     for indice, persona in enumerate(resultado.personas):
         dias_render, dias_payload = {}, {}

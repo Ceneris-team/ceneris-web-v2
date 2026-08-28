@@ -50,6 +50,14 @@ PERSONAL = [
     ('DIEGO', 'ZEGARRA', 'NUÑEZ'),
     ('JESUS', 'ZUÑIGA', 'ARANIBAR'),
     ('BRYAN', 'ESPEDILLA', 'CACERES'),
+    # Altas de agosto. Van al final a propósito: el DNI sale del índice en esta
+    # lista, así que insertarlas en medio renombraría a las de arriba.
+    ('JESUS', 'ADRIAZOLA', 'HUAMANI'),
+    ('ALFONSO', 'ARANIBAR', 'PACHECO'),
+    ('BRIAN', 'RAMOS', 'QUISPE'),
+    ('ANDRES', 'CABALLERO', 'VILCA'),
+    ('JUAN', 'CCALAHUILLE', 'MAMANI'),
+    ('KEVIN', 'CCORAHUA', 'FLORES'),
 ]
 
 

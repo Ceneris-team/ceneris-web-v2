@@ -335,6 +335,17 @@
             </div>
 
             <div class="form-group">
+                <label for="diaFiltro">Día (opcional)</label>
+                <select id="diaFiltro" class="filter-input"
+                        title="Muestra solo los trabajadores con algún estado en ese día. Sirve para verificar quién quedó capturado en una fecha puntual.">
+                    <option value="">-- Todos --</option>
+                    {% for dia_info in dias_del_mes_info %}
+                        <option value="{{ dia_info.numero }}">{{ dia_info.numero }} · {{ dia_info.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="proyecto">Proyecto</label>
                 <select id="proyecto" name="proyecto" class="filter-input">
                     <option value="">-- Todos --</option>
@@ -383,7 +394,7 @@
                     <th class="codigo-col sticky-col">DNI</th>
                     <th class="trabajador-col sticky-col">Nombres y Apellidos</th>
                     {% for dia_info in dias_del_mes_info %}
-                        <th class="dia-col">
+                        <th class="dia-col" data-dia="{{ dia_info.numero }}">
                             {{ dia_info.nombre }}<br><span style="font-size: 1.1em; color: #0f172a;">{{ dia_info.numero }}</span>
                         </th>
                     {% endfor %}
@@ -548,10 +559,37 @@ document.addEventListener('DOMContentLoaded', function() {
     const proyectoInput = document.getElementById('proyecto');
     const subproyectoInput = document.getElementById('subproyecto');
     const areaInput = document.getElementById('area');
-    
+    const diaFiltroInput = document.getElementById('diaFiltro');
+
     function aplicarFiltros() {
         filterForm.querySelector('input[name="page"]')?.remove();
         filterForm.submit();
+    }
+
+    // Filtro por día: es solo visual, no toca la BD ni recarga la página. Oculta
+    // los trabajadores cuya celda del día elegido esté vacía para verificar
+    // rápido quién quedó capturado en una fecha concreta.
+    function aplicarFiltroDia() {
+        const dia = diaFiltroInput ? diaFiltroInput.value : '';
+
+        // Ocultar/mostrar columnas: solo se ve el día elegido (más DNI y Nombre).
+        document.querySelectorAll('#tablaMatricial th.dia-col, #tablaMatricial td.tareo-cell')
+            .forEach(function (celda) {
+                const suyo = celda.dataset.dia;
+                celda.style.display = (!dia || suyo === dia) ? '' : 'none';
+            });
+
+        // Ocultar filas cuya celda de ese día esté vacía.
+        const filas = document.querySelectorAll('#tablaMatricial tbody tr');
+        filas.forEach(function (fila) {
+            if (!dia) {
+                fila.style.display = '';
+                return;
+            }
+            const celda = fila.querySelector('.tareo-cell[data-dia="' + dia + '"]');
+            const tieneEstado = celda && celda.textContent.trim() !== '';
+            fila.style.display = tieneEstado ? '' : 'none';
+        });
     }
 
     let searchDebounce;
@@ -589,11 +627,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (select) select.addEventListener('change', aplicarFiltros);
     });
 
+    if (diaFiltroInput) {
+        diaFiltroInput.addEventListener('change', aplicarFiltroDia);
+    }
+    aplicarFiltroDia();
+
     limpiarFiltrosBtn.addEventListener('click', function() {
         buscadorInput.value = '';
         if (proyectoInput) proyectoInput.value = '';
         if (subproyectoInput) subproyectoInput.value = '';
         if (areaInput) areaInput.value = '';
+        if (diaFiltroInput) diaFiltroInput.value = '';
         aplicarFiltros();
     });
 

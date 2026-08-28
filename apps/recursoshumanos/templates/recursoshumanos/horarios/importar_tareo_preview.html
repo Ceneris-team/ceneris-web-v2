@@ -209,7 +209,7 @@
     }
     .select-trabajador:hover { border-color: #cbd5e1; background: #ffffff; }
     .select-trabajador:focus { outline: none; border-color: #3b82f6; background: #ffffff; }
-    .select-trabajador.sin-match { border-color: #fca5a5; background: #fef2f2; color: #b91c1c; }
+    .select-trabajador.sin-match { border-color: transparent; background: transparent; color: #1e293b; }
 
     /* Una sola línea: si la fila crece a dos, la tabla deja de caber. */
     .origen-excel {
@@ -301,6 +301,17 @@
             </div>
 
             <div class="form-group">
+                <label for="diaFiltro">Día (opcional)</label>
+                <select id="diaFiltro" class="filter-input"
+                        title="Muestra solo las filas del Excel que traen ese día marcado. Sirve para verificar quién quedó capturado en una fecha puntual.">
+                    <option value="">-- Todos --</option>
+                    {% for dia_info in dias_del_mes_info %}
+                        <option value="{{ dia_info.numero }}">{{ dia_info.numero }} · {{ dia_info.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="proyecto">Proyecto</label>
                 <select id="proyecto" class="filter-input">
                     <option value="">-- Todos --</option>
@@ -362,7 +373,7 @@
                         <th class="codigo-col sticky-col">DNI</th>
                         <th class="trabajador-col sticky-col">Nombres y Apellidos</th>
                         {% for dia_info in dias_del_mes_info %}
-                            <th class="dia-col">
+                            <th class="dia-col" data-dia="{{ dia_info.numero }}">
                                 {{ dia_info.nombre }}<br><span style="font-size: 1.1em; color: #0f172a;">{{ dia_info.numero }}</span>
                             </th>
                         {% endfor %}
@@ -399,10 +410,10 @@
                             {% with dia_str=dia_info.numero|stringformat:"s" %}
                             {% with celda=fila.dias|get_item:dia_str %}
                             {% if celda %}
-                                <td class="tareo-cell importada"
+                                <td class="tareo-cell importada" data-dia="{{ dia_info.numero }}"
                                     title="{{ fila.nombre_excel }} · {{ celda.posicion }}{% if celda.anotacion %} ({{ celda.anotacion }}){% endif %}{% if celda.ubicacion %} · {{ celda.ubicacion }}{% endif %}">{{ celda.estado }}</td>
                             {% else %}
-                                <td class="tareo-cell"></td>
+                                <td class="tareo-cell" data-dia="{{ dia_info.numero }}"></td>
                             {% endif %}
                             {% endwith %}{% endwith %}
                         {% endfor %}
@@ -513,6 +524,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const proyectoInput = document.getElementById('proyecto');
     const subproyectoInput = document.getElementById('subproyecto');
     const areaInput = document.getElementById('area');
+    const diaFiltroInput = document.getElementById('diaFiltro');
     const filtrarBtn = document.getElementById('filtrarBtn');
     const limpiarFiltrosBtn = document.getElementById('limpiarFiltrosBtn');
     const filtroNota = document.getElementById('filtroNota');
@@ -521,6 +533,15 @@ document.addEventListener('DOMContentLoaded', function () {
     function normalizarTexto(valor) {
         return (valor || '').toString().toUpperCase()
             .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    function tieneDia(fila, dia) {
+        try {
+            const datos = JSON.parse(fila.querySelector('input[name^="datos_"]').value);
+            return Object.prototype.hasOwnProperty.call(datos, dia);
+        } catch (err) {
+            return false;
+        }
     }
 
     function coincideConFiltros(fila) {
@@ -533,6 +554,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 dni + ' ' + (info ? info.n : '') + ' ' + (fila.dataset.nombreExcel || ''));
             if (contenido.indexOf(buscado) === -1) return false;
         }
+
+        // Filtro opcional por día del mes: sirve para verificar puntualmente
+        // quién quedó capturado en una fecha concreta.
+        const dia = diaFiltroInput.value;
+        if (dia && !tieneDia(fila, dia)) return false;
 
         const proyecto = proyectoInput.value;
         const subproyecto = subproyectoInput.value;
@@ -548,7 +574,20 @@ document.addEventListener('DOMContentLoaded', function () {
         return true;
     }
 
+    // Cuando se elige un día, además de dejar solo las filas con ese día, se
+    // ocultan las columnas del resto de días: la tabla queda con DNI, Nombre y
+    // esa única columna.
+    function aplicarFiltroColumnaDia() {
+        const dia = diaFiltroInput.value;
+        document.querySelectorAll('#tablaMatricial th.dia-col, #tablaMatricial td.tareo-cell')
+            .forEach(function (celda) {
+                const suyo = celda.dataset.dia;
+                celda.style.display = (!dia || suyo === dia) ? '' : 'none';
+            });
+    }
+
     function aplicarFiltros() {
+        aplicarFiltroColumnaDia();
         let visibles = 0;
         filas.forEach(function (fila) {
             const visible = coincideConFiltros(fila);
@@ -594,7 +633,7 @@ document.addEventListener('DOMContentLoaded', function () {
         sincronizarSubproyectos();
         aplicarFiltros();
     });
-    [subproyectoInput, areaInput].forEach(function (select) {
+    [subproyectoInput, areaInput, diaFiltroInput].forEach(function (select) {
         select.addEventListener('change', aplicarFiltros);
     });
     filtrarBtn.addEventListener('click', aplicarFiltros);
@@ -604,6 +643,7 @@ document.addEventListener('DOMContentLoaded', function () {
         proyectoInput.value = '';
         subproyectoInput.value = '';
         areaInput.value = '';
+        diaFiltroInput.value = '';
         sincronizarSubproyectos();
         aplicarFiltros();
     });
