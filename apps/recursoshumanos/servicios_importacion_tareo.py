@@ -224,6 +224,11 @@ class ResultadoImportacion:
     avisos: list = field(default_factory=list)
     semanas_leidas: int = 0
     hoja: str = ''
+    # Semanas que se dejaron FUERA por no traer los numeros de dia en el archivo:
+    # su fecha solo se puede deducir por la posicion del bloque, y una cabecera
+    # mal copiada haria escribir toda la semana en los dias equivocados. Cada
+    # entrada: {'inicio': date, 'fin': date, 'dias': [numeros del mes]}.
+    semanas_omitidas: list = field(default_factory=list)
 
     @property
     def total_dias(self) -> int:
@@ -438,15 +443,33 @@ def leer_excel(archivo, anio, mes) -> ResultadoImportacion:
     ]
     calendario = _resolver_calendario(numeros_por_bloque, anio, mes)
 
-    for indice, col_pos in enumerate(bloques):
+    # Bloques que no traen NINGUN numero de dia en la fila 3. Su fecha solo sale
+    # de la cadena (bloque anterior + 7 dias), y una cabecera mal armada por
+    # quien edita el Excel (rotulo del mes corrido a la fila de numeros, numeros
+    # pegados de otra semana) haria escribir la semana entera en dias que no son.
+    # No se adivina: esa semana se deja fuera y se le avisa a RRHH.
+    semanas_sin_numeros = {
+        i for i, nums in enumerate(numeros_por_bloque)
+        if not any(n is not None for n in nums)
+    }
+
+    for indice_bloque, col_pos in enumerate(bloques):
         col_nombre = col_pos + 1
         col_primer_dia = col_pos + 2
 
-        fechas = calendario.get(indice)
+        fechas = calendario.get(indice_bloque)
         if fechas is None:
             continue
         if not any(f.year == anio and f.month == mes for f in fechas):
             continue  # semana de otro mes: se ignora entera
+        if indice_bloque in semanas_sin_numeros:
+            resultado.semanas_omitidas.append({
+                'inicio': fechas[0],
+                'fin': fechas[6],
+                'dias': [f.day for f in fechas
+                         if f.year == anio and f.month == mes],
+            })
+            continue
         resultado.semanas_leidas += 1
 
         secciones = _secciones_del_bloque(hoja, col_pos - 1)
@@ -506,10 +529,10 @@ def leer_excel(archivo, anio, mes) -> ResultadoImportacion:
                 agregadas[clave] = persona
             persona.posiciones.append(str(posicion).strip())
 
-            for indice, celda in enumerate(celdas):
+            for indice_dia, celda in enumerate(celdas):
                 if celda is None or not str(celda).strip():
                     continue
-                fecha = fechas[indice]
+                fecha = fechas[indice_dia]
                 if fecha.year != anio or fecha.month != mes:
                     continue  # dia de la semana que cae en el mes vecino
                 _, anotacion = partir_anotacion(celda)
@@ -538,7 +561,21 @@ def leer_excel(archivo, anio, mes) -> ResultadoImportacion:
                                 key=lambda p: normalizar(p.nombre_excel))
 
     if not resultado.semanas_leidas:
+        if resultado.semanas_omitidas:
+            raise ErrorImportacion(
+                "Ninguna semana de ese mes trae los numeros de dia en el archivo, "
+                "asi que no se puede saber a que fechas corresponden. Corrige la "
+                "fila de numeros de las semanas en el Excel y vuelve a subirlo."
+            )
         raise ErrorImportacion("El archivo no contiene ninguna semana de ese mes.")
+    for semana in resultado.semanas_omitidas:
+        resultado.avisos.append(
+            f"Semana del {semana['inicio'].strftime('%d/%m')} al "
+            f"{semana['fin'].strftime('%d/%m')}: NO se importo. Su bloque en el "
+            "Excel no trae la fila con los numeros de dia (la cabecera esta mal "
+            "armada), asi que la fecha no es confiable. Esos dias quedan vacios "
+            "para que RRHH los complete a mano."
+        )
     if compartidas:
         resultado.avisos.append(
             "Celdas con mas de una persona, no importadas: "

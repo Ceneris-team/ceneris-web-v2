@@ -288,6 +288,34 @@ def libro_con_secciones():
     return buffer.getvalue()
 
 
+def libro_con_semana_sin_numerar():
+    """Agosto 2026: la semana del 3 al 9 numerada y la del 10 al 16 sin la fila
+    de números de día (cabecera mal armada en el Excel)."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = '2026'
+    ws.cell(2, 5, 'AGOSTO')
+    semanas = [[3, 4, 5, 6, 7, 8, 9], [None] * 7,
+               [17, 18, 19, 20, 21, 22, 23], [24, 25, 26, 27, 28, 29, 30]]
+    for indice, numeros in enumerate(semanas):
+        col = 2 + indice * 10
+        ws.cell(4, col, 'PERSONAL EN CAMPO')
+        ws.merge_cells(start_row=4, end_row=6, start_column=col, end_column=col)
+        ws.cell(4, col + 1, 'POSICIÓN')
+        ws.cell(4, col + 2, 'NOMBRE')
+        for i, numero in enumerate(numeros):
+            if numero:
+                ws.cell(3, col + 3 + i, numero)
+        ws.cell(5, col + 1, 'M1')
+        ws.cell(5, col + 2, 'DIEGO HERNANI')
+        for i in range(7):
+            ws.cell(5, col + 3 + i, 'M1')
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
 def libro_con_vacaciones():
     """Agosto 2026, una semana. Una fila normal (H) y la fila aparte de
     vacaciones ("WASHINGTON (vacaciones)"), ambas bajo PERSONAL EN CAMPO."""
@@ -464,10 +492,11 @@ class FilaSinMixtoTests(TestCase):
             })
         self.filas = {f['nombre_excel']: f for f in self.respuesta.context['filas']}
 
-    def test_el_tipo_de_la_fila_es_el_dominante_no_mixto(self):
+    def test_el_tipo_de_la_fila_lista_los_varios_no_uno_solo(self):
         fila = self.filas['EDWIN PUMA']
-        # 5 días de campo contra 1 de Vallecito: gana H, nunca queda ''.
-        self.assertEqual(fila['tipo_inicial'], 'H')
+        # 5 días campo + 1 Vallecito: el Tipo no afirma uno solo, los lista.
+        self.assertEqual(fila['tipo_inicial'], '')
+        self.assertEqual(fila['tipos_mezcla'], 'H y P')
 
     def test_cada_dia_conserva_su_estado(self):
         fila = self.filas['EDWIN PUMA']
@@ -479,8 +508,74 @@ class FilaSinMixtoTests(TestCase):
         self.assertEqual(fila['horario_inicial'],
                          {'entrada': '13:00', 'salida': '21:00'})
 
-    def test_la_previsualizacion_ya_no_ofrece_la_opcion_mixto(self):
+    def test_la_previsualizacion_muestra_el_indicador_varios(self):
+        # Se ve la mezcla en el Tipo ("Varios: H y P"), sin la palabra "mixto".
+        self.assertContains(self.respuesta, 'Varios: H y P')
         self.assertNotContains(self.respuesta, 'Mixto')
+
+
+class SemanaSinNumerarTests(TestCase):
+    """La semana cuyo bloque no trae números de día no se importa y se avisa en
+    una ventana emergente: sus días quedan vacíos para que RRHH los complete."""
+
+    def setUp(self):
+        grupo, _ = Group.objects.get_or_create(name='Recursos Humanos')
+        u = get_user_model().objects.create_user(username='rrhh_sem', password='clave-de-prueba')
+        u.groups.add(grupo)
+        self.area = Area.objects.create(nombre='Operaciones QA')
+        Trabajador.objects.create(
+            dni='10000001', nombres='DIEGO ARMANDO', apellido_paterno='HERNANI',
+            apellido_materno='ROJAS', area=self.area, activo=True)
+        self.client.login(username='rrhh_sem', password='clave-de-prueba')
+
+        archivo = SimpleUploadedFile(
+            'tareo.xlsx', libro_con_semana_sin_numerar(),
+            content_type=('application/vnd.openxmlformats-officedocument'
+                          '.spreadsheetml.sheet'))
+        self.respuesta = self.client.post(
+            reverse('recursoshumanos:importar_tareo'), {
+                'mes': '2026-08', 'q': '', 'proyecto': '', 'subproyecto': '',
+                'area': str(self.area.id), 'archivo': archivo,
+            })
+
+    def test_los_dias_de_esa_semana_quedan_vacios(self):
+        fila = self.respuesta.context['filas'][0]
+        # La semana del 10 al 16 no aporta ningún día.
+        for dia in range(10, 17):
+            self.assertNotIn(str(dia), fila['dias'])
+        self.assertIn('3', fila['dias'])
+
+    def test_la_ventana_emergente_nombra_la_semana(self):
+        semanas = self.respuesta.context['semanas_omitidas']
+        self.assertEqual(len(semanas), 1)
+        self.assertEqual(semanas[0]['rango'], '10 al 16 de Agosto')
+        self.assertContains(self.respuesta, 'semana sin importar')
+        # Sale visible (sin `hidden`): es una ausencia de datos que la tabla no
+        # puede delatar por sí sola.
+        self.assertContains(self.respuesta, 'id="modalSemanas"')
+
+    def test_el_boton_de_alertas_cuenta_la_semana(self):
+        # La semana omitida no tiene fila que la delate: si no entra en el
+        # recuento del botón de alertas, RRHH no se entera de que faltan días.
+        self.assertEqual(self.respuesta.context['total_por_revisar'], 0)
+        self.assertEqual(self.respuesta.context['total_alertas'], 1)
+        self.assertContains(self.respuesta, 'id="btnAlertas"')
+        self.assertContains(self.respuesta, '1 alerta')
+
+    def test_sin_semanas_omitidas_no_hay_ventana(self):
+        archivo = SimpleUploadedFile(
+            'tareo.xlsx', libro_con_nombres(['DIEGO HERNANI']),
+            content_type=('application/vnd.openxmlformats-officedocument'
+                          '.spreadsheetml.sheet'))
+        respuesta = self.client.post(
+            reverse('recursoshumanos:importar_tareo'), {
+                'mes': '2026-08', 'q': '', 'proyecto': '', 'subproyecto': '',
+                'area': str(self.area.id), 'archivo': archivo,
+            })
+        self.assertEqual(respuesta.context['semanas_omitidas'], [])
+        self.assertEqual(respuesta.context['total_alertas'], 0)
+        self.assertNotContains(respuesta, 'id="modalSemanas"')
+        self.assertNotContains(respuesta, 'id="btnAlertas"')
 
 
 class FilaDeVacacionesTests(TestCase):

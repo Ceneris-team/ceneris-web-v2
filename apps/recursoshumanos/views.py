@@ -2116,6 +2116,9 @@ TIPOS_TAREO_IMPORTACION = [
     {'valor': 'D', 'etiqueta': '.', 'nombre': 'Día Libre'},
 ]
 
+# Etiqueta corta por estado, para rotular filas con varios tipos ("H y P").
+ETIQUETA_POR_ESTADO = {t['valor']: t['etiqueta'] for t in TIPOS_TAREO_IMPORTACION}
+
 
 def _lista_dias_es(numeros):
     """[1, 2, 5] -> "1, 2 y 5"."""
@@ -2311,19 +2314,23 @@ def importar_tareo(request):
             if dia.ubicacion_nombre:
                 ubicaciones_vistas.append(dia.ubicacion_nombre)
 
-        # Tipo de la fila = el estado que más se repite entre sus días. Una fila
-        # con días de dos secciones (campo H + Vallecito P, porque el borde de la
-        # banda "PERSONAL VALLECITO" se corre de una semana a otra y roza la cola
-        # de la matriz) ya NO queda como "mixto": toma el tipo dominante y cada
-        # día conserva el suyo (el día Vallecito entra P 13:00-21:00 y el de campo
-        # H 12 h). A igualdad gana H (campo), que es la ficha base de este personal.
-        conteo_estados = Counter(d.estado for d in persona.dias.values())
-        if conteo_estados:
-            tope = max(conteo_estados.values())
-            empatados = [e for e, n in conteo_estados.items() if n == tope]
-            tipo_inicial = 'H' if 'H' in empatados else empatados[0]
+        # Tipo de la fila. Si todos sus días son del mismo tipo, el desplegable lo
+        # muestra directo. Si tiene varios (campo H + Vallecito P, porque el borde
+        # de la banda "PERSONAL VALLECITO" se corre de una semana a otra y roza la
+        # cola de la matriz), el Tipo NO afirma uno solo: queda como indicador
+        # "Varios: H y P" —lista las etiquetas presentes— y cada día conserva el
+        # suyo (el día Vallecito entra P 13:00-21:00 y el de campo H 12 h).
+        estados_presentes = [
+            t['valor'] for t in TIPOS_TAREO_IMPORTACION
+            if any(d.estado == t['valor'] for d in persona.dias.values())
+        ]
+        if len(estados_presentes) == 1:
+            tipo_inicial = estados_presentes[0]
+            tipos_mezcla = ''
         else:
             tipo_inicial = ''
+            tipos_mezcla = _lista_dias_es(
+                [ETIQUETA_POR_ESTADO[e] for e in estados_presentes])
 
         # Horario que la sección trae por defecto (turno Vallecito: 13:00-21:00).
         # Precarga las horas de la fila para que un tipo P entre ya con su turno,
@@ -2356,11 +2363,28 @@ def importar_tareo(request):
             # el tipo con el desplegable de la columna Tipo.
             'asignada': persona.trabajador is not None,
             'tipo_inicial': tipo_inicial,
+            # Etiquetas de los tipos presentes cuando la fila tiene varios (ej.
+            # "H y P"); vacío si es de un solo tipo.
+            'tipos_mezcla': tipos_mezcla,
             'horario_inicial': horario_inicial,
         })
 
     total_por_revisar = sum(1 for f in filas if f['alerta'])
     total_otra_seccion = sum(1 for f in filas if f['otra_seccion'])
+
+    # Semanas que el parser dejó fuera porque su bloque del Excel no trae los
+    # números de día: la fecha no es confiable, así que esos días quedan vacíos
+    # y se avisa en una ventana emergente al abrir la previsualización.
+    semanas_omitidas = [{
+        'rango': (
+            f"{s['inicio'].day} al {s['fin'].day} de "
+            f"{MESES_ES[s['inicio'].month - 1]}"
+            if s['inicio'].month == s['fin'].month else
+            f"{s['inicio'].day} de {MESES_ES[s['inicio'].month - 1]} al "
+            f"{s['fin'].day} de {MESES_ES[s['fin'].month - 1]}"
+        ),
+        'dias': _lista_dias_es(s['dias']),
+    } for s in resultado.semanas_omitidas]
 
     contexto = {
         'filas': filas,
@@ -2381,6 +2405,11 @@ def importar_tareo(request):
         'total_emparejadas': len(resultado.emparejadas),
         'total_sin_emparejar': len(resultado.sin_emparejar),
         'total_por_revisar': total_por_revisar,
+        'semanas_omitidas': semanas_omitidas,
+        # Lo que el botón de alertas tiene que anunciar: las filas por decidir
+        # más las semanas que no se importaron (esas no tienen fila que las
+        # delate, así que si no se cuentan aquí pasan desapercibidas).
+        'total_alertas': total_por_revisar + len(semanas_omitidas),
         'total_otra_seccion': total_otra_seccion,
         'tipos_tareo': TIPOS_TAREO_IMPORTACION,
         'url_volver': _url_tareo(filtros, mes_str),

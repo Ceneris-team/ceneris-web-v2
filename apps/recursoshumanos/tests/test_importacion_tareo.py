@@ -192,6 +192,35 @@ class ParseoExcelTests(TestCase):
         self.assertEqual(washington.dias_otra_seccion, [])
         self.assertTrue(any('acacion' in a for a in resultado.avisos))
 
+    def test_la_semana_sin_numeros_de_dia_no_se_importa(self):
+        """Un bloque sin la fila de números de día no se importa.
+
+        Su fecha solo saldría de la cadena (bloque anterior + 7 días) y una
+        cabecera mal armada en el Excel escribiría la semana entera en los días
+        equivocados. Se deja fuera y se avisa; la otra semana sí entra.
+        """
+        libro = construir_libro(
+            [('JULIO', [6, 7, 8, 9, 10, 11, 12]),
+             ('JULIO', [None] * 7),           # 13-19: sin numerar
+             ('JULIO', [20, 21, 22, 23, 24, 25, 26]),
+             ('JULIO', [27, 28, 29, 30, 31, 1, 2])],
+            [('M1', 'DIEGO HERNANI',
+              {0: ['M1'] * 7, 1: ['M1'] * 7, 2: ['M1'] * 7})],
+        )
+        resultado = srv.leer_excel(libro, 2026, 7)
+
+        diego = next(p for p in resultado.personas
+                     if p.nombre_excel == 'DIEGO HERNANI')
+        # Entran las semanas numeradas; la del 13 al 19 queda fuera.
+        self.assertEqual(sorted(diego.dias),
+                         [6, 7, 8, 9, 10, 11, 12, 20, 21, 22, 23, 24, 25, 26])
+        self.assertEqual(resultado.semanas_leidas, 3)
+        self.assertEqual(len(resultado.semanas_omitidas), 1)
+        omitida = resultado.semanas_omitidas[0]
+        self.assertEqual(omitida['inicio'], date(2026, 7, 13))
+        self.assertEqual(omitida['dias'], [13, 14, 15, 16, 17, 18, 19])
+        self.assertTrue(any('NO se importo' in a for a in resultado.avisos))
+
     def test_avisa_cuando_la_semana_no_trae_rotulo(self):
         resultado = srv.leer_excel(self._libro_julio(), 2026, 7)
         self.assertTrue(any('no traen el rotulo' in a for a in resultado.avisos))

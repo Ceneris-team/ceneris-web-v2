@@ -344,6 +344,9 @@
         border-radius: 10px; padding: 10px 13px; background: #fffdfd;
     }
     .modal-item.tipo-otra_seccion { border-left-color: #f59e0b; background: #fffcf5; }
+    /* Semana que no se importó: no es una fila con un dato dudoso, es una
+       ausencia de datos, así que se distingue del resto de alertas. */
+    .modal-item.tipo-semana { border-left-color: #6366f1; background: #eef2ff; }
     .modal-item h3 { margin: 0 0 4px; font-size: 0.88rem; color: #0f172a; font-weight: 700; }
     .modal-item p { margin: 0; font-size: 0.82rem; color: #475569; line-height: 1.5; }
     .modal-item .ir-a-fila {
@@ -366,6 +369,9 @@
         cursor: pointer;
     }
     .select-tipo:focus { outline: none; border-color: #3b82f6; }
+    /* Fila con días de varios tipos: el Tipo lista las etiquetas presentes
+       ("Varios: H y P") en vez de afirmar uno solo. */
+    .select-tipo.varios { color: #4338ca; border-color: #a5b4fc; background: #eef2ff; }
     /* Horas de P y J: solo aparecen cuando el tipo las necesita. */
     .horas-tipo { display: none; gap: 4px; margin-top: 4px; }
     .horas-tipo.visible { display: flex; }
@@ -421,11 +427,11 @@
             <h1>Planificación Matricial: {{ mes_nombre }}</h1>
         </div>
         <div class="header-actions">
-            {% if total_por_revisar %}
+            {% if total_alertas %}
             <button type="button" id="btnAlertas" class="btn-alertas"
-                    title="Ver el detalle de las filas que necesitan tu decisión">
+                    title="Ver las filas que necesitan tu decisión y las semanas que no se importaron">
                 <span class="icono" aria-hidden="true">&#9888;</span>
-                {{ total_por_revisar }} alerta{{ total_por_revisar|pluralize:"s" }}
+                {{ total_alertas }} alerta{{ total_alertas|pluralize:"s" }}
             </button>
             {% endif %}
             <a href="{{ url_volver }}" class="back-link">&larr; Volver al tareo</a>
@@ -529,6 +535,43 @@
         </div>
     </div>
 
+    {% comment %}
+    Semanas que NO se importaron porque su bloque del Excel no trae la fila con
+    los números de día: la fecha solo se podría deducir por la posición del
+    bloque y no es confiable. Se avisa en una ventana que se abre sola, porque
+    es una ausencia de datos y no se vería en la tabla.
+    {% endcomment %}
+    {% if semanas_omitidas %}
+    <div class="modal-alertas" id="modalSemanas">
+        <div class="modal-fondo" data-cerrar-semanas></div>
+        <div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="modalSemanasTitulo">
+            <div class="modal-cabecera">
+                <h2 id="modalSemanasTitulo"><span aria-hidden="true">&#9888;</span>
+                    {{ semanas_omitidas|length }} semana{{ semanas_omitidas|length|pluralize }} sin importar</h2>
+                <button type="button" class="modal-cerrar" data-cerrar-semanas aria-label="Cerrar">&times;</button>
+            </div>
+            <p class="modal-intro">
+                El Excel no trae la fila con los números de día en
+                {{ semanas_omitidas|length|pluralize:"este bloque,estos bloques" }}, así que
+                no se puede saber con certeza a qué fechas corresponden. Esos días
+                <strong>quedan vacíos</strong> a propósito: complétalos a mano en la matriz
+                según tu criterio, o confirma la semana con quien llenó el archivo.
+            </p>
+            <div class="modal-cuerpo">
+                {% for semana in semanas_omitidas %}
+                <div class="modal-item tipo-semana">
+                    <h3>Semana del {{ semana.rango }}: sin importar</h3>
+                    <p>Días que quedaron vacíos: {{ semana.dias }}. La cabecera de ese bloque
+                       está mal armada en el Excel (le falta la fila con los números de día),
+                       así que no se puede confirmar a qué fechas corresponde. Complétalos a
+                       mano en la matriz o confírmalos con quien llenó el archivo.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     {{ meta_trabajadores|json_script:"metaTrabajadores" }}
 
     <form method="post" action="{% url 'recursoshumanos:importar_tareo_confirmar' %}" id="confirmarForm">
@@ -587,8 +630,11 @@
                             </span>
                         </td>
                         <td class="tipo-col sticky-col">
-                            <select class="select-tipo"
+                            <select class="select-tipo{% if not fila.tipo_inicial %} varios{% endif %}"
                                     aria-label="Tipo de jornada de la fila">
+                                {% if not fila.tipo_inicial %}
+                                    <option value="" selected>Varios: {{ fila.tipos_mezcla }}</option>
+                                {% endif %}
                                 {% for tipo in tipos_tareo %}
                                     <option value="{{ tipo.valor }}"
                                             {% if fila.tipo_inicial == tipo.valor %}selected{% endif %}>
@@ -717,6 +763,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalIntro = document.getElementById('modalAlertasIntro');
     const modalCuerpo = document.getElementById('modalAlertasCuerpo');
     const btnAlertas = document.getElementById('btnAlertas');
+    // Ventana de semanas sin importar. Es null cuando no hay ninguna; su cuerpo
+    // es además el origen de las tarjetas que se clonan en la ventana de alertas.
+    const modalSemanas = document.getElementById('modalSemanas');
 
     function filaDelIcono(icono) {
         return icono.closest('tr.fila-import');
@@ -757,7 +806,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const iconos = icono
             ? [icono]
             : Array.from(document.querySelectorAll('.alerta-manual'));
+        // Las semanas que no se importaron van en la MISMA ventana: no tienen
+        // fila que las delate, así que si no salen aquí RRHH no se entera. Se
+        // clonan de la ventana emergente para no tener dos textos que puedan
+        // discrepar, y van primero porque son datos ausentes, no dudosos.
+        const tarjetasSemana = (!icono && modalSemanas)
+            ? Array.from(modalSemanas.querySelectorAll('.modal-item'))
+            : [];
+
         modalCuerpo.innerHTML = '';
+        tarjetasSemana.forEach(function (tarjeta) {
+            modalCuerpo.appendChild(tarjeta.cloneNode(true));
+        });
         iconos.forEach(function (uno) {
             modalCuerpo.appendChild(tarjetaDeAlerta(uno, !icono));
         });
@@ -768,13 +828,21 @@ document.addEventListener('DOMContentLoaded', function () {
             modalIntro.textContent =
                 'Esto es lo que dice el Excel de esta fila y lo que tienes que decidir.';
         } else {
-            modalNombre.textContent = iconos.length + (iconos.length === 1
-                ? ' fila necesita tu decisión' : ' filas necesitan tu decisión');
-            modalIntro.textContent =
-                'El Excel no trae DNI ni tipo de jornada, así que el sistema empareja por '
-                + 'nombre y no adivina cuando algo no cuadra. Resuélvelas en la tabla: '
-                + 'asigna el trabajador en la lista, ajusta la columna Tipo, o deja la fila '
-                + 'sin trabajador para que no se importe.';
+            const total = iconos.length + tarjetasSemana.length;
+            modalNombre.textContent = total + (total === 1
+                ? ' aviso de la importación' : ' avisos de la importación');
+            let intro = '';
+            if (tarjetasSemana.length) {
+                intro += 'Hay semanas que NO se importaron porque el Excel no dice a qué '
+                    + 'fechas corresponden: esos días quedaron vacíos y los completa RRHH. ';
+            }
+            if (iconos.length) {
+                intro += 'El Excel tampoco trae DNI ni tipo de jornada, así que el sistema '
+                    + 'empareja por nombre y no adivina cuando algo no cuadra. Resuelve esas '
+                    + 'filas en la tabla: asigna el trabajador en la lista, ajusta la columna '
+                    + 'Tipo, o deja la fila sin trabajador para que no se importe.';
+            }
+            modalIntro.textContent = intro;
         }
         modal.hidden = false;
         document.querySelector('.modal-cerrar').focus();
@@ -782,6 +850,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function cerrarModal() {
         modal.hidden = true;
+    }
+
+    // La ventana de semanas se muestra sola al abrir la previsualización (sale
+    // renderizada sin `hidden`), porque es una AUSENCIA de datos y no hay
+    // ninguna fila en la tabla que la delate. Después queda accesible desde el
+    // botón de alertas, que la incluye en su recuento.
+    if (modalSemanas) {
+        const cerrarSemanas = function () { modalSemanas.hidden = true; };
+        modalSemanas.querySelectorAll('[data-cerrar-semanas]').forEach(function (elemento) {
+            elemento.addEventListener('click', cerrarSemanas);
+        });
+        document.addEventListener('keydown', function (evento) {
+            if (evento.key === 'Escape' && !modalSemanas.hidden) cerrarSemanas();
+        });
+        modalSemanas.querySelector('.modal-cerrar').focus();
     }
 
     if (btnAlertas) btnAlertas.addEventListener('click', function () { abrirModalAlertas(null); });
@@ -1093,6 +1176,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const select = fila.querySelector('.select-tipo');
         const estado = select.value;
         mostrarHorasSegunTipo(fila);
+        // Al elegir un tipo real la fila deja de ser "Varios": se reescriben
+        // todos sus días a ese estado.
+        select.classList.toggle('varios', estado === '');
 
         if (!estado) return;
 
