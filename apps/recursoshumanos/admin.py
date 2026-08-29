@@ -2,7 +2,7 @@
 from django.contrib import admin, messages
 from admin_panel.settings import db
 from django.shortcuts import render
-from .models import Sede, Area, Empresa, Cargo, CentroCosto, ConfiguracionTolerancia, ToleranciaAuditoria, Trabajador, EventoLoginOffline, MarcaSinHorarioAuditoria, Sancion
+from .models import Sede, Area, Empresa, Cargo, CentroCosto, ConfiguracionTolerancia, ToleranciaAuditoria, Trabajador, EventoLoginOffline, MarcaSinHorarioAuditoria, Sancion, Asistencia
 
 # Creamos una acción personalizada para desvincular dispositivos
 @admin.action(description="Desvincular dispositivo seleccionado")
@@ -133,3 +133,34 @@ class SancionAdmin(admin.ModelAdmin):
     list_filter = ['tipo', 'fecha_sancion']
     search_fields = ['trabajador__dni', 'trabajador__nombres', 'trabajador__apellido_paterno', 'contexto']
     ordering = ['-fecha_sancion', '-fecha_creacion']
+
+
+@admin.register(Asistencia)
+class AsistenciaAdmin(admin.ModelAdmin):
+    """Revision de marcaciones, con foco en las observadas por geocerca.
+
+    Es la superficie minima para que RRHH pueda decidir sobre una marca fuera
+    de zona: la validacion la hace el servidor (`servicios_geocerca.py`) pero
+    NO la rechaza, asi que alguien tiene que poder verlas y filtrarlas.
+    Solo lectura: una marcacion es un hecho registrado; corregirla a mano aca
+    dejaria el tareo recalculado fuera de sincronia.
+    """
+    list_display = [
+        'timestamp', 'usuario', 'tipo_marcacion', 'origen',
+        'estado_geocerca', 'ubicacion_validada', 'distancia_geocerca_m',
+        'nombre_ubicacion',
+    ]
+    list_filter = ['estado_geocerca', 'origen', 'tipo_marcacion', 'timestamp']
+    search_fields = ['usuario__username', 'usuario__first_name', 'usuario__last_name', 'device_id']
+    date_hierarchy = 'timestamp'
+    ordering = ['-timestamp']
+    list_select_related = ['usuario', 'ubicacion_validada']
+
+    def get_readonly_fields(self, request, obj=None):
+        return [f.name for f in self.model._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

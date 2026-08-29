@@ -40,6 +40,7 @@ from .serializers import (
 
 # Importaciones de servicios
 from recursoshumanos.services import recalcular_asistencia_diaria
+from recursoshumanos.servicios_geocerca import evaluar_geocerca
 from admin_panel.settings import db
 
 # Constantes
@@ -574,11 +575,37 @@ class RegistrarAsistenciaView(APIView):
 
             serializer = AsistenciaSerializer(data=datos_marca)
             if serializer.is_valid():
+                # =========================================================
+                # GEOCERCA: se valida EN EL SERVIDOR, y se observa
+                # =========================================================
+                # Hasta aca la geocerca solo vivia en el celular: el backend
+                # mandaba las zonas (ver linea ~273) y guardaba la lat/lon
+                # devuelta sin compararla nunca. Con un JWT valido se podia
+                # marcar desde Madrid y el servidor respondia 201.
+                #
+                # Se evalua sobre `validated_data` y no sobre `request.data`
+                # para juzgar exactamente las coordenadas que se van a
+                # PERSISTIR, y no un alias del payload que el serializer
+                # descarta.
+                #
+                # No se corta la marca ni se registra IntentoFraude: la
+                # politica acordada es observar. `IntentoFraude` significa
+                # "intento bloqueado", y llenarlo de deriva de GPS lo volveria
+                # ilegible justo para el caso en que sirve.
+                estado_geocerca, zona_geocerca, distancia_geocerca = evaluar_geocerca(
+                    trabajador,
+                    serializer.validated_data.get('latitud'),
+                    serializer.validated_data.get('longitud'),
+                )
+
                 # ---> AQUÍ AGREGAMOS EL CAMPO ORIGEN <---
                 try:
                     serializer.save(
                         usuario=usuario_actual,
-                        origen='APP'  # Le decimos explícitamente que viene de la aplicación
+                        origen='APP',  # Le decimos explícitamente que viene de la aplicación
+                        estado_geocerca=estado_geocerca,
+                        ubicacion_validada=zona_geocerca,
+                        distancia_geocerca_m=distancia_geocerca,
                     )
                 except IntegrityError:
                     # Dos reintentos simultáneos del worker pueden pasar ambos el
@@ -598,12 +625,31 @@ class RegistrarAsistenciaView(APIView):
 
                 # 6. CÁLCULO AUTOMÁTICO (sobre el tareo del día de la MARCA)
                 advertencia = None
+                if estado_geocerca == Asistencia.GEOCERCA_FUERA:
+                    # La marca YA se guardo. Esto solo le avisa al trabajador
+                    # que quedo observada, para que pueda corregir en el momento
+                    # (activar el GPS, salir del techo) en vez de enterarse en
+                    # planilla dos semanas despues.
+                    advertencia = {
+                        'tipo': 'FUERA_DE_ZONA',
+                        'mensaje': (
+                            'Tu marcación se registró fuera de la zona autorizada '
+                            'y quedará observada para revisión de Recursos Humanos.'
+                        ),
+                        'detalle': (
+                            f'A {distancia_geocerca} m de {zona_geocerca.nombre}.'
+                            if zona_geocerca else ''
+                        ),
+                    }
                 try:
                     recalcular_asistencia_diaria(tareo)
                     print(f"[OK] Asistencia registrada y procesada para {trabajador}")
 
                     tareo.refresh_from_db()
-                    if tareo.etiqueta_estado in ('FUERA_HORARIO', 'TARDANZA'):
+                    # `advertencia` es un solo objeto en el contrato con el
+                    # movil. Si la marca ya quedo observada por ubicacion, ese
+                    # aviso pesa mas que la tardanza y no se pisa.
+                    if advertencia is None and tareo.etiqueta_estado in ('FUERA_HORARIO', 'TARDANZA'):
                         advertencia = {
                             'tipo': tareo.etiqueta_estado,
                             'mensaje': (

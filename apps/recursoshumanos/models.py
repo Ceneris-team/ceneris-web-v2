@@ -421,6 +421,66 @@ class Asistencia(models.Model):
     # Solo para auditoría de RRHH; nunca se usa para calcular asistencia.
     creado_en = models.DateTimeField(auto_now_add=True)
     
+    # =====================================================================
+    # GEOCERCA VALIDADA EN SERVIDOR
+    # =====================================================================
+    # Antes la geocerca solo existia en el celular: el backend guardaba
+    # lat/lon sin compararlas jamas contra `ubicaciones_permitidas`, asi que
+    # un JWT valido bastaba para marcar desde cualquier parte del mundo.
+    #
+    # La politica es OBSERVAR, no rechazar (ver `servicios_geocerca.py`): la
+    # marca se guarda siempre y queda etiquetada para que RRHH decida, porque
+    # en faena la deriva del GPS es la norma y un 403 perderia planilla real.
+    GEOCERCA_DENTRO = 'DENTRO'
+    GEOCERCA_FUERA = 'FUERA'
+    GEOCERCA_SIN_COORDENADAS = 'SIN_COORDENADAS'
+    GEOCERCA_SIN_ZONAS = 'SIN_ZONAS'
+    # Valor de las marcas anteriores a esta validacion. No significa "correcta":
+    # significa que nadie la comprobo. Se distingue del resto justamente para
+    # que el historico no se lea como validado.
+    GEOCERCA_NO_EVALUADA = 'NO_EVALUADA'
+
+    GEOCERCA_CHOICES = [
+        (GEOCERCA_DENTRO, 'Dentro de zona'),
+        (GEOCERCA_FUERA, 'Fuera de zona'),
+        (GEOCERCA_SIN_COORDENADAS, 'Sin coordenadas'),
+        (GEOCERCA_SIN_ZONAS, 'Sin zonas asignadas'),
+        (GEOCERCA_NO_EVALUADA, 'No evaluada'),
+    ]
+
+    estado_geocerca = models.CharField(
+        max_length=20,
+        choices=GEOCERCA_CHOICES,
+        default=GEOCERCA_NO_EVALUADA,
+        db_index=True,
+        verbose_name="Validación de geocerca",
+    )
+    ubicacion_validada = models.ForeignKey(
+        'Ubicacion',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='asistencias_evaluadas',
+        verbose_name="Zona permitida más cercana",
+    )
+    # Distancia al CENTRO de `ubicacion_validada`. Es el dato que le permite a
+    # RRHH separar la deriva de GPS (80 m de la puerta) de la marca hecha desde
+    # otra ciudad, cosa que un booleano solo no distingue.
+    distancia_geocerca_m = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Distancia a la zona (m)",
+    )
+
+    @property
+    def geocerca_observada(self):
+        """True si la marca necesita revision humana por ubicación."""
+        return self.estado_geocerca in (
+            self.GEOCERCA_FUERA,
+            self.GEOCERCA_SIN_COORDENADAS,
+            self.GEOCERCA_SIN_ZONAS,
+        )
+
     def __str__(self):
         # Esto es para que se vea bonito en el panel de administrador de Django
         return f"{self.usuario.username} - {self.tipo_marcacion} - {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
