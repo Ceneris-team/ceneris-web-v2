@@ -5980,6 +5980,22 @@ def crear_sancion(request, trabajador_id):
     if not contexto or not fecha_sancion:
         return JsonResponse({'status': 'error', 'message': 'La fecha y el contexto son obligatorios.'}, status=400)
 
+    if documento_adjunto:
+        extensiones_permitidas = ('.pdf', '.jpg', '.jpeg', '.png')
+        extension = os.path.splitext(documento_adjunto.name)[1].lower()
+        if extension not in extensiones_permitidas:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'El documento adjunto debe ser PDF, JPG o PNG.',
+            }, status=400)
+
+        limite_bytes = 15 * 1024 * 1024  # 15 MB
+        if documento_adjunto.size > limite_bytes:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'El documento adjunto no puede pesar más de 15 MB.',
+            }, status=400)
+
     sancion = Sancion.objects.create(
         trabajador=trabajador,
         tipo=tipo,
