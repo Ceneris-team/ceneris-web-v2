@@ -213,8 +213,52 @@
     }
     tr.excluida td.sticky-col { color: #94a3b8; }
 
+    .celda-dni { display: flex; align-items: center; justify-content: center; gap: 5px; }
     .dni-celda { font-variant-numeric: tabular-nums; }
     .dni-celda.vacio { color: #cbd5e1; }
+
+    /* ---- Descartar una fila ---- */
+    /* El Excel trae filas que no deben entrar al tareo (gabinete, otra sede,
+       una nota de vacaciones). La ✕ las apaga sin quitarlas de la vista: el
+       hidden "incluir_" deja de valer "on" y el servidor las salta. El mismo
+       botón las devuelve, porque descartar por error no debería obligar a
+       volver a subir el archivo. */
+    .btn-descartar {
+        flex: none; width: 19px; height: 19px; padding: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 1px solid #e2e8f0; border-radius: 5px; background: #ffffff;
+        color: #94a3b8; font-size: 0.85rem; line-height: 1; cursor: pointer;
+    }
+    .btn-descartar:hover { border-color: #fca5a5; background: #fee2e2; color: #b91c1c; }
+    .btn-descartar:focus-visible { outline: 2px solid #3b82f6; outline-offset: 1px; }
+    tr.descartada .btn-descartar {
+        border-color: #cbd5e1; background: #f1f5f9; color: #475569;
+    }
+    tr.descartada .btn-descartar:hover {
+        border-color: #86efac; background: #dcfce7; color: #166534;
+    }
+
+    tr.descartada td.sticky-col { background-color: #f8fafc; color: #cbd5e1; }
+    tr.descartada td.tareo-cell.importada {
+        background-color: #ffffff; color: #cbd5e1; box-shadow: none;
+        text-decoration: line-through;
+    }
+    tr.descartada .origen-excel { text-decoration: line-through; }
+    tr.descartada .select-trabajador,
+    tr.descartada .buscar-trabajador,
+    tr.descartada .select-tipo,
+    tr.descartada .horas-tipo { opacity: 0.45; }
+    tr.descartada .alerta-manual { animation: none; }
+
+    /* Cada fila dice a la vista si va a entrar o no. No basta con el tachado:
+       una fila sin trabajador elegido tampoco se importa y se vería igual de
+       "normal". El par de etiquetas se alterna solo, sin tocar el script. */
+    tr.fila-import .badge-si { background: #dcfce7; color: #166534; }
+    tr.fila-import .badge-no { background: #fee2e2; color: #b91c1c; display: none; }
+    tr.fila-import.descartada .badge-si,
+    tr.fila-import.excluida .badge-si { display: none; }
+    tr.fila-import.descartada .badge-no,
+    tr.fila-import.excluida .badge-no { display: inline-block; }
 
     /* El select se ve como texto plano hasta que se pasa por encima, para que
        la tabla siga leyéndose igual que la matriz. */
@@ -228,12 +272,29 @@
     .select-trabajador:focus { outline: none; border-color: #3b82f6; background: #ffffff; }
     .select-trabajador.sin-match { border-color: transparent; background: transparent; color: #1e293b; }
 
-    /* Una sola línea: si la fila crece a dos, la tabla deja de caber. */
-    .origen-excel {
-        display: block; color: #94a3b8; font-size: 0.72rem;
-        margin: 1px 0 0 7px; line-height: 1.3;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    /* Buscador de la celda: escribir el nombre deja en el desplegable solo lo
+       que coincide. Discreto y de una línea, para no engordar la fila. */
+    .buscar-trabajador {
+        width: 100%; padding: 2px 7px; margin-bottom: 2px;
+        border: 1px solid #e2e8f0; border-radius: 6px;
+        font-size: 0.72rem; color: #475569; background: #f8fafc;
     }
+    .buscar-trabajador::placeholder { color: #cbd5e1; }
+    .buscar-trabajador:focus {
+        outline: none; border-color: #3b82f6; background: #ffffff; color: #1e293b;
+    }
+
+    /* Una sola línea: si la fila crece a dos, la tabla deja de caber. Lo único
+       que se recorta es el nombre del Excel; la alerta y el estado de la fila
+       van fijos, porque son lo que hay que ver de un vistazo. */
+    .origen-excel {
+        display: flex; align-items: center; gap: 4px;
+        color: #94a3b8; font-size: 0.72rem;
+        margin: 1px 0 0 7px; line-height: 1.3;
+        white-space: nowrap; overflow: hidden;
+    }
+    .origen-texto { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .origen-excel .badge, .origen-excel .alerta-manual { flex: none; }
     .badge {
         display: inline-block; padding: 1px 7px; border-radius: 999px;
         font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
@@ -602,23 +663,40 @@
                     <tr class="fila-import{% if not fila.asignada %} excluida{% endif %}"
                         data-indice="{{ fila.indice }}" data-nombre-excel="{{ fila.nombre_excel }}">
                         <td class="codigo-col sticky-col">
-                            <span class="dni-celda{% if not fila.asignada %} vacio{% endif %}">{% if fila.asignada %}{{ fila.trabajador.dni }}{% else %}—{% endif %}</span>
+                            <div class="celda-dni">
+                                <span class="dni-celda{% if not fila.asignada %} vacio{% endif %}">{% if fila.asignada %}{{ fila.trabajador.dni }}{% else %}—{% endif %}</span>
+                                <button type="button" class="btn-descartar" aria-pressed="false"
+                                        title="No importar esta fila"
+                                        aria-label="No importar esta fila">&times;</button>
+                            </div>
                             <input type="hidden" name="incluir_{{ fila.indice }}" value="on">
                             <input type="hidden" name="datos_{{ fila.indice }}" value="{{ fila.datos_json }}">
                         </td>
                         <td class="trabajador-col sticky-col{% if fila.otra_seccion %} otra-seccion{% endif %}">
+                            <input type="search" class="buscar-trabajador"
+                                   placeholder="Buscar por nombre o DNI…"
+                                   aria-label="Buscar trabajador en la lista">
                             <select name="dni_{{ fila.indice }}"
                                     class="select-trabajador{% if not fila.asignada %} sin-match{% endif %}">
                                 <option value=""></option>
-                                {% for t in trabajadores_opciones %}
-                                    <option value="{{ t.dni }}" {% if fila.asignada and fila.trabajador.dni == t.dni %}selected{% endif %}>
+                                <optgroup label="Más parecidos a lo que dice el Excel">
+                                {% for opcion in fila.opciones %}
+                                    <option value="{{ opcion.trabajador.dni }}" {% if fila.asignada and fila.trabajador.dni == opcion.trabajador.dni %}selected{% endif %}>
+                                        {{ opcion.trabajador.apellido_paterno }} {{ opcion.trabajador.apellido_materno }}, {{ opcion.trabajador.nombres }} · {{ opcion.porcentaje }}%
+                                    </option>
+                                {% endfor %}
+                                </optgroup>
+                                <optgroup label="Resto del personal">
+                                {% for t in fila.resto_opciones %}
+                                    <option value="{{ t.dni }}">
                                         {{ t.apellido_paterno }} {{ t.apellido_materno }}, {{ t.nombres }}
                                     </option>
                                 {% endfor %}
+                                </optgroup>
                             </select>
                             <span class="origen-excel"
                                   title="En el Excel: {{ fila.nombre_excel }}{% if fila.posicion %} · {{ fila.posicion }}{% endif %}">
-                                Excel: {{ fila.nombre_excel }}{% if fila.posicion %} &middot; {{ fila.posicion }}{% endif %}
+                                <span class="origen-texto">Excel: {{ fila.nombre_excel }}{% if fila.posicion %} &middot; {{ fila.posicion }}{% endif %}</span>
                                 {% if fila.confianza == 'aproximada' %}<span class="badge badge-aproximada">Aproximada {{ fila.similitud }}</span>{% endif %}
                                 {% if fila.alerta %}
                                     <span class="alerta-manual tipo-{{ fila.alerta.tipo }}" tabindex="0" role="button"
@@ -627,6 +705,8 @@
                                           data-alerta-titulo="{{ fila.alerta.titulo }}"
                                           data-alerta-detalle="{{ fila.alerta.detalle }}">&#9888; Alerta</span>
                                 {% endif %}
+                                <span class="badge badge-si">Se importa</span>
+                                <span class="badge badge-no">No se importa</span>
                             </span>
                         </td>
                         <td class="tipo-col sticky-col">
@@ -1085,7 +1165,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnConfirmarTexto = document.getElementById('btnConfirmarTexto');
 
     function filaLista(fila) {
-        return fila.querySelector('.select-trabajador').value !== '';
+        return !estaDescartada(fila)
+               && fila.querySelector('.select-trabajador').value !== '';
     }
 
     function celdasDe(fila) {
@@ -1099,12 +1180,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // Avance real de la importación: cuánto del archivo ya tiene destino en el
     // sistema. Sube sola a medida que se resuelven las filas sin emparejar.
     function actualizarProgreso() {
-        const total = filas.length;
-        const listas = filas.filter(filaLista);
+        // Las filas descartadas a mano salen de la cuenta: ya están decididas,
+        // así que no deben figurar como pendientes ni frenar el 100%.
+        const enJuego = filas.filter(function (fila) { return !estaDescartada(fila); });
+        const total = enJuego.length;
+        const descartadas = filas.length - total;
+        const listas = enJuego.filter(filaLista);
         const pendientes = total - listas.length;
 
         let celdasListas = 0, celdasTotales = 0;
-        filas.forEach(function (fila) {
+        enJuego.forEach(function (fila) {
             const n = celdasDe(fila);
             celdasTotales += n;
             if (filaLista(fila)) celdasListas += n;
@@ -1115,15 +1200,22 @@ document.addEventListener('DOMContentLoaded', function () {
         relleno.classList.toggle('incompleto', pendientes > 0);
         porcentaje.textContent = pct + '%';
 
-        if (pendientes === 0) {
+        const nota = descartadas === 0 ? '' : ' &middot; ' + descartadas + ' fila'
+            + (descartadas === 1 ? '' : 's') + ' descartada'
+            + (descartadas === 1 ? '' : 's') + ' a mano.';
+
+        if (total === 0) {
+            detalle.innerHTML = '<span class="progreso-pendiente">Descartaste todas las '
+                + 'filas del Excel:</span> no se importará nada.';
+        } else if (pendientes === 0) {
             detalle.innerHTML = '<span class="progreso-listo">Importación completa:</span> '
-                + 'las ' + total + ' filas del Excel tienen trabajador asignado &middot; '
-                + celdasListas + ' celdas listas para escribir.';
+                + 'las ' + total + ' filas por importar tienen trabajador asignado &middot; '
+                + celdasListas + ' celdas listas para escribir.' + nota;
         } else {
             detalle.innerHTML = listas.length + ' de ' + total + ' filas listas &middot; '
                 + '<span class="progreso-pendiente">faltan ' + pendientes
                 + ' por asignar</span> (' + (celdasTotales - celdasListas)
-                + ' celdas quedarían fuera).';
+                + ' celdas quedarían fuera).' + nota;
         }
 
         btnConfirmar.disabled = listas.length === 0;
@@ -1151,6 +1243,42 @@ document.addEventListener('DOMContentLoaded', function () {
         const alerta = fila.querySelector('.alerta-manual');
         if (alerta && alerta.dataset.alertaTipo !== 'nota') {
             alerta.classList.toggle('resuelta', activa);
+        }
+    }
+
+    // ---- Filas que no se importan ----------------------------------------
+    // El Excel lista gente que no debe entrar al tareo: gabinete, otra sede, o
+    // una nota de vacaciones junto al nombre. La ✕ de la fila la apaga sin
+    // borrarla de la pantalla —el hidden "incluir_" deja de valer "on" y el
+    // servidor la salta— y el mismo botón la devuelve, para que descartar por
+    // error no obligue a subir otra vez el archivo.
+    function estaDescartada(fila) {
+        return fila.classList.contains('descartada');
+    }
+
+    function descartarFila(fila, descartar) {
+        fila.classList.toggle('descartada', descartar);
+        fila.querySelector('input[name^="incluir_"]').value = descartar ? '' : 'on';
+
+        const boton = fila.querySelector('.btn-descartar');
+        boton.innerHTML = descartar ? '&#8635;' : '&times;';
+        boton.title = descartar
+            ? 'Volver a importar esta fila' : 'No importar esta fila';
+        boton.setAttribute('aria-label', boton.title);
+        boton.setAttribute('aria-pressed', descartar ? 'true' : 'false');
+
+        // Mientras está descartada no hay nada que elegir en la fila.
+        fila.querySelectorAll('.select-trabajador, .buscar-trabajador, '
+                              + '.select-tipo, .horas-tipo input')
+            .forEach(function (campo) { campo.disabled = descartar; });
+
+        // Descartar también es resolver la alerta: la decisión ya está tomada.
+        const alerta = fila.querySelector('.alerta-manual');
+        if (descartar) {
+            if (alerta) alerta.classList.add('resuelta');
+        } else {
+            if (alerta) alerta.classList.remove('resuelta');
+            sincronizarFila(fila);
         }
     }
 
@@ -1201,12 +1329,52 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ---- Desplegable de trabajador ---------------------------------------
+    // El desplegable trae el maestro entero, pero encabezado por los nombres
+    // que se parecen al del Excel con su porcentaje. El buscador de la celda
+    // deja escribir el nombre (o el DNI) y esconde del desplegable todo lo que
+    // no coincide, para no recorrer cientos de apellidos con la rueda.
+    function filtrarOpciones(select, texto) {
+        const buscado = normalizarTexto(texto).trim();
+        select.querySelectorAll('option').forEach(function (opcion) {
+            if (!opcion.value) return;  // la opción vacía siempre disponible
+            const contenido = normalizarTexto(opcion.textContent + ' ' + opcion.value);
+            opcion.hidden = buscado !== '' && contenido.indexOf(buscado) === -1
+                            && opcion.value !== select.value;
+        });
+        // Un grupo entero sin coincidencias estorba: se oculta su rótulo.
+        select.querySelectorAll('optgroup').forEach(function (grupo) {
+            const visibles = Array.prototype.filter.call(
+                grupo.querySelectorAll('option'), function (o) { return !o.hidden; });
+            grupo.hidden = visibles.length === 0;
+        });
+    }
+
     filas.forEach(function (fila) {
-        fila.querySelector('.select-trabajador').addEventListener('change', function () {
+        const selectTrabajador = fila.querySelector('.select-trabajador');
+        const buscarTrabajador = fila.querySelector('.buscar-trabajador');
+
+        buscarTrabajador.addEventListener('input', function () {
+            filtrarOpciones(selectTrabajador, buscarTrabajador.value);
+        });
+        // Enter dentro del buscador no debe enviar el formulario de import.
+        buscarTrabajador.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                selectTrabajador.focus();
+            }
+        });
+
+        selectTrabajador.addEventListener('change', function () {
             sincronizarFila(fila);
             actualizarProgreso();
             // Al cambiar de trabajador la fila puede dejar de cumplir el filtro.
             aplicarFiltros();
+        });
+
+        fila.querySelector('.btn-descartar').addEventListener('click', function () {
+            descartarFila(fila, !estaDescartada(fila));
+            actualizarProgreso();
         });
 
         const selectTipo = fila.querySelector('.select-tipo');
@@ -1222,7 +1390,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const activas = filas.filter(filaLista).length;
         if (activas === 0) {
             e.preventDefault();
-            alert('No hay ninguna fila lista para importar. Asigna al menos un trabajador.');
+            alert('No hay ninguna fila lista para importar. Asigna al menos un '
+                  + 'trabajador, o recupera con ↺ alguna de las filas descartadas.');
             return;
         }
         if (!confirm('Se importarán ' + activas + ' trabajador(es) al tareo de {{ mes_nombre }}. ¿Continuar?')) {

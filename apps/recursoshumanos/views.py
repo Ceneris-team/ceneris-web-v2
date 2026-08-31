@@ -2297,6 +2297,12 @@ def importar_tareo(request):
     # la impresión de que la importación no capturaba a esas personas.
     nombre_del_mes = f"{MESES_ES[mes-1]} de {anio}"
 
+    # El desplegable de cada fila ofrece solo a quienes se parecen al nombre del
+    # Excel, no el maestro entero: buscar a mano entre cientos de nombres era lo
+    # que más costaba al corregir. El que ya quedó emparejado (o los candidatos
+    # de un nombre ambiguo) van siempre primero, aunque el parecido sea flojo.
+    indice_nombres = servicios_importacion_tareo.indice_trabajadores(trabajadores_activos)
+
     filas = []
     for indice, persona in enumerate(resultado.personas):
         dias_render, dias_payload = {}, {}
@@ -2341,9 +2347,39 @@ def importar_tareo(request):
                 horario_inicial = {'entrada': d.hora_entrada, 'salida': d.hora_salida}
                 break
 
+        # Cabeza del desplegable: el ya emparejado (o los candidatos de un
+        # nombre ambiguo) primero, y detrás el resto del maestro ordenado por
+        # parecido. El porcentaje se muestra para que se vea por qué está ahí.
+        parecidos = servicios_importacion_tareo.sugerir_trabajadores(
+            persona.nombre_excel, indice_nombres)
+        parecido_por_dni = {t.dni: ratio for t, ratio in parecidos}
+
+        opciones, vistos = [], set()
+        for trabajador in [persona.trabajador] + list(persona.candidatos):
+            if trabajador is None or trabajador.dni in vistos:
+                continue
+            vistos.add(trabajador.dni)
+            opciones.append({
+                'trabajador': trabajador,
+                'porcentaje': int(round(
+                    parecido_por_dni.get(trabajador.dni, persona.similitud) * 100)),
+            })
+        for trabajador, ratio in parecidos:
+            if trabajador.dni in vistos:
+                continue
+            vistos.add(trabajador.dni)
+            opciones.append({'trabajador': trabajador,
+                             'porcentaje': int(round(ratio * 100))})
+
+        # Los demás siguen alcanzables (alfabéticos, como el maestro): el
+        # buscador de la celda los encuentra escribiendo el nombre.
+        resto = [t for t in trabajadores_activos if t.dni not in vistos]
+
         filas.append({
+            'resto_opciones': resto,
             'indice': indice,
             'nombre_excel': persona.nombre_excel,
+            'opciones': opciones,
             'posicion': persona.posicion_resumen,
             'confianza': persona.confianza,
             'similitud': persona.similitud,
@@ -2394,7 +2430,6 @@ def importar_tareo(request):
         'mes_seleccionado': mes_str,
         'mes_nombre': nombre_del_mes,
         'dias_del_mes_info': dias_del_mes_info,
-        'trabajadores_opciones': trabajadores_activos,
         'filtros': filtros,
         # La previsualización repite la cabecera de filtros de la matriz, así
         # que necesita los mismos catálogos para poder mostrar los nombres.

@@ -127,6 +127,78 @@ class ImportacionTareoVistaTests(TestCase):
         self.assertEqual(meta['a'], str(self.area.id))
         self.assertEqual(set(meta['p']), {str(hijo.id), str(padre.id)})
 
+    # ---- el desplegable de trabajador ----
+
+    def test_el_desplegable_encabeza_por_parecido_y_trae_buscador(self):
+        """El maestro alfabético obligaba a buscar a mano entre cientos de
+        nombres. Ahora la lista arranca por los más parecidos al nombre del
+        Excel, con su porcentaje, y la celda trae un buscador. Nadie queda
+        fuera: el resto del personal sigue en el mismo desplegable."""
+        ajeno = Trabajador.objects.create(
+            dni='10000002', nombres='MARIA LUCIA', apellido_paterno='VARGAS',
+            apellido_materno='QUISPE', area=self.area, activo=True)
+
+        respuesta = self._subir()
+        fila = respuesta.context['filas'][0]
+        contenido = respuesta.content.decode()
+
+        ofrecidos = ([o['trabajador'].dni for o in fila['opciones']]
+                     + [t.dni for t in fila['resto_opciones']])
+        # "DIEGO HERNANI" en el Excel: manda el que empareja, no el alfabético.
+        self.assertEqual(ofrecidos[0], self.trabajador.dni)
+        self.assertEqual(fila['opciones'][0]['porcentaje'], 100)
+        self.assertIn(ajeno.dni, ofrecidos)
+        self.assertIn('class="buscar-trabajador"', contenido)
+
+    def test_un_nombre_sin_maestro_igual_ofrece_a_los_mas_parecidos(self):
+        """El Excel escribe a alguien que no está dado de alta. Antes la lista
+        quedaba vacía y no había forma de corregir la fila: ahora salen los más
+        parecidos ordenados, aunque el parecido sea bajo."""
+        respuesta = self.client.post(self.url_importar, {
+            'mes': '2026-08', 'q': '', 'proyecto': '', 'subproyecto': '',
+            'area': str(self.area.id),
+            'archivo': SimpleUploadedFile(
+                'tareo.xlsx', libro_con_nombres(['JOAQUIN CASTRO']),
+                content_type=('application/vnd.openxmlformats-officedocument'
+                              '.spreadsheetml.sheet')),
+        })
+
+        fila = respuesta.context['filas'][0]
+        self.assertFalse(fila['asignada'])
+        self.assertEqual([o['trabajador'].dni for o in fila['opciones']],
+                         [self.trabajador.dni])
+
+    # ---- descartar filas que no deben importarse ----
+
+    def test_cada_fila_trae_el_boton_para_no_importarla(self):
+        """El Excel lista gente que no va al tareo (gabinete, otra sede, una
+        nota de vacaciones). Cada fila trae una ✕ para dejarla fuera sin tener
+        que quitar el trabajador a mano."""
+        contenido = self._subir().content.decode()
+
+        self.assertIn('class="btn-descartar"', contenido)
+        self.assertIn('No importar esta fila', contenido)
+        # Cada fila dice a la vista si entra o no: el tachado solo no alcanza.
+        self.assertIn('>Se importa<', contenido)
+        self.assertIn('>No se importa<', contenido)
+
+    def test_una_fila_descartada_no_escribe_nada_en_el_tareo(self):
+        """La ✕ apaga el "incluir_" de la fila: aunque el trabajador siga
+        elegido, esos días no entran."""
+        previa = self._subir()
+        fila = previa.context['filas'][0]
+
+        respuesta = self.client.post(
+            reverse('recursoshumanos:importar_tareo_confirmar'), {
+                'mes': '2026-08', 'q': '', 'proyecto': '', 'subproyecto': '',
+                'area': str(self.area.id),
+                'incluir_0': '', 'dni_0': self.trabajador.dni,
+                'datos_0': fila['datos_json'],
+            })
+
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertEqual(TareoDiario.objects.count(), 0)
+
     # ---- la importación no toca la sesión ----
 
     def test_previsualizar_no_cierra_la_sesion(self):
