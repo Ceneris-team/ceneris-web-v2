@@ -41,8 +41,8 @@ class TrabajadorAdmin(admin.ModelAdmin):
 
 @admin.register(Trabajador)
 class TrabajadorAdminInterface(admin.ModelAdmin):
-    list_display = ('dni', 'nombre_completo', 'cargo', 'area', 'user', 'activo')
-    list_filter = ('activo', 'area', 'sede')
+    list_display = ('dni', 'nombre_completo', 'cargo', 'area', 'modalidad_evaluacion', 'user', 'activo')
+    list_filter = ('activo', 'area', 'sede', 'modalidad_evaluacion')
     search_fields = ('dni', 'nombres', 'apellido_paterno', 'apellido_materno', 'user__username')
     raw_id_fields = ('user',)
     autocomplete_fields = ['area', 'sede']

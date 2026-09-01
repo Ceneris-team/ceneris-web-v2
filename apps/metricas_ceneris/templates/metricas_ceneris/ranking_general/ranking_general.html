@@ -71,6 +71,16 @@
             </div>
 
             <div>
+                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Modalidad</label>
+                <select id="filtroModalidad" onchange="if (dataRankingRaw.length) { aplicarFiltrosLocales(); }" class="w-full px-3 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-700 outline-none">
+                    <option value="todas">Todas</option>
+                    <option value="oficina">Oficina</option>
+                    <option value="mina">Mina</option>
+                    <option value="sinasignar">Sin asignar</option>
+                </select>
+            </div>
+
+            <div>
                 <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Período</label>
                 <select id="filtroPeriodo" onchange="toggleContenedoresTiempo()" class="w-full px-3 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-700 outline-none">
                     <option value="mes">Mes</option>
@@ -157,6 +167,8 @@
                     <select id="ordenCampo" onchange="renderTablaRanking()" class="text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none text-slate-600">
                         <option value="score">Ordenar por Score</option>
                         <option value="promedio_mensual">Ordenar por Desempeño</option>
+                        <option value="nota_disciplinaria">Ordenar por Medidas disciplinarias</option>
+                        <option value="nota_conocimiento" id="optOrdenConocimiento">Ordenar por Conocimiento</option>
                         <option value="asistencia_avg">Ordenar por Asistencia</option>
                     </select>
                 </div>
@@ -170,6 +182,8 @@
                         <th class="pb-3 px-4 w-32">Nivel</th>
                         <th class="pb-3 px-4 w-40">Área</th>
                         <th class="pb-3 px-4 text-center w-32">Desempeño</th>
+                        <th class="pb-3 px-4 text-center w-32">Medidas discipl.</th>
+                        <th id="thConocimiento" class="pb-3 px-4 text-center w-32">Conocimiento</th>
                         <th class="pb-3 px-4 text-center w-32">Asistencia</th>
                         <th class="pb-3 pr-2 text-center w-28">Score Final</th>
                         <th class="pb-3 px-4 w-44">Clasificación</th>
@@ -198,8 +212,41 @@
 
 <script>
     let dataRanking = [];
+    let dataRankingRaw = [];
     let paginaActual = 1;
     const ITEMS_POR_PAGINA = 15;
+
+    // Aplica los filtros client-side (sede, nivel, modalidad, texto) sobre los
+    // datos ya traídos y re-renderiza. La modalidad además decide si se muestra
+    // la columna/orden de Conocimiento (solo aplica a mina).
+    function aplicarFiltrosLocales() {
+        const sedeF = document.getElementById('filtroSede').value;
+        const tipoF = document.getElementById('filtroTipo').value;
+        const modF = document.getElementById('filtroModalidad').value;
+        const textoF = document.getElementById('filtroTexto').value.toLowerCase().trim();
+
+        dataRanking = dataRankingRaw.filter(item => {
+            const okSede = (sedeF === 'todas') || ((item.sede_nombre || '').toLowerCase() === sedeF);
+            const okTipo = (tipoF === 'todos') || (item.tipo_persona === tipoF);
+            const okMod = (modF === 'todas')
+                || (modF === 'sinasignar' && !item.modalidad)
+                || ((item.modalidad || '').toLowerCase() === modF);
+            const okTexto = !textoF || (item.nombre_completo || '').toLowerCase().includes(textoF);
+            return okSede && okTipo && okMod && okTexto;
+        });
+
+        paginaActual = 1;
+        const vacio = document.getElementById('estadoVacio');
+        const cont = document.getElementById('contenedorTabla');
+        if (dataRanking.length === 0) {
+            vacio.classList.remove('hidden');
+            cont.classList.add('hidden');
+        } else {
+            vacio.classList.add('hidden');
+            cont.classList.remove('hidden');
+            renderTablaRanking();
+        }
+    }
 
     function toggleContenedoresTiempo() {
         const val = document.getElementById('filtroPeriodo').value;
@@ -259,27 +306,9 @@
         fetch(`{% url 'metricas_ceneris:ajax_datos_ranking' %}?${params.toString()}`)
             .then(res => res.json())
             .then(data => {
-                // Filtrado frontend para Sede, Nivel y Texto
-                const sedeF = document.getElementById('filtroSede').value;
-                const tipoF = document.getElementById('filtroTipo').value;
-                const textoF = document.getElementById('filtroTexto').value.toLowerCase().trim();
-
-                dataRanking = data.ranking.filter(item => {
-                    const okSede = (sedeF === 'todas') || ((item.sede_nombre||'').toLowerCase() === sedeF);
-                    const okTipo = (tipoF === 'todos') || (item.tipo_persona === tipoF);
-                    const okTexto = !textoF || (item.nombre_completo||'').toLowerCase().includes(textoF);
-                    return okSede && okTipo && okTexto;
-                });
-
+                dataRankingRaw = data.ranking || [];
                 document.getElementById('estadoCarga').classList.add('hidden');
-                paginaActual = 1;
-
-                if (dataRanking.length === 0) {
-                    document.getElementById('estadoVacio').classList.remove('hidden');
-                } else {
-                    document.getElementById('contenedorTabla').classList.remove('hidden');
-                    renderTablaRanking();
-                }
+                aplicarFiltrosLocales();
             })
             .catch(err => {
                 console.error(err);
@@ -291,7 +320,11 @@
     function renderTablaRanking() {
         const tbody = document.getElementById('rankingTableBody');
         const campoOrden = document.getElementById('ordenCampo').value;
-        
+
+        // Conocimiento aplica a todos los trabajadores: la columna y su opción
+        // de orden se muestran siempre. El filtro de Modalidad es solo informativo.
+        const mostrarConoc = true;
+
         // Ordenar la data (siempre descendente: los mejores arriba)
         dataRanking.sort((a, b) => Number(b[campoOrden] || 0) - Number(a[campoOrden] || 0));
 
@@ -308,12 +341,24 @@
             const valEval = Number(document.getElementById('filtroPeriodo').value === 'mes' ? item.promedio_mensual : item.promedio_semestral).toFixed(2);
             
             const desc = scoreDescription(parseFloat(item.score));
+            const modLabel = item.modalidad === 'MINA' ? 'Mina' : (item.modalidad === 'OFICINA' ? 'Oficina' : 'Sin asignar');
+            const modCls = item.modalidad === 'MINA' ? 'bg-purple-50 text-purple-600 border-purple-100'
+                         : (item.modalidad === 'OFICINA' ? 'bg-blue-50 text-blue-600 border-blue-100'
+                         : 'bg-slate-100 text-slate-500 border-slate-200');
+            const md = Number(item.nota_disciplinaria);
+            const mdHtml = `<span class="inline-flex items-baseline gap-1 font-bold ${scoreColorClass(md)}"><span class="text-xs font-black">${scoreLetter(md)}</span> ${md.toFixed(2)}</span>`;
+            const conocHtml = (item.nota_conocimiento == null)
+                ? '<span class="text-slate-300 font-bold">—</span>'
+                : `<span class="inline-flex items-baseline gap-1 font-bold ${scoreColorClass(Number(item.nota_conocimiento))}"><span class="text-xs font-black">${scoreLetter(Number(item.nota_conocimiento))}</span> ${Number(item.nota_conocimiento).toFixed(2)}</span>`;
             return `
                 <tr class="floating-table-row border-b border-slate-50 last:border-0">
                     <td class="py-3 pl-2 text-center align-middle font-black text-slate-400">${num}</td>
                     <td class="py-3 px-4 align-middle">
                         <div class="font-bold text-slate-800 text-sm leading-tight">${escaparHtml(item.nombres)} ${escaparHtml(item.apellido_paterno)}</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5 truncate max-w-[200px]">${escaparHtml(item.cargo || 'Sin cargo')}</div>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="text-[10px] text-slate-400 truncate max-w-[130px]">${escaparHtml(item.cargo || 'Sin cargo')}</span>
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${modCls}">${modLabel}</span>
+                        </div>
                     </td>
                     <td class="py-3 px-4 align-middle">${badgeTipo}</td>
                     <td class="py-3 px-4 align-middle">
@@ -322,6 +367,8 @@
                     <td class="py-3 px-4 text-center align-middle">
                         <span class="inline-flex items-baseline gap-1 font-bold ${scoreColorClass(parseFloat(valEval))}"><span class="text-xs font-black">${scoreLetter(parseFloat(valEval))}</span> ${valEval}</span>
                     </td>
+                    <td class="py-3 px-4 text-center align-middle">${mdHtml}</td>
+                    <td class="py-3 px-4 text-center align-middle" style="display:${mostrarConoc ? '' : 'none'}">${conocHtml}</td>
                     <td class="py-3 px-4 text-center align-middle">
                         <span class="inline-flex items-baseline gap-1 font-bold ${scoreColorClass(parseFloat(Number(item.asistencia_avg).toFixed(1)))}"><span class="text-xs font-black">${scoreLetter(parseFloat(Number(item.asistencia_avg).toFixed(1)))}</span> ${Number(item.asistencia_avg).toFixed(1)}</span>
                     </td>

@@ -1,0 +1,104 @@
+{% extends 'metricas_ceneris/base.html' %}
+{% load l10n %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-8">
+
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-2">
+            <span class="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-purple-100 text-purple-600">
+                <i class="ph ph-graduation-cap text-2xl"></i>
+            </span>
+            <div>
+                <h1 class="text-2xl font-black text-slate-900">Notas de Conocimiento</h1>
+                <p class="text-sm text-slate-500">Aspecto 03 — Conocimiento teórico/práctico. Nota del examen <b>sobre 20</b>; se convierte a 1-10 (÷2) para el score.</p>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+        <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+            <i class="ph ph-check-circle"></i> {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Selector de periodo (GET) -->
+    <form method="get" class="mb-6 flex flex-wrap items-end gap-3 bg-white/80 border border-white/60 rounded-2xl p-4 shadow-sm">
+        <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">Mes</label>
+            <select name="mes" class="p-2 border rounded-lg bg-white text-sm">
+                {% for m in meses_disponibles %}
+                <option value="{{ m.numero }}" {% if m.numero == mes_seleccionado %}selected{% endif %}>{{ m.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">Año</label>
+            <select name="anio" class="p-2 border rounded-lg bg-white text-sm">
+                {% for a in anios_disponibles %}
+                <option value="{{ a }}" {% if a == anio_seleccionado %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="px-5 py-2 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-700">
+            <i class="ph ph-funnel"></i> Ver
+        </button>
+        <span class="ml-auto text-sm text-slate-500 self-center">{{ total_mina }} trabajador(es)</span>
+    </form>
+
+    <!-- Carga de notas (POST) -->
+    <form method="post" action="{% url 'metricas_ceneris:panel_conocimiento' %}">
+        {% csrf_token %}
+        <input type="hidden" name="mes" value="{{ mes_seleccionado }}">
+        <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+
+        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            {% if filas %}
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-slate-50 text-slate-500 uppercase text-xs">
+                        <th class="text-left px-6 py-4">Trabajador / DNI</th>
+                        <th class="text-left px-6 py-4">Área</th>
+                        <th class="text-center px-6 py-4 w-40">Nota examen (1–20)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for fila in filas %}
+                    <tr class="hover:bg-slate-50/60">
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-slate-800">{{ fila.trabajador.apellido_paterno }} {{ fila.trabajador.apellido_materno }}, {{ fila.trabajador.nombres }}</div>
+                            <div class="text-xs text-slate-400">DNI: {{ fila.trabajador.dni }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-slate-600">{{ fila.trabajador.area.nombre|default:"Sin área" }}</td>
+                        <td class="px-6 py-4 text-center">
+                            <input type="number" name="nota_{{ fila.trabajador.id }}" min="1" max="20" step="1"
+                                   value="{% if fila.nota is not None %}{{ fila.nota|unlocalize }}{% endif %}"
+                                   placeholder="/20"
+                                   class="w-24 p-2 border border-slate-200 rounded-lg text-center font-bold text-slate-800 focus:ring-2 focus:ring-purple-400 focus:border-purple-400">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="flex justify-end px-6 py-5 border-t border-slate-100 bg-slate-50/50">
+                <button type="submit" class="px-8 py-3 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-extrabold shadow-lg hover:scale-105 transition-transform">
+                    <i class="ph ph-floppy-disk-back"></i> Guardar notas
+                </button>
+            </div>
+            {% else %}
+            <div class="px-6 py-16 text-center text-slate-400">
+                <i class="ph ph-users-three text-4xl mb-2 block"></i>
+                No tienes trabajadores en tus áreas para este periodo.
+            </div>
+            {% endif %}
+        </div>
+    </form>
+
+    <p class="text-xs text-slate-400 mt-4">
+        La nota del examen (1–20) se convierte a 1–10 dividiéndola entre 2 y alimenta el aspecto Conocimiento (20%) del score. Ej.: 18/20 → 9,0. Sin examen cargado, inicia en 20/20 (10).
+    </p>
+</div>
+{% endblock %}

@@ -43,3 +43,26 @@ class Puntaje(models.Model):
 
     def __str__(self):
         return f"{self.indicador_nombre}: {self.nota}"
+
+
+class NotaConocimiento(models.Model):
+    """Nota del aspecto 03 (Conocimiento teórico/práctico) de la metodología.
+
+    Solo pondera para trabajadores de modalidad MINA (20% del score). Se carga
+    de forma manual (jefe de área). Escala 1-10. Para un periodo se toma la nota
+    más reciente cuya `fecha` cae dentro del rango.
+    """
+    trabajador = models.ForeignKey(
+        Trabajador, on_delete=models.CASCADE, related_name='notas_conocimiento')
+    fecha = models.DateField(default=timezone.now, verbose_name="Fecha del periodo")
+    nota = models.FloatField(verbose_name="Nota (1-10)")
+    comentario = models.CharField(max_length=255, blank=True, null=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha', '-id']
+        verbose_name = "Nota de Conocimiento"
+        verbose_name_plural = "Notas de Conocimiento"
+
+    def __str__(self):
+        return f"Conocimiento {self.trabajador} · {self.fecha}: {self.nota}"
