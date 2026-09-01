@@ -1,0 +1,10 @@
+{% extends "recursoshumanos/base_rrhh.html" %}
+{% block title %}Consultas{% endblock %}
+{% block content %}
+    <h1>Consultas</h1>
+    <p>Selecciona una opción para continuar.</p>
+    <div class="dashboard-grid">
+        <a href="{% url 'recursoshumanos:lista_consulta' %}" class="card"><div class="card__icon">⏱️</div><h2 class="card__title">Consulta Asistencia / Horarios</h2><p class="card__description">Revisa el historial de asistencias, faltas, tardanzas y marcas fuera de horario.</p><div class="card__footer">Consultar &rarr;</div></a>
+        <a href="{% url 'recursoshumanos:consulta_ubicacion' %}" class="card"><div class="card__icon">📍</div><h2 class="card__title">Consulta Ubicación</h2><p class="card__description">Revisa las marcaciones validadas contra la geocerca y detecta marcas fuera de zona.</p><div class="card__footer">Consultar &rarr;</div></a>
+    </div>
+{% endblock %}
