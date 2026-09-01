@@ -118,8 +118,8 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+
         <div class="card-premium p-6 relative overflow-hidden animate-on-load delay-1">
             <div class="flex justify-between items-center mb-4">
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Score Promedio</p>
@@ -140,9 +140,33 @@
             </div>
             <div class="flex items-baseline gap-2">
                 <h3 class="text-4xl font-extrabold text-slate-900 tracking-tight">{{ promedio_desempeno }}</h3>
-                <span class="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">Peso 60%</span>
+                <span class="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">Peso 10%</span>
             </div>
             <p class="text-sm font-medium text-slate-500 mt-2">Nivel de desempeño técnico</p>
+        </div>
+
+        <div class="card-premium p-6 animate-on-load delay-1">
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Medidas disciplinarias</p>
+                <i class="ph ph-gavel text-orange-300 text-2xl bg-orange-50 p-2 rounded-xl"></i>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-4xl font-extrabold text-slate-900 tracking-tight">{{ promedio_disciplinaria }}</h3>
+                <span class="text-xs font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded-full border border-orange-100">Peso 40%</span>
+            </div>
+            <p class="text-sm font-medium text-slate-500 mt-2">Sanciones y memos</p>
+        </div>
+
+        <div class="card-premium p-6 animate-on-load delay-1">
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Conocimiento</p>
+                <i class="ph ph-graduation-cap text-purple-300 text-2xl bg-purple-50 p-2 rounded-xl"></i>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-4xl font-extrabold text-slate-900 tracking-tight">{{ promedio_conocimiento }}</h3>
+                <span class="text-xs font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full border border-purple-100">Peso 20%</span>
+            </div>
+            <p class="text-sm font-medium text-slate-500 mt-2">Teórico / práctico</p>
         </div>
 
         <div class="card-premium p-6 animate-on-load delay-1">
@@ -152,7 +176,7 @@
             </div>
             <div class="flex items-baseline gap-2">
                 <h3 class="text-4xl font-extrabold text-slate-900 tracking-tight">{{ promedio_asistencia }}</h3>
-                <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">Peso 40%</span>
+                <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">Peso 30%</span>
             </div>
             <p class="text-sm font-medium text-slate-500 mt-2">Puntualidad y presencia</p>
         </div>
@@ -253,8 +277,10 @@
                     <tr class="bg-slate-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                         <th class="py-5 px-6 w-20 text-center">Posición</th>
                         <th class="py-5 px-6">{{ objetivo_label_singular|default:'Trabajador' }}</th>
-                        <th class="py-5 px-6 w-1/4">Desempeño (60%)</th>
-                        <th class="py-5 px-6 w-1/4">Asistencia (40%)</th>
+                        <th class="py-5 px-6">Desempeño (10%)</th>
+                        <th class="py-5 px-6">Medidas discipl. (40%)</th>
+                        <th class="py-5 px-6">Conocimiento (20%)</th>
+                        <th class="py-5 px-6">Asistencia (30%)</th>
                         <th class="py-5 px-6 text-center">Score Final</th>
                         <th class="py-5 px-6">Clasificación</th>
                     </tr>
@@ -292,6 +318,34 @@
                                     </div>
                                 </div>
                             </div>
+                        </td>
+
+                        <td class="py-4 px-6">
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex items-baseline gap-1 font-bold shrink-0 {% if d.nota_disciplinaria >= 9 %}text-emerald-600{% elif d.nota_disciplinaria >= 7 %}text-indigo-600{% elif d.nota_disciplinaria >= 5 %}text-amber-600{% else %}text-rose-600{% endif %}">
+                                    <span class="text-xs font-black">{% if d.nota_disciplinaria >= 9 %}AD{% elif d.nota_disciplinaria >= 7 %}A{% elif d.nota_disciplinaria >= 5 %}B{% else %}C{% endif %}</span>
+                                    <span class="text-base">{{ d.nota_disciplinaria }}</span>
+                                </span>
+                                <div class="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden relative border border-slate-200 shadow-inner">
+                                    <div class="h-full rounded-full bg-gradient-to-r from-orange-300 to-orange-500" style="width: calc({{ d.nota_disciplinaria|stringformat:'f' }} * 10%);"></div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="py-4 px-6">
+                            {% if d.nota_conocimiento is not None %}
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex items-baseline gap-1 font-bold shrink-0 {% if d.nota_conocimiento >= 9 %}text-emerald-600{% elif d.nota_conocimiento >= 7 %}text-indigo-600{% elif d.nota_conocimiento >= 5 %}text-amber-600{% else %}text-rose-600{% endif %}">
+                                    <span class="text-xs font-black">{% if d.nota_conocimiento >= 9 %}AD{% elif d.nota_conocimiento >= 7 %}A{% elif d.nota_conocimiento >= 5 %}B{% else %}C{% endif %}</span>
+                                    <span class="text-base">{{ d.nota_conocimiento }}</span>
+                                </span>
+                                <div class="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden relative border border-slate-200 shadow-inner">
+                                    <div class="h-full rounded-full bg-gradient-to-r from-purple-300 to-purple-500" style="width: calc({{ d.nota_conocimiento|stringformat:'f' }} * 10%);"></div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <span class="text-slate-300 font-bold">—</span>
+                            {% endif %}
                         </td>
 
                         <td class="py-4 px-6">

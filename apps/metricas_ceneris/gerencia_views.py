@@ -83,7 +83,7 @@ def dashboard_gerente(request):
         promedio_eval = datos_periodo['desempeno_compuesto']
         promedio_mensual = datos_periodo['promedio_mensual']
         promedio_semestral = datos_periodo['promedio_semestral']
-        porc_asistencia = datos_periodo['asistencia_pct']
+        nota_asistencia = datos_periodo['nota_asistencia']
 
         if t.area and puntaje > 0:
             if t.area.nombre not in scores_por_area_periodo:
@@ -98,7 +98,7 @@ def dashboard_gerente(request):
                     'eval_avg': round(promedio_eval, 2),
                     'promedio_mensual': round(promedio_mensual, 2),
                     'promedio_semestral': round(promedio_semestral, 2),
-                    'asistencia_avg': round(porc_asistencia / 10, 1),
+                    'asistencia_avg': round(nota_asistencia, 1),
                     'score_porc': round(puntaje * 10, 1),
                     'eval_porc': round(promedio_eval * 10, 1),
                     'promedio_mensual_porc': round(promedio_mensual * 10, 1),
@@ -113,7 +113,7 @@ def dashboard_gerente(request):
                     'eval_avg': round(promedio_eval, 2),
                     'promedio_mensual': round(promedio_mensual, 2),
                     'promedio_semestral': round(promedio_semestral, 2),
-                    'asistencia_avg': round(porc_asistencia / 10, 1),
+                    'asistencia_avg': round(nota_asistencia, 1),
                     'score_porc': round(puntaje * 10, 1),
                     'eval_porc': round(promedio_eval * 10, 1),
                     'promedio_mensual_porc': round(promedio_mensual * 10, 1),
@@ -468,10 +468,15 @@ def ajax_datos_ranking(request):
             'score': round(puntaje_final, 2),
             'promedio_mensual': round(datos['promedio_mensual'], 2),
             'promedio_semestral': round(datos['promedio_semestral'], 2),
-            'asistencia_avg': round(datos['asistencia_pct'] / 10, 1),
+            'asistencia_avg': round(datos['nota_asistencia'], 1),
             'promedio_mensual_porc': round(datos['promedio_mensual'] * 10, 1),
             'promedio_semestral_porc': round(datos['promedio_semestral'] * 10, 1),
             'area_nombre': t.area.nombre if t.area else 'Sin Area',
+            'nota_disciplinaria': round(datos['nota_disciplinaria'], 2),
+            'nota_conocimiento': round(datos['nota_conocimiento'], 2) if datos['nota_conocimiento'] is not None else None,
+            # Modalidad real del trabajador (None = sin asignar). Se usa la del
+            # registro y no la del cálculo (que cae a OFICINA por defecto).
+            'modalidad': t.modalidad_evaluacion,
         }
 
         if _es_trabajador_base(t):
@@ -624,7 +629,7 @@ def ajax_datos_podio(request):
         promedio_eval = datos_score['desempeno_compuesto']
         promedio_mensual = datos_score['promedio_mensual']
         promedio_semestral = datos_score['promedio_semestral']
-        porc_asistencia = datos_score['asistencia_pct']
+        nota_asistencia = datos_score['nota_asistencia']
 
         if puntaje_final > 0:
             apellidos = f"{(t.apellido_paterno or '').strip()} {(t.apellido_materno or '').strip()}".strip()
@@ -639,7 +644,7 @@ def ajax_datos_podio(request):
                 'eval_avg': round(promedio_eval, 2),
                 'promedio_mensual': round(promedio_mensual, 2),
                 'promedio_semestral': round(promedio_semestral, 2),
-                'asistencia_avg': round(porc_asistencia / 10, 1),
+                'asistencia_avg': round(nota_asistencia, 1),
                 'area_nombre': t.area.nombre if t.area else 'Sin Area',
                 'tipo_lider': 'Responsable' if _es_responsable(t) else ('Supervisor' if _es_supervisor(t) else 'Trabajador'),
             })

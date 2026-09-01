@@ -103,7 +103,7 @@ class TrabajadorForm(forms.ModelForm):
         fields = [
             'dni', 'apellido_paterno', 'apellido_materno', 'nombres',
             'email', 'telefono', 'sexo', 'fecha_nacimiento',
-            'empresa', 'area', 'cargo', 'sede', 'activo',
+            'empresa', 'area', 'cargo', 'sede', 'modalidad_evaluacion', 'activo',
             'fecha_ingreso', 'fecha_cese'
         ]
         widgets = {
@@ -115,6 +115,7 @@ class TrabajadorForm(forms.ModelForm):
             'area': forms.Select(attrs={'class': 'form-select form-control'}),
             'empresa': forms.Select(attrs={'class': 'form-select form-control'}),
             'sede': forms.Select(attrs={'class': 'form-select form-control'}),
+            'modalidad_evaluacion': forms.Select(attrs={'class': 'form-select form-control'}),
             'sexo': forms.Select(attrs={'class': 'form-select form-control'}),
         }
 

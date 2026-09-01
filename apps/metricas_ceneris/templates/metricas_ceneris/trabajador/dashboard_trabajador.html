@@ -141,12 +141,16 @@
                     </div>
 
                     <div class="flex flex-wrap gap-2 pt-3 border-t border-slate-200/60">
+                        {% for a in aspectos_score %}
                         <span class="px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-xs font-black shadow-sm flex items-center gap-1">
-                            <i class="ph-fill ph-chart-line-up text-sm"></i> Desempeño: {% if nota_desempeno_mes %}{{ nota_desempeno_mes|floatformat:2 }}{% else %}--{% endif %} <span class="opacity-60 text-[10px] ml-1">(60%)</span>
+                            <i class="ph-fill ph-chart-bar text-sm"></i> {{ a.label }}: {% if a.nota %}{{ a.nota|floatformat:2 }}{% else %}--{% endif %} <span class="opacity-60 text-[10px] ml-1">({{ a.peso }}%)</span>
                         </span>
-                        <span class="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg text-xs font-black shadow-sm flex items-center gap-1">
-                            <i class="ph-fill ph-calendar-check text-sm"></i> Asistencia: {% if nota_asistencia %}{{ nota_asistencia|floatformat:2 }}{% else %}--{% endif %} <span class="opacity-60 text-[10px] ml-1">(40%)</span>
+                        {% endfor %}
+                        {% if conocimiento_pendiente %}
+                        <span class="px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-100 rounded-lg text-xs font-semibold shadow-sm flex items-center gap-1">
+                            <i class="ph-fill ph-warning text-sm"></i> Falta cargar Conocimiento — pesos re-normalizados
                         </span>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -230,8 +234,32 @@
         </div>
     </div>
 
+    <!-- Resultados por Aspecto: cada característica del score, bien visible -->
+    <div class="glass-panel p-6 mb-8">
+        <h3 class="font-bold text-slate-700 text-lg flex items-center gap-2 mb-5">
+            <i class="ph ph-squares-four text-indigo-500"></i> Resultados por Aspecto
+        </h3>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {% for a in aspectos_score %}
+            <div class="rounded-2xl border p-5 text-center shadow-sm
+                {% if a.clave == 'CONOCIMIENTO' %}bg-purple-50 border-purple-200
+                {% elif a.clave == 'MEDIDAS_DISCIPLINARIAS' %}bg-orange-50 border-orange-200
+                {% elif a.clave == 'ASISTENCIA' %}bg-emerald-50 border-emerald-200
+                {% else %}bg-blue-50 border-blue-200{% endif %}">
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">{{ a.label }}</p>
+                <p class="text-4xl font-black text-slate-900 my-2">{% if a.nota %}{{ a.nota|floatformat:1 }}{% else %}--{% endif %}<span class="text-base text-slate-400 font-bold">/10</span></p>
+                <span class="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full
+                    {% if a.clave == 'CONOCIMIENTO' %}bg-purple-100 text-purple-700
+                    {% elif a.clave == 'MEDIDAS_DISCIPLINARIAS' %}bg-orange-100 text-orange-700
+                    {% elif a.clave == 'ASISTENCIA' %}bg-emerald-100 text-emerald-700
+                    {% else %}bg-blue-100 text-blue-700{% endif %}">Peso {{ a.peso }}%</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        
+
         <div class="lg:col-span-2 glass-panel p-6 border-l-4 border-l-indigo-500">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
                 <div>
@@ -283,7 +311,7 @@
         <div class="space-y-3">
             <div class="grid grid-cols-12 gap-4 text-xs font-bold text-slate-400 uppercase tracking-wider px-4 mb-2">
                 <div class="col-span-3">Periodo</div>
-                <div class="col-span-2 text-center">Nota</div>
+                <div class="col-span-2 text-center">Score</div>
                 <div class="col-span-5">Feedback</div>
                 <div class="col-span-2 text-right">Acción</div>
             </div>
@@ -303,13 +331,16 @@
                     </div>
                 </div>
 
-                <div class="col-span-2 flex justify-center">
+                <div class="col-span-2 flex flex-col items-center justify-center gap-1">
                     <span class="px-3 py-1 rounded-full text-sm font-bold shadow-sm
-                        {% if ev.promedio_final >= 9 %}bg-emerald-100 text-emerald-700 border border-emerald-200
-                        {% elif ev.promedio_final >= 7 %}bg-indigo-100 text-indigo-700 border border-indigo-200
-                        {% elif ev.promedio_final >= 5 %}bg-amber-100 text-amber-700 border border-amber-200
+                        {% if ev.score_periodo >= 9 %}bg-emerald-100 text-emerald-700 border border-emerald-200
+                        {% elif ev.score_periodo >= 7 %}bg-indigo-100 text-indigo-700 border border-indigo-200
+                        {% elif ev.score_periodo >= 5 %}bg-amber-100 text-amber-700 border border-amber-200
                         {% else %}bg-rose-100 text-rose-700 border border-rose-200{% endif %}">
-                        {{ ev.promedio_final }}
+                        {{ ev.score_periodo }}
+                    </span>
+                    <span class="text-[9px] text-slate-400 text-center leading-tight">
+                        D {{ ev.nota_desempeno_periodo }} · MD {{ ev.nota_disciplinaria }}<br>Con {{ ev.nota_conocimiento }} · A {{ ev.nota_asistencia }}
                     </span>
                 </div>
 
@@ -529,24 +560,24 @@
         fechas: {{ fechas_grafica|safe }},
         notas: {{ notas_grafica|safe }}
     };
-    
+
     // Variables globales para los charts
     let chartEvolucion, chartRadar;
-    
-    // --- 1. Gráfico de Evolución (Línea Curva con Gradiente) ---
+
+    // --- 1. Gráfico de Evolución (Score Final, línea curva con gradiente) ---
     function crearGraficoEvolucion(meses = 6) {
         const ctxEvo = document.getElementById('chartEvolucion').getContext('2d');
-        
+
         // Filtrar datos según el periodo seleccionado
         let fechasFiltradas = datosCompletos.fechas;
         let notasFiltradas = datosCompletos.notas;
-        
+
         if (meses !== 'all') {
             const cantidad = parseInt(meses);
             fechasFiltradas = datosCompletos.fechas.slice(-cantidad);
             notasFiltradas = datosCompletos.notas.slice(-cantidad);
         }
-        
+
         // Crear Gradiente Vertical
         let gradientEvo = ctxEvo.createLinearGradient(0, 0, 0, 400);
         gradientEvo.addColorStop(0, 'rgba(99, 102, 241, 0.5)'); // Indigo arriba
@@ -554,13 +585,13 @@
 
         // Destruir chart anterior si existe
         if (chartEvolucion) chartEvolucion.destroy();
-        
+
         chartEvolucion = new Chart(ctxEvo, {
             type: 'line',
             data: {
                 labels: fechasFiltradas,
                 datasets: [{
-                    label: 'Promedio General',
+                    label: 'Score Final',
                     data: notasFiltradas,
                     borderColor: '#6366f1', // Indigo 500
                     borderWidth: 3,
