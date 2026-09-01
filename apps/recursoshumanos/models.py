@@ -123,6 +123,10 @@ class Trabajador(models.Model):
         RESPONSABLE = 'RESPONSABLE', 'Responsable'
         GERENTE = 'GERENTE', 'Gerente'
 
+    class ModalidadEvaluacion(models.TextChoices):
+        OFICINA = 'OFICINA', 'Oficina'
+        MINA = 'MINA', 'Mina'
+
     # --- Datos de Identificación ---
     dni = models.CharField(max_length=8, unique=True, validators=[dni_validator])
     apellido_paterno = models.CharField(max_length=100, verbose_name="Apellido Paterno")
@@ -170,6 +174,15 @@ class Trabajador(models.Model):
     )
     es_jefe = models.BooleanField(default=False)
     es_gerente = models.BooleanField(default=False, verbose_name="Es Gerente General")
+    # Modalidad de evaluación de desempeño: mina evalúa 4 aspectos; oficina 3
+    # (sin Conocimiento). Nullable = sin asignar; RRHH lo define por trabajador.
+    modalidad_evaluacion = models.CharField(
+        max_length=10,
+        choices=ModalidadEvaluacion.choices,
+        null=True,
+        blank=True,
+        verbose_name="Modalidad de Evaluación",
+    )
     # Fechas de ingreso A LA EMPRESA (Ceneris), no al proyecto
     fecha_ingreso = models.DateField(null=True, blank=True, verbose_name="Fecha de Ingreso Empresa")
     fecha_cese = models.DateField(null=True, blank=True, verbose_name="Fecha de Cese Empresa")
@@ -208,6 +221,12 @@ class Trabajador(models.Model):
     @property
     def nombre_completo(self):
         return f"{self.nombres} {self.apellido_paterno} {self.apellido_materno}".strip()
+
+    def aspectos_evaluacion(self):
+        """Aspectos de evaluación de desempeño. Los 4 aplican por igual a todos
+        los trabajadores (oficina y mina); la modalidad no cambia esta lista, es
+        solo informativa."""
+        return ['DESEMPENO', 'MEDIDAS_DISCIPLINARIAS', 'CONOCIMIENTO', 'ASISTENCIA']
 
     @property
     def cargo_jerarquico(self):
@@ -835,6 +854,7 @@ class Sancion(models.Model):
         VERBAL = 'VERBAL', 'Amonestación Verbal'
         ORAL = 'ORAL', 'Amonestación Oral'
         ESCRITA = 'ESCRITA', 'Amonestación Escrita'
+        SUSPENSION = 'SUSPENSION', 'Suspensión'
         OTRO = 'OTRO', 'Otra Sanción'
 
     trabajador = models.ForeignKey(Trabajador, on_delete=models.CASCADE, related_name='sanciones')

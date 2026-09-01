@@ -16,6 +16,7 @@ urlpatterns = [
     path('evaluar/<int:trabajador_id>/<str:tipo>/', views.evaluar_trabajador, name='evaluar_trabajador'),
     path('evaluar/corregir/<int:evaluacion_id>/', views.corregir_evaluacion, name='corregir_evaluacion'),
     path('historial/<int:trabajador_id>/', views.historial_trabajador, name='historial_trabajador'),
+    path('conocimiento/', views.panel_conocimiento, name='panel_conocimiento'),
     path('panel_jefe/', views.panel_jefe, name='panel_jefe'),
     path('mis-evaluaciones/', views.mis_evaluaciones, name='mis_evaluaciones'), 
     path('detalle/<int:evaluacion_id>/', views.detalle_evaluacion, name='detalle_evaluacion'),

@@ -59,7 +59,7 @@
             <thead>
                 <tr class="border-b-2 border-slate-200 bg-slate-50/50">
                     <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap" style="width: 180px;">Fecha</th>
-                    <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap" style="width: 150px;">Promedio</th>
+                    <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap" style="width: 190px;">Score (4 aspectos)</th>
                     <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Comentario</th>
                     <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap" style="width: 240px;">Quién evaluó</th>
                     <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap" style="width: 150px;">Acciones</th>
@@ -84,14 +84,17 @@
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap">
                         <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-black text-sm
-                            {% if ev.promedio_final >= 8 %}bg-emerald-50 text-emerald-700 border border-emerald-200
-                            {% elif ev.promedio_final >= 5 %}bg-amber-50 text-amber-700 border border-amber-200
+                            {% if ev.score_periodo >= 8 %}bg-emerald-50 text-emerald-700 border border-emerald-200
+                            {% elif ev.score_periodo >= 5 %}bg-amber-50 text-amber-700 border border-amber-200
                             {% else %}bg-rose-50 text-rose-700 border border-rose-200{% endif %}">
                             <i class="ph-fill flex-shrink-0
-                                {% if ev.promedio_final >= 8 %}ph-smiley text-emerald-600
-                                {% elif ev.promedio_final >= 5 %}ph-smiley-meh text-amber-600
+                                {% if ev.score_periodo >= 8 %}ph-smiley text-emerald-600
+                                {% elif ev.score_periodo >= 5 %}ph-smiley-meh text-amber-600
                                 {% else %}ph-smiley-sad text-rose-600{% endif %}"></i>
-                            <span>{{ ev.promedio_final }}/10</span>
+                            <span>{{ ev.score_periodo }}/10</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-1 leading-tight">
+                            D {{ ev.nota_desempeno_periodo }} · MD {{ ev.nota_disciplinaria }} · Con {{ ev.nota_conocimiento }} · Asist {{ ev.nota_asistencia }}
                         </div>
                     </td>
                     <td class="px-4 py-4">
@@ -168,7 +171,7 @@
         data: {
             labels: fechas,
             datasets: [{
-                label: 'Promedio de Evaluación',
+                label: 'Score (4 aspectos)',
                 data: notas,
                 backgroundColor: gradient,
                 borderColor: 'rgba(249, 115, 22, 1)',

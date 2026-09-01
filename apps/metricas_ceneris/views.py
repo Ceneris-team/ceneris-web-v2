@@ -26,9 +26,9 @@ from openpyxl.chart import BarChart, Reference
 from openpyxl.chart.marker import DataPoint
 
 from openpyxl.chart.label import DataLabelList
-from .models import EvaluacionMensual, Puntaje
+from .models import EvaluacionMensual, Puntaje, NotaConocimiento
 from .forms import EvaluacionForm, ESTRUCTURA_EVALUACION
-from recursoshumanos.models import Trabajador, Asistencia, TareoDiario, Justificacion, Sede, Area
+from recursoshumanos.models import Trabajador, Asistencia, TareoDiario, Justificacion, Sede, Area, Sancion
 
 
 TARDANZA_MINIMA_MINUTOS = 1
@@ -778,12 +778,104 @@ def _calcular_asistencia_por_periodo(trabajador, inicio_periodo, fin_periodo):
         porc_asistencia = ((total_dias_reales_hasta_hoy - faltas_ajustadas) / total_dias_reales_hasta_hoy) * 100
         porc_asistencia = max(0, porc_asistencia)
 
+    # Nota 1-10 según la metodología (PPT): 10 − (Tardanzas×0.2) − (Inasistencias×0.3),
+    # con piso 1. Es la que alimenta el score. `porcentaje` queda como % real de
+    # asistencia solo para mostrar (kpi_asistencia).
+    nota = max(1.0, 10.0 - (tardanzas_penalizadas * 0.2) - (total_faltas * 0.3))
+
     return {
         'porcentaje': float(porc_asistencia),
+        'nota': float(nota),
         'faltas': total_faltas,
         'tardanzas': tardanzas_penalizadas,
         'total_dias': total_dias_reales_hasta_hoy
     }
+
+# Pesos de la metodología de evaluación (metodología de RRHH). Los 4 aspectos
+# aplican por igual a todos los trabajadores (oficina y mina); la modalidad no
+# cambia el cálculo, es solo informativa. Suma 1.0.
+PESOS_EVALUACION = {
+    'DESEMPENO': 0.10,
+    'MEDIDAS_DISCIPLINARIAS': 0.40,
+    'CONOCIMIENTO': 0.20,
+    'ASISTENCIA': 0.30,
+}
+
+# Factor que resta cada tipo de sanción en la nota de Medidas disciplinarias
+# (fórmula 10 − Σ, con piso 1). Solo Verbal/Escrita/Suspensión descuentan;
+# Oral y Otra quedan en 0 por decisión de negocio (no contempladas en la metodología).
+FACTOR_SANCION = {
+    Sancion.Tipo.VERBAL: 2,
+    Sancion.Tipo.ESCRITA: 3,
+    Sancion.Tipo.SUSPENSION: 5,
+}
+
+
+def _pesos_para_modalidad(trabajador):
+    """Pesos de los 4 aspectos (iguales para todos). Devuelve además la
+    modalidad real del trabajador solo como etiqueta informativa."""
+    modalidad = getattr(trabajador, 'modalidad_evaluacion', None)
+    return modalidad, PESOS_EVALUACION
+
+
+def _calcular_medidas_disciplinarias(trabajador, inicio, fin):
+    """Nota 1-10 de Medidas disciplinarias en el periodo.
+
+    10 − (Verbal×2) − (Escrita×3) − (Suspensión×5), con piso 1. Sin sanciones = 10.
+    """
+    sanciones = trabajador.sanciones.filter(fecha_sancion__range=(inicio, fin))
+    descuento = 0
+    for tipo, factor in FACTOR_SANCION.items():
+        descuento += sanciones.filter(tipo=tipo).count() * factor
+    return max(1.0, 10.0 - descuento)
+
+
+# La nota de Conocimiento se carga como examen sobre 20 (metodología PPT) y se
+# convierte a escala 1-10 dividiendo entre 2. Sin examen cargado inicia en 10.
+CONOCIMIENTO_EXAMEN_INICIAL = 20  # equivalente a 10/10
+CONOCIMIENTO_INICIAL = 10.0       # nota 1-10 por defecto (20/20 ÷ 2)
+
+
+def _calcular_conocimiento(trabajador, inicio, fin):
+    """Nota 1-10 de Conocimiento. Se guarda el examen sobre 20 y se convierte
+    ÷2 a escala 1-10. Sin examen cargado en el periodo, vale 10."""
+    nota_examen = (trabajador.notas_conocimiento
+                   .filter(fecha__range=(inicio, fin))
+                   .order_by('-fecha', '-id')
+                   .values_list('nota', flat=True)
+                   .first())
+    if nota_examen is None:
+        return CONOCIMIENTO_INICIAL
+    return min(10.0, float(nota_examen) / 2.0)
+
+
+def _ponderar_score(trabajador, nota_desempeno, asistencia_escala_10, inicio, fin):
+    """Combina los aspectos con los pesos de la modalidad. Fuente única de verdad
+    para el score ponderado (la usan el cálculo del periodo y los exports)."""
+    nota_disciplinaria = _calcular_medidas_disciplinarias(trabajador, inicio, fin)
+    nota_conocimiento = _calcular_conocimiento(trabajador, inicio, fin)
+
+    # Conocimiento inicia en 10 para todos, así que siempre es un número: no hay
+    # aspecto faltante ni re-normalización, se aplican los 4 pesos completos.
+    componentes = {
+        'DESEMPENO': float(nota_desempeno),
+        'MEDIDAS_DISCIPLINARIAS': float(nota_disciplinaria),
+        'ASISTENCIA': float(asistencia_escala_10),
+        'CONOCIMIENTO': float(nota_conocimiento),
+    }
+
+    modalidad, pesos = _pesos_para_modalidad(trabajador)
+    score = sum(componentes[k] * p for k, p in pesos.items())
+
+    return {
+        'score_total': float(score),
+        'nota_disciplinaria': float(nota_disciplinaria),
+        'nota_conocimiento': float(nota_conocimiento),
+        'modalidad': modalidad,
+        'pesos_aplicados': pesos,
+        'conocimiento_pendiente': False,
+    }
+
 
 def _calcular_score_total(trabajador, hoy, periodo, anio=None, mes=None, semestre=None):
     inicio_periodo, fin_periodo = _resolver_rango_periodo(hoy, periodo, anio=anio, mes=mes, semestre=semestre)
@@ -792,9 +884,11 @@ def _calcular_score_total(trabajador, hoy, periodo, anio=None, mes=None, semestr
     asistencia_data = _calcular_asistencia_por_periodo(trabajador, inicio_periodo, fin_periodo)
 
     nota_desempeno_periodo = desempeno['desempeno_compuesto']
+    # Nota de asistencia (PPT) para el score; `porcentaje` es el % real (display).
+    asistencia_escala_10 = asistencia_data['nota']
 
-    asistencia_escala_10 = asistencia_data['porcentaje'] / 10
-    puntaje_final = (nota_desempeno_periodo * 0.6) + (asistencia_escala_10 * 0.4)
+    ponderacion = _ponderar_score(
+        trabajador, nota_desempeno_periodo, asistencia_escala_10, inicio_periodo, fin_periodo)
 
     return {
         'promedio_mensual': desempeno['promedio_mensual'],
@@ -802,7 +896,13 @@ def _calcular_score_total(trabajador, hoy, periodo, anio=None, mes=None, semestr
         'desempeno_compuesto': desempeno['desempeno_compuesto'],
         'nota_desempeno_periodo': float(nota_desempeno_periodo),
         'asistencia_pct': asistencia_data['porcentaje'],
-        'score_total': float(puntaje_final),
+        'nota_asistencia': asistencia_data['nota'],
+        'nota_disciplinaria': ponderacion['nota_disciplinaria'],
+        'nota_conocimiento': ponderacion['nota_conocimiento'],
+        'modalidad': ponderacion['modalidad'],
+        'pesos_aplicados': ponderacion['pesos_aplicados'],
+        'conocimiento_pendiente': ponderacion['conocimiento_pendiente'],
+        'score_total': ponderacion['score_total'],
         'faltas': asistencia_data['faltas'],
         'tardanzas': asistencia_data['tardanzas'],
         'total_dias': asistencia_data['total_dias'],
@@ -844,6 +944,9 @@ def _serializar_item_ranking_tabla(item, tipo_persona):
         'promedio_semestral': item.get('promedio_semestral', 0),
         'promedio_semestral_porc': item.get('promedio_semestral_porc', 0),
         'asistencia_avg': item.get('asistencia_avg', 0),
+        'nota_disciplinaria': item.get('nota_disciplinaria', 0),
+        'nota_conocimiento': item.get('nota_conocimiento', None),
+        'modalidad': item.get('modalidad', None),
         'score': item.get('score', 0),
     }
 
@@ -1300,11 +1403,23 @@ def corregir_evaluacion(request, evaluacion_id):
 @login_required
 def historial_trabajador(request, trabajador_id):
     trabajador = get_object_or_404(Trabajador, id=trabajador_id)
-    evaluaciones = trabajador.evaluaciones.select_related('evaluador').all()
-    
-    # Datos para gráfica (histórico)
+    evaluaciones = list(trabajador.evaluaciones.select_related('evaluador').all())
+
+    # Para cada mes evaluado, calculamos el SCORE ponderado de los 4 aspectos
+    # (no solo el Desempeño de la evaluación) y lo adjuntamos a cada registro.
+    hoy = timezone.now().date()
+    for e in evaluaciones:
+        d = _calcular_score_total(
+            trabajador, hoy, 'mes', anio=e.fecha_evaluacion.year, mes=e.fecha_evaluacion.month)
+        e.score_periodo = round(d['score_total'], 2)
+        e.nota_desempeno_periodo = round(d['nota_desempeno_periodo'], 2)
+        e.nota_disciplinaria = round(d['nota_disciplinaria'], 2)
+        e.nota_conocimiento = round(d['nota_conocimiento'], 2)
+        e.nota_asistencia = round(d['nota_asistencia'], 2)
+
+    # Datos para gráfica (histórico del score de 4 aspectos)
     fechas = [e.fecha_evaluacion.strftime("%b %Y") for e in evaluaciones]
-    notas = [e.promedio_final for e in evaluaciones]
+    notas = [e.score_periodo for e in evaluaciones]
 
     return render(request, 'metricas_ceneris/historial.html', {
         'trabajador': trabajador,
@@ -1384,11 +1499,21 @@ def dashboard_trabajador(request):
     except:
         return render(request, 'metricas_ceneris/error.html', {'mensaje': 'No tienes perfil asignado.'})
 
-    # Obtener todas sus evaluaciones
-    evaluaciones = trabajador.evaluaciones.select_related('evaluador').all().order_by('-fecha_evaluacion')
-    
+    # Obtener todas sus evaluaciones. Adjuntamos a cada una el SCORE ponderado
+    # (4 aspectos) del mes evaluado, para mostrarlo en el Historial.
+    evaluaciones = list(trabajador.evaluaciones.select_related('evaluador').all().order_by('-fecha_evaluacion'))
+    _hoy_hist = timezone.now().date()
+    for _ev in evaluaciones:
+        _d = _calcular_score_total(
+            trabajador, _hoy_hist, 'mes', anio=_ev.fecha_evaluacion.year, mes=_ev.fecha_evaluacion.month)
+        _ev.score_periodo = round(_d['score_total'], 2)
+        _ev.nota_desempeno_periodo = round(_d['nota_desempeno_periodo'], 2)
+        _ev.nota_disciplinaria = round(_d['nota_disciplinaria'], 2)
+        _ev.nota_conocimiento = round(_d['nota_conocimiento'], 2)
+        _ev.nota_asistencia = round(_d['nota_asistencia'], 2)
+
     # 1. KPI: Última Nota y Estado
-    ultima_ev = evaluaciones.first()
+    ultima_ev = evaluaciones[0] if evaluaciones else None
     ultima_nota = ultima_ev.promedio_final if ultima_ev else 0
     
     # Clasificación (AD, A, B, C)
@@ -1408,9 +1533,23 @@ def dashboard_trabajador(request):
             clasificacion = "C - Bajo"
             color_clase = "red"
 
-    # 2. Datos para Gráfico de Línea (Histórico)
-    fechas_grafica = [e.fecha_evaluacion.strftime("%b %Y") for e in evaluaciones][::-1] # Invertimos para cronológico
-    notas_grafica = [e.promedio_final for e in evaluaciones][::-1]
+    # 2. Datos para Gráfico de Línea (Histórico del SCORE ponderado).
+    # Se calcula EN VIVO para los últimos 6 meses (sin tabla ni cron).
+    MESES_ABREV = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+                   'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+    hoy_ref = timezone.now().date()
+    historial_score = []
+    cursor_mes = hoy_ref.replace(day=1)
+    for _ in range(6):
+        d_mes = _calcular_score_total(
+            trabajador, hoy_ref, 'mes', anio=cursor_mes.year, mes=cursor_mes.month)
+        historial_score.append(
+            (f"{MESES_ABREV[cursor_mes.month]} {cursor_mes.year}", round(d_mes['score_total'], 2)))
+        # Retroceder al primer día del mes anterior.
+        cursor_mes = (cursor_mes - datetime.timedelta(days=1)).replace(day=1)
+    historial_score.reverse()  # cronológico
+    fechas_grafica = [h[0] for h in historial_score]
+    notas_grafica = [h[1] for h in historial_score]
 
     # 3. Datos para Gráfico de Radar (Sus fortalezas actuales)
     radar_data = []
@@ -1590,14 +1729,42 @@ def dashboard_trabajador(request):
     # --------- CÁLCULO DE NOTA DE DESEMPEÑO CON REGLA DE SEMESTRES ---------
     nota_desempeno_mes = round(score_data['nota_desempeno_periodo'], 1)
     
-    # Convertir nota de asistencia (con sanción) a escala de 0-10
-    nota_asistencia = round(nota_asistencia_pct / 10, 1)
+    # Nota de asistencia (fórmula PPT) que alimenta el score; el % real se
+    # muestra aparte como kpi_asistencia.
+    nota_asistencia = round(score_data['nota_asistencia'], 1)
     
     # --------- CÁLCULO DEL SCORE FINAL ---------
-    # Score = (Desempeño * 0.6) + (Asistencia en escala 10 * 0.4)
+    # Score ponderado por modalidad (oficina 3 aspectos / mina 4). Ver
+    # _ponderar_score / PESOS_EVALUACION.
     score_final = round(score_data['score_total'], 2)
 
+    # Aspectos a mostrar en el desglose, según la modalidad del trabajador.
+    _labels_aspecto = {
+        'DESEMPENO': 'Desempeño',
+        'MEDIDAS_DISCIPLINARIAS': 'Medidas disciplinarias',
+        'CONOCIMIENTO': 'Conocimiento',
+        'ASISTENCIA': 'Asistencia',
+    }
+    _notas_aspecto = {
+        'DESEMPENO': nota_desempeno_mes,
+        'MEDIDAS_DISCIPLINARIAS': round(score_data['nota_disciplinaria'], 2),
+        'CONOCIMIENTO': round(score_data['nota_conocimiento'], 2) if score_data['nota_conocimiento'] is not None else None,
+        'ASISTENCIA': nota_asistencia,
+    }
+    aspectos_score = [
+        {
+            'clave': clave,
+            'label': _labels_aspecto[clave],
+            'peso': round(peso * 100),
+            'nota': _notas_aspecto[clave],
+        }
+        for clave, peso in score_data['pesos_aplicados'].items()
+    ]
+
     return render(request, 'metricas_ceneris/trabajador/dashboard_trabajador.html', {
+        'aspectos_score': aspectos_score,
+        'modalidad': score_data['modalidad'],
+        'conocimiento_pendiente': score_data['conocimiento_pendiente'],
         'trabajador': trabajador,
         'evaluaciones': evaluaciones,
         'ultima_nota': ultima_nota,
@@ -1678,6 +1845,73 @@ def _resolver_filtro_mes_anio(request, hoy):
     return mes, anio, inicio_mes, fin_mes
 
 
+@login_required
+def panel_conocimiento(request):
+    """Carga de notas de Conocimiento (aspecto 03).
+
+    Accesible por jefaturas (supervisor/responsable/gerente). Cada jefe solo ve a
+    quienes le corresponde evaluar según la jerarquía (`_puede_evaluar_objetivo`):
+    el supervisor a los trabajadores de su área; el gerente a los supervisores.
+    """
+    perfil = getattr(request.user, 'trabajador', None)
+    if not perfil or not _es_lider(perfil):
+        return redirect('metricas_ceneris:inicio_metricas')
+
+    hoy = timezone.now().date()
+    try:
+        mes = int(request.POST.get('mes') or request.GET.get('mes') or hoy.month)
+        anio = int(request.POST.get('anio') or request.GET.get('anio') or hoy.year)
+    except (TypeError, ValueError):
+        mes, anio = hoy.month, hoy.year
+    if not (1 <= mes <= 12):
+        mes = hoy.month
+    fecha_periodo = datetime.date(anio, mes, 1)
+
+    # Alcance = a quiénes puede evaluar este jefe (misma jerarquía que Desempeño).
+    candidatos = (Trabajador.objects.filter(activo=True)
+                  .exclude(id=perfil.id)
+                  .select_related('area'))
+    trabajadores = sorted(
+        (t for t in candidatos if _puede_evaluar_objetivo(perfil, t)),
+        key=lambda t: ((t.apellido_paterno or ''), (t.nombres or '')),
+    )
+
+    if request.method == 'POST':
+        guardadas = 0
+        for t in trabajadores:
+            raw = (request.POST.get(f'nota_{t.id}') or '').strip()
+            if not raw:
+                continue
+            try:
+                val = float(raw)
+            except ValueError:
+                continue
+            # La nota del examen va de 1 a 20 (se convierte ÷2 para el score).
+            if 1 <= val <= 20:
+                NotaConocimiento.objects.update_or_create(
+                    trabajador=t, fecha=fecha_periodo,
+                    defaults={'nota': val, 'comentario': 'Carga desde panel de Conocimiento'})
+                guardadas += 1
+        messages.success(request, f'Se guardaron {guardadas} nota(s) de Conocimiento para {mes:02d}/{anio}.')
+        return redirect(f"/metricas_ceneris/conocimiento/?mes={mes}&anio={anio}")
+
+    notas = {
+        nc.trabajador_id: nc.nota
+        for nc in NotaConocimiento.objects.filter(fecha=fecha_periodo, trabajador__in=trabajadores)
+    }
+    # El examen inicia en 20/20 cuando aún no se cargó nota en el periodo.
+    filas = [{'trabajador': t, 'nota': notas.get(t.id, CONOCIMIENTO_EXAMEN_INICIAL)} for t in trabajadores]
+
+    return render(request, 'metricas_ceneris/conocimiento/panel_conocimiento.html', {
+        'filas': filas,
+        'mes_seleccionado': mes,
+        'anio_seleccionado': anio,
+        'meses_disponibles': _meses_disponibles_evaluacion(hoy),
+        'anios_disponibles': [hoy.year - 1, hoy.year],
+        'total_mina': len(filas),
+    })
+
+
 def _construir_resumen_asistencia(trabajadores, inicio_mes, fin_mes, incluir_en_detalle=None):
     if incluir_en_detalle is None:
         incluir_en_detalle = lambda *_: True
@@ -1706,7 +1940,7 @@ def _construir_resumen_asistencia(trabajadores, inicio_mes, fin_mes, incluir_en_
         # 2. EXTRAEMOS LOS DATOS MATEMÁTICAMENTE EXACTOS
         dias_totales = asistencia_data['total_dias']
         faltas = asistencia_data['faltas'] # ¡Ahora sí incluye las faltas por días vacíos!
-        nota_asistencia = round(asistencia_data['porcentaje'] / 10, 1)
+        nota_asistencia = round(asistencia_data['nota'], 1)  # nota PPT (consistente con el score)
         
         # 3. Calculamos las asistencias reales restando las faltas exactas
         asistencias = dias_totales - faltas
@@ -1896,7 +2130,7 @@ def dashboard_gerente(request):
                 'trabajador': t,
                 'score': round(puntaje, 2),
                 'eval_avg': round(datos_periodo['desempeno_compuesto'], 2),
-                'asistencia_avg': round(datos_periodo['asistencia_pct'] / 10, 1),
+                'asistencia_avg': round(datos_periodo['nota_asistencia'], 1),
                 'area_nombre': t.area.nombre if t.area else "Sin Área"
             }
             if _es_trabajador_base(t):
@@ -2172,8 +2406,9 @@ def exportar_ranking_excel_area(request):
         asistencia_data = _calcular_asistencia_por_periodo(t, inicio_periodo, fin_periodo)
 
         nota_desempeno = round(desempeno_data['desempeno_compuesto'], 2)
-        nota_asistencia = round(asistencia_data['porcentaje'] / 10, 2)
-        score = round((nota_desempeno * 0.6) + (nota_asistencia * 0.4), 2)
+        nota_asistencia = round(asistencia_data['nota'], 2)
+        score = round(_ponderar_score(
+            t, nota_desempeno, nota_asistencia, inicio_periodo, fin_periodo)['score_total'], 2)
 
         if score > 0:
             ranking.append({
@@ -2371,7 +2606,7 @@ def exportar_ranking_excel(request):
                 'trabajador': t,
                 'score': datos['score_total'],
                 'asistencia_pct': datos['asistencia_pct'],
-                'asistencia_nota': round(datos['asistencia_pct'] / 10, 2),
+                'asistencia_nota': round(datos['nota_asistencia'], 2),
                 'desempeno': datos['desempeno_compuesto'],
                 'tardanzas': datos['tardanzas'],
                 'faltas': datos['faltas'],
@@ -2497,7 +2732,7 @@ def exportar_ranking_excel(request):
                 'trabajador': t,
                 'score': datos['score_total'],
                 'asistencia_pct': datos['asistencia_pct'],
-                'asistencia_nota': round(datos['asistencia_pct'] / 10, 2),
+                'asistencia_nota': round(datos['nota_asistencia'], 2),
                 'desempeno': datos['desempeno_compuesto'],
             })
     
@@ -3162,6 +3397,8 @@ def dashboard_jefe(request):
     suma_score_final = 0
     suma_desempeno = 0
     suma_asistencia = 0
+    suma_disciplinaria = 0
+    suma_conocimiento = 0
     total_evaluados = 0
     total_faltas_area = 0
 
@@ -3172,8 +3409,8 @@ def dashboard_jefe(request):
         faltas = score_data['faltas']
         
         total_faltas_area += faltas
-        # Convertir el porcentaje a escala 0-10
-        nota_asistencia = round(porc_asistencia / 10, 2)
+        # Nota de asistencia (fórmula PPT), la misma que usa el score.
+        nota_asistencia = round(score_data['nota_asistencia'], 2)
 
         # Score Final
         score_trabajador = round(score_data['score_total'], 2)
@@ -3189,6 +3426,8 @@ def dashboard_jefe(request):
             'trabajador': t,
             'desempeno': nota_desempeno,
             'asistencia': nota_asistencia,
+            'nota_disciplinaria': round(score_data['nota_disciplinaria'], 2),
+            'nota_conocimiento': round(score_data['nota_conocimiento'], 2) if score_data['nota_conocimiento'] is not None else None,
             'score': score_trabajador,
             'faltas': faltas,
             'clasificacion': clasif_ind
@@ -3197,6 +3436,8 @@ def dashboard_jefe(request):
         suma_score_final += score_trabajador
         suma_desempeno += nota_desempeno
         suma_asistencia += nota_asistencia
+        suma_disciplinaria += score_data['nota_disciplinaria']
+        suma_conocimiento += score_data['nota_conocimiento']
         total_evaluados += 1
 
     # Ordenar Ranking (De mayor a menor score)
@@ -3207,6 +3448,8 @@ def dashboard_jefe(request):
     promedio_area_final = round(suma_score_final / total_evaluados, 2) if total_evaluados > 0 else 0
     promedio_area_desempeno = round(suma_desempeno / total_evaluados, 2) if total_evaluados > 0 else 0
     promedio_area_asistencia = round(suma_asistencia / total_evaluados, 2) if total_evaluados > 0 else 0
+    promedio_area_disciplinaria = round(suma_disciplinaria / total_evaluados, 2) if total_evaluados > 0 else 0
+    promedio_area_conocimiento = round(suma_conocimiento / total_evaluados, 2) if total_evaluados > 0 else 0
 
     clasificacion = "Pendiente"
     if promedio_area_final > 0:
@@ -3230,8 +3473,10 @@ def dashboard_jefe(request):
         'mejor_trabajador': mejor_trabajador,
         'total_faltas_area': total_faltas_area,
         'promedio_area': promedio_area_final,        
-        'promedio_desempeno': promedio_area_desempeno, 
-        'promedio_asistencia': promedio_area_asistencia, 
+        'promedio_desempeno': promedio_area_desempeno,
+        'promedio_asistencia': promedio_area_asistencia,
+        'promedio_disciplinaria': promedio_area_disciplinaria,
+        'promedio_conocimiento': promedio_area_conocimiento,
         'clasificacion': clasificacion,
         'mes_seleccionado': mes,
         'anio_seleccionado': anio,
@@ -3347,6 +3592,8 @@ def dashboard_responsable(request):
     suma_score_final = 0
     suma_desempeno = 0
     suma_asistencia = 0
+    suma_disciplinaria = 0
+    suma_conocimiento = 0
     total_evaluados = 0
     total_faltas_area = 0
 
@@ -3359,8 +3606,10 @@ def dashboard_responsable(request):
         faltas = asistencia_data['faltas']
 
         total_faltas_area += faltas
-        nota_asistencia = round(porc_asistencia / 10, 2)
-        score_trabajador = round((nota_desempeno * 0.6) + (nota_asistencia * 0.4), 2)
+        # Nota de asistencia (fórmula PPT), la misma que alimenta el score.
+        nota_asistencia = round(asistencia_data['nota'], 2)
+        ponderacion = _ponderar_score(t, nota_desempeno, nota_asistencia, inicio_periodo, fin_periodo)
+        score_trabajador = round(ponderacion['score_total'], 2)
 
         clasif_ind = 'C'
         if score_trabajador >= 9:
@@ -3374,6 +3623,8 @@ def dashboard_responsable(request):
             'trabajador': t,
             'desempeno': nota_desempeno,
             'asistencia': nota_asistencia,
+            'nota_disciplinaria': round(ponderacion['nota_disciplinaria'], 2),
+            'nota_conocimiento': round(ponderacion['nota_conocimiento'], 2) if ponderacion['nota_conocimiento'] is not None else None,
             'score': score_trabajador,
             'faltas': faltas,
             'clasificacion': clasif_ind,
@@ -3382,6 +3633,8 @@ def dashboard_responsable(request):
         suma_score_final += score_trabajador
         suma_desempeno += nota_desempeno
         suma_asistencia += nota_asistencia
+        suma_disciplinaria += ponderacion['nota_disciplinaria']
+        suma_conocimiento += ponderacion['nota_conocimiento']
         total_evaluados += 1
 
     datos_equipo = sorted(datos_equipo, key=lambda x: x['score'], reverse=True)
@@ -3390,6 +3643,8 @@ def dashboard_responsable(request):
     promedio_area_final = round(suma_score_final / total_evaluados, 2) if total_evaluados > 0 else 0
     promedio_area_desempeno = round(suma_desempeno / total_evaluados, 2) if total_evaluados > 0 else 0
     promedio_area_asistencia = round(suma_asistencia / total_evaluados, 2) if total_evaluados > 0 else 0
+    promedio_area_disciplinaria = round(suma_disciplinaria / total_evaluados, 2) if total_evaluados > 0 else 0
+    promedio_area_conocimiento = round(suma_conocimiento / total_evaluados, 2) if total_evaluados > 0 else 0
 
     clasificacion = 'Pendiente'
     if promedio_area_final > 0:
@@ -3428,6 +3683,8 @@ def dashboard_responsable(request):
         'promedio_area': promedio_area_final,
         'promedio_desempeno': promedio_area_desempeno,
         'promedio_asistencia': promedio_area_asistencia,
+        'promedio_disciplinaria': promedio_area_disciplinaria,
+        'promedio_conocimiento': promedio_area_conocimiento,
         'clasificacion': clasificacion,
         'mes_inicio_seleccionado': mes_inicio,
         'mes_fin_seleccionado': mes_fin,

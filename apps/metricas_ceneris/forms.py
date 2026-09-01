@@ -40,7 +40,7 @@ class EvaluacionForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Generamos dinámicamente los campos del 1 al 10
         OPCIONES_NOTA = [(i, str(i)) for i in range(1, 11)]
-        
+
         for categoria, indicadores in ESTRUCTURA_EVALUACION.items():
             for clave, nombre, desc in indicadores:
                 field_name = f"ind_{clave}"
