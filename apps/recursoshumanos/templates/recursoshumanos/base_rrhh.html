@@ -407,7 +407,7 @@
                     </li>
                     {% endif %}
                         <li class="navbar__item {% if current_view == 'lista_consulta' %}active{% endif %}">
-                            <a href="{% url 'recursoshumanos:lista_consulta' %}" class="navbar__link"><i data-feather="search"></i><span>Consulta Asistencias</span></a>
+                            <a href="{% url 'recursoshumanos:consultas_hub' %}" class="navbar__link"><i data-feather="search"></i><span>Consultas</span></a>
                         </li>
                     <li class="navbar__item {% if current_view == 'reporte_horas_periodo' %}active{% endif %}">
                         <a href="{% url 'recursoshumanos:reporte_horas_periodo' %}" class="navbar__link"><i data-feather="clock"></i><span>Horas por Período</span></a>

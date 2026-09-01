@@ -5811,6 +5811,87 @@ def consulta_asistencias_view(request):
     }
     return render(request, 'recursoshumanos/consulta_asistencias/lista_consulta.html', context)
 
+
+@login_required
+def consultas_hub_view(request):
+    return render(request, 'recursoshumanos/consultas/hub.html')
+
+
+@login_required
+def consulta_ubicacion_view(request):
+    """
+    Complemento de `consulta_asistencias_view` para la geocerca validada en
+    servidor (ver `Asistencia.estado_geocerca`). Es un dato por MARCA, no por
+    día como `TareoDiario`, así que se consulta `Asistencia` directamente en
+    vez de reusar la tabla de asistencias/horario.
+    """
+    empresas     = Empresa.objects.all().order_by('nombre')
+    proyectos    = Proyecto.objects.filter(parent__isnull=True, activo=True).order_by('nombre')
+    subproyectos = Proyecto.objects.filter(parent__isnull=False, activo=True).select_related('parent').order_by('nombre')
+    areas        = Area.objects.all().order_by('nombre')
+    trabajadores = Trabajador.objects.filter(activo=True).prefetch_related('proyectos').order_by('apellido_paterno')
+
+    empresa_id      = request.GET.get('empresa', '').strip()
+    proyecto_id     = request.GET.get('proyecto', '').strip()
+    subproyecto_id  = request.GET.get('subproyecto', '').strip()
+    area_id         = request.GET.get('area', '').strip()
+    trabajador_id   = request.GET.get('trabajador', '').strip()
+    fecha_inicio    = request.GET.get('inicio', '').strip()
+    fecha_fin       = request.GET.get('fin', '').strip()
+    estado_geocerca = request.GET.get('estado', '').strip()
+    page_number     = request.GET.get('page', 1)
+
+    busqueda_realizada = any([empresa_id, proyecto_id, subproyecto_id, area_id, trabajador_id, fecha_inicio, fecha_fin, estado_geocerca])
+    hoy = timezone.localdate()
+
+    page_obj = None
+    if busqueda_realizada:
+        qs = (Asistencia.objects
+              .select_related('usuario__trabajador__area', 'usuario__trabajador__empresa', 'ubicacion_validada')
+              .filter(usuario__trabajador__isnull=False, timestamp__date__lte=hoy)
+              .order_by('-timestamp'))
+
+        if empresa_id:
+            qs = qs.filter(usuario__trabajador__empresa_id=empresa_id)
+        if proyecto_id:
+            qs = qs.filter(usuario__trabajador__proyectos__id=proyecto_id).distinct()
+        if subproyecto_id:
+            qs = qs.filter(usuario__trabajador__proyectos__id=subproyecto_id).distinct()
+        if area_id:
+            qs = qs.filter(usuario__trabajador__area_id=area_id)
+        if trabajador_id:
+            qs = qs.filter(usuario__trabajador__id=trabajador_id)
+        if fecha_inicio:
+            qs = qs.filter(timestamp__date__gte=fecha_inicio)
+        if fecha_fin:
+            qs = qs.filter(timestamp__date__lte=fecha_fin)
+        if estado_geocerca:
+            qs = qs.filter(estado_geocerca=estado_geocerca)
+
+        paginator = Paginator(qs, 20)
+        page_obj  = paginator.get_page(page_number)
+
+    context = {
+        'empresas': empresas,
+        'proyectos': proyectos,
+        'subproyectos': subproyectos,
+        'areas': areas,
+        'trabajadores': trabajadores,
+        'page_obj': page_obj,
+        'busqueda_realizada': busqueda_realizada,
+        'hoy': hoy,
+        'current_empresa': empresa_id,
+        'current_proyecto': int(proyecto_id) if proyecto_id else '',
+        'current_subproyecto': int(subproyecto_id) if subproyecto_id else '',
+        'current_area': area_id,
+        'current_trabajador': int(trabajador_id) if trabajador_id else '',
+        'current_inicio': fecha_inicio,
+        'current_fin': fecha_fin,
+        'current_estado': estado_geocerca,
+        'opciones_estado': Asistencia.GEOCERCA_CHOICES,
+    }
+    return render(request, 'recursoshumanos/consulta_ubicacion/lista_consulta.html', context)
+
 # ==============================================================================
 # HORAS ACUMULADAS POR PERÍODO
 # ==============================================================================

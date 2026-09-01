@@ -19,8 +19,10 @@ urlpatterns = [
 
     # --- DASHBOARD Y REPORTES ---
     path('', views.estadisticas_general, name='dashboard'),
+    path('consultas/', views.consultas_hub_view, name='consultas_hub'),
     path('consulta-asistencias/', views.consulta_asistencias_view, name='consulta_asistencias'),
     path('consulta-asistencias/', views.consulta_asistencias_view, name='lista_consulta'),
+    path('consulta-ubicacion/', views.consulta_ubicacion_view, name='consulta_ubicacion'),
     
     # --- TRABAJADOR FRAUDELENTO ---
     path('fraude/', views.reportes_fraude_view, name='reportes_fraude'), # <-- AÑADE ESTA LÍNEA

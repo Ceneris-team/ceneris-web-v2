@@ -1,6 +1,6 @@
 {% extends "recursoshumanos/base_rrhh.html" %}
 
-{% block title %}Consulta de Asistencias{% endblock %}
+{% block title %}Consulta de Ubicación{% endblock %}
 
 {% block extra_head %}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -46,8 +46,8 @@
                 </svg>
                 Volver a Consultas
             </a>
-            <h1>Consulta Histórica de Asistencias</h1>
-            <p style="margin: 0;">Filtra y revisa los registros de asistencia y faltas de los trabajadores.</p>
+            <h1>Consulta de Ubicación</h1>
+            <p style="margin: 0;">Revisa las marcaciones validadas contra la geocerca de cada trabajador.</p>
         </div>
     </div>
 
@@ -124,11 +124,11 @@
             </div>
 
             <div style="flex: 1; min-width: 180px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Detalle marcación</label>
-                <select name="etiqueta" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Estado ubicación</label>
+                <select name="estado" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;">
                     <option value="">-- Todas --</option>
-                    {% for valor, texto in opciones_etiqueta %}
-                        <option value="{{ valor }}" {% if current_etiqueta == valor %}selected{% endif %}>
+                    {% for valor, texto in opciones_estado %}
+                        <option value="{{ valor }}" {% if current_estado == valor %}selected{% endif %}>
                             {{ texto }}
                         </option>
                     {% endfor %}
@@ -149,7 +149,7 @@
                 <button type="submit" style="background-color: #2563eb; color: white; padding: 0.6rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
                     Buscar
                 </button>
-                <a href="{% url 'recursoshumanos:consulta_asistencias' %}" style="margin-left: 0.5rem; color: #64748b; text-decoration: none; font-size: 0.9rem;">Limpiar</a>
+                <a href="{% url 'recursoshumanos:consulta_ubicacion' %}" style="margin-left: 0.5rem; color: #64748b; text-decoration: none; font-size: 0.9rem;">Limpiar</a>
             </div>
         </form>
     </div>
@@ -164,54 +164,45 @@
         <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
             <thead style="background-color: #f1f5f9; text-align: left; border-bottom: 2px solid #e2e8f0;">
                 <tr>
-                    <th style="padding: 1rem;">Fecha</th>
+                    <th style="padding: 1rem;">Fecha / Hora</th>
                     <th style="padding: 1rem;">Trabajador</th>
                     <th style="padding: 1rem;">Área</th>
-                    <th style="padding: 1rem; text-align: center;">Estado</th>
-                    <th style="padding: 1rem; text-align: center;">Detalle marcación</th>
-                    <th style="padding: 1rem;">Entrada</th>
-                    <th style="padding: 1rem;">Salida</th>
+                    <th style="padding: 1rem;">Tipo</th>
+                    <th style="padding: 1rem; text-align: center;">Estado ubicación</th>
+                    <th style="padding: 1rem;">Zona validada</th>
+                    <th style="padding: 1rem;">Distancia</th>
                     <th style="padding: 1rem;">Medio</th>
                 </tr>
             </thead>
             <tbody>
                 {% for r in page_obj %}
                 <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 1rem;"><strong>{{ r.fecha|date:"d/m/Y" }}</strong></td>
+                    <td style="padding: 1rem;"><strong>{{ r.timestamp|date:"d/m/Y H:i" }}</strong></td>
                     <td style="padding: 1rem;">
-                        <a href="{% url 'recursoshumanos:trabajador_detail' dni=r.trabajador.dni %}" style="text-decoration: none; color: #2563eb; font-weight: bold;">
-                            {{ r.trabajador.apellido_paterno }} {{ r.trabajador.nombres }}
+                        <a href="{% url 'recursoshumanos:trabajador_detail' dni=r.usuario.trabajador.dni %}" style="text-decoration: none; color: #2563eb; font-weight: bold;">
+                            {{ r.usuario.trabajador.apellido_paterno }} {{ r.usuario.trabajador.nombres }}
                         </a>
                     </td>
-                    <td style="padding: 1rem; color: #64748b; font-size: 0.9rem;">{{ r.trabajador.area.nombre|default:"-" }}</td>
+                    <td style="padding: 1rem; color: #64748b; font-size: 0.9rem;">{{ r.usuario.trabajador.area.nombre|default:"-" }}</td>
+                    <td style="padding: 1rem;">{{ r.tipo_marcacion }}</td>
 
                     <td style="text-align: center; padding: 1rem;">
-                        {% if r.resultado_efectivo == 'A' %}
-                            <span style="background-color: #d1fae5; color: #047857; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">ASISTIÓ</span>
-                        {% elif r.resultado_efectivo == 'F' %}
-                            <span style="background-color: #fee2e2; color: #b91c1c; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">FALTA</span>
+                        {% if r.estado_geocerca == 'DENTRO' %}
+                            <span style="background-color: #d1fae5; color: #047857; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">DENTRO DE ZONA</span>
+                        {% elif r.estado_geocerca == 'FUERA' %}
+                            <span style="background-color: #fee2e2; color: #b91c1c; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">FUERA DE ZONA</span>
+                        {% elif r.estado_geocerca == 'SIN_COORDENADAS' %}
+                            <span style="background-color: #fef3c7; color: #b45309; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">SIN COORDENADAS</span>
+                        {% elif r.estado_geocerca == 'SIN_ZONAS' %}
+                            <span style="background-color: #fef3c7; color: #b45309; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">SIN ZONAS ASIGNADAS</span>
                         {% else %}
-                            <span style="background-color: #e2e8f0; color: #475569; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">{{ r.resultado_efectivo }}</span>
+                            <span style="background-color: #e2e8f0; color: #475569; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">{{ r.get_estado_geocerca_display }}</span>
                         {% endif %}
                     </td>
-                    <td style="text-align: center; padding: 1rem;" title="{{ r.detalle_marca }}">
-                        {% if r.etiqueta_estado == 'TARDANZA' %}
-                            <span style="background-color: #fef3c7; color: #b45309; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">TARDANZA{% if r.horas_tardanza %} ({{ r.horas_tardanza }} h){% endif %}</span>
-                        {% elif r.etiqueta_estado == 'FUERA_HORARIO' %}
-                            <span style="background-color: #fee2e2; color: #b91c1c; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">FUERA DE HORARIO</span>
-                        {% elif r.etiqueta_estado == 'NORMAL' %}
-                            <span style="background-color: #d1fae5; color: #047857; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">NORMAL</span>
-                        {% elif r.etiqueta_estado %}
-                            <span style="background-color: #e2e8f0; color: #475569; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">{{ r.get_etiqueta_estado_display }}</span>
-                        {% else %}
-                            <span style="color: #94a3b8;">-</span>
-                        {% endif %}
-                        {% if r.detalle_marca %}
-                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">{{ r.detalle_marca }}</div>
-                        {% endif %}
+                    <td style="padding: 1rem; color: #64748b; font-size: 0.9rem;">{{ r.ubicacion_validada.nombre|default:"-" }}</td>
+                    <td style="padding: 1rem; color: #64748b; font-size: 0.9rem;">
+                        {% if r.distancia_geocerca_m is not None %}{{ r.distancia_geocerca_m }} m{% else %}-{% endif %}
                     </td>
-                    <td style="padding: 1rem;">{{ r.hora_entrada_real_calculada|default:"--:--" }}</td>
-                    <td style="padding: 1rem;">{{ r.hora_salida_real_calculada|default:"--:--" }}</td>
 
                     <td style="padding: 1rem;">
                         {% if r.origen %}
@@ -239,7 +230,7 @@
         <div style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap;">
 
             {% if page_obj.has_previous %}
-                <a href="?page={{ page_obj.previous_page_number }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}&etiqueta={{ current_etiqueta }}"
+                <a href="?page={{ page_obj.previous_page_number }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}&estado={{ current_estado }}"
                    style="padding: 0.4rem 0.9rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #2563eb; background: white;">
                     &laquo; Anterior
                 </a>
@@ -251,7 +242,7 @@
                         {{ num }}
                     </span>
                 {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
-                    <a href="?page={{ num }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}&etiqueta={{ current_etiqueta }}"
+                    <a href="?page={{ num }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}&estado={{ current_estado }}"
                        style="padding: 0.4rem 0.9rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #2563eb; background: white;">
                         {{ num }}
                     </a>
@@ -259,7 +250,7 @@
             {% endfor %}
 
             {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}&etiqueta={{ current_etiqueta }}"
+                <a href="?page={{ page_obj.next_page_number }}&empresa={{ current_empresa }}&proyecto={{ current_proyecto }}&subproyecto={{ current_subproyecto }}&area={{ current_area }}&trabajador={{ current_trabajador }}&inicio={{ current_inicio }}&fin={{ current_fin }}&estado={{ current_estado }}"
                    style="padding: 0.4rem 0.9rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #2563eb; background: white;">
                     Siguiente &raquo;
                 </a>
@@ -283,7 +274,6 @@
 
             if (!selEmpresa || !selProyecto || !selSubproyecto || !selArea || !selTrabajador) return;
 
-            // Convierte los 5 selects en campos buscables (se puede escribir para filtrar opciones)
             const select2Config = {
                 width: '100%',
                 language: {
@@ -317,8 +307,6 @@
                     }
                 }
                 selProyecto.value = valido ? prevProy : '';
-                // Dispara 'change' para que Select2 actualice lo que muestra y para
-                // encadenar el filtrado de subproyectos/trabajadores (ver listener abajo).
                 $(selProyecto).trigger('change');
             }
 
@@ -373,8 +361,6 @@
                 $(selTrabajador).trigger('change');
             }
 
-            // Se registran con jQuery porque Select2 emite 'change' solo a través
-            // de jQuery y los listeners nativos (addEventListener) no lo reciben.
             $(selEmpresa).on('change', filtrarProyectos);
             $(selProyecto).on('change', filtrarSubproyectos);
             $(selSubproyecto).on('change', filtrarTrabajadores);
