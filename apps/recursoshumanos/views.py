@@ -23,7 +23,7 @@ from .forms import TrabajadorForm, UbicacionForm, JustificacionForm, EmpresaForm
 from .models import Cargo, Empresa, Proyecto, Trabajador, CentroCosto, Ubicacion, TareoDiario
 import pandas as pd
 from recursoshumanos.services import recalcular_asistencia_diaria
-from .models import Sede, ConfiguracionTolerancia, ToleranciaAuditoria, MarcaSinHorarioAuditoria, Sancion
+from .models import Sede, ConfiguracionTolerancia, ToleranciaAuditoria, MarcaSinHorarioAuditoria, Sancion, MarcaSinUbicacionAuditoria
 from .motor_reglas import EstadoMarca
 from accesos.models import MENSAJE_SESION_DUPLICADA, SesionCerradaRemotamente
 from .services import listar_tolerancias, crear_o_actualizar_tolerancia, actualizar_tolerancia
@@ -506,6 +506,10 @@ def lista_trabajadores(request):
     context = {
         'trabajadores': trabajadores_queryset,
         'puede_gestionar_marca_sin_horario': puede_gestionar_msh,
+        # Mismo grupo autorizado que "marca sin horario" (RRHH/Administrador);
+        # variable separada para no acoplar ambos privilegios si el dia de
+        # manana cambian de dueno.
+        'puede_gestionar_marca_sin_ubicacion': puede_gestionar_msh,
         'opciones_empresas': opciones_empresas,
         'opciones_cargos': opciones_cargos,
         'opciones_proyectos_padre': opciones_proyectos_padre,
@@ -580,6 +584,66 @@ def toggle_marca_sin_horario(request, pk):
         messages.success(request, f"{trabajador.nombre_completo} puede marcar sin horario {detalle}.")
     else:
         messages.success(request, f"Se revoco el permiso de marcar sin horario a {trabajador.nombre_completo}.")
+
+    return redirect('recursoshumanos:lista_trabajadores')
+
+
+@login_required
+@group_required("Recursos Humanos", "Administrador")
+def toggle_marca_sin_ubicacion(request, pk):
+    """Habilita o revoca el permiso de marcar sin validar ubicación para UN trabajador.
+
+    Calcado de `toggle_marca_sin_horario`. La geocerca ya nunca rechaza una
+    marca (politica "observar, no rechazar"), asi que este permiso no evita
+    un 403: evita que la marca del trabajador quede "observada" para RRHH
+    (ver `servicios_geocerca.evaluar_geocerca`).
+    """
+    if request.method != 'POST':
+        return redirect('recursoshumanos:lista_trabajadores')
+
+    trabajador = get_object_or_404(Trabajador, pk=pk)
+
+    habilitado = request.POST.get('puede_marcar_sin_ubicacion') == 'on'
+    hasta_raw = (request.POST.get('marcar_sin_ubicacion_hasta') or '').strip()
+
+    hasta = None
+    if habilitado and hasta_raw:
+        hasta = parse_date(hasta_raw)
+        if hasta is None:
+            messages.error(request, "La fecha de vigencia no es valida.")
+            return redirect('recursoshumanos:lista_trabajadores')
+
+    if not habilitado:
+        hasta = None
+
+    anterior_habilitado = trabajador.puede_marcar_sin_ubicacion
+    anterior_hasta = trabajador.marcar_sin_ubicacion_hasta
+
+    if anterior_habilitado == habilitado and anterior_hasta == hasta:
+        messages.info(request, "No hubo cambios en el permiso.")
+        return redirect('recursoshumanos:lista_trabajadores')
+
+    with transaction.atomic():
+        trabajador.puede_marcar_sin_ubicacion = habilitado
+        trabajador.marcar_sin_ubicacion_hasta = hasta
+        trabajador.save(update_fields=['puede_marcar_sin_ubicacion', 'marcar_sin_ubicacion_hasta', 'actualizado_en'])
+
+        MarcaSinUbicacionAuditoria.objects.create(
+            trabajador=trabajador,
+            trabajador_nombre=trabajador.nombre_completo,
+            trabajador_dni=trabajador.dni,
+            habilitado_anterior=anterior_habilitado,
+            habilitado_nuevo=habilitado,
+            hasta_anterior=anterior_hasta,
+            hasta_nuevo=hasta,
+            usuario=request.user,
+        )
+
+    if habilitado:
+        detalle = f"hasta el {hasta.strftime('%d/%m/%Y')}" if hasta else "de forma permanente"
+        messages.success(request, f"{trabajador.nombre_completo} puede marcar sin validar ubicación {detalle}.")
+    else:
+        messages.success(request, f"Se revoco el permiso de marcar sin validar ubicación a {trabajador.nombre_completo}.")
 
     return redirect('recursoshumanos:lista_trabajadores')
 

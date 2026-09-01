@@ -195,6 +195,8 @@
                             <span style="background-color: #fef3c7; color: #b45309; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">SIN COORDENADAS</span>
                         {% elif r.estado_geocerca == 'SIN_ZONAS' %}
                             <span style="background-color: #fef3c7; color: #b45309; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">SIN ZONAS ASIGNADAS</span>
+                        {% elif r.estado_geocerca == 'EXENTO' %}
+                            <span style="background-color: #dbeafe; color: #1d4ed8; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">EXENTO (PRIVILEGIO)</span>
                         {% else %}
                             <span style="background-color: #e2e8f0; color: #475569; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">{{ r.get_estado_geocerca_display }}</span>
                         {% endif %}

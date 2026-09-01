@@ -218,6 +218,23 @@ class Trabajador(models.Model):
         help_text="Vacío = permiso permanente. Con fecha = vigente hasta ese día inclusive."
     )
 
+    # --- Permiso de marcación sin validar ubicación (geocerca) ---
+    # Mismo patron que el permiso de horario: RRHH lo habilita caso por caso
+    # para roles itinerantes (supervisor de campo, ventas, etc.) que nunca
+    # van a estar dentro de una zona fija. La geocerca ya nunca rechaza una
+    # marca (ver Asistencia.GEOCERCA_*), asi que este privilegio no evita un
+    # 403 -- evita que la marca quede "observada" para revision de RRHH.
+    puede_marcar_sin_ubicacion = models.BooleanField(
+        default=False,
+        verbose_name="Puede marcar sin validar ubicación"
+    )
+    marcar_sin_ubicacion_hasta = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Permiso de ubicación vigente hasta",
+        help_text="Vacío = permiso permanente. Con fecha = vigente hasta ese día inclusive."
+    )
+
     @property
     def nombre_completo(self):
         return f"{self.nombres} {self.apellido_paterno} {self.apellido_materno}".strip()
@@ -262,6 +279,25 @@ class Trabajador(models.Model):
         if self.marcar_sin_horario_hasta is None:
             return True
         return fecha <= self.marcar_sin_horario_hasta
+
+    @property
+    def marca_sin_ubicacion_vigente(self):
+        """Atajo para la UI: el permiso de ubicación esta vigente HOY."""
+        return self.puede_marcar_sin_ubicacion_en(timezone.localdate())
+
+    def puede_marcar_sin_ubicacion_en(self, fecha):
+        """¿El permiso de marcar sin validar ubicación está vigente para esa fecha?
+
+        Misma lógica que `puede_marcar_sin_horario_en`: se evalúa contra la
+        fecha de negocio de la marca (no contra hoy), para que una marca
+        offline sincronizada días después respete la vigencia que tenía
+        cuando se marcó.
+        """
+        if not self.puede_marcar_sin_ubicacion:
+            return False
+        if self.marcar_sin_ubicacion_hasta is None:
+            return True
+        return fecha <= self.marcar_sin_ubicacion_hasta
 
     @property
     def cargojerarquico(self):
@@ -458,6 +494,11 @@ class Asistencia(models.Model):
     # significa que nadie la comprobo. Se distingue del resto justamente para
     # que el historico no se lea como validado.
     GEOCERCA_NO_EVALUADA = 'NO_EVALUADA'
+    # Trabajador con el privilegio `puede_marcar_sin_ubicacion` vigente (mismo
+    # patron que `puede_marcar_sin_horario`): su rol es itinerante por diseno
+    # (supervisor de campo, ventas, etc.) y nunca deberia acumularse como
+    # "observado" para RRHH, a diferencia de SIN_ZONAS/FUERA.
+    GEOCERCA_EXENTO = 'EXENTO'
 
     GEOCERCA_CHOICES = [
         (GEOCERCA_DENTRO, 'Dentro de zona'),
@@ -465,6 +506,7 @@ class Asistencia(models.Model):
         (GEOCERCA_SIN_COORDENADAS, 'Sin coordenadas'),
         (GEOCERCA_SIN_ZONAS, 'Sin zonas asignadas'),
         (GEOCERCA_NO_EVALUADA, 'No evaluada'),
+        (GEOCERCA_EXENTO, 'Exento (privilegio)'),
     ]
 
     estado_geocerca = models.CharField(
@@ -901,6 +943,43 @@ class MarcaSinHorarioAuditoria(models.Model):
     class Meta:
         verbose_name = "Auditoría de Marca sin Horario"
         verbose_name_plural = "Auditorías de Marca sin Horario"
+        ordering = ['-creado_en']
+
+
+class MarcaSinUbicacionAuditoria(models.Model):
+    """Historial de activaciones del permiso de marcar sin validar ubicación.
+
+    Mismo patrón que MarcaSinHorarioAuditoria.
+    """
+
+    trabajador = models.ForeignKey(
+        Trabajador,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='auditorias_marca_sin_ubicacion',
+        verbose_name="Trabajador"
+    )
+    trabajador_nombre = models.CharField(max_length=200, verbose_name="Trabajador")
+    trabajador_dni = models.CharField(max_length=8, verbose_name="DNI")
+
+    habilitado_anterior = models.BooleanField(verbose_name="Habilitado (antes)")
+    habilitado_nuevo = models.BooleanField(verbose_name="Habilitado (después)")
+    hasta_anterior = models.DateField(null=True, blank=True, verbose_name="Vigente hasta (antes)")
+    hasta_nuevo = models.DateField(null=True, blank=True, verbose_name="Vigente hasta (después)")
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Modificado por"
+    )
+    creado_en = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Cambio")
+
+    class Meta:
+        verbose_name = "Auditoría de Marca sin Ubicación"
+        verbose_name_plural = "Auditorías de Marca sin Ubicación"
         ordering = ['-creado_en']
 
     def __str__(self):

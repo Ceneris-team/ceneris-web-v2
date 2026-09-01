@@ -45,7 +45,7 @@ def distancia_metros(lat1, lon1, lat2, lon2):
     return 2 * RADIO_TIERRA_M * asin(sqrt(a))
 
 
-def evaluar_geocerca(trabajador, latitud, longitud, margen_m=None):
+def evaluar_geocerca(trabajador, latitud, longitud, margen_m=None, fecha_negocio=None):
     """Evalua una marcacion contra las zonas permitidas del trabajador.
 
     Devuelve `(estado, ubicacion_mas_cercana, distancia_m)` donde `estado` es
@@ -55,13 +55,24 @@ def evaluar_geocerca(trabajador, latitud, longitud, margen_m=None):
     La zona reportada es siempre la mas cercana de las permitidas, tambien
     cuando la marca queda fuera: es el dato que RRHH necesita para juzgar si
     fue deriva de GPS (a 80 m de la puerta) o una marca desde otra ciudad.
+
+    `fecha_negocio` es la fecha real de la marca (no la de recepcion en
+    servidor): el privilegio `puede_marcar_sin_ubicacion` se evalua contra
+    ella, igual que `puede_marcar_sin_horario`, para que una marca offline
+    sincronizada dias despues respete la vigencia que tenia cuando se marco.
+    Si no se pasa, se asume hoy.
     """
     # Import local: el modelo importa indirectamente este modulo en las vistas,
     # y a nivel de modulo esto seria un ciclo.
+    from django.utils import timezone
+
     from .models import Asistencia
 
     if margen_m is None:
         margen_m = MARGEN_GPS_METROS
+
+    if trabajador.puede_marcar_sin_ubicacion_en(fecha_negocio or timezone.localdate()):
+        return Asistencia.GEOCERCA_EXENTO, None, None
 
     if latitud is None or longitud is None:
         return Asistencia.GEOCERCA_SIN_COORDENADAS, None, None
