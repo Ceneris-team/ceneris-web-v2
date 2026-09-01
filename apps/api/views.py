@@ -335,6 +335,15 @@ class EstadoTrabajadorView(APIView):
             # Feriado (CAV-13/CAV-64): el móvil muestra el banner con estos campos.
             'es_feriado': feriado_hoy is not None,
             'nombre_feriado': feriado_hoy.nombre if feriado_hoy else None,
+            # Privilegio "marcar sin ubicación" (RRHH, ver lista_trabajadores):
+            # el móvil lo cachea junto al resto de esta config para poder
+            # saltarse el aviso de "fuera de zona" tambien sin internet.
+            'puede_marcar_sin_ubicacion': trabajador.marca_sin_ubicacion_vigente,
+            # Mismo trato para "marcar sin horario" (CAV-167): existia hace
+            # tiempo en el backend pero la app nunca lo supo, asi que el
+            # aviso de "fuera de horario" le salia a todos por igual, tuvieran
+            # o no el privilegio activo.
+            'puede_marcar_sin_horario': trabajador.marca_sin_horario_vigente,
         }, status=status.HTTP_200_OK)
 
 
@@ -596,6 +605,7 @@ class RegistrarAsistenciaView(APIView):
                     trabajador,
                     serializer.validated_data.get('latitud'),
                     serializer.validated_data.get('longitud'),
+                    fecha_negocio=fecha_negocio,
                 )
 
                 # ---> AQUÍ AGREGAMOS EL CAMPO ORIGEN <---

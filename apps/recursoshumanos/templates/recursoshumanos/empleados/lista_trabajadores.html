@@ -159,6 +159,7 @@
                 <th>Estado</th>
                 <th>Dispositivo Vinculado</th>
                 {% if puede_gestionar_marca_sin_horario %}<th style="text-align: center;">Marca sin Horario</th>{% endif %}
+                {% if puede_gestionar_marca_sin_ubicacion %}<th style="text-align: center;">Marca sin Ubicación</th>{% endif %}
                 <th style="text-align: center;">Acciones</th>
             </tr>
         </thead>
@@ -204,6 +205,23 @@
                                 {% if trabajador.marca_sin_horario_vigente %}
                                     {% if trabajador.marcar_sin_horario_hasta %}Hasta {{ trabajador.marcar_sin_horario_hasta|date:"d/m/Y" }}{% else %}Permanente{% endif %}
                                 {% elif trabajador.puede_marcar_sin_horario %}
+                                    Vencido
+                                {% else %}
+                                    Deshabilitado
+                                {% endif %}
+                            </button>
+                        </td>
+                        {% endif %}
+
+                        {% if puede_gestionar_marca_sin_ubicacion %}
+                        <td style="text-align: center;">
+                            <button type="button"
+                                    onclick="abrirModalMSU('{{ trabajador.pk }}', '{{ trabajador|escapejs }}', {{ trabajador.puede_marcar_sin_ubicacion|yesno:"true,false" }}, '{{ trabajador.marcar_sin_ubicacion_hasta|date:"Y-m-d" }}')"
+                                    class="btn-msh {% if trabajador.marca_sin_ubicacion_vigente %}msh-activo{% elif trabajador.puede_marcar_sin_ubicacion %}msh-vencido{% else %}msh-off{% endif %}"
+                                    title="Permitir marcar asistencia sin validar ubicación">
+                                {% if trabajador.marca_sin_ubicacion_vigente %}
+                                    {% if trabajador.marcar_sin_ubicacion_hasta %}Hasta {{ trabajador.marcar_sin_ubicacion_hasta|date:"d/m/Y" }}{% else %}Permanente{% endif %}
+                                {% elif trabajador.puede_marcar_sin_ubicacion %}
                                     Vencido
                                 {% else %}
                                     Deshabilitado
@@ -299,14 +317,17 @@
     .btn-msh::before { content:""; width:7px; height:7px; border-radius:50%; flex:0 0 auto; }
 
     /* Vigente: ambar. No verde a proposito — esto relaja un control antifraude,
-       no es un estado "todo bien" que convenga normalizar visualmente. */
-    .msh-activo { background:#fff3cd; color:#664d03; border-color:#ffda6a; }
+       no es un estado "todo bien" que convenga normalizar visualmente.
+       El !important es necesario: static/css/style.css tiene una regla global
+       `button { color: white !important; }` que sin esto deja el texto de
+       estos botones illegible sobre su propio fondo claro. */
+    .msh-activo { background:#fff3cd; color:#664d03 !important; border-color:#ffda6a; }
     .msh-activo::before { background:#d39e00; }
 
-    .msh-vencido { background:#f8d7da; color:#58151c; border-color:#f1aeb5; }
+    .msh-vencido { background:#f8d7da; color:#58151c !important; border-color:#f1aeb5; }
     .msh-vencido::before { background:#b02a37; }
 
-    .msh-off { background:#e9ecef; color:#41464b; border-color:#ced4da; }
+    .msh-off { background:#e9ecef; color:#41464b !important; border-color:#ced4da; }
     .msh-off::before { background:#adb5bd; }
 
     .btn-msh:hover { filter:brightness(.95); }
@@ -342,6 +363,77 @@
 
     function cerrarModalMSH() {
         document.getElementById('modalMSH').style.display = 'none';
+    }
+</script>
+{% endif %}
+
+{% if puede_gestionar_marca_sin_ubicacion %}
+<!-- ================= MODAL MARCA SIN UBICACIÓN ================= -->
+<div id="modalMSU" class="msh-overlay" style="display:none;">
+    <div class="msh-dialog">
+        <div class="msh-header">
+            <h3 style="margin:0;font-size:1.05rem;">Marcar sin Ubicación</h3>
+            <button type="button" onclick="cerrarModalMSU()" class="msh-close">&#10005;</button>
+        </div>
+
+        <form id="formMSU" method="POST" class="msh-body">
+            {% csrf_token %}
+
+            <p style="margin:0 0 1rem;color:#6c757d;font-size:.9rem;">
+                Permiso para: <strong id="spanMSUNombre" style="color:#212529;"></strong>
+            </p>
+
+            <label class="msh-check">
+                <input type="checkbox" name="puede_marcar_sin_ubicacion" id="checkMSU" onchange="toggleFechaMSU()">
+                <span>
+                    <strong style="display:block;font-size:.9rem;color:#212529;">Permitir marcar sin validar ubicación</strong>
+                    <span style="display:block;font-size:.78rem;color:#6c757d;margin-top:2px;">
+                        Deja marcar desde cualquier lugar, sin necesidad de estar dentro de una zona permitida.
+                    </span>
+                </span>
+            </label>
+
+            <div id="contenedorFechaMSU" style="display:none;margin-top:1rem;">
+                <label style="display:block;font-size:.72rem;font-weight:700;color:#6c757d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Vigente hasta</label>
+                <input type="date" name="marcar_sin_ubicacion_hasta" id="inputMSUHasta" class="msh-date">
+                <p style="font-size:.7rem;color:#adb5bd;margin:4px 0 0;">
+                    Inclusive. Vacío = permanente (el permiso no se revoca solo).
+                </p>
+            </div>
+
+            <div class="msh-aviso">
+                La geocerca nunca rechaza una marca; este permiso evita que las marcas de este trabajador
+                queden observadas para revisión de Recursos Humanos. Úsalo con roles itinerantes
+                (supervisión de campo, ventas, etc.). Queda registrado quién lo activó y cuándo.
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:.75rem;margin-top:1.5rem;">
+                <button type="button" onclick="cerrarModalMSU()" class="btn-secondary">Cancelar</button>
+                <button type="submit" class="btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const URL_MSU = "{% url 'recursoshumanos:toggle_marca_sin_ubicacion' 0 %}";
+
+    function abrirModalMSU(pk, nombre, habilitado, hasta) {
+        document.getElementById('formMSU').action = URL_MSU.replace('/0/', '/' + pk + '/');
+        document.getElementById('spanMSUNombre').innerText = nombre;
+        document.getElementById('checkMSU').checked = habilitado;
+        document.getElementById('inputMSUHasta').value = hasta || "";
+        toggleFechaMSU();
+        document.getElementById('modalMSU').style.display = 'flex';
+    }
+
+    function toggleFechaMSU() {
+        const activo = document.getElementById('checkMSU').checked;
+        document.getElementById('contenedorFechaMSU').style.display = activo ? 'block' : 'none';
+    }
+
+    function cerrarModalMSU() {
+        document.getElementById('modalMSU').style.display = 'none';
     }
 </script>
 {% endif %}
