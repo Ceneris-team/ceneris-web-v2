@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('metricas_ceneris', '0003_evaluacionmensual_cargo_evaluador_and_more'),
-        ('recursoshumanos', '0043_trabajador_modalidad_evaluacion_alter_sancion_tipo'),
+        ('recursoshumanos', '0044_trabajador_modalidad_evaluacion_alter_sancion_tipo'),
     ]
 
     operations = [

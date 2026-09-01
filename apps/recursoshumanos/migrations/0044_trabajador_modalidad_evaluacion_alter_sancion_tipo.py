@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('recursoshumanos', '0042_sancion'),
+        ('recursoshumanos', '0043_asistencia_distancia_geocerca_m_and_more'),
     ]
 
     operations = [
