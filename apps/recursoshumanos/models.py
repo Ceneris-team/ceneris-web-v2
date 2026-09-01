@@ -174,8 +174,8 @@ class Trabajador(models.Model):
     )
     es_jefe = models.BooleanField(default=False)
     es_gerente = models.BooleanField(default=False, verbose_name="Es Gerente General")
-    # Modalidad de evaluación de desempeño: mina evalúa 4 aspectos; oficina 3
-    # (sin Conocimiento). Nullable = sin asignar; RRHH lo define por trabajador.
+    # Modalidad de evaluación de desempeño (oficina/mina). Es solo informativa:
+    # todos se evalúan con los mismos 4 aspectos y pesos. Nullable = sin asignar.
     modalidad_evaluacion = models.CharField(
         max_length=10,
         choices=ModalidadEvaluacion.choices,
