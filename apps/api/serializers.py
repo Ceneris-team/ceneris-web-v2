@@ -114,6 +114,13 @@ class AsistenciaSerializer(serializers.ModelSerializer):
     # una respuesta idempotente en vez de a un error.
     client_uuid = serializers.UUIDField(required=False, allow_null=True, validators=[])
 
+    # Resultado de la geocerca evaluada EN EL SERVIDOR. Son read_only a
+    # proposito: si el movil pudiera mandarlos, la validacion volveria a
+    # depender del cliente, que es exactamente el agujero que esto cierra.
+    zona_validada = serializers.CharField(
+        source='ubicacion_validada.nombre', read_only=True, default=None
+    )
+
     class Meta:
         model = Asistencia
         fields = [
@@ -128,8 +135,17 @@ class AsistenciaSerializer(serializers.ModelSerializer):
             # Fecha de recepcion en servidor. Viaja solo para que RRHH pueda
             # auditar el desfase contra `timestamp` en las marcas atrasadas.
             'creado_en',
+            'estado_geocerca',
+            'zona_validada',
+            'distancia_geocerca_m',
         ]
-        read_only_fields = ['id', 'creado_en']
+        read_only_fields = [
+            'id',
+            'creado_en',
+            'estado_geocerca',
+            'zona_validada',
+            'distancia_geocerca_m',
+        ]
 
 
 class FaltaPendienteSerializer(serializers.ModelSerializer):

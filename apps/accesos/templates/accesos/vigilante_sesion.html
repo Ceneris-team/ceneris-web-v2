@@ -1,0 +1,118 @@
+{% comment %}
+CAV-187 (mejora): vigilante de sesion unica.
+
+Lo inyecta AvisoSesionCerradaMiddleware al final de cada pagina web de
+un usuario autenticado. Pregunta cada cierto tiempo si su sesion sigue
+viva; si el servidor responde que fue cerrada porque la cuenta entro
+desde otro dispositivo, muestra el modal y redirige al login.
+
+Todo va con estilos en linea y JS sin dependencias porque el proyecto
+tiene varias plantillas base distintas (Bootstrap, Tailwind, CSS propio)
+y el aviso debe verse igual en todas.
+{% endcomment %}
+<div id="cav-aviso-sesion"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="cav-aviso-sesion-titulo"
+     style="display:none; position:fixed; inset:0; z-index:2147483000;
+            background:rgba(15,23,42,.72); align-items:center; justify-content:center;
+            padding:16px; font-family:'Poppins','Segoe UI',system-ui,sans-serif;">
+  <div style="max-width:430px; width:100%; background:#fff; border-radius:14px;
+              padding:28px 26px; text-align:center; box-shadow:0 18px 45px rgba(0,0,0,.35);">
+    <svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 24 24"
+         fill="none" stroke="#d45b04" stroke-width="2" stroke-linecap="round"
+         stroke-linejoin="round" aria-hidden="true">
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+      <line x1="12" y1="9" x2="12" y2="13"></line>
+      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+    </svg>
+    <h2 id="cav-aviso-sesion-titulo"
+        style="margin:14px 0 8px; font-size:1.25rem; color:#1f2937;">
+      Tu sesión fue cerrada
+    </h2>
+    <p id="cav-aviso-sesion-mensaje"
+       style="margin:0 0 6px; font-size:.95rem; line-height:1.5; color:#4b5563;"></p>
+    <p id="cav-aviso-sesion-fecha"
+       style="margin:0 0 16px; font-size:.82rem; color:#9ca3af;"></p>
+    <p style="margin:0 0 18px; font-size:.9rem; color:#4b5563;">
+      Te llevaremos al inicio de sesión en
+      <strong id="cav-aviso-sesion-contador">{{ segundos_redireccion }}</strong> segundos.
+    </p>
+    <button type="button" id="cav-aviso-sesion-boton"
+            style="width:100%; padding:12px; border:none; border-radius:8px; cursor:pointer;
+                   background:#d45b04; color:#fff; font-size:.95rem; font-weight:600;">
+      Ir al inicio de sesión ahora
+    </button>
+  </div>
+</div>
+<script>
+(function () {
+    if (window.__cavVigilanteSesion) { return; }
+    window.__cavVigilanteSesion = true;
+
+    var ENDPOINT = "{{ url_estado_sesion }}";
+    var LOGIN_URL = "{{ url_login }}";
+    var INTERVALO_MS = {{ intervalo_ms }};
+    var SEGUNDOS = {{ segundos_redireccion }};
+    var MOTIVO = "{{ motivo_sesion_duplicada }}";
+
+    var overlay = document.getElementById('cav-aviso-sesion');
+    var elMensaje = document.getElementById('cav-aviso-sesion-mensaje');
+    var elFecha = document.getElementById('cav-aviso-sesion-fecha');
+    var elContador = document.getElementById('cav-aviso-sesion-contador');
+    var boton = document.getElementById('cav-aviso-sesion-boton');
+    var vigilancia = null;
+    var mostrado = false;
+
+    function irAlLogin(url) {
+        window.location.replace(url || LOGIN_URL);
+    }
+
+    function mostrarAviso(datos) {
+        if (mostrado) { return; }
+        mostrado = true;
+        if (vigilancia) { clearInterval(vigilancia); }
+
+        var destino = datos.login_url || LOGIN_URL;
+        elMensaje.textContent = datos.mensaje || '';
+        elFecha.textContent = datos.fecha_cierre ? 'Cierre registrado el ' + datos.fecha_cierre : '';
+
+        var restantes = datos.segundos_redireccion || SEGUNDOS;
+        elContador.textContent = restantes;
+        overlay.style.display = 'flex';
+        boton.onclick = function () { irAlLogin(destino); };
+        boton.focus();
+
+        var cuenta = setInterval(function () {
+            restantes -= 1;
+            elContador.textContent = restantes > 0 ? restantes : 0;
+            if (restantes <= 0) {
+                clearInterval(cuenta);
+                irAlLogin(destino);
+            }
+        }, 1000);
+    }
+
+    function verificarSesion() {
+        if (mostrado) { return; }
+        fetch(ENDPOINT, { credentials: 'same-origin', cache: 'no-store' })
+            .then(function (respuesta) { return respuesta.ok ? respuesta.json() : null; })
+            .then(function (datos) {
+                if (datos && datos.activa === false && datos.motivo === MOTIVO) {
+                    mostrarAviso(datos);
+                }
+            })
+            .catch(function () {
+                // Sin conexion no podemos concluir nada: se reintenta en
+                // el siguiente ciclo en vez de sacar al usuario.
+            });
+    }
+
+    vigilancia = setInterval(verificarSesion, INTERVALO_MS);
+    document.addEventListener('visibilitychange', function () {
+        // Al volver a la pestaña conviene revisar de inmediato: es el
+        // momento tipico en que el usuario retoma el equipo desplazado.
+        if (document.visibilityState === 'visible') { verificarSesion(); }
+    });
+})();
+</script>
