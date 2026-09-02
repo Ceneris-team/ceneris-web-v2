@@ -235,6 +235,23 @@ class Trabajador(models.Model):
         help_text="Vacío = permiso permanente. Con fecha = vigente hasta ese día inclusive."
     )
 
+    # --- Permiso de múltiples dispositivos ---
+    # El candado de login (1 trabajador = 1 celular, ver
+    # api/serializers.py::MyTokenObtainPairSerializer) bloquea cualquier
+    # login desde un device_id distinto al ya vinculado. Este privilegio
+    # exime a un trabajador puntual de ese bloqueo: cada dispositivo nuevo
+    # se SUMA a los permitidos en vez de reemplazar al anterior.
+    puede_multidispositivo = models.BooleanField(
+        default=False,
+        verbose_name="Puede usar varios dispositivos"
+    )
+    multidispositivo_hasta = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Permiso de multidispositivo vigente hasta",
+        help_text="Vacío = permiso permanente. Con fecha = vigente hasta ese día inclusive."
+    )
+
     @property
     def nombre_completo(self):
         return f"{self.nombres} {self.apellido_paterno} {self.apellido_materno}".strip()
@@ -298,6 +315,19 @@ class Trabajador(models.Model):
         if self.marcar_sin_ubicacion_hasta is None:
             return True
         return fecha <= self.marcar_sin_ubicacion_hasta
+
+    @property
+    def multidispositivo_vigente(self):
+        """Atajo para la UI: el permiso de multidispositivo esta vigente HOY."""
+        return self.puede_multidispositivo_en(timezone.localdate())
+
+    def puede_multidispositivo_en(self, fecha):
+        """¿El permiso de usar varios dispositivos está vigente para esa fecha?"""
+        if not self.puede_multidispositivo:
+            return False
+        if self.multidispositivo_hasta is None:
+            return True
+        return fecha <= self.multidispositivo_hasta
 
     @property
     def cargojerarquico(self):
@@ -980,6 +1010,43 @@ class MarcaSinUbicacionAuditoria(models.Model):
     class Meta:
         verbose_name = "Auditoría de Marca sin Ubicación"
         verbose_name_plural = "Auditorías de Marca sin Ubicación"
+        ordering = ['-creado_en']
+
+
+class MarcaMultidispositivoAuditoria(models.Model):
+    """Historial de activaciones del permiso de usar varios dispositivos.
+
+    Mismo patrón que MarcaSinHorarioAuditoria/MarcaSinUbicacionAuditoria.
+    """
+
+    trabajador = models.ForeignKey(
+        Trabajador,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='auditorias_multidispositivo',
+        verbose_name="Trabajador"
+    )
+    trabajador_nombre = models.CharField(max_length=200, verbose_name="Trabajador")
+    trabajador_dni = models.CharField(max_length=8, verbose_name="DNI")
+
+    habilitado_anterior = models.BooleanField(verbose_name="Habilitado (antes)")
+    habilitado_nuevo = models.BooleanField(verbose_name="Habilitado (después)")
+    hasta_anterior = models.DateField(null=True, blank=True, verbose_name="Vigente hasta (antes)")
+    hasta_nuevo = models.DateField(null=True, blank=True, verbose_name="Vigente hasta (después)")
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Modificado por"
+    )
+    creado_en = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Cambio")
+
+    class Meta:
+        verbose_name = "Auditoría de Multidispositivo"
+        verbose_name_plural = "Auditorías de Multidispositivo"
         ordering = ['-creado_en']
 
     def __str__(self):
