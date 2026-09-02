@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -53,6 +54,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         telefono_trabajador = "No registrado"
 
         # --- Extracción de datos del Trabajador ---
+        trabajador = None
         try:
             trabajador = Trabajador.objects.get(user=usuario_actual)
             nombre_trabajador = trabajador.nombre_completo
@@ -69,20 +71,34 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         # ==========================================================
         # 🔒 CANDADO DE SEGURIDAD ESTRICTO (1 TRABAJADOR = 1 CELULAR) 🔒
         # ==========================================================
-        
+
         # Buscamos si este usuario ya tiene algún dispositivo vinculado en la base de datos
         dispositivos_vinculados = Dispositivo.objects.filter(trabajadores_permitidos=usuario_actual)
 
-        if dispositivos_vinculados.exists():
-            # EL USUARIO YA TIENE UN CELULAR REGISTRADO
-            # Verificamos si el device_id que intenta usar es exactamente el que ya tiene guardado
-            if not dispositivos_vinculados.filter(id=device_id).exists():
+        # Privilegio "puede_multidispositivo" (RRHH, ver lista_trabajadores):
+        # exime del candado a un trabajador puntual (rol itinerante que
+        # rota de equipo, o que necesita tablet + celular a la vez). Un
+        # dispositivo nuevo se SUMA a los permitidos en vez de reemplazar
+        # al anterior -- nunca desvincula el equipo viejo.
+        tiene_privilegio_multidispositivo = (
+            trabajador is not None
+            and trabajador.puede_multidispositivo_en(timezone.localdate())
+        )
+
+        if dispositivos_vinculados.exists() and not dispositivos_vinculados.filter(id=device_id).exists():
+            # EL USUARIO YA TIENE UN CELULAR REGISTRADO Y ESTE ES DISTINTO
+            if not tiene_privilegio_multidispositivo:
                 # ❌ ALERTA: Es un celular nuevo o la app fue reinstalada. ¡Bloqueamos el paso!
                 raise serializers.ValidationError(
                     {"detail": "Ya tienes un dispositivo registrado. Si cambiaste de celular o reinstalaste la app, solicita a Recursos Humanos que libere tu equipo anterior."}
                 )
-            # ✅ Si llega aquí, es porque el device_id sí coincide. Todo en orden, lo dejamos pasar.
-        else:
+            # ✅ Privilegio activo: se vincula este dispositivo tambien, sin tocar los anteriores.
+            dispositivo, created = Dispositivo.objects.get_or_create(
+                id=device_id,
+                defaults={'nombre': f"Dispositivo de {nombre_trabajador}"}
+            )
+            dispositivo.trabajadores_permitidos.add(usuario_actual)
+        elif not dispositivos_vinculados.exists():
             # ES LA PRIMERA VEZ QUE INICIA SESIÓN (No tiene dispositivos vinculados)
             # Creamos o recuperamos el dispositivo en la BD y lo vinculamos a este usuario
             dispositivo, created = Dispositivo.objects.get_or_create(
@@ -90,6 +106,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
                 defaults={'nombre': f"Dispositivo de {nombre_trabajador}"}
             )
             dispositivo.trabajadores_permitidos.add(usuario_actual)
+        # else: el device_id coincide exactamente con uno ya vinculado. Todo en orden, se deja pasar.
 
         # --- RESPUESTA FINAL AL CELULAR ---
         data.update({
