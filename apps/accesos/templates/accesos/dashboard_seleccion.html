@@ -1,39 +1,45 @@
 {% extends 'layouts/base.html' %}
+{% load static %}
 
 {% block content %}
 
-<script src="https://cdn.tailwindcss.com"></script>
+<!-- ============================================================
+     FONDO: interior del túnel (continúa la transición del login)
+     Se fija al viewport, dejando libre el sidebar en escritorio.
+     ============================================================ -->
+<div class="portal-backdrop">
+    <div class="portal-bg"></div>
+    <div class="portal-veil"></div>
+    <div class="portal-fog"></div>
+</div>
 
-<div class="min-h-[85vh] bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
-    
+<div class="portal-stage">
+
     <!-- Encabezado -->
-    <div class="max-w-4xl w-full text-center mb-10 animate-fade-in-down">
-        <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight sm:text-4xl mb-2">
-            Panel de Administración
-        </h2>
-        <p class="text-lg text-gray-500">
-            Bienvenido, <span class="text-indigo-600 font-semibold">{{ user.first_name|default:user.username }}</span>. Selecciona un módulo:
+    <div class="portal-head">
+        <p class="portal-eyebrow">Sistema de gestión</p>
+        <h2 class="portal-title">Panel de Administración</h2>
+        <p class="portal-sub">
+            Bienvenido, <span>{{ user.first_name|default:user.username }}</span>. Selecciona un módulo:
         </p>
     </div>
 
     <!-- Contenedor de Tarjetas (Grid de 2 columnas) -->
-    <div class="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 px-4">
+    <div class="portal-grid">
 
         <!-- 1. TARJETA: EVALUACIONES (MÉTRICAS) -->
         <!-- URL: panel_jefe (Para ver indicadores) -->
         {% if "Administrador" in user_groups and "Metricas" in user_groups and tiene_trabajador %}
-        <a href="{% url 'metricas_ceneris:panel_jefe' %}" class="group relative block h-full">
-            <div class="absolute inset-0 bg-blue-600 rounded-2xl transform translate-y-2 translate-x-2 transition duration-300 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:opacity-100 opacity-0"></div>
-            <div class="relative h-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transform transition duration-300 group-hover:-translate-y-1 group-hover:-translate-x-1 group-hover:shadow-xl flex flex-col">
-                <div class="h-1.5 w-full bg-blue-500"></div>
-                <div class="p-6 flex-1 flex flex-col items-center text-center">
-                    <div class="h-16 w-16 rounded-full bg-blue-50 flex items-center justify-center mb-4 text-blue-600 group-hover:scale-110 transition duration-300">
-                        <!-- Icono Gráfico -->
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 012 2h2a2 2 0 012-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 group-hover:text-blue-700">Métricas y Desempeño</h3>
-                    <p class="mt-2 text-gray-500 text-sm">Evaluación de indicadores KPI y seguimiento de objetivos del personal.</p>
+        <a href="{% url 'metricas_ceneris:panel_jefe' %}" class="portal-card" style="--accent:#3b82f6; --accent-soft:rgba(59,130,246,.16);">
+            <span class="card-rule"></span>
+            <div class="card-body">
+                <div class="card-icon">
+                    <!-- Icono Gráfico -->
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 012 2h2a2 2 0 012-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                 </div>
+                <h3>Métricas y Desempeño</h3>
+                <p>Evaluación de indicadores KPI y seguimiento de objetivos del personal.</p>
+                <span class="card-go">Entrar &#8594;</span>
             </div>
         </a>
         {% endif %}
@@ -41,18 +47,16 @@
         <!-- 2. TARJETA: RECURSOS HUMANOS -->
         <!-- URL: dashboard RRHH -->
         {% if "Administrador" in user_groups and "Recursos Humanos" in user_groups %}
-        <a href="{% url 'recursoshumanos:dashboard' %}" class="group relative block h-full">
-            <div class="absolute inset-0 bg-green-600 rounded-2xl transform translate-y-2 translate-x-2 transition duration-300 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:opacity-100 opacity-0"></div>
-            <div class="relative h-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transform transition duration-300 group-hover:-translate-y-1 group-hover:-translate-x-1 group-hover:shadow-xl flex flex-col">
-                <div class="h-1.5 w-full bg-green-500"></div>
-                <div class="p-6 flex-1 flex flex-col items-center text-center">
-                    <div class="h-16 w-16 rounded-full bg-green-50 flex items-center justify-center mb-4 text-green-600 group-hover:scale-110 transition duration-300">
-                        <!-- Icono Personas -->
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 group-hover:text-green-700">Recursos Humanos</h3>
-                    <p class="mt-2 text-gray-500 text-sm">Control de asistencia, tareos, contratos, boletas y legajos.</p>
+        <a href="{% url 'recursoshumanos:dashboard' %}" class="portal-card" style="--accent:#22c55e; --accent-soft:rgba(34,197,94,.16);">
+            <span class="card-rule"></span>
+            <div class="card-body">
+                <div class="card-icon">
+                    <!-- Icono Personas -->
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                 </div>
+                <h3>Recursos Humanos</h3>
+                <p>Control de asistencia, tareos, contratos, boletas y legajos.</p>
+                <span class="card-go">Entrar &#8594;</span>
             </div>
         </a>
         {% endif %}
@@ -60,18 +64,16 @@
         <!-- 3. TARJETA: CALIDAD -->
         <!-- URL: estadisticas_calidad (Requiere grupo "Calidad" y "Administrador") -->
         {% if "Administrador" in user_groups and "Calidad" in user_groups %}
-        <a href="{% url 'calidad:estadisticas_calidad' %}" class="group relative block h-full">
-            <div class="absolute inset-0 bg-purple-600 rounded-2xl transform translate-y-2 translate-x-2 transition duration-300 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:opacity-100 opacity-0"></div>
-            <div class="relative h-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transform transition duration-300 group-hover:-translate-y-1 group-hover:-translate-x-1 group-hover:shadow-xl flex flex-col">
-                <div class="h-1.5 w-full bg-purple-500"></div>
-                <div class="p-6 flex-1 flex flex-col items-center text-center">
-                    <div class="h-16 w-16 rounded-full bg-purple-50 flex items-center justify-center mb-4 text-purple-600 group-hover:scale-110 transition duration-300">
-                        <!-- Icono Calidad/Escudo -->
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 group-hover:text-purple-700">Gestión de Calidad</h3>
-                    <p class="mt-2 text-gray-500 text-sm">Auditorías, control de documentos y estadísticas de cumplimiento.</p>
+        <a href="{% url 'calidad:estadisticas_calidad' %}" class="portal-card" style="--accent:#a855f7; --accent-soft:rgba(168,85,247,.16);">
+            <span class="card-rule"></span>
+            <div class="card-body">
+                <div class="card-icon">
+                    <!-- Icono Calidad/Escudo -->
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </div>
+                <h3>Gestión de Calidad</h3>
+                <p>Auditorías, control de documentos y estadísticas de cumplimiento.</p>
+                <span class="card-go">Entrar &#8594;</span>
             </div>
         </a>
         {% endif %}
@@ -80,18 +82,16 @@
         <!-- URL: gestion_usuarios (Requiere "Administrador" y "Metricas" o un grupo "Sistemas") -->
         <!-- Nota: Asumo que quien ve métricas también administra claves, si no, cambia "Metricas" por otro grupo -->
         {% if "Administrador" in user_groups %}
-        <a href="{% url 'accesos:lista_usuarios' %}" class="group relative block h-full">
-            <div class="absolute inset-0 bg-orange-500 rounded-2xl transform translate-y-2 translate-x-2 transition duration-300 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:opacity-100 opacity-0"></div>
-            <div class="relative h-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transform transition duration-300 group-hover:-translate-y-1 group-hover:-translate-x-1 group-hover:shadow-xl flex flex-col">
-                <div class="h-1.5 w-full bg-orange-500"></div>
-                <div class="p-6 flex-1 flex flex-col items-center text-center">
-                    <div class="h-16 w-16 rounded-full bg-orange-50 flex items-center justify-center mb-4 text-orange-600 group-hover:scale-110 transition duration-300">
-                        <!-- Icono Llave/Config -->
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 group-hover:text-orange-700">Gestión de Usuarios</h3>
-                    <p class="mt-2 text-gray-500 text-sm">Creación de cuentas, reseteo de contraseñas y accesos al sistema.</p>
+        <a href="{% url 'accesos:lista_usuarios' %}" class="portal-card" style="--accent:#d45b04; --accent-soft:rgba(212,91,4,.18);">
+            <span class="card-rule"></span>
+            <div class="card-body">
+                <div class="card-icon">
+                    <!-- Icono Llave/Config -->
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
                 </div>
+                <h3>Gestión de Usuarios</h3>
+                <p>Creación de cuentas, reseteo de contraseñas y accesos al sistema.</p>
+                <span class="card-go">Entrar &#8594;</span>
             </div>
         </a>
         {% endif %}
@@ -100,26 +100,270 @@
 
     <!-- Aviso si no tiene permisos -->
     {% if "Administrador" not in user_groups %}
-        <div class="mt-10 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200 shadow-sm">
-            <p class="flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        <div class="portal-aviso">
+            <p>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                 No se detectaron permisos de Administrador para mostrar los módulos.
             </p>
         </div>
     {% endif %}
 
-    <div class="mt-12 text-center">
-        <p class="text-sm text-gray-400">© 2025 Ceneris - Panel Central</p>
+    <div class="portal-foot">
+        <span>© 2025 Ceneris — Panel Central</span>
+        <span class="portal-foot-meta">Nivel 03 · Bocamina · v2.4.1</span>
     </div>
 </div>
 
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Poppins:wght@200;300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+
 <style>
-    @keyframes fadeInDown {
-        0% { opacity: 0; transform: translateY(-20px); }
-        100% { opacity: 1; transform: translateY(0); }
+    /* ---------- Fondo fijo del túnel ---------- */
+    .portal-backdrop {
+        position: fixed;
+        top: 0; right: 0; bottom: 0; left: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
     }
-    .animate-fade-in-down {
-        animation: fadeInDown 0.6s ease-out;
+
+    /* En escritorio dejamos libre el sidebar (w-64 = 16rem) */
+    @media (min-width: 768px) {
+        .portal-backdrop { left: 16rem; }
+    }
+
+    .portal-bg {
+        position: absolute;
+        inset: -3%;
+        background-image: url("{% static 'img/mine_interior.jpg' %}");
+        background-size: cover;
+        background-position: center;
+        transform: scale(1.18);
+        animation: portalSettle 2.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes portalSettle {
+        from { transform: scale(1.18); filter: brightness(1.25); }
+        to   { transform: scale(1);    filter: brightness(1); }
+    }
+
+    .portal-veil {
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(180deg, rgba(4, 6, 9, 0.86) 0%, rgba(4, 6, 9, 0.62) 35%, rgba(4, 6, 9, 0.78) 100%),
+            radial-gradient(ellipse at 50% 45%, rgba(212, 91, 4, 0.12) 0%, transparent 60%);
+    }
+
+    .portal-fog {
+        position: absolute;
+        inset: -20%;
+        mix-blend-mode: screen;
+        opacity: 0.45;
+        background:
+            radial-gradient(ellipse 60% 40% at 25% 75%, rgba(160, 175, 195, 0.18), transparent 60%),
+            radial-gradient(ellipse 55% 35% at 70% 30%, rgba(255, 190, 130, 0.14), transparent 62%);
+        filter: blur(16px);
+        animation: portalFog 40s ease-in-out infinite alternate;
+    }
+
+    @keyframes portalFog {
+        0%   { transform: translate3d(-3%, 0, 0) scale(1.05); }
+        100% { transform: translate3d(4%, -2%, 0) scale(1.14); }
+    }
+
+    /* ---------- Contenido ---------- */
+    .portal-stage {
+        position: relative;
+        z-index: 1;
+        min-height: 78vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 28px 0 8px;
+        font-family: 'Poppins', sans-serif;
+        color: #fff;
+    }
+
+    .portal-head {
+        text-align: center;
+        max-width: 720px;
+        margin-bottom: 42px;
+        animation: portalUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: 0.25s;
+    }
+
+    .portal-eyebrow {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.66rem;
+        letter-spacing: 0.42em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.55);
+        margin-bottom: 12px;
+    }
+
+    .portal-title {
+        font-family: 'DM Serif Display', serif;
+        font-size: clamp(2.1rem, 5vw, 3.1rem);
+        font-weight: 400;
+        line-height: 1.05;
+        text-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+    }
+
+    .portal-sub {
+        margin-top: 12px;
+        font-size: 0.95rem;
+        font-weight: 300;
+        color: rgba(255, 255, 255, 0.66);
+    }
+
+    .portal-sub span {
+        color: #f0862c;
+        font-weight: 500;
+    }
+
+    .portal-grid {
+        width: 100%;
+        max-width: 1000px;
+        display: grid;
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+        gap: 22px;
+    }
+
+    @media (min-width: 768px) {
+        .portal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    /* ---------- Tarjetas glassmorphism ---------- */
+    .portal-card {
+        position: relative;
+        display: block;
+        border-radius: 16px;
+        overflow: hidden;
+        text-decoration: none;
+        background: rgba(10, 13, 18, 0.42);
+        backdrop-filter: blur(18px) saturate(140%);
+        -webkit-backdrop-filter: blur(18px) saturate(140%);
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+        transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                    border-color 0.35s, box-shadow 0.35s, background 0.35s;
+        animation: portalUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .portal-grid .portal-card:nth-child(1) { animation-delay: 0.40s; }
+    .portal-grid .portal-card:nth-child(2) { animation-delay: 0.50s; }
+    .portal-grid .portal-card:nth-child(3) { animation-delay: 0.60s; }
+    .portal-grid .portal-card:nth-child(4) { animation-delay: 0.70s; }
+
+    .portal-card:hover {
+        transform: translateY(-6px);
+        background: rgba(14, 18, 24, 0.55);
+        border-color: var(--accent);
+        box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--accent-soft);
+    }
+
+    .card-rule {
+        display: block;
+        height: 2px;
+        width: 100%;
+        background: linear-gradient(90deg, var(--accent), transparent);
+    }
+
+    .card-body { padding: 26px 26px 22px; }
+
+    .card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 18px;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        transition: transform 0.35s;
+    }
+
+    .portal-card:hover .card-icon { transform: scale(1.08); }
+
+    .card-body h3 {
+        font-size: 1.12rem;
+        font-weight: 500;
+        color: #fff;
+        margin-bottom: 8px;
+    }
+
+    .card-body p {
+        font-size: 0.86rem;
+        font-weight: 300;
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.58);
+    }
+
+    .card-go {
+        display: inline-block;
+        margin-top: 16px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.63rem;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--accent);
+        opacity: 0.75;
+        transition: opacity 0.3s, transform 0.3s;
+    }
+
+    .portal-card:hover .card-go { opacity: 1; transform: translateX(4px); }
+
+    /* ---------- Aviso sin permisos ---------- */
+    .portal-aviso {
+        margin-top: 36px;
+        padding: 14px 18px;
+        border-radius: 12px;
+        background: rgba(153, 27, 27, 0.28);
+        border: 1px solid rgba(248, 113, 113, 0.42);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: #fecaca;
+        font-size: 0.88rem;
+        animation: portalUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: 0.45s;
+    }
+
+    .portal-aviso p {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* ---------- Pie ---------- */
+    .portal-foot {
+        margin-top: 46px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.34);
+    }
+
+    .portal-foot-meta {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.6rem;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.26);
+    }
+
+    @keyframes portalUp {
+        from { opacity: 0; transform: translateY(24px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .portal-bg, .portal-fog, .portal-head, .portal-card, .portal-aviso { animation: none; }
+        .portal-bg { transform: scale(1); }
     }
 </style>
 
