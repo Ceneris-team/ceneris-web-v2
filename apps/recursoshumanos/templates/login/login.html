@@ -154,39 +154,8 @@
             grid-template-columns: 1.05fr 0.95fr;
             align-items: center;
             gap: 40px;
-            padding: 120px 6vw 80px;
+            padding: 80px 6vw;
             transition: opacity 0.9s ease, transform 1.2s cubic-bezier(0.6, 0, 0.35, 1);
-        }
-
-        /* Navbar */
-        .navbar {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            z-index: 5;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 18px 6vw;
-            background: rgba(5, 7, 10, 0.28);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            transition: opacity 0.7s ease, transform 0.9s ease;
-        }
-
-        .navbar img {
-            height: 34px;
-            width: auto;
-            display: block;
-            filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.6));
-        }
-
-        .navbar .nav-meta {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.66rem;
-            letter-spacing: 0.22em;
-            text-transform: uppercase;
-            color: var(--txt-soft);
         }
 
         /* Columna editorial */
@@ -243,17 +212,6 @@
             margin: 30px 0 22px;
             background: linear-gradient(90deg, var(--primary-color), transparent);
         }
-
-        .tech-block {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.68rem;
-            line-height: 2;
-            letter-spacing: 0.12em;
-            color: rgba(255, 255, 255, 0.48);
-        }
-
-        .tech-block span { color: var(--primary-color); }
-
         /* Datos de esquina */
         .corner {
             position: fixed;
@@ -277,29 +235,6 @@
             display: block;
             font-weight: 500;
             color: rgba(255, 255, 255, 0.72);
-        }
-
-        .corner-br {
-            bottom: 34px;
-            right: 6vw;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .corner-br .pulse {
-            width: 7px; height: 7px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            box-shadow: 0 0 0 0 var(--primary-glow);
-            animation: pulse 2.2s infinite;
-        }
-
-        @keyframes pulse {
-            0%   { box-shadow: 0 0 0 0 var(--primary-glow); }
-            70%  { box-shadow: 0 0 0 12px rgba(212, 91, 4, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(212, 91, 4, 0); }
         }
 
         .corner-bl {
@@ -409,19 +344,6 @@
             opacity: 0.85;
             transform: none;
         }
-
-        .panel-foot {
-            margin-top: 20px;
-            padding-top: 16px;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.6rem;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.34);
-            text-align: center;
-        }
-
         /* ============================================================
            5. ALERTAS (misma lógica de siempre)
            ============================================================ */
@@ -516,7 +438,6 @@
         body.diving .fog { opacity: 1; }
 
         body.diving .stage,
-        body.diving .navbar,
         body.diving .corner {
             opacity: 0;
             transform: translateY(-46px);
@@ -537,9 +458,8 @@
             }
             .editorial { max-width: 100%; }
             .panel { justify-self: center; max-width: 460px; }
-            .corner-tr, .corner-bl, .corner-br { display: none; }
+            .corner-tr, .corner-bl { display: none; }
             .title { font-size: clamp(2.6rem, 12vw, 3.4rem); }
-            .tech-block { display: none; }
             body { overflow-y: auto; }
             .stage { height: auto; min-height: 100vh; }
         }
@@ -559,12 +479,6 @@
     <div class="fog"></div>
     <div class="dust" id="dust"></div>
 
-    <!-- 2. Navbar -->
-    <nav class="navbar">
-        <img src="{% static 'img/image.png' %}" alt="Ceneris">
-        <div class="nav-meta">Acceso restringido</div>
-    </nav>
-
     <!-- 3. Datos técnicos de esquina -->
     <div class="corner corner-tr">
         <b>Elev. 4,200 m</b>
@@ -573,11 +487,7 @@
     </div>
 
     <div class="corner corner-bl">
-        Sistema v2.4.1 — Build CAV
-    </div>
-
-    <div class="corner corner-br">
-        <span class="pulse"></span> Iniciar sesión &#8594;
+        Sistema v2.4.1
     </div>
 
     <!-- 4. Contenido -->
@@ -588,12 +498,6 @@
             <h1 class="title fade-in d2">CENERIS</h1>
             <p class="subtitle fade-in d2">Plataforma integral</p>
             <div class="rule fade-in d3"></div>
-            <div class="tech-block fade-in d3">
-                <span>&#9679;</span> COORD. &nbsp;15°51'23"S &nbsp;71°32'11"W<br>
-                <span>&#9679;</span> UNIDAD &nbsp;&nbsp;BOCAMINA — SECTOR NORTE<br>
-                <span>&#9679;</span> ESTADO &nbsp;&nbsp;OPERATIVO / TURNO A<br>
-                <span>&#9679;</span> VER. &nbsp;&nbsp;&nbsp;&nbsp;2.4.1 · DJANGO CORE
-            </div>
         </section>
 
         <section class="panel fade-in d4">
@@ -659,8 +563,6 @@
 
                 <button type="submit" class="login-button" id="login-button">Ingresar</button>
             </form>
-
-            <div class="panel-foot">Ceneris · Acceso corporativo</div>
         </section>
 
     </main>
