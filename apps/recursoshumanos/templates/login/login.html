@@ -168,11 +168,40 @@
         }
 
         /* ============================================================
+           2.b SECUENCIA HORROR (parpadeo de luces + tinte de peligro)
+           ============================================================ */
+        /* Capa de blackout: sin transicion, el parpadeo tiene que ser seco. */
+        #blackout-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9998;
+            background-color: #000;
+            opacity: 0;
+            pointer-events: none;   /* el formulario sigue clickeable */
+            transition: none;
+            will-change: opacity;
+        }
+
+        /* Tinte rojo permanente una vez que "algo" pasa en la mina. */
+        #danger-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2;             /* sobre la niebla, debajo del contenido */
+            background-color: rgb(255, 45, 0);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1.4s ease;
+            will-change: opacity;
+        }
+
+        /* ============================================================
            3. ESTRUCTURA
            ============================================================ */
         .stage {
             position: relative;
-            z-index: 3;
+            /* Por encima del blackout: el login debe seguir siendo usable
+               durante toda la secuencia. */
+            z-index: 9999;
             height: 100vh;
             display: grid;
             grid-template-columns: 1.05fr 0.95fr;
@@ -502,6 +531,9 @@
 
         @media (prefers-reduced-motion: reduce) {
             .fog-layer::before, .fog-low { animation: none; }
+            /* Sin parpadeo: es un riesgo real para personas fotosensibles.
+               El cambio de imagen se hace con un fundido suave. */
+            #blackout-overlay { transition: opacity 0.6s ease; }
         }
     </style>
 </head>
@@ -518,6 +550,10 @@
         <div class="fog-layer fog-3"></div>
         <div class="fog-low"></div>
     </div>
+
+    <!-- 2.b Capas de la secuencia horror -->
+    <div id="danger-overlay"></div>
+    <div id="blackout-overlay"></div>
 
     <!-- 3. Datos técnicos de esquina -->
     <div class="corner corner-bl">
@@ -689,6 +725,93 @@
                 requestAnimationFrame(animar);
             })();
         }
+
+        /* ---------- Secuencia horror: parpadeo -> criatura -> sangre ---------- */
+        const blackout = document.getElementById('blackout-overlay');
+        const danger = document.getElementById('danger-overlay');
+        const URL_CRIATURA = "{% static 'img/mine_creature.jpg' %}";
+        const URL_SANGRE = "{% static 'img/mine_blood.jpg' %}";
+
+        // Parpadeo de luces: negro-normal-negro-normal-blackout, y despues el cambio.
+        function parpadeo(alTerminar) {
+            const pasos = [
+                { opacidad: 1, ms: 80 },
+                { opacidad: 0, ms: 60 },
+                { opacidad: 1, ms: 100 },
+                { opacidad: 0, ms: 50 },
+                { opacidad: 1, ms: 200 }   // blackout final
+            ];
+
+            // Con movimiento reducido no hay estroboscopio: solo un fundido a negro.
+            if (reducido) {
+                blackout.style.opacity = '1';
+                setTimeout(function () {
+                    alTerminar();
+                    blackout.style.opacity = '0';
+                }, 600);
+                return;
+            }
+
+            let i = 0;
+            (function siguiente() {
+                if (i >= pasos.length) {
+                    alTerminar();                       // cambio de imagen a oscuras
+                    setTimeout(function () { blackout.style.opacity = '0'; }, 60);
+                    return;
+                }
+                const paso = pasos[i++];
+                blackout.style.opacity = String(paso.opacidad);
+                setTimeout(siguiente, paso.ms);
+            })();
+        }
+
+        function cambiarFondo(url) {
+            if (entrance) { entrance.style.backgroundImage = 'url("' + url + '")'; }
+        }
+
+        function iniciarSecuencia() {
+            if (!blackout || !entrance) { return; }
+
+            // Fase 1 (5 s): las luces fallan y aparece la criatura.
+            setTimeout(function () {
+                if (document.body.classList.contains('diving')) { return; }
+                parpadeo(function () {
+                    cambiarFondo(URL_CRIATURA);
+                    if (danger) { danger.style.opacity = '0.04'; }
+                });
+            }, 5000);
+
+            // Fase 2: la criatura aguanta 3 s y despues la sangre se queda.
+            // El tinte baja: es un estado permanente, no debe cansar la vista.
+            setTimeout(function () {
+                if (document.body.classList.contains('diving')) { return; }
+                parpadeo(function () {
+                    cambiarFondo(URL_SANGRE);
+                    if (danger) { danger.style.opacity = '0.025'; }
+                });
+            }, 8300);
+        }
+
+        // Precarga: el swap tiene que ser instantaneo, si no se ve el hueco negro.
+        (function precargarYArrancar() {
+            let listas = 0, arrancado = false;
+            function arrancar() {
+                if (arrancado) { return; }
+                arrancado = true;
+                iniciarSecuencia();
+            }
+            function contar() { if (++listas >= 2) { arrancar(); } }
+
+            [URL_CRIATURA, URL_SANGRE].forEach(function (url) {
+                const img = new Image();
+                img.onload = contar;
+                img.onerror = contar;   // una imagen rota no debe colgar la secuencia
+                img.src = url;
+            });
+
+            // Red de seguridad por si la carga se demora.
+            setTimeout(arrancar, 3000);
+        })();
 
         /* ---------- Transición cinematográfica al enviar el login ---------- */
         const form = document.getElementById('login-form');
